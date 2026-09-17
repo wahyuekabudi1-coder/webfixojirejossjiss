@@ -63,17 +63,19 @@ export type NationalityType = 'WNI' | 'WNA' | 'WNA_CHINA' | 'WNA_EUROPE';
 
 export interface ParticipantData {
   name: string;
-  englishName: string;
-  weChatId: string;
-  xiaoHongShuId: string;
-  city: string;
+  englishName?: string;
+  weChatId?: string;
+  xiaoHongShuId?: string;
+  city?: string;
   whatsapp?: string;
   email: string;
   flightNumber?: string;
   nationalityType?: NationalityType;
   pickupLocation?: string;
+  dropoffLocation?: string;
   paymentMethod?: string;
   specialRequests?: string;
+  members?: Array<{ name?: string; fullName?: string; nationality?: string; country?: string }>;
 }
 
 export type TourBookingType = 'private' | 'shared';
@@ -92,6 +94,7 @@ export interface Booking {
   phone: string;
   participantsCount: number;
   participantsNames: string[];
+  participantsManifest?: Array<{ name?: string; fullName?: string; nationality?: string }>;
   proofOfPayment: string; // base64 or file name / "NOT_APPLICABLE_PREVIEW"
   status: BookingStatus;
   paymentStatus?: string;
@@ -99,6 +102,7 @@ export interface Booking {
   paymentId?: string;
   paidAt?: string;
   confirmedAt?: string;
+  verificationHash?: string;
   totalPriceIDR?: number;
   baseAmount?: number;
   uniqueCode?: number;
@@ -116,6 +120,7 @@ export interface Booking {
   tourSnapshot?: {
     tourId?: string;
     tourName?: string;
+    packageName?: string;
     duration?: string;
     vehicleName?: string;
     startingPriceIDR?: number;
@@ -124,7 +129,7 @@ export interface Booking {
   };
   adminNotes?: string;
   paymentNotes?: string;
-  nationalityType?: NationalityType;
+  nationalityType?: NationalityType | string;
 }
 
 export interface DatabaseState {

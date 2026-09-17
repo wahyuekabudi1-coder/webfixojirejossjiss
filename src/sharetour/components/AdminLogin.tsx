@@ -129,7 +129,7 @@ export default function AdminLogin({ onSuccess, onBack }: AdminLoginProps) {
               Admin Email: <span className="text-gray-900 font-mono text-xs underline select-all">sawahjayagroup@gmail.com</span>
             </p>
             <p className="font-semibold">
-              Passcode: <span className="text-gray-900 font-mono text-xs underline select-all">smartjourney2026</span>
+              Passcode: <span className="text-gray-900 font-mono text-xs underline select-all">sawahjaya2026</span>
             </p>
           </div>
 

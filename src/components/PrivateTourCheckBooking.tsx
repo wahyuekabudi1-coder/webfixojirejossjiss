@@ -125,17 +125,23 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
 
     setLoadingSummary(true);
     try {
-      // Fetch Authoritative Final Summary from Backend Gate
+      // 1. Direct download of the actual binary PDF file from the server
+      const pdfUrl = `/api/private-tour/invoice-pdf/${encodeURIComponent(booking.bookingCode)}`;
+      const link = document.createElement('a');
+      link.href = pdfUrl;
+      link.setAttribute('download', `SmartJourney-Final-Booking-${booking.bookingCode}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // 2. Fetch Authoritative Final Summary data for the on-screen preview modal
       const res = await fetch(`/api/private-tour/final-summary/${encodeURIComponent(booking.bookingCode)}`);
       const data = await res.json();
 
-      if (!res.ok) {
-        alert(data.error || 'Dokumen Final Summary belum dapat diakses.');
-        return;
+      if (res.ok) {
+        setSummaryData(data);
+        setIsSummaryModalOpen(true);
       }
-
-      setSummaryData(data);
-      setIsSummaryModalOpen(true);
     } catch (err) {
       console.error('Error fetching final summary document:', err);
       alert('Gagal mengunduh dokumen Final Summary.');
@@ -544,6 +550,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                 ) : (
                   <div>
                     <button
+                      id="btn-download-final-summary-locked"
                       disabled
                       className="w-full py-3 px-4 bg-neutral-100 text-neutral-400 font-bold text-xs sm:text-sm rounded-xl border border-neutral-200 cursor-not-allowed flex items-center justify-center gap-2"
                       title="Dokumen hanya dapat diunduh setelah status Pembayaran Lunas DAN Booking Dikonfirmasi oleh Admin"
@@ -551,10 +558,12 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                       <Lock className="h-4 w-4 text-neutral-400" />
                       <span>DOWNLOAD FINAL SUMMARY (TERKUNCI)</span>
                     </button>
-                    <p className="text-[10px] text-neutral-500 text-center mt-1.5">
-                      {booking.paymentStatus === 'Paid'
-                        ? 'Menunggu verifikasi Admin Pusat. Tombol akan aktif setelah status menjadi Confirmed.'
-                        : 'Lakukan pelunasan pembayaran untuk membuka dokumen invoice final.'}
+                    <p className="text-[11px] text-neutral-600 text-center mt-1.5 font-medium" id="summary-lock-guidance-message">
+                      {booking.gateMessage || (
+                        booking.paymentStatus === 'Paid'
+                          ? 'Payment received. Your booking is waiting for confirmation from Smart Journey.'
+                          : 'Payment is still pending. Final booking document is not available yet.'
+                      )}
                     </p>
                   </div>
                 )}

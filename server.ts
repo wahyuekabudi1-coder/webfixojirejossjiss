@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import dotenv from 'dotenv';
 import type { Trip, Batch, Booking, DatabaseState } from './src/sharetour/types.ts';
 import type { Tour } from './src/types.ts';
+import { generatePrivateTourPdf } from './src/server/generatePrivateTourPdf.ts';
 
 // Load environment variables
 dotenv.config();
@@ -1362,7 +1363,7 @@ app.get(['/api/private-tour/check-booking/:bookingCode', '/api/private-tour/stat
 
     if (!booking) {
       return res.status(404).json({ 
-        error: `Booking dengan kode "${rawCode}" tidak ditemukan. Pastikan Anda memasukkan kode booking Private Tour yang benar (contoh: SJ-8F42KD).` 
+        error: 'Booking not found. Please check your Booking Code.' 
       });
     }
 
@@ -1402,10 +1403,23 @@ app.get(['/api/private-tour/check-booking/:bookingCode', '/api/private-tour/stat
     // Only accessible if paymentStatus === 'Paid' AND bookingStatus === 'Confirmed'
     const canDownloadFinalSummary = paymentStatus === 'Paid' && (bookingStatus === 'Confirmed' || bookingStatus === 'Completed');
 
+    // Section 16 Error/Status Guidance Messaging
+    let gateMessage = '';
+    if (bookingStatus === 'Cancelled' || bookingStatus === 'Rejected') {
+      gateMessage = 'This booking has been cancelled. Final booking document is unavailable.';
+    } else if (paymentStatus !== 'Paid') {
+      gateMessage = 'Payment is still pending. Final booking document is not available yet.';
+    } else if (bookingStatus !== 'Confirmed' && bookingStatus !== 'Completed') {
+      gateMessage = 'Payment received. Your booking is waiting for confirmation from Smart Journey.';
+    } else {
+      gateMessage = 'Your booking is confirmed.';
+    }
+
     // Extract snapshot details (Tahap 10)
     const tourSnapshot = booking.tourSnapshot || {
       tourId: booking.tripId || booking.details?.tourId || 'tour-private',
       tourName: booking.serviceName || booking.tripTitle || 'Private Tour',
+      packageName: booking.details?.package || 'Private Exclusive',
       duration: booking.details?.duration || '1 Hari',
       vehicleName: booking.details?.vehicleName || 'Standard Private Tourism Vehicle',
       itinerary: booking.details?.itinerary || []
@@ -1422,6 +1436,7 @@ app.get(['/api/private-tour/check-booking/:bookingCode', '/api/private-tour/stat
       bookingType: 'private',
       serviceName: booking.serviceName || booking.tripTitle || tourSnapshot.tourName,
       tripTitle: booking.tripTitle || booking.serviceName || tourSnapshot.tourName,
+      packageName: booking.details?.package || tourSnapshot.packageName || 'Private Exclusive',
       departureDate: booking.departureDate || booking.details?.date || '',
       duration: booking.details?.duration || tourSnapshot.duration || '1 Hari',
       participantsCount: booking.participantsCount || booking.details?.guests || booking.details?.passengers || 1,
@@ -1431,6 +1446,7 @@ app.get(['/api/private-tour/check-booking/:bookingCode', '/api/private-tour/stat
       customerPhone: booking.customerPhone || booking.phone || '',
       vehicleName: booking.details?.vehicleName || tourSnapshot.vehicleName || 'Standard Private Tourism Vehicle',
       pickupLocation: booking.details?.pickupLocation || booking.participantData?.pickupLocation || 'Hotel Lobby / Meeting Point',
+      dropoffLocation: booking.details?.dropoffLocation || booking.participantData?.dropoffLocation || '',
       baseAmount,
       uniqueCode,
       paymentAmount,
@@ -1442,6 +1458,7 @@ app.get(['/api/private-tour/check-booking/:bookingCode', '/api/private-tour/stat
       itinerary: tourSnapshot.itinerary || booking.details?.itinerary || [],
       tourSnapshot,
       canDownloadFinalSummary,
+      gateMessage,
       createdAt: booking.createdAt || new Date().toISOString()
     });
   } catch (err: any) {
@@ -1450,14 +1467,14 @@ app.get(['/api/private-tour/check-booking/:bookingCode', '/api/private-tour/stat
   }
 });
 
-// TAHAP 9: Backend Gate for Final Booking Summary / Invoice Download
+// TAHAP 9 & 10: Backend Gate for Final Booking Summary / Invoice Data
 // Enforces that paymentStatus must be 'Paid' AND bookingStatus must be 'Confirmed'
 app.get('/api/private-tour/final-summary/:bookingCode', (req, res) => {
   try {
     const db = readDB();
     const rawCode = (req.params.bookingCode || '').trim();
     if (!rawCode) {
-      return res.status(400).json({ error: 'Kode booking wajib diisi.' });
+      return res.status(400).json({ error: 'Booking not found. Please check your Booking Code.' });
     }
 
     const booking = (db.bookings || []).find((b: any) => {
@@ -1468,7 +1485,7 @@ app.get('/api/private-tour/final-summary/:bookingCode', (req, res) => {
     });
 
     if (!booking) {
-      return res.status(404).json({ error: 'Booking tidak ditemukan.' });
+      return res.status(404).json({ error: 'Booking not found. Please check your Booking Code.' });
     }
 
     // Standardize statuses
@@ -1485,8 +1502,17 @@ app.get('/api/private-tour/final-summary/:bookingCode', (req, res) => {
     // TAHAP 9: INVOICE / FINAL SUMMARY GATE VALIDATION
     // Must be Paid AND Confirmed. If not, reject with HTTP 403 Forbidden!
     if (paymentStatus !== 'Paid' || (bookingStatus !== 'Confirmed' && bookingStatus !== 'Completed')) {
+      let specificMessage = 'Akses Ditolak: Dokumen Final Booking Summary hanya dapat diakses dan diunduh setelah status pembayaran LUNAS dan booking telah DIKONFIRMASI oleh Admin Pusat.';
+      if (bookingStatus === 'Cancelled' || bookingStatus === 'Rejected') {
+        specificMessage = 'This booking has been cancelled. Final booking document is unavailable.';
+      } else if (paymentStatus !== 'Paid') {
+        specificMessage = 'Payment is still pending. Final booking document is not available yet.';
+      } else {
+        specificMessage = 'Payment received. Your booking is waiting for confirmation from Smart Journey.';
+      }
+
       return res.status(403).json({
-        error: 'Akses Ditolak: Dokumen Final Booking Summary hanya dapat diakses dan diunduh setelah status pembayaran LUNAS dan booking telah DIKONFIRMASI oleh Admin Pusat.',
+        error: specificMessage,
         paymentStatus,
         bookingStatus,
         requiredPaymentStatus: 'Paid',
@@ -1494,11 +1520,11 @@ app.get('/api/private-tour/final-summary/:bookingCode', (req, res) => {
       });
     }
 
-    // TAHAP 10: SNAPSHOT DATA
-    // Immutable snapshot sealed at booking time
+    // TAHAP 10: SNAPSHOT DATA (IMMUTABLE)
     const tourSnapshot = booking.tourSnapshot || {
       tourId: booking.tripId || booking.details?.tourId || 'tour-private',
       tourName: booking.serviceName || booking.tripTitle || 'Private Tour',
+      packageName: booking.details?.package || 'Private Exclusive Package',
       duration: booking.details?.duration || '1 Hari',
       vehicleName: booking.details?.vehicleName || 'Standard Private Tourism Vehicle',
       itinerary: booking.details?.itinerary || []
@@ -1508,36 +1534,72 @@ app.get('/api/private-tour/final-summary/:bookingCode', (req, res) => {
     const uniqueCode = booking.uniqueCode || 0;
     const paymentAmount = booking.paymentAmount || (baseAmount + uniqueCode);
 
+    // Section 8: Consistent Verification Hash
+    if (!booking.verificationHash) {
+      const codeClean = (booking.bookingCode || booking.id).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+      const seed = (booking.confirmedAt || booking.createdAt || booking.id || 'SJ').replace(/[^A-Za-z0-9]/g, '').slice(-8).toUpperCase();
+      booking.verificationHash = `SJ-VERIFIED-${codeClean}-${seed}`;
+      writeDB(db);
+    }
+    const verificationHash = booking.verificationHash;
+
+    const rawMembers = booking.participantData?.members || booking.participantsManifest || [];
+    const participantsManifest = Array.isArray(rawMembers) && rawMembers.length > 0
+      ? rawMembers.map((m: any, i: number) => ({
+          name: m.name || m.fullName || `Peserta ${i + 1}`,
+          nationality: m.nationality || m.country || ''
+        }))
+      : (booking.participantsNames || [booking.customerName || booking.fullName || 'Tamu Utama']).map((name: string) => ({
+          name,
+          nationality: booking.nationalityType === 'foreign' ? 'International' : (booking.nationalityType === 'domestic' ? 'Indonesia' : '')
+        }));
+
+    const bookingDateFormatted = booking.createdAt 
+      ? new Date(booking.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
+      : new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    const paymentDateFormatted = booking.paidAt 
+      ? new Date(booking.paidAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : (booking.createdAt ? new Date(booking.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '-');
+
     return res.json({
       success: true,
       documentType: 'FINAL_BOOKING_SUMMARY',
       generatedAt: new Date().toISOString(),
       bookingCode: booking.bookingCode || booking.id,
       id: booking.id,
+      bookingDate: bookingDateFormatted,
       bookingStatus: 'Confirmed',
       paymentStatus: 'Paid',
-      verificationHash: `SJ-VERIFIED-${(booking.bookingCode || booking.id).replace(/[^A-Za-z0-9]/g, '')}-${Date.now().toString(36).toUpperCase()}`,
+      verificationHash,
       customer: {
         name: booking.customerName || booking.fullName || '',
         email: booking.customerEmail || booking.email || '',
         phone: booking.customerPhone || booking.phone || '',
-        pickupLocation: booking.details?.pickupLocation || booking.participantData?.pickupLocation || 'Hotel Lobby / Meeting Point'
+        pickupLocation: booking.details?.pickupLocation || booking.participantData?.pickupLocation || 'Hotel Lobby / Meeting Point',
+        dropoffLocation: booking.details?.dropoffLocation || booking.participantData?.dropoffLocation || ''
       },
       trip: {
         title: booking.serviceName || booking.tripTitle || tourSnapshot.tourName,
+        package: booking.details?.package || tourSnapshot.packageName || 'Private Exclusive Package',
         departureDate: booking.departureDate || booking.details?.date || '',
         duration: booking.details?.duration || tourSnapshot.duration || '1 Hari',
         participantsCount: booking.participantsCount || booking.details?.guests || 1,
         participantsNames: booking.participantsNames || [booking.customerName || booking.fullName || 'Tamu Utama'],
+        participantsManifest,
         vehicleName: booking.details?.vehicleName || tourSnapshot.vehicleName || 'Standard Private Tourism Vehicle',
+        pickupLocation: booking.details?.pickupLocation || booking.participantData?.pickupLocation || 'Hotel Lobby / Meeting Point',
+        dropoffLocation: booking.details?.dropoffLocation || booking.participantData?.dropoffLocation || '',
         itinerary: tourSnapshot.itinerary || booking.details?.itinerary || []
       },
       payment: {
         baseAmount,
+        basePrice: baseAmount,
         uniqueCode,
         totalPaid: paymentAmount,
         currency: 'IDR',
         paidAt: booking.paidAt || booking.createdAt || new Date().toISOString(),
+        paymentDate: paymentDateFormatted,
         paymentId: booking.paymentId || booking.paymentIntentId || 'SETTLED_ARTOPAY_TX',
         paymentMethod: booking.participantData?.paymentMethod ? booking.participantData.paymentMethod.toUpperCase() : 'ARTOPAY GATEWAY'
       },
@@ -1554,6 +1616,655 @@ app.get('/api/private-tour/final-summary/:bookingCode', (req, res) => {
   } catch (err: any) {
     console.error('Error in /api/private-tour/final-summary:', err);
     return res.status(500).json({ error: 'Gagal membuat dokumen final booking summary', details: err.message });
+  }
+});
+
+// =========================================================================
+// TAHAP 10: ACTUAL BINARY PDF GENERATION SERVICE (SERVER-SIDE PDFKIT)
+// Endpoint: GET /api/private-tour/invoice-pdf/:bookingCode
+// Content-Type: application/pdf
+// Content-Disposition: attachment; filename="SmartJourney-Final-Booking-SJ-XXXXXX.pdf"
+// =========================================================================
+app.get('/api/private-tour/invoice-pdf/:bookingCode', async (req, res) => {
+  try {
+    const db = readDB();
+    const rawCode = (req.params.bookingCode || '').trim();
+    if (!rawCode) {
+      return res.status(400).json({ error: 'Kode booking wajib diisi' });
+    }
+
+    const booking = (db.bookings || []).find((b: any) => {
+      const code = (b.bookingCode || '').trim().toLowerCase();
+      const id = (b.id || '').trim().toLowerCase();
+      const target = rawCode.toLowerCase();
+      return code === target || id === target;
+    });
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking tidak ditemukan' });
+    }
+
+    let paymentStatus = booking.paymentStatus || 'Pending';
+    if (paymentStatus === 'Unpaid' || paymentStatus === 'Pending Payment') {
+      paymentStatus = 'Pending';
+    }
+
+    let bookingStatus = booking.status || 'Pending Payment';
+    if (bookingStatus === 'Pending') {
+      bookingStatus = paymentStatus === 'Paid' ? 'Pending Confirmation' : 'Pending Payment';
+    }
+
+    // CRITICAL: PAID ≠ CONFIRMED check
+    if (paymentStatus === 'Paid' && bookingStatus !== 'Confirmed' && bookingStatus !== 'Completed') {
+      bookingStatus = 'Pending Confirmation';
+    }
+
+    // PDF SECURITY GATE:
+    // Only accessible if paymentStatus === 'Paid' AND bookingStatus === 'Confirmed' (or 'Completed')
+    if (paymentStatus !== 'Paid' || (bookingStatus !== 'Confirmed' && bookingStatus !== 'Completed')) {
+      let specificMessage = 'Akses Ditolak: Dokumen Final Booking Summary PDF hanya dapat diunduh setelah status pembayaran LUNAS dan booking telah DIKONFIRMASI oleh Admin Pusat.';
+      if (bookingStatus === 'Cancelled') {
+        specificMessage = 'This booking has been cancelled. Final booking document is unavailable.';
+      } else if (paymentStatus !== 'Paid') {
+        specificMessage = 'Payment is still pending. Final booking document is not available yet.';
+      } else {
+        specificMessage = 'Payment received. Your booking is waiting for confirmation from Smart Journey.';
+      }
+      return res.status(403).json({
+        error: specificMessage,
+        canDownloadFinalSummary: false,
+        paymentStatus,
+        bookingStatus
+      });
+    }
+
+    // PDF DATA SOURCE: IMMUTABLE TOUR SNAPSHOT & STORED TRANSACTION DETAILS
+    const tourSnapshot = booking.tourSnapshot || {
+      tourId: booking.tripId || booking.details?.tourId || 'tour-private',
+      tourName: booking.serviceName || booking.tripTitle || 'Private Tour',
+      packageName: booking.details?.package || 'Private Exclusive',
+      duration: booking.details?.duration || '1 Hari',
+      vehicleName: booking.details?.vehicleName || 'Standard Private Tourism Vehicle',
+      itinerary: booking.details?.itinerary || []
+    };
+
+    const baseAmount = booking.baseAmount || booking.totalPriceIDR || booking.totalPrice || 0;
+    const uniqueCode = booking.uniqueCode || 0;
+    const paymentAmount = booking.paymentAmount || (baseAmount + uniqueCode);
+
+    if (!booking.verificationHash) {
+      const codeClean = (booking.bookingCode || booking.id).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+      const seed = (booking.confirmedAt || booking.createdAt || booking.id || 'SJ').replace(/[^A-Za-z0-9]/g, '').slice(-8).toUpperCase();
+      booking.verificationHash = `SJ-VERIFIED-${codeClean}-${seed}`;
+      writeDB(db);
+    }
+    const verificationHash = booking.verificationHash;
+    const bookingCode = booking.bookingCode || booking.id;
+
+    const rawMembers = booking.participantData?.members || booking.participantsManifest || [];
+    const manifestItems = Array.isArray(rawMembers) && rawMembers.length > 0
+      ? rawMembers.map((m: any, i: number) => ({
+          name: m.name || m.fullName || `Peserta ${i + 1}`,
+          nationality: m.nationality || m.country || (booking.nationalityType === 'foreign' ? 'International' : 'Indonesia / Domestik')
+        }))
+      : (booking.participantsNames || [booking.customerName || booking.fullName || 'Tamu Utama']).map((name: string) => ({
+          name,
+          nationality: booking.nationalityType === 'foreign' ? 'International' : 'Indonesia / Domestik'
+        }));
+
+    const bookingDateFormatted = booking.createdAt 
+      ? new Date(booking.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
+      : (booking.details?.date || '17 September 2026');
+
+    const paymentDateFormatted = booking.paidAt 
+      ? new Date(booking.paidAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB'
+      : (booking.details?.paymentDate || bookingDateFormatted);
+
+    const pdfBuffer = await generatePrivateTourPdf({
+      bookingCode,
+      bookingDate: bookingDateFormatted,
+      bookingStatus: 'Confirmed',
+      paymentStatus: 'Paid',
+      verificationHash,
+      customer: {
+        name: booking.customerName || booking.fullName || booking.participantData?.name || 'Tamu Terdaftar',
+        email: booking.customerEmail || booking.email || booking.participantData?.email || '-',
+        phone: booking.customerPhone || booking.phone || booking.participantData?.whatsapp || '-',
+        pickupLocation: booking.details?.pickupLocation || booking.participantData?.pickupLocation || 'Sesuai Konfirmasi',
+        dropoffLocation: booking.details?.dropoffLocation || booking.participantData?.dropoffLocation || undefined,
+      },
+      trip: {
+        title: booking.serviceName || booking.tripTitle || tourSnapshot.tourName || 'Private Tour',
+        package: booking.details?.package || tourSnapshot.packageName || 'Private Exclusive',
+        departureDate: booking.departureDate || booking.details?.date || '',
+        duration: booking.details?.duration || tourSnapshot.duration || '1 Hari',
+        participantsCount: booking.participantsCount || booking.details?.guests || booking.details?.passengers || 1,
+        participantsNames: booking.participantsNames || [booking.customerName || booking.fullName || 'Tamu Utama'],
+        participantsManifest: manifestItems,
+        vehicleName: booking.details?.vehicleName || tourSnapshot.vehicleName || 'Standard Private Tourism Vehicle',
+        pickupLocation: booking.details?.pickupLocation || booking.participantData?.pickupLocation || 'Sesuai Konfirmasi',
+        dropoffLocation: booking.details?.dropoffLocation || booking.participantData?.dropoffLocation || undefined,
+        itinerary: tourSnapshot.itinerary || []
+      },
+      payment: {
+        baseAmount,
+        uniqueCode,
+        totalPaid: paymentAmount,
+        currency: 'IDR',
+        paidAt: booking.paidAt || '',
+        paymentDate: paymentDateFormatted,
+        paymentId: booking.paymentId || booking.paymentIntentId || 'SETTLED_ARTOPAY',
+        paymentMethod: booking.participantData?.paymentMethod || 'ArtoPay Gateway'
+      }
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="SmartJourney-Final-Booking-${bookingCode}.pdf"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    return res.end(pdfBuffer);
+  } catch (error: any) {
+    console.error('Error generating Private Tour PDF:', error);
+    return res.status(500).json({ error: 'Gagal menghasilkan dokumen PDF', details: error.message });
+  }
+});
+
+// TAHAP 9 & 10: Standalone Printable A4 Document / PDF Service (HTML Fallback)
+// Allows direct browser print-to-PDF with correct default filename: SmartJourney-Final-Booking-${bookingCode}.pdf
+app.get('/api/private-tour/invoice-html/:bookingCode', (req, res) => {
+  try {
+    const db = readDB();
+    const rawCode = (req.params.bookingCode || '').trim();
+    if (!rawCode) {
+      return res.status(400).send('<h1>400 Bad Request: Kode booking wajib diisi</h1>');
+    }
+
+    const booking = (db.bookings || []).find((b: any) => {
+      const code = (b.bookingCode || '').trim().toLowerCase();
+      const id = (b.id || '').trim().toLowerCase();
+      const target = rawCode.toLowerCase();
+      return code === target || id === target;
+    });
+
+    if (!booking) {
+      return res.status(404).send('<h1>404 Not Found: Booking tidak ditemukan</h1>');
+    }
+
+    let paymentStatus = booking.paymentStatus || 'Pending';
+    if (paymentStatus === 'Unpaid' || paymentStatus === 'Pending Payment') {
+      paymentStatus = 'Pending';
+    }
+
+    let bookingStatus = booking.status || 'Pending Payment';
+    if (bookingStatus === 'Pending') {
+      bookingStatus = paymentStatus === 'Paid' ? 'Pending Confirmation' : 'Pending Payment';
+    }
+
+    // Gate validation: Must be Paid AND Confirmed
+    if (paymentStatus !== 'Paid' || (bookingStatus !== 'Confirmed' && bookingStatus !== 'Completed')) {
+      let specificMessage = 'Akses Ditolak: Dokumen Final Booking Summary hanya dapat diakses dan diunduh setelah status pembayaran LUNAS dan booking telah DIKONFIRMASI oleh Admin Pusat.';
+      if (bookingStatus === 'Cancelled') {
+        specificMessage = 'This booking has been cancelled. Final booking document is unavailable.';
+      } else if (paymentStatus !== 'Paid') {
+        specificMessage = 'Payment is still pending. Final booking document is not available yet.';
+      } else {
+        specificMessage = 'Payment received. Your booking is waiting for confirmation from Smart Journey.';
+      }
+      return res.status(403).send(`
+        <!DOCTYPE html>
+        <html>
+        <head><title>Akses Ditolak — Smart Journey</title><meta charset="utf-8"></head>
+        <body style="font-family: sans-serif; padding: 40px; text-align: center; background: #fafafa;">
+          <div style="max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; border: 1px solid #e5e5e5;">
+            <h2 style="color: #b91c1c;">403 Forbidden</h2>
+            <p style="color: #4b5563; font-size: 14px;">${specificMessage}</p>
+            <p style="color: #6b7280; font-size: 12px;">Status Pembayaran: <strong>${paymentStatus}</strong> | Status Booking: <strong>${bookingStatus}</strong></p>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+
+    const tourSnapshot = booking.tourSnapshot || {
+      tourId: booking.tripId || booking.details?.tourId || 'tour-private',
+      tourName: booking.serviceName || booking.tripTitle || 'Private Tour',
+      packageName: booking.details?.package || 'Private Exclusive',
+      duration: booking.details?.duration || '1 Hari',
+      vehicleName: booking.details?.vehicleName || 'Standard Private Tourism Vehicle',
+      itinerary: booking.details?.itinerary || []
+    };
+
+    const baseAmount = booking.baseAmount || booking.totalPriceIDR || booking.totalPrice || 0;
+    const uniqueCode = booking.uniqueCode || 0;
+    const paymentAmount = booking.paymentAmount || (baseAmount + uniqueCode);
+
+    if (!booking.verificationHash) {
+      const codeClean = (booking.bookingCode || booking.id).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+      const seed = (booking.confirmedAt || booking.createdAt || booking.id || 'SJ').replace(/[^A-Za-z0-9]/g, '').slice(-8).toUpperCase();
+      booking.verificationHash = `SJ-VERIFIED-${codeClean}-${seed}`;
+      writeDB(db);
+    }
+    const verificationHash = booking.verificationHash;
+    const bookingCode = booking.bookingCode || booking.id;
+
+    const rawMembers = booking.participantData?.members || booking.participantsManifest || [];
+    const manifestItems = Array.isArray(rawMembers) && rawMembers.length > 0
+      ? rawMembers.map((m: any, i: number) => `${i + 1}. ${m.name || m.fullName}${m.nationality ? ' — ' + m.nationality : ''}`)
+      : (booking.participantsNames || [booking.customerName || booking.fullName || 'Tamu Utama']).map((name: string, i: number) => 
+          `${i + 1}. ${name}${booking.nationalityType === 'foreign' ? ' — International' : (booking.nationalityType === 'domestic' ? ' — Indonesia' : '')}`
+        );
+
+    const itineraryItems = Array.isArray(tourSnapshot.itinerary) && tourSnapshot.itinerary.length > 0
+      ? tourSnapshot.itinerary.map((item: any, idx: number) => {
+          const title = typeof item === 'string' ? item : (item.title || item.day || `Day ${idx + 1}`);
+          const desc = typeof item === 'object' && item.desc ? item.desc : (typeof item === 'object' && item.activities ? item.activities.join(', ') : '');
+          return `
+            <div style="margin-bottom: 8px; padding: 8px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
+              <strong style="color: #0f172a; font-size: 13px;">${title}</strong>
+              ${desc ? `<div style="color: #64748b; font-size: 12px; margin-top: 2px;">${desc}</div>` : ''}
+            </div>
+          `;
+        }).join('')
+      : '<p style="font-size: 12px; color: #64748b;">Itinerary standar operasional sesuai kesepakatan reservasi privat.</p>';
+
+    const autoPrint = req.query.autoPrint === 'true';
+
+    // File name matches requirement: SmartJourney-Final-Booking-SJ-8F42KD.pdf
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Content-Disposition', `inline; filename="SmartJourney-Final-Booking-${bookingCode}.html"`);
+
+    const html = `
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <title>SmartJourney-Final-Booking-${bookingCode}</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 12mm 15mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: #f1f5f9;
+      color: #0f172a;
+      margin: 0;
+      padding: 20px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .print-container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 32px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    .action-bar {
+      max-width: 800px;
+      margin: 0 auto 16px auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 13px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-primary {
+      background: #047857;
+      color: white;
+      border: none;
+    }
+    .btn-primary:hover { background: #065f46; }
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #334155;
+      border: none;
+    }
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #0f172a;
+      padding-bottom: 16px;
+      margin-bottom: 20px;
+    }
+    .brand-title {
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      color: #0f172a;
+      margin: 0;
+      font-family: monospace;
+    }
+    .brand-subtitle {
+      font-size: 12px;
+      color: #64748b;
+      margin: 2px 0 0 0;
+    }
+    .doc-type {
+      font-size: 16px;
+      font-weight: 800;
+      color: #b45309;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 4px;
+    }
+    .badge-wrap {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+    .badge-confirmed {
+      background: #ecfdf5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+    }
+    .badge-paid {
+      background: #eff6ff;
+      color: #1e40af;
+      border: 1px solid #bfdbfe;
+    }
+    .booking-meta {
+      text-align: right;
+    }
+    .code-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .code-val {
+      font-size: 22px;
+      font-weight: 900;
+      color: #0f172a;
+      font-family: monospace;
+      margin: 2px 0;
+    }
+    .section-title {
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #475569;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 4px;
+      margin: 18px 0 10px 0;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .info-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+    .info-label { color: #64748b; }
+    .info-value { font-weight: 600; color: #0f172a; text-align: right; }
+    .table-pay {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 12px;
+    }
+    .table-pay td {
+      padding: 6px 10px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .table-pay tr.total-row td {
+      font-size: 14px;
+      font-weight: 800;
+      background: #f0fdf4;
+      color: #166534;
+      border-top: 2px solid #bbf7d0;
+      border-bottom: none;
+    }
+    .manifest-list {
+      margin: 0;
+      padding-left: 18px;
+      font-size: 12px;
+      color: #334155;
+    }
+    .manifest-list li { margin-bottom: 4px; }
+    .verification-box {
+      margin-top: 20px;
+      padding: 10px 14px;
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      border-radius: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+    }
+    .hash-text {
+      font-family: monospace;
+      font-weight: 700;
+      color: #047857;
+    }
+    .footer-notes {
+      margin-top: 24px;
+      padding-top: 12px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 11px;
+      color: #64748b;
+      line-height: 1.5;
+    }
+    @media print {
+      body {
+        background: #ffffff !important;
+        padding: 0 !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .print-container {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        max-width: 100% !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="action-bar no-print">
+    <div>
+      <strong>Smart Journey — Official Final Booking Document</strong>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button onclick="window.print()" class="btn btn-primary">🖨️ Cetak / Simpan sebagai PDF</button>
+      <button onclick="window.close()" class="btn btn-secondary">Tutup</button>
+    </div>
+  </div>
+
+  <div class="print-container">
+    <!-- Header -->
+    <div class="header-row">
+      <div>
+        <h1 class="brand-title">SMART JOURNEY</h1>
+        <div class="doc-type">FINAL BOOKING SUMMARY</div>
+        <p class="brand-subtitle">PT Smart Journey Transindo • Lisensi Resmi Biro Perjalanan Wisata</p>
+        <p class="brand-subtitle">Malang &amp; Surabaya, Jawa Timur • Hotline 24/7: +62 852-1234-7289</p>
+        <div class="badge-wrap">
+          <span class="badge badge-confirmed">✓ BOOKING CONFIRMED</span>
+          <span class="badge badge-paid">✓ PAYMENT PAID</span>
+        </div>
+      </div>
+      <div class="booking-meta">
+        <div class="code-label">Booking Code</div>
+        <div class="code-val">${bookingCode}</div>
+        <div style="font-size: 11px; color: #64748b;">Tanggal Reservasi: <strong>${booking.createdAt ? new Date(booking.createdAt).toLocaleDateString('id-ID') : '-'}</strong></div>
+      </div>
+    </div>
+
+    <!-- 2 Columns: Customer & Private Tour Info -->
+    <div class="grid-2">
+      <!-- Customer Information -->
+      <div class="info-card">
+        <div class="section-title" style="margin-top:0;">Informasi Customer</div>
+        <div class="info-row">
+          <span class="info-label">Nama Lengkap</span>
+          <span class="info-value">${booking.customerName || booking.fullName || '-'}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">WhatsApp / Telepon</span>
+          <span class="info-value">${booking.customerPhone || booking.phone || '-'}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Email</span>
+          <span class="info-value">${booking.customerEmail || booking.email || '-'}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Lokasi Penjemputan</span>
+          <span class="info-value">${booking.details?.pickupLocation || booking.participantData?.pickupLocation || '-'}</span>
+        </div>
+        ${booking.details?.dropoffLocation || booking.participantData?.dropoffLocation ? `
+        <div class="info-row">
+          <span class="info-label">Lokasi Pengantaran</span>
+          <span class="info-value">${booking.details?.dropoffLocation || booking.participantData?.dropoffLocation}</span>
+        </div>
+        ` : ''}
+      </div>
+
+      <!-- Private Tour Information -->
+      <div class="info-card">
+        <div class="section-title" style="margin-top:0;">Informasi Private Tour</div>
+        <div class="info-row">
+          <span class="info-label">Nama Paket Tur</span>
+          <span class="info-value" style="color: #b45309;">${booking.serviceName || booking.tripTitle || tourSnapshot.tourName}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Kategori / Paket</span>
+          <span class="info-value">${booking.details?.package || tourSnapshot.packageName || 'Private Exclusive'}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Tanggal Wisata</span>
+          <span class="info-value">${booking.departureDate || booking.details?.date || '-'}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Durasi</span>
+          <span class="info-value">${booking.details?.duration || tourSnapshot.duration || '1 Hari'}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Jumlah Peserta</span>
+          <span class="info-value">${booking.participantsCount || booking.details?.guests || 1} Orang</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Pilihan Kendaraan</span>
+          <span class="info-value">${booking.details?.vehicleName || tourSnapshot.vehicleName || 'Standard Private Tourism Vehicle'}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Information -->
+    <div class="section-title">Rincian Pembayaran (Lunas Terverifikasi)</div>
+    <table class="table-pay">
+      <tr>
+        <td style="color: #64748b;">Harga Dasar Tur (Base Price)</td>
+        <td style="text-align: right; font-weight: 600; font-family: monospace;">Rp ${baseAmount.toLocaleString('id-ID')}</td>
+      </tr>
+      <tr>
+        <td style="color: #64748b;">Kode Unik Pembayaran (Unique Payment Code)</td>
+        <td style="text-align: right; font-weight: 600; font-family: monospace;">Rp ${uniqueCode.toLocaleString('id-ID')}</td>
+      </tr>
+      <tr class="total-row">
+        <td>TOTAL PEMBAYARAN LUNAS (Total Paid)</td>
+        <td style="text-align: right; font-family: monospace;">Rp ${paymentAmount.toLocaleString('id-ID')}</td>
+      </tr>
+    </table>
+
+    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-top: 6px; padding: 0 10px;">
+      <div>Metode Pembayaran: <strong>${booking.participantData?.paymentMethod ? booking.participantData.paymentMethod.toUpperCase() : 'ARTOPAY GATEWAY'}</strong></div>
+      <div>ID Transaksi: <strong>${booking.paymentId || booking.paymentIntentId || 'TX-VERIFIED-ARTOPAY'}</strong></div>
+      <div>Waktu Pelunasan: <strong>${booking.paidAt ? new Date(booking.paidAt).toLocaleString('id-ID') : '-'}</strong></div>
+    </div>
+
+    <!-- Guest Manifest -->
+    <div class="section-title">Guest Manifest (Daftar Tamu Peserta)</div>
+    <ol class="manifest-list">
+      ${manifestItems.map(item => `<li>${item}</li>`).join('')}
+    </ol>
+
+    <!-- Itinerary -->
+    <div class="section-title">Jadwal &amp; Rencana Perjalanan (Itinerary)</div>
+    ${itineraryItems}
+
+    <!-- Verification Hash -->
+    <div class="verification-box">
+      <div>
+        <span style="color: #64748b;">Digital Verification Code:</span>
+        <span class="hash-text">${verificationHash}</span>
+      </div>
+      <div style="color: #047857; font-weight: 700;">
+        ✓ AUTHENTIC SMART JOURNEY DOCUMENT
+      </div>
+    </div>
+
+    <!-- Operational Notes -->
+    <div class="footer-notes">
+      <strong>Catatan Operasional &amp; Keberangkatan:</strong>
+      <ol style="margin: 4px 0 0 0; padding-left: 18px;">
+        <li>Driver / Guide Private Tour akan menghubungi via WhatsApp selambatnya H-1 jam 18:00 WIB untuk koordinasi penjemputan.</li>
+        <li>Tamu diharapkan telah siap di lokasi penjemputan 15 menit sebelum waktu yang disepakati.</li>
+        <li>Simpan atau cetak dokumen ini sebagai bukti reservasi resmi yang sah.</li>
+      </ol>
+      <div style="text-align: center; margin-top: 14px; font-size: 10px; color: #94a3b8;">
+        Dokumen ini diterbitkan oleh Smart Journey Indonesia pada ${new Date().toLocaleString('id-ID')} • Seluruh Hak Cipta Dilindungi
+      </div>
+    </div>
+  </div>
+
+  ${autoPrint ? `
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        window.print();
+      }, 500);
+    });
+  </script>
+  ` : ''}
+</body>
+</html>
+    `;
+
+    return res.send(html);
+  } catch (err: any) {
+    console.error('Error in /api/private-tour/invoice-html:', err);
+    return res.status(500).send('<h1>500 Internal Server Error</h1><p>' + err.message + '</p>');
   }
 });
 
@@ -1615,28 +2326,33 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
   const { email, password } = req.body;
   const adminEmail = (process.env.ADMIN_EMAIL || 'sawahjayagroup@gmail.com').trim().toLowerCase();
   const validEmails = [adminEmail, 'admin@smartjourney.com', 'sawahjayagroup@gmail.com'];
-  const configuredPassword = (process.env.ADMIN_PASSWORD || '').trim();
-  const configuredSecret = getAdminConfiguredSecret();
+
+  // PART 1: SATU PASSWORD ADMIN PUSAT
+  // Development / Testing: ADMIN_PASSWORD=sawahjaya2026 (or process.env.ADMIN_PASSWORD)
+  // Production: MUST be explicitly defined via process.env.ADMIN_PASSWORD, otherwise FAIL CLOSED
+  const rawAdminPassword = (process.env.ADMIN_PASSWORD !== undefined && process.env.ADMIN_PASSWORD !== '')
+    ? process.env.ADMIN_PASSWORD.trim()
+    : (process.env.NODE_ENV !== 'production' ? 'sawahjaya2026' : '');
+
+  if (!rawAdminPassword) {
+    return res.status(401).json({ error: 'Akses Admin ditolak: ADMIN_PASSWORD tidak dikonfigurasi pada server (Fail Closed).' });
+  }
 
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are both required.' });
   }
 
-  // Check configured password or fallback to recognized project admin password
   const cleanInputEmail = String(email).trim().toLowerCase();
   const isEmailValid = validEmails.includes(cleanInputEmail);
-  const isPasswordValid = configuredPassword 
-    ? (password === configuredPassword) 
-    : (password === 'sawahjaya2026' || password === 'smartjourney2026' || (configuredSecret && password === configuredSecret));
+  // ONLY rawAdminPassword is valid. NO fallback passwords, NO alternate passwords.
+  const isPasswordValid = (password === rawAdminPassword);
 
   if (isEmailValid && isPasswordValid) {
     // Generate secure random session token
     const sessionToken = crypto.randomBytes(32).toString('hex');
     activeAdminSessionTokens.add(sessionToken);
 
-    // Provide the configured secret if set, otherwise the authenticated session token
-    const tokenToReturn = configuredSecret || sessionToken;
-    res.json({ token: tokenToReturn, success: true });
+    res.json({ token: sessionToken, success: true });
   } else {
     res.status(401).json({ error: 'Invalid email or passcode. Please try again.' });
   }
