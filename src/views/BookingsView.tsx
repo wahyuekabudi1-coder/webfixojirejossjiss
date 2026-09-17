@@ -14,18 +14,32 @@ import {
   QrCode, 
   Wallet, 
   ArrowRight,
-  Info
+  Info,
+  Search,
+  FileCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { processArtoPayPayment } from '../lib/artopay';
 import Breadcrumbs from '../components/Breadcrumbs';
+import PrivateTourCheckBooking from '../components/PrivateTourCheckBooking';
 
 export default function BookingsView() {
   const { bookings, formatPrice, setPage } = useApp();
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [localBookings, setLocalBookings] = useState(bookings);
-
   const [paymentLoadingId, setPaymentLoadingId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'check' | 'list'>('check');
+  const [selectedCode, setSelectedCode] = useState<string>('');
+
+  // Check URL param ?code= on load
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    if (code) {
+      setSelectedCode(code);
+      setActiveTab('check');
+    }
+  }, []);
 
   // Sync state if bookings change in context
   useEffect(() => {
@@ -230,8 +244,45 @@ export default function BookingsView() {
           </p>
         </div>
 
-        {/* Boarding Tickets Listing */}
-        {localBookings.length === 0 ? (
+        {/* Portal Tabs: Check Private Tour Booking vs My Reservations */}
+        <div className="flex justify-center">
+          <div className="inline-flex p-1.5 rounded-2xl bg-[#203c34] border border-[#315B4F] shadow-lg">
+            <button
+              onClick={() => setActiveTab('check')}
+              className={`px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === 'check'
+                  ? 'bg-amber-500 text-neutral-950 shadow-md'
+                  : 'text-neutral-300 hover:text-white'
+              }`}
+            >
+              <Search className="h-4 w-4" />
+              <span>Cek Booking Private Tour</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('list')}
+              className={`px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === 'list'
+                  ? 'bg-amber-500 text-neutral-950 shadow-md'
+                  : 'text-neutral-300 hover:text-white'
+              }`}
+            >
+              <FileCheck className="h-4 w-4" />
+              <span>Tiket Reservasi Saya ({localBookings.length})</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Active Tab Content */}
+        {activeTab === 'check' ? (
+          <div className="bg-[#F8FAF9] rounded-3xl p-2 sm:p-6 text-neutral-900 shadow-2xl border border-neutral-200">
+            <PrivateTourCheckBooking 
+              initialCode={selectedCode}
+              onPayNow={(b) => handlePayWithArtoPay(b)}
+            />
+          </div>
+        ) : (
+          /* Boarding Tickets Listing */
+          localBookings.length === 0 ? (
           /* Empty State */
           <div className="bg-[#203c34] border border-[#315B4F] rounded-3xl p-12 text-center space-y-6 max-w-md mx-auto">
             <div className="p-4 bg-white/5 border border-white/10 rounded-full w-fit mx-auto text-neutral-400">
@@ -341,6 +392,19 @@ export default function BookingsView() {
 
                     {/* Action buttons */}
                     <div className="pt-2 flex flex-wrap gap-3 items-center">
+                      {/* TAHAP 7-10: Check Status & Final Summary Action */}
+                      <button
+                        onClick={() => {
+                          setSelectedCode(booking.bookingCode || booking.id);
+                          setActiveTab('check');
+                        }}
+                        className="bg-amber-500/15 border border-amber-500/40 text-amber-300 hover:bg-amber-500 hover:text-neutral-950 font-bold px-4 py-2.5 rounded-xl text-xs flex items-center space-x-1.5 transition-all cursor-pointer shadow-sm"
+                        title="Periksa Progres Status & Unduh Final Booking Summary"
+                      >
+                        <ShieldCheck className="h-4 w-4 text-amber-400" />
+                        <span>Lacak Status &amp; Final Summary</span>
+                      </button>
+
                       <button
                         onClick={() => handleChatSupport(booking)}
                         className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-neutral-950 font-bold px-4 py-2.5 rounded-xl text-xs flex items-center space-x-1.5 transition-all"
@@ -485,7 +549,7 @@ export default function BookingsView() {
             </div>
 
           </div>
-        )}
+        ))}
 
       </div>
 

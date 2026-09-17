@@ -102,12 +102,17 @@ export interface Booking {
   baseAmount?: number;
   uniqueCode?: number;
   paymentAmount?: number;
+  bookingCode?: string;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
   bookingDate: string;
-  status: 'Pending' | 'Pending Confirmation' | 'Confirmed' | 'Completed' | 'Cancelled' | 'Refunded' | 'Rejected' | string;
+  status: 'Pending' | 'Pending Payment' | 'Pending Confirmation' | 'Confirmed' | 'Completed' | 'Cancelled' | 'Refunded' | 'Rejected' | string;
   paymentStatus?: 'Unpaid' | 'Paid' | 'Pending' | 'Pending Payment' | 'Failed' | 'Expired' | 'Amount Mismatch' | string;
+  paidAt?: string;
+  confirmedAt?: string;
+  paymentId?: string;
+  tourSnapshot?: any;
   paymentNotes?: string;
 }
 

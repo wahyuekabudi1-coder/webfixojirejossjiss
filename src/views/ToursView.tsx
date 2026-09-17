@@ -116,6 +116,28 @@ export default function ToursView() {
         
         {/* TOURS BROWSER */}
         <section className="space-y-12">
+
+          {/* Quick Action: Check Private Tour Booking (Tahap 7–10) */}
+          <div className="bg-gradient-to-r from-[#1c3830] to-[#244b40] text-white p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-[#315B4F] shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="h-11 w-11 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                <ShieldCheck className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-base font-black text-white">Sudah Reservasi Private Tour?</h3>
+                <p className="text-xs text-neutral-300">
+                  Lacak progres status reservasi, verifikasi admin, dan unduh dokumen Final Summary resmi Anda.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setPage('bookings')}
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-md shrink-0 cursor-pointer"
+            >
+              <span>Cek Status Booking</span>
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
           
           {/* Professional Tour Filter Bar (Duration & Experience Category) */}
           <TourFilterBar

@@ -71,6 +71,9 @@ export interface ParticipantData {
   email: string;
   flightNumber?: string;
   nationalityType?: NationalityType;
+  pickupLocation?: string;
+  paymentMethod?: string;
+  specialRequests?: string;
 }
 
 export type TourBookingType = 'private' | 'shared';
@@ -95,6 +98,7 @@ export interface Booking {
   paymentIntentId?: string;
   paymentId?: string;
   paidAt?: string;
+  confirmedAt?: string;
   totalPriceIDR?: number;
   baseAmount?: number;
   uniqueCode?: number;
@@ -109,6 +113,15 @@ export interface Booking {
   totalPrice: number;
   createdAt: string;
   participantData?: ParticipantData;
+  tourSnapshot?: {
+    tourId?: string;
+    tourName?: string;
+    duration?: string;
+    vehicleName?: string;
+    startingPriceIDR?: number;
+    highlights?: string[];
+    itinerary?: string[] | any[];
+  };
   adminNotes?: string;
   paymentNotes?: string;
   nationalityType?: NationalityType;

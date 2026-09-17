@@ -1123,6 +1123,24 @@ app.post('/api/bookings', (req, res) => {
       const uniqueCode = generateUniquePaymentCode(db.bookings);
       const paymentAmount = baseAmount + uniqueCode;
 
+      // Create immutable Tour Snapshot for Private Tours (Tahap 10: Snapshot-based summary)
+      const matchingTour = (db.mainTours || []).find((t: any) => 
+        t.id === (payload.tripId || payload.details?.tourId) || 
+        t.name?.toLowerCase() === (resolvedTitle || '').toLowerCase()
+      );
+
+      const tourSnapshot = {
+        tourId: payload.tripId || payload.details?.tourId || matchingTour?.id || 'tour-private',
+        tourName: resolvedTitle || matchingTour?.name || payload.serviceName || 'Private Tour',
+        duration: payload.details?.duration || matchingTour?.duration || '1 Hari',
+        vehicleName: payload.details?.vehicleName || 'Standard Private Tourism Vehicle',
+        startingPriceIDR: matchingTour?.startingPriceIDR || baseAmount,
+        highlights: matchingTour?.highlights || [],
+        itinerary: matchingTour?.itinerary || payload.details?.itinerary || []
+      };
+
+      const initialStatus = payload.status === 'Confirmed' ? 'Confirmed' : (payload.status || 'Pending');
+
       const newBooking: Booking = {
         id: payload.id || ('book-' + Date.now().toString()),
         bookingCode,
@@ -1141,7 +1159,7 @@ app.post('/api/bookings', (req, res) => {
         participantsCount: count,
         participantsNames: payload.participantsNames || [sanitizedName],
         proofOfPayment: payload.proofOfPayment || 'NOT_APPLICABLE_SLEEK_THEME',
-        status: payload.status || 'Pending',
+        status: initialStatus,
         paymentStatus: payload.paymentStatus || 'Pending',
         totalPrice: baseAmount,
         totalPriceIDR: baseAmount,
@@ -1150,7 +1168,12 @@ app.post('/api/bookings', (req, res) => {
         paymentAmount,
         createdAt: new Date().toISOString(),
         participantData: payload.participantData,
-        details: payload.details,
+        details: {
+          ...(payload.details || {}),
+          duration: payload.details?.duration || tourSnapshot.duration,
+          vehicleName: payload.details?.vehicleName || tourSnapshot.vehicleName
+        },
+        tourSnapshot,
         serviceName: payload.serviceName || resolvedTitle,
         type: payload.type || 'tour',
         nationalityType: payload.nationalityType,
@@ -1208,6 +1231,10 @@ app.put('/api/bookings/:id', requireAdminAuth, (req, res) => {
       id: originalBooking.id,
       bookingCode: originalBooking.bookingCode
     };
+
+    if (nextBooking.status === 'Confirmed' && !nextBooking.confirmedAt) {
+      nextBooking.confirmedAt = new Date().toISOString();
+    }
 
     const isNowRejected = nextBooking.status === 'Rejected' || nextBooking.status === 'Cancelled';
     const wasRejected = originalBooking.status === 'Rejected' || originalBooking.status === 'Cancelled';
@@ -1309,6 +1336,260 @@ app.all(['/api/bookings/:id/status'], requireAdminAuth, (req, res) => {
   } catch (err: any) {
     console.error('Failed to update booking status:', err);
     res.status(500).json({ error: 'Failed to update booking status', details: err.message });
+  }
+});
+
+// -------------------------------------------------------------
+// TAHAP 7, 8, 9, 10: DEDICATED PRIVATE TOUR ENDPOINTS
+// -------------------------------------------------------------
+
+// TAHAP 7 & 8: Check Booking endpoint specifically for Private Tour
+// Authoritative status from backend database (never localStorage)
+app.get(['/api/private-tour/check-booking/:bookingCode', '/api/private-tour/status/:bookingCode'], (req, res) => {
+  try {
+    const db = readDB();
+    const rawCode = (req.params.bookingCode || '').trim();
+    if (!rawCode) {
+      return res.status(400).json({ error: 'Kode booking wajib diisi.' });
+    }
+
+    const booking = (db.bookings || []).find((b: any) => {
+      const code = (b.bookingCode || '').trim().toLowerCase();
+      const id = (b.id || '').trim().toLowerCase();
+      const target = rawCode.toLowerCase();
+      return code === target || id === target;
+    });
+
+    if (!booking) {
+      return res.status(404).json({ 
+        error: `Booking dengan kode "${rawCode}" tidak ditemukan. Pastikan Anda memasukkan kode booking Private Tour yang benar (contoh: SJ-8F42KD).` 
+      });
+    }
+
+    // Check if this booking belongs to Private Tour
+    const isPrivateTour = booking.bookingType === 'private' || 
+      booking.tourBookingType === 'private' || 
+      booking.type === 'tour' || 
+      booking.type === 'Tours' ||
+      !booking.batchId;
+
+    if (!isPrivateTour) {
+      return res.status(400).json({
+        error: `Kode booking "${rawCode}" bukan merupakan reservasi Private Tour. Silakan periksa di portal pemesanan Share Tour.`
+      });
+    }
+
+    // Standardize statuses for Private Tour
+    // Payment Status: 'Pending' | 'Paid' | 'Failed' | 'Expired'
+    let paymentStatus = booking.paymentStatus || 'Pending';
+    if (paymentStatus === 'Unpaid' || paymentStatus === 'Pending Payment') {
+      paymentStatus = 'Pending';
+    }
+
+    // Booking Status: 'Pending Payment' | 'Pending Confirmation' | 'Confirmed' | 'Cancelled'
+    let bookingStatus = booking.status || 'Pending Payment';
+    if (bookingStatus === 'Pending') {
+      bookingStatus = paymentStatus === 'Paid' ? 'Pending Confirmation' : 'Pending Payment';
+    }
+
+    // CRITICAL (Tahap 8): PAID ≠ CONFIRMED
+    // If paymentStatus is Paid, bookingStatus CANNOT be Confirmed unless Admin has confirmed it
+    if (paymentStatus === 'Paid' && bookingStatus !== 'Confirmed' && bookingStatus !== 'Completed') {
+      bookingStatus = 'Pending Confirmation';
+    }
+
+    // TAHAP 9: Download invoice gate condition:
+    // Only accessible if paymentStatus === 'Paid' AND bookingStatus === 'Confirmed'
+    const canDownloadFinalSummary = paymentStatus === 'Paid' && (bookingStatus === 'Confirmed' || bookingStatus === 'Completed');
+
+    // Extract snapshot details (Tahap 10)
+    const tourSnapshot = booking.tourSnapshot || {
+      tourId: booking.tripId || booking.details?.tourId || 'tour-private',
+      tourName: booking.serviceName || booking.tripTitle || 'Private Tour',
+      duration: booking.details?.duration || '1 Hari',
+      vehicleName: booking.details?.vehicleName || 'Standard Private Tourism Vehicle',
+      itinerary: booking.details?.itinerary || []
+    };
+
+    const baseAmount = booking.baseAmount || booking.totalPriceIDR || booking.totalPrice || 0;
+    const uniqueCode = booking.uniqueCode || 0;
+    const paymentAmount = booking.paymentAmount || (baseAmount + uniqueCode);
+
+    return res.json({
+      found: true,
+      bookingCode: booking.bookingCode || booking.id,
+      id: booking.id,
+      bookingType: 'private',
+      serviceName: booking.serviceName || booking.tripTitle || tourSnapshot.tourName,
+      tripTitle: booking.tripTitle || booking.serviceName || tourSnapshot.tourName,
+      departureDate: booking.departureDate || booking.details?.date || '',
+      duration: booking.details?.duration || tourSnapshot.duration || '1 Hari',
+      participantsCount: booking.participantsCount || booking.details?.guests || booking.details?.passengers || 1,
+      participantsNames: booking.participantsNames || [booking.customerName || booking.fullName || 'Tamu Utama'],
+      customerName: booking.customerName || booking.fullName || '',
+      customerEmail: booking.customerEmail || booking.email || '',
+      customerPhone: booking.customerPhone || booking.phone || '',
+      vehicleName: booking.details?.vehicleName || tourSnapshot.vehicleName || 'Standard Private Tourism Vehicle',
+      pickupLocation: booking.details?.pickupLocation || booking.participantData?.pickupLocation || 'Hotel Lobby / Meeting Point',
+      baseAmount,
+      uniqueCode,
+      paymentAmount,
+      paymentStatus,
+      bookingStatus,
+      paidAt: booking.paidAt || null,
+      paymentId: booking.paymentId || booking.paymentIntentId || null,
+      paymentMethod: booking.participantData?.paymentMethod ? booking.participantData.paymentMethod.toUpperCase() : 'ARTOPAY GATEWAY',
+      itinerary: tourSnapshot.itinerary || booking.details?.itinerary || [],
+      tourSnapshot,
+      canDownloadFinalSummary,
+      createdAt: booking.createdAt || new Date().toISOString()
+    });
+  } catch (err: any) {
+    console.error('Error in /api/private-tour/check-booking:', err);
+    return res.status(500).json({ error: 'Gagal memeriksa status booking', details: err.message });
+  }
+});
+
+// TAHAP 9: Backend Gate for Final Booking Summary / Invoice Download
+// Enforces that paymentStatus must be 'Paid' AND bookingStatus must be 'Confirmed'
+app.get('/api/private-tour/final-summary/:bookingCode', (req, res) => {
+  try {
+    const db = readDB();
+    const rawCode = (req.params.bookingCode || '').trim();
+    if (!rawCode) {
+      return res.status(400).json({ error: 'Kode booking wajib diisi.' });
+    }
+
+    const booking = (db.bookings || []).find((b: any) => {
+      const code = (b.bookingCode || '').trim().toLowerCase();
+      const id = (b.id || '').trim().toLowerCase();
+      const target = rawCode.toLowerCase();
+      return code === target || id === target;
+    });
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking tidak ditemukan.' });
+    }
+
+    // Standardize statuses
+    let paymentStatus = booking.paymentStatus || 'Pending';
+    if (paymentStatus === 'Unpaid' || paymentStatus === 'Pending Payment') {
+      paymentStatus = 'Pending';
+    }
+
+    let bookingStatus = booking.status || 'Pending Payment';
+    if (bookingStatus === 'Pending') {
+      bookingStatus = paymentStatus === 'Paid' ? 'Pending Confirmation' : 'Pending Payment';
+    }
+
+    // TAHAP 9: INVOICE / FINAL SUMMARY GATE VALIDATION
+    // Must be Paid AND Confirmed. If not, reject with HTTP 403 Forbidden!
+    if (paymentStatus !== 'Paid' || (bookingStatus !== 'Confirmed' && bookingStatus !== 'Completed')) {
+      return res.status(403).json({
+        error: 'Akses Ditolak: Dokumen Final Booking Summary hanya dapat diakses dan diunduh setelah status pembayaran LUNAS dan booking telah DIKONFIRMASI oleh Admin Pusat.',
+        paymentStatus,
+        bookingStatus,
+        requiredPaymentStatus: 'Paid',
+        requiredBookingStatus: 'Confirmed'
+      });
+    }
+
+    // TAHAP 10: SNAPSHOT DATA
+    // Immutable snapshot sealed at booking time
+    const tourSnapshot = booking.tourSnapshot || {
+      tourId: booking.tripId || booking.details?.tourId || 'tour-private',
+      tourName: booking.serviceName || booking.tripTitle || 'Private Tour',
+      duration: booking.details?.duration || '1 Hari',
+      vehicleName: booking.details?.vehicleName || 'Standard Private Tourism Vehicle',
+      itinerary: booking.details?.itinerary || []
+    };
+
+    const baseAmount = booking.baseAmount || booking.totalPriceIDR || booking.totalPrice || 0;
+    const uniqueCode = booking.uniqueCode || 0;
+    const paymentAmount = booking.paymentAmount || (baseAmount + uniqueCode);
+
+    return res.json({
+      success: true,
+      documentType: 'FINAL_BOOKING_SUMMARY',
+      generatedAt: new Date().toISOString(),
+      bookingCode: booking.bookingCode || booking.id,
+      id: booking.id,
+      bookingStatus: 'Confirmed',
+      paymentStatus: 'Paid',
+      verificationHash: `SJ-VERIFIED-${(booking.bookingCode || booking.id).replace(/[^A-Za-z0-9]/g, '')}-${Date.now().toString(36).toUpperCase()}`,
+      customer: {
+        name: booking.customerName || booking.fullName || '',
+        email: booking.customerEmail || booking.email || '',
+        phone: booking.customerPhone || booking.phone || '',
+        pickupLocation: booking.details?.pickupLocation || booking.participantData?.pickupLocation || 'Hotel Lobby / Meeting Point'
+      },
+      trip: {
+        title: booking.serviceName || booking.tripTitle || tourSnapshot.tourName,
+        departureDate: booking.departureDate || booking.details?.date || '',
+        duration: booking.details?.duration || tourSnapshot.duration || '1 Hari',
+        participantsCount: booking.participantsCount || booking.details?.guests || 1,
+        participantsNames: booking.participantsNames || [booking.customerName || booking.fullName || 'Tamu Utama'],
+        vehicleName: booking.details?.vehicleName || tourSnapshot.vehicleName || 'Standard Private Tourism Vehicle',
+        itinerary: tourSnapshot.itinerary || booking.details?.itinerary || []
+      },
+      payment: {
+        baseAmount,
+        uniqueCode,
+        totalPaid: paymentAmount,
+        currency: 'IDR',
+        paidAt: booking.paidAt || booking.createdAt || new Date().toISOString(),
+        paymentId: booking.paymentId || booking.paymentIntentId || 'SETTLED_ARTOPAY_TX',
+        paymentMethod: booking.participantData?.paymentMethod ? booking.participantData.paymentMethod.toUpperCase() : 'ARTOPAY GATEWAY'
+      },
+      company: {
+        name: 'Smart Journey Indonesia',
+        legalEntity: 'PT Smart Journey Transindo',
+        brand: 'Smart Journey',
+        hotline: '+62 852-1234-7289',
+        email: 'support@smartjourney.co.id',
+        website: 'https://smartjourney.co.id',
+        operationalHub: 'Malang & Surabaya, Jawa Timur, Indonesia'
+      }
+    });
+  } catch (err: any) {
+    console.error('Error in /api/private-tour/final-summary:', err);
+    return res.status(500).json({ error: 'Gagal membuat dokumen final booking summary', details: err.message });
+  }
+});
+
+// Admin-only Confirmation endpoint for Private Tour
+app.post('/api/private-tour/bookings/:id/confirm', requireAdminAuth, (req, res) => {
+  try {
+    const db = readDB();
+    const targetId = req.params.id;
+    const index = (db.bookings || []).findIndex((b: any) => 
+      b.id === targetId || b.bookingCode === targetId
+    );
+
+    if (index === -1) {
+      return res.status(404).json({ error: 'Booking tidak ditemukan.' });
+    }
+
+    const booking = db.bookings[index];
+    booking.status = 'Confirmed';
+    booking.confirmedAt = new Date().toISOString();
+    if (req.body?.adminNotes) {
+      booking.adminNotes = req.body.adminNotes;
+    }
+
+    db.bookings[index] = booking;
+    writeDB(db);
+
+    console.log(`[Admin] Private Tour Booking ${booking.id} (${booking.bookingCode}) CONFIRMED. Payment=${booking.paymentStatus}, Status=${booking.status}`);
+
+    return res.json({
+      success: true,
+      message: `Booking #${booking.bookingCode || booking.id} berhasil dikonfirmasi oleh Admin Pusat.`,
+      booking
+    });
+  } catch (err: any) {
+    console.error('Error in /api/private-tour/bookings/:id/confirm:', err);
+    return res.status(500).json({ error: 'Gagal mengonfirmasi booking', details: err.message });
   }
 });
 
