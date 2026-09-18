@@ -1469,7 +1469,7 @@ app.get(['/api/private-tour/check-booking/:bookingCode', '/api/private-tour/stat
 
 // TAHAP 9 & 10: Backend Gate for Final Booking Summary / Invoice Data
 // Enforces that paymentStatus must be 'Paid' AND bookingStatus must be 'Confirmed'
-app.get('/api/private-tour/final-summary/:bookingCode', (req, res) => {
+app.get(['/api/private-tour/final-summary/:bookingCode', '/api/private-tour/final-confirmation/:bookingCode'], (req, res) => {
   try {
     const db = readDB();
     const rawCode = (req.params.bookingCode || '').trim();
@@ -1625,7 +1625,13 @@ app.get('/api/private-tour/final-summary/:bookingCode', (req, res) => {
 // Content-Type: application/pdf
 // Content-Disposition: attachment; filename="SmartJourney-Final-Booking-SJ-XXXXXX.pdf"
 // =========================================================================
-app.get('/api/private-tour/invoice-pdf/:bookingCode', async (req, res) => {
+app.get([
+  '/api/private-tour/invoice-pdf/:bookingCode',
+  '/api/private-tour/final-confirmation-pdf/:bookingCode',
+  '/api/private-tour/final-summary-pdf/:bookingCode',
+  '/api/bookings/:bookingCode/final-summary.pdf',
+  '/api/bookings/:bookingCode/final-confirmation.pdf'
+], async (req, res) => {
   try {
     const db = readDB();
     const rawCode = (req.params.bookingCode || '').trim();
@@ -1720,11 +1726,16 @@ app.get('/api/private-tour/invoice-pdf/:bookingCode', async (req, res) => {
       ? new Date(booking.paidAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB'
       : (booking.details?.paymentDate || bookingDateFormatted);
 
+    const confirmedAtFormatted = booking.confirmedAt 
+      ? new Date(booking.confirmedAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB'
+      : undefined;
+
     const pdfBuffer = await generatePrivateTourPdf({
       bookingCode,
       bookingDate: bookingDateFormatted,
       bookingStatus: 'Confirmed',
       paymentStatus: 'Paid',
+      confirmedAt: confirmedAtFormatted,
       verificationHash,
       customer: {
         name: booking.customerName || booking.fullName || booking.participantData?.name || 'Tamu Terdaftar',
@@ -1732,6 +1743,11 @@ app.get('/api/private-tour/invoice-pdf/:bookingCode', async (req, res) => {
         phone: booking.customerPhone || booking.phone || booking.participantData?.whatsapp || '-',
         pickupLocation: booking.details?.pickupLocation || booking.participantData?.pickupLocation || 'Sesuai Konfirmasi',
         dropoffLocation: booking.details?.dropoffLocation || booking.participantData?.dropoffLocation || undefined,
+      },
+      pickup: {
+        location: booking.details?.pickupLocation || booking.participantData?.pickupLocation || 'Hotel Lobby / Meeting Point',
+        date: booking.departureDate || booking.details?.date || undefined,
+        time: booking.details?.pickupTime || (booking.participantData as any)?.pickupTime || undefined
       },
       trip: {
         title: booking.serviceName || booking.tripTitle || tourSnapshot.tourName || 'Private Tour',

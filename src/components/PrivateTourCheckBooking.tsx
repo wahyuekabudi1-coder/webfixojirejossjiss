@@ -325,7 +325,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                     </div>
                   </div>
 
-                  {/* Step 2: Payment Paid */}
+                  {/* Step 2: Paid */}
                   <div className={`p-3 rounded-xl border transition-all ${
                     currentStep >= 2 
                       ? 'bg-neutral-50 border-neutral-300 text-neutral-900' 
@@ -342,13 +342,13 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                         {currentStep > 2 ? <Check className="h-4 w-4" /> : '2'}
                       </div>
                       <div>
-                        <span className="text-xs font-bold block">Payment Paid</span>
+                        <span className="text-xs font-bold block">Paid</span>
                         <span className="text-[11px] text-neutral-500">Pembayaran Diterima</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Step 3: Pending Confirmation (Admin Verification) */}
+                  {/* Step 3: Pending Confirmation */}
                   <div className={`p-3 rounded-xl border transition-all ${
                     currentStep >= 3 
                       ? 'bg-neutral-50 border-neutral-300 text-neutral-900' 
@@ -401,9 +401,9 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                   <div className="bg-emerald-50 text-emerald-900 border-emerald-200 p-3 rounded-lg flex items-start gap-3">
                     <ShieldCheck className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold block">Reservasi Dikonfirmasi Resmi &amp; Terverifikasi</span>
+                      <span className="font-bold block">Booking Confirmed</span>
                       <p className="mt-0.5 text-emerald-800">
-                        Admin Pusat Smart Journey telah mengonfirmasi pemesanan Anda. Seluruh jadwal perjalanan dan kendaraan siap. Silakan unduh Dokumen Final Booking Summary di bawah.
+                        Admin Pusat Smart Journey telah mengonfirmasi pemesanan Anda. Seluruh jadwal perjalanan dan kendaraan siap. Silakan unduh Final Booking Confirmation di bawah.
                       </p>
                     </div>
                   </div>
@@ -411,12 +411,12 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                   <div className="bg-amber-50 text-amber-950 border-amber-200 p-3 rounded-lg flex items-start gap-3">
                     <Clock className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold block">Pembayaran Diterima — Menunggu Konfirmasi Admin Pusat</span>
+                      <span className="font-bold block">Payment received. Your booking is currently being reviewed by Smart Journey.</span>
                       <p className="mt-0.5 text-amber-800">
                         Pembayaran Anda sebesar <strong>Rp {(booking.paymentAmount || 0).toLocaleString('id-ID')}</strong> telah berhasil diterima via ArtoPay Gateway. Tim operasional Smart Journey sedang memverifikasi alokasi armada dan pemandu wisata khusus Private Tour Anda.
                       </p>
                       <p className="mt-1 text-[11px] text-amber-700 italic">
-                        * Catatan: Dokumen Final Booking Summary hanya akan aktif setelah status resmi berubah menjadi <strong>Confirmed</strong> oleh Admin Pusat.
+                        * Catatan: Dokumen Final Booking Confirmation hanya akan aktif setelah status resmi berubah menjadi <strong>Confirmed</strong> oleh Admin Pusat.
                       </p>
                     </div>
                   </div>
@@ -527,6 +527,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                 {booking.canDownloadFinalSummary ? (
                   <div>
                     <button
+                      id="btn-download-final-booking-confirmation"
                       onClick={handleDownloadSummary}
                       disabled={loadingSummary}
                       className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
@@ -539,7 +540,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                       ) : (
                         <>
                           <Download className="h-4 w-4" />
-                          <span>DOWNLOAD FINAL BOOKING SUMMARY</span>
+                          <span>Download Final Booking Confirmation</span>
                         </>
                       )}
                     </button>
@@ -556,14 +557,12 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                       title="Dokumen hanya dapat diunduh setelah status Pembayaran Lunas DAN Booking Dikonfirmasi oleh Admin"
                     >
                       <Lock className="h-4 w-4 text-neutral-400" />
-                      <span>DOWNLOAD FINAL SUMMARY (TERKUNCI)</span>
+                      <span>Final Booking Confirmation (LOCKED)</span>
                     </button>
                     <p className="text-[11px] text-neutral-600 text-center mt-1.5 font-medium" id="summary-lock-guidance-message">
-                      {booking.gateMessage || (
-                        booking.paymentStatus === 'Paid'
-                          ? 'Payment received. Your booking is waiting for confirmation from Smart Journey.'
-                          : 'Payment is still pending. Final booking document is not available yet.'
-                      )}
+                      {booking.paymentStatus === 'Paid'
+                        ? 'Payment received. Your booking is currently being reviewed by Smart Journey.'
+                        : (booking.gateMessage || 'Payment is still pending. Final booking document is not available yet.')}
                     </p>
                   </div>
                 )}

@@ -129,7 +129,7 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
         <div className="bg-neutral-900 text-white px-6 py-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
           <div className="flex items-center space-x-2">
             <ShieldCheck className="h-5 w-5 text-emerald-400" />
-            <span className="font-bold text-sm tracking-wide">DOKUMEN RESMI — FINAL BOOKING SUMMARY</span>
+            <span className="font-bold text-sm tracking-wide">DOKUMEN RESMI — FINAL BOOKING CONFIRMATION</span>
           </div>
           <div className="flex items-center space-x-2">
             <button
@@ -139,7 +139,7 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
               title="Unduh Berkas PDF Asli"
             >
               <Download className="h-4 w-4" />
-              <span>Unduh File PDF</span>
+              <span>Download Final Booking Confirmation (PDF)</span>
             </button>
             <button
               id="btn-print-summary-modal"
@@ -188,12 +188,13 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
               <div className="flex items-center space-x-2 mb-1">
                 <span className="font-black text-2xl tracking-tight text-neutral-900 font-mono">SMART JOURNEY</span>
                 <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-300">
-                  OFFICIAL SUMMARY
+                  OFFICIAL CONFIRMATION
                 </span>
               </div>
-              <div className="text-sm font-black text-amber-600 tracking-wider uppercase font-mono">FINAL BOOKING SUMMARY</div>
-              <p className="text-xs text-neutral-500 font-medium mt-1">PT Smart Journey Transindo • Lisensi Resmi Biro Perjalanan Wisata</p>
-              <p className="text-[11px] text-neutral-400 font-mono">Malang &amp; Surabaya, Jawa Timur • Hotline 24/7: +62 852-1234-7289</p>
+              <div className="text-base font-black text-emerald-800 tracking-wider uppercase font-mono">FINAL BOOKING CONFIRMATION</div>
+              <p className="text-xs text-neutral-500 font-medium mt-0.5">Booking Summary &amp; Payment Receipt</p>
+              <p className="text-xs text-neutral-400 font-medium mt-1">PT Sawah Jaya Trans • Smart Journey Official Travel</p>
+              <p className="text-[11px] text-neutral-400 font-mono">Hub: Malang &amp; Bali • WhatsApp: +62 852-1234-7289 • Info@sawahjayatrans.com</p>
             </div>
 
             <div className="sm:text-right bg-neutral-50 sm:bg-transparent p-3 sm:p-0 rounded-xl border sm:border-0 border-neutral-200">
@@ -202,11 +203,11 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
               <div className="mt-1 flex sm:justify-end items-center gap-1.5 flex-wrap">
                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
                   <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                  BOOKING CONFIRMED
+                  CONFIRMED
                 </span>
-                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
-                  <CheckCircle2 className="h-3 w-3 text-blue-600" />
-                  PAYMENT PAID
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                  <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                  PAID
                 </span>
               </div>
               {data.bookingDate && (
@@ -409,13 +410,13 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
             <ul className="list-disc list-inside space-y-0.5">
               <li>Pemandu wisata / Driver Smart Journey akan menghubungi tamu via WhatsApp H-1 sebelum jam keberangkatan.</li>
               <li>Mohon siap di lokasi penjemputan 15 menit sebelum jadwal. Simpan bukti Final Booking Summary ini di ponsel Anda.</li>
-              <li>Layanan bantuan 24 Jam via WhatsApp: <strong className="text-neutral-800">+62 852-1234-7289</strong> atau email <strong className="text-neutral-800">support@smartjourney.co.id</strong>.</li>
+              <li>Layanan bantuan 24 Jam via WhatsApp: <strong className="text-neutral-800">+62 852-1234-7289</strong> atau email <strong className="text-neutral-800">Info@sawahjayatrans.com</strong>.</li>
             </ul>
           </div>
 
           {/* Official Footer Timestamp */}
           <div className="text-center pt-2 text-[10px] text-neutral-400 font-mono">
-            Dokumen ini diterbitkan secara resmi oleh Smart Journey Indonesia pada {new Date().toLocaleString('id-ID')} • Seluruh Hak Cipta Dilindungi
+            Dokumen ini diterbitkan secara resmi oleh Smart Journey (PT Sawah Jaya Trans) pada {new Date().toLocaleString('id-ID')} • Seluruh Hak Cipta Dilindungi
           </div>
 
         </div>
