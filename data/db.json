@@ -7908,5 +7908,30 @@
     "airport": 6,
     "taxi": 7,
     "rental": 9
+  },
+  "adminDrafts": {},
+  "adminSessions": [
+    {
+      "token": "609407f7d2b1da6fda66a79d1b28a42f67151bb11f1c46928f49f188035f82f4",
+      "createdAt": "2026-09-18T11:23:34.616Z",
+      "expiresAt": 1792322614616
+    },
+    {
+      "token": "a1ffc7d91a9ebcac09dbb65e82b1b952cd7435e0a9d916506b598a63cdf806e2",
+      "createdAt": "2026-09-18T11:24:24.266Z",
+      "expiresAt": 1792322664266
+    },
+    {
+      "token": "5074ffa7c0bc6fe68cad7264cf745fa1eadc4f433f34359f07194ed6d284eb67",
+      "createdAt": "2026-09-18T11:25:05.392Z",
+      "expiresAt": 1792322705392
+    }
+  ],
+  "contactInfo": {
+    "name": "Smart Journey Indonesia",
+    "address": "Jl. Puntadewa No. 192, Tumpang, Malang, Jawa Timur 65156, Indonesia",
+    "phone": "+62 852-1234-7289",
+    "whatsapp": "+62 852-1234-7289",
+    "email": "sawahjayagroup@gmail.com"
   }
 }

@@ -1,5 +1,138 @@
 [
   {
+    "id": "tour-test-pub-1789730705109",
+    "name": "Bromo Sunset Adventure Live Test (Updated)",
+    "status": "archived",
+    "days": 3,
+    "nights": 2,
+    "startingPrice": 65,
+    "startingPriceIDR": 1100000,
+    "highlights": [
+      "Sunset Penanjakan",
+      "Savana Bromo"
+    ],
+    "itinerary": [
+      "Day 1: Malang to Bromo",
+      "Day 2: Sunrise & Return"
+    ],
+    "includes": [
+      "Jeep 4x4",
+      "Driver"
+    ],
+    "excludes": [
+      "Personal meals"
+    ],
+    "createdAt": "2026-09-18T11:25:05.217Z",
+    "updatedAt": "2026-09-18T11:25:05.288Z",
+    "duration": "3 Hari 2 Malam",
+    "isDeleted": true
+  },
+  {
+    "id": "tour-test-pub-1789730663972",
+    "name": "Bromo Sunset Adventure Live Test (Updated)",
+    "status": "archived",
+    "days": 3,
+    "nights": 2,
+    "startingPrice": 65,
+    "startingPriceIDR": 1100000,
+    "highlights": [
+      "Sunset Penanjakan",
+      "Savana Bromo"
+    ],
+    "itinerary": [
+      "Day 1: Malang to Bromo",
+      "Day 2: Sunrise & Return"
+    ],
+    "includes": [
+      "Jeep 4x4",
+      "Driver"
+    ],
+    "excludes": [
+      "Personal meals"
+    ],
+    "createdAt": "2026-09-18T11:24:24.073Z",
+    "updatedAt": "2026-09-18T11:24:24.142Z",
+    "duration": "3 Hari 2 Malam",
+    "isDeleted": true
+  },
+  {
+    "id": "tour-test-pub-1789730614313",
+    "name": "Bromo Sunset Adventure Live Test (Updated)",
+    "status": "archived",
+    "days": 3,
+    "nights": 2,
+    "startingPrice": 65,
+    "startingPriceIDR": 1100000,
+    "highlights": [
+      "Sunset Penanjakan",
+      "Savana Bromo"
+    ],
+    "itinerary": [
+      "Day 1: Malang to Bromo",
+      "Day 2: Sunrise & Return"
+    ],
+    "includes": [
+      "Jeep 4x4",
+      "Driver"
+    ],
+    "excludes": [
+      "Personal meals"
+    ],
+    "createdAt": "2026-09-18T11:23:34.445Z",
+    "updatedAt": "2026-09-18T11:23:34.509Z",
+    "duration": "3 Hari 2 Malam",
+    "isDeleted": true
+  },
+  {
+    "id": "tour-private-draft-1789730545953",
+    "name": "Unpublished Internal Secret Tour",
+    "status": "archived",
+    "startingPriceIDR": 500000,
+    "createdAt": "2026-09-18T11:22:25.957Z",
+    "updatedAt": "2026-09-18T11:22:25.985Z",
+    "isDeleted": true
+  },
+  {
+    "id": "tour-test-draft-1789730545757",
+    "name": "Ijen Blue Fire Secret Draft Tour",
+    "status": "archived",
+    "days": 1,
+    "nights": 0,
+    "startingPrice": 40,
+    "startingPriceIDR": 600000,
+    "createdAt": "2026-09-18T11:22:25.871Z",
+    "updatedAt": "2026-09-18T11:22:25.941Z",
+    "isDeleted": true
+  },
+  {
+    "id": "tour-test-pub-1789730545757",
+    "name": "Bromo Sunset Adventure Live Test (Updated)",
+    "status": "archived",
+    "days": 3,
+    "nights": 2,
+    "startingPrice": 65,
+    "startingPriceIDR": 1100000,
+    "highlights": [
+      "Sunset Penanjakan",
+      "Savana Bromo"
+    ],
+    "itinerary": [
+      "Day 1: Malang to Bromo",
+      "Day 2: Sunrise & Return"
+    ],
+    "includes": [
+      "Jeep 4x4",
+      "Driver"
+    ],
+    "excludes": [
+      "Personal meals"
+    ],
+    "createdAt": "2026-09-18T11:22:25.853Z",
+    "updatedAt": "2026-09-18T11:22:25.917Z",
+    "duration": "3 Hari 2 Malam",
+    "isDeleted": true
+  },
+  {
     "id": "tour-audit-verify-1789728802588",
     "name": "Audit Verification Tour (Updated)",
     "category": "adventure",

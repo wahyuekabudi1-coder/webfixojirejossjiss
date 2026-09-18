@@ -99,7 +99,6 @@ export default function BookingsView() {
 
       if (hasChanges && isMounted) {
         setLocalBookings(nextBookings);
-        localStorage.setItem('smartjourney_bookings', JSON.stringify(nextBookings));
       }
     };
 
@@ -111,32 +110,8 @@ export default function BookingsView() {
     };
   }, [localBookings]);
 
-  // Sync state reactively to localStorage events
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'smartjourney_bookings') {
-        try {
-          const parsed = JSON.parse(e.newValue || '[]');
-          setLocalBookings(parsed);
-        } catch (err) {
-          console.error('Failed to parse storage update:', err);
-        }
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
-
-  const handleCancelBooking = (id: string) => {
-    const updated = localBookings.filter(b => b.id !== id);
-    setLocalBookings(updated);
-    localStorage.setItem('smartjourney_bookings', JSON.stringify(updated));
-    setCancellingId(null);
-    window.location.reload();
-  };
-
   const handleChatSupport = (booking: any) => {
-    const text = `Hi SmartJourney Support, I have an active reservation (ID: ${booking.id}) for the "${booking.serviceName}" scheduled on ${booking.details.date}. I'd like to ask a question regarding my trip details!`;
+    const text = `Hi SmartJourney Support, I have an active reservation (ID: ${booking.id || booking.bookingCode}) for the "${booking.serviceName || booking.tripTitle}" scheduled on ${booking.details?.date || booking.departureDate}. I'd like to ask a question regarding my trip details!`;
     const encoded = encodeURIComponent(text);
     window.open(`https://wa.me/6285212347289?text=${encoded}`, '_blank', 'noreferrer,noopener');
   };
@@ -163,7 +138,6 @@ export default function BookingsView() {
       return b;
     });
     setLocalBookings(updated);
-    localStorage.setItem('smartjourney_bookings', JSON.stringify(updated));
   };
 
   // Triggered when paying with ArtoPay
@@ -456,34 +430,14 @@ export default function BookingsView() {
                         </div>
                       )}
                       
-                      {/* Cancel Booking Ticket */}
-                      {!isPaid && (
-                        cancellingId === booking.id ? (
-                          <div className="flex items-center space-x-2 bg-rose-500/10 border border-rose-500/20 p-2 rounded-xl">
-                            <span className="text-[10px] text-rose-400 font-bold px-1 uppercase tracking-wider">Are you sure?</span>
-                            <button
-                              onClick={() => handleCancelBooking(booking.id)}
-                              className="bg-rose-500 hover:bg-rose-400 text-neutral-950 font-bold px-3 py-1.5 rounded-lg text-[10px]"
-                            >
-                              Confirm
-                            </button>
-                            <button
-                              onClick={() => setCancellingId(null)}
-                              className="bg-white/5 hover:bg-white/10 text-neutral-300 font-semibold px-2.5 py-1.5 rounded-lg text-[10px]"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => setCancellingId(booking.id)}
-                            className="bg-white/5 border border-white/10 hover:border-rose-500/30 text-neutral-400 hover:text-rose-400 font-medium px-4 py-2.5 rounded-xl text-xs flex items-center space-x-1.5 transition-all"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            <span>Withdraw Ticket</span>
-                          </button>
-                        )
-                      )}
+                      {/* Support Contact Button for reservation change / question */}
+                      <button
+                        onClick={() => handleChatSupport(booking)}
+                        className="bg-white/5 border border-white/10 hover:border-emerald-500/30 text-neutral-300 hover:text-emerald-400 font-medium px-4 py-2.5 rounded-xl text-xs flex items-center space-x-1.5 transition-all"
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                        <span>Bantuan &amp; Perubahan</span>
+                      </button>
                     </div>
 
                   </div>

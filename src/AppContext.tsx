@@ -610,6 +610,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         tourBookingType: 'private',
         type: bookingData.type,
         serviceName: bookingData.serviceName,
+        tripId: bookingData.details?.tourId || (bookingData.details as any)?.tripId || (bookingData as any).tripId || (bookingData as any).tourId || (bookingData.type === 'tour' ? 'tour-private' : ''),
+        tourId: bookingData.details?.tourId || (bookingData.details as any)?.tripId || (bookingData as any).tourId || (bookingData as any).tripId || '',
         departureDate: bookingData.details?.date || '',
         customerName: bookingData.customerName,
         fullName: bookingData.customerName,
@@ -683,7 +685,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Tours actions with Server-Side Authoritative Persistence
-  const addTour = async (tour: Tour) => {
+  const addTour = async (tour: Tour): Promise<Tour> => {
     const tourWithStatus: Tour = {
       ...tour,
       id: tour.id && tour.id.trim() !== '' ? tour.id.trim() : `tour-${Date.now()}`,
@@ -705,20 +707,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (res.ok) {
         const saved: Tour = await res.json();
         setTours(prev => [saved, ...prev.filter(t => t.id !== saved.id)]);
+        return saved;
       } else {
-        console.error('Failed to persist tour to server database:', await res.text());
+        const errText = await res.text();
+        console.error('Failed to persist tour to server database:', errText);
+        setTours(prev => prev.filter(t => t.id !== tourWithStatus.id));
+        throw new Error(errText || 'Gagal menyimpan tour ke server database.');
       }
     } catch (err) {
+      setTours(prev => prev.filter(t => t.id !== tourWithStatus.id));
       console.error('Network error saving tour to server:', err);
+      throw err;
     }
   };
 
-  const updateTour = async (updatedTour: Tour) => {
+  const updateTour = async (updatedTour: Tour): Promise<Tour> => {
     const tourWithTimestamp: Tour = {
       ...updatedTour,
       updatedAt: new Date().toISOString()
     };
 
+    const previous = tours.find(t => t.id === tourWithTimestamp.id);
     setTours(prev => prev.map(t => t.id === tourWithTimestamp.id ? tourWithTimestamp : t));
     addLog(`Paket tour ${tourWithTimestamp.id} (${tourWithTimestamp.name}) diperbarui`);
 
@@ -731,15 +740,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (res.ok) {
         const saved: Tour = await res.json();
         setTours(prev => prev.map(t => t.id === saved.id ? saved : t));
+        return saved;
       } else {
-        console.error('Failed to update tour on server database:', await res.text());
+        const errText = await res.text();
+        console.error('Failed to update tour on server database:', errText);
+        if (previous) {
+          setTours(prev => prev.map(t => t.id === previous.id ? previous : t));
+        }
+        throw new Error(errText || 'Gagal memperbarui tour pada database server.');
       }
     } catch (err) {
+      if (previous) {
+        setTours(prev => prev.map(t => t.id === previous.id ? previous : t));
+      }
       console.error('Network error updating tour on server:', err);
+      throw err;
     }
   };
 
-  const deleteTour = async (id: string) => {
+  const deleteTour = async (id: string): Promise<void> => {
+    const previous = tours.find(t => t.id === id);
     setTours(prev => prev.filter(t => t.id !== id));
     addLog(`Paket tour ${id} dihapus dari inventaris`);
 
@@ -748,11 +768,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         method: 'DELETE',
         headers: getAdminHeaders()
       });
-      if (!res.ok) {
-        console.error('Failed to delete tour from server database:', await res.text());
+      if (res.ok) {
+        const data = await res.json();
+        // If soft-deleted / archived on server to protect bookings, keep state in sync
+        if (data.mode === 'archived' && previous) {
+          setTours(prev => [{ ...previous, status: 'archived', isDeleted: true }, ...prev.filter(t => t.id !== id)]);
+        }
+      } else {
+        const errText = await res.text();
+        console.error('Failed to delete tour from server database:', errText);
+        if (previous) {
+          setTours(prev => [...prev, previous]);
+        }
+        throw new Error(errText || 'Gagal menghapus tour pada database server.');
       }
     } catch (err) {
+      if (previous) {
+        setTours(prev => [...prev, previous]);
+      }
       console.error('Network error deleting tour from server:', err);
+      throw err;
     }
   };
 

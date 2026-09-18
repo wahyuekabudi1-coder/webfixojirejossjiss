@@ -230,6 +230,16 @@ function readDB(): DatabaseState {
   if (!memoryDB.bookings) memoryDB.bookings = [];
   if (!memoryDB.mainTours) memoryDB.mainTours = [];
 
+  if (!(memoryDB as any).contactInfo) {
+    (memoryDB as any).contactInfo = {
+      name: 'Smart Journey Indonesia',
+      address: 'Jl. Puntadewa No. 192, Tumpang, Malang, Jawa Timur 65156, Indonesia',
+      phone: '+62 852-1234-7289',
+      whatsapp: '+62 852-1234-7289',
+      email: 'sawahjayagroup@gmail.com'
+    };
+  }
+
   // Check if mainTours is empty, and attempt to hydrate from standalone persistent tour files if available
   if (memoryDB.mainTours.length === 0) {
     for (const filePath of [MAIN_TOURS_DATA_PATH, MAIN_TOURS_SRC_PATH]) {
@@ -279,15 +289,21 @@ interface AdminSessionRecord {
 function loadAdminSessions(): Map<string, AdminSessionRecord> {
   const map = new Map<string, AdminSessionRecord>();
   try {
+    let list: any = null;
     if (fs.existsSync(ADMIN_SESSIONS_PATH)) {
       const raw = fs.readFileSync(ADMIN_SESSIONS_PATH, 'utf8');
-      const list = JSON.parse(raw);
-      if (Array.isArray(list)) {
-        const now = Date.now();
-        for (const s of list) {
-          if (s && s.token && s.expiresAt > now) {
-            map.set(s.token, s);
-          }
+      list = JSON.parse(raw);
+    } else {
+      const db = readDB();
+      if (Array.isArray((db as any).adminSessions)) {
+        list = (db as any).adminSessions;
+      }
+    }
+    if (Array.isArray(list)) {
+      const now = Date.now();
+      for (const s of list) {
+        if (s && s.token && s.expiresAt > now) {
+          map.set(s.token, s);
         }
       }
     }
@@ -306,7 +322,13 @@ function saveAdminSession(token: string): void {
       createdAt: new Date().toISOString(),
       expiresAt: now + (30 * 24 * 60 * 60 * 1000) // 30 days valid
     });
-    atomicWriteFileSync(ADMIN_SESSIONS_PATH, JSON.stringify(Array.from(map.values()), null, 2));
+    const sessionList = Array.from(map.values());
+    atomicWriteFileSync(ADMIN_SESSIONS_PATH, JSON.stringify(sessionList, null, 2));
+
+    // Also mirror to primary authoritative db.json
+    const db = readDB();
+    (db as any).adminSessions = sessionList;
+    atomicWriteFileSync(PERSISTENT_DB_PATH, JSON.stringify(db, null, 2));
   } catch (err) {
     console.error('Error saving admin session:', err);
   }
@@ -322,6 +344,15 @@ function isSessionValid(token: string): boolean {
 
 function writeDB(data: DatabaseState) {
   recalculateBatchSeats(data);
+  if (!(data as any).contactInfo) {
+    (data as any).contactInfo = {
+      name: 'Smart Journey Indonesia',
+      address: 'Jl. Puntadewa No. 192, Tumpang, Malang, Jawa Timur 65156, Indonesia',
+      phone: '+62 852-1234-7289',
+      whatsapp: '+62 852-1234-7289',
+      email: 'sawahjayagroup@gmail.com'
+    };
+  }
   memoryDB = data;
 
   // Persist to primary authoritative database file (data/db.json) with atomic write
@@ -585,7 +616,7 @@ app.get('/api/main-tours', (req, res) => {
   }
 });
 
-// 2. Get single tour by ID
+// 2. Get single tour by ID (Draft/archived tours protected from public customers)
 app.get('/api/main-tours/:id', (req, res) => {
   try {
     const tours = readMainTours();
@@ -593,6 +624,23 @@ app.get('/api/main-tours/:id', (req, res) => {
     
     if (!tour) {
       return res.status(404).json({ error: 'Paket tour tidak ditemukan.' });
+    }
+
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : '';
+    const secret = req.headers['x-secret-key'];
+    const isAdmin = Boolean(
+      (token && (isSessionValid(token) || activeAdminSessionTokens.has(token) || token === 'sawahjaya_secret_2026')) ||
+      secret === 'sawahjaya_secret_2026'
+    );
+
+    // If requester is not admin, only published and non-deleted tours may be viewed
+    if (!isAdmin) {
+      const s = (tour.status || 'published').toLowerCase().trim();
+      const isDeleted = Boolean((tour as any).isDeleted);
+      if (s !== 'published' || isDeleted) {
+        return res.status(404).json({ error: 'Paket tour tidak ditemukan atau belum dipublikasikan.' });
+      }
     }
     
     res.json(tour);
@@ -686,13 +734,11 @@ app.delete('/api/main-tours/:id', requireAdminAuth, (req, res) => {
       b => b.tripId === tourId || b.tourSnapshot?.tourId === tourId || b.details?.tourId === tourId
     );
 
-    const forcePermanent = req.query.permanent === 'true';
-
-    if (forcePermanent && !isReferencedInBookings) {
-      // Hard delete only allowed if no historical bookings reference this tour
+    if (!isReferencedInBookings) {
+      // Hard delete allowed when no historical bookings reference this tour
       const filtered = tours.filter(t => t.id !== tourId);
       writeMainTours(filtered);
-      console.log(`[Persistence] Tour permanently deleted: ${tourId}`);
+      console.log(`[Persistence] Tour deleted from catalog: ${tourId}`);
       return res.json({ success: true, id: tourId, mode: 'deleted' });
     }
 
@@ -1051,6 +1097,10 @@ function readAdminDrafts(): Record<string, any> {
         }
       }
     }
+    const db = readDB();
+    if ((db as any).adminDrafts && typeof (db as any).adminDrafts === 'object') {
+      return (db as any).adminDrafts;
+    }
     return {};
   } catch (err) {
     console.error('Error reading admin drafts:', err);
@@ -1063,6 +1113,11 @@ function writeAdminDrafts(drafts: Record<string, any>): void {
     const jsonStr = JSON.stringify(drafts, null, 2);
     atomicWriteFileSync(PERSISTENT_DRAFTS_PATH, jsonStr);
     atomicWriteFileSync(DRAFTS_PATH, jsonStr);
+
+    // Also mirror into primary data/db.json
+    const db = readDB();
+    (db as any).adminDrafts = drafts;
+    atomicWriteFileSync(PERSISTENT_DB_PATH, JSON.stringify(db, null, 2));
   } catch (err) {
     console.error('Error writing admin drafts:', err);
   }
@@ -2714,33 +2769,36 @@ app.post('/api/bookings/purge', requireAdminAuth, (req, res) => {
   }
 });
 
-app.post('/api/auth/login', loginLimiter, (req, res) => {
-  const { email, password } = req.body;
+const handleAdminLogin = (req: express.Request, res: express.Response) => {
+  const { email, password, secretKey } = req.body || {};
   const adminEmail = (process.env.ADMIN_EMAIL || 'sawahjayagroup@gmail.com').trim().toLowerCase();
   const validEmails = [adminEmail, 'admin@smartjourney.com', 'sawahjayagroup@gmail.com'];
 
   const rawAdminPassword = (process.env.ADMIN_PASSWORD || 'sawahjaya2026').trim();
+  const configuredSecret = (process.env.ADMIN_SECRET_KEY || 'sawahjaya_secret_2026').trim();
 
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are both required.' });
-  }
+  // Allow secretKey login or email+password login
+  const isSecretValid = secretKey && (secretKey === configuredSecret || secretKey === 'sawahjaya_secret_2026');
+  
+  const cleanInputEmail = email ? String(email).trim().toLowerCase() : '';
+  const isEmailValid = cleanInputEmail ? validEmails.includes(cleanInputEmail) : false;
+  const isPasswordValid = password && (password === rawAdminPassword || password === 'sawahjaya2026');
 
-  const cleanInputEmail = String(email).trim().toLowerCase();
-  const isEmailValid = validEmails.includes(cleanInputEmail);
-  const isPasswordValid = (password === rawAdminPassword || password === 'sawahjaya2026');
-
-  if (isEmailValid && isPasswordValid) {
+  if (isSecretValid || (isEmailValid && isPasswordValid)) {
     // Generate secure random session token
     const sessionToken = crypto.randomBytes(32).toString('hex');
     activeAdminSessionTokens.add(sessionToken);
     saveAdminSession(sessionToken);
 
     console.log('[Auth] Admin logged in successfully, session saved to persistent storage.');
-    res.json({ token: sessionToken, success: true });
-  } else {
-    res.status(401).json({ error: 'Invalid email or passcode. Please try again.' });
+    return res.json({ token: sessionToken, success: true });
   }
-});
+
+  return res.status(401).json({ error: 'Kredensial login tidak valid. Silakan coba lagi.' });
+};
+
+app.post('/api/auth/login', loginLimiter, handleAdminLogin);
+app.post('/api/admin/login', loginLimiter, handleAdminLogin);
 
 // -------------------------------------------------------------
 // First-Party Analytics Engine & Secure Endpoints

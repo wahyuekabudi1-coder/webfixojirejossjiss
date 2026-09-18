@@ -8,7 +8,7 @@ import {
   Mail, Phone, ChevronDown, CheckCircle2, AlertTriangle, FileText, 
   ArrowUpRight, BarChart3, Database, Save, Eye, EyeOff, Building, 
   FileCheck, ShieldCheck, Download, CalendarDays, RefreshCw, CreditCard, DollarSign,
-  Plane, Plus, Trash2, Edit, Check, Copy, Clock, Image, Upload, ChevronUp, GripVertical, History, Car, Map, Star, ExternalLink
+  Plane, Plus, Trash2, Edit, Check, Copy, Clock, Image, Upload, ChevronUp, GripVertical, History, Car, Map, Star, ExternalLink, Archive
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Airport } from '../types';
@@ -1090,9 +1090,12 @@ export default function AdminView() {
               </div>
 
               {/* Two Column Layout for Full Workspace Form */}
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
+              {(() => {
+                const handleSaveTourWithStatus = async (targetStatus: 'published' | 'draft') => {
+                  if (!tourForm.name || !tourForm.name.trim()) {
+                    triggerToast('Nama paket tour wajib diisi!');
+                    return;
+                  }
                   const parsedHighlights = tourForm.highlights.split(',').map(h => h.trim()).filter(Boolean);
                   
                   // Serialize itineraryItems or fall back to manual textarea
@@ -1110,6 +1113,7 @@ export default function AdminView() {
                   
                   const finalTour = {
                     ...tourForm,
+                    status: targetStatus,
                     days: tourDays,
                     nights: tourNights,
                     duration: computedDuration,
@@ -1124,21 +1128,33 @@ export default function AdminView() {
                     whatToBring: parsedWhatToBring
                   };
 
-                  if (editingTour) {
-                    updateTour(finalTour as any);
-                    triggerToast('Paket tour berhasil diperbarui');
-                  } else {
-                    addTour(finalTour as any);
-                    triggerToast('Paket tour baru berhasil dipublikasi');
+                  try {
+                    if (editingTour) {
+                      await updateTour(finalTour as any);
+                      triggerToast(targetStatus === 'published' ? 'Paket tour berhasil diperbarui & dipublikasikan' : 'Draft paket tour berhasil disimpan di database server');
+                    } else {
+                      await addTour(finalTour as any);
+                      triggerToast(targetStatus === 'published' ? 'Paket tour baru berhasil dipublikasi ke katalog' : 'Draft paket tour berhasil disimpan di database server');
+                    }
+                    clearTourDraft();
+                    setIsTourFormOpen(false);
+                    setEditingTour(null);
+                  } catch (err) {
+                    console.error('Save tour error:', err);
+                    triggerToast('Gagal menyimpan paket tour ke server database.');
                   }
-                  clearTourDraft();
-                  setIsTourFormOpen(false);
-                  setEditingTour(null);
-                }}
-                className="grid grid-cols-1 lg:grid-cols-12 gap-6"
-              >
-                {/* Left Column: Form Controls (8 cols on large screens) */}
-                <div className="lg:col-span-8 space-y-6">
+                };
+
+                return (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleSaveTourWithStatus('published');
+                    }}
+                    className="grid grid-cols-1 lg:grid-cols-12 gap-6"
+                  >
+                    {/* Left Column: Form Controls (8 cols on large screens) */}
+                    <div className="lg:col-span-8 space-y-6">
                   
                   {/* TAB 1: GENERAL INFO */}
                   {activeFormTab === 'general' && (
@@ -2014,9 +2030,9 @@ export default function AdminView() {
                   {/* Form Submission Actions Card */}
                   <div className={`${theme.card} border border-amber-500/20 bg-amber-500/5 rounded-2xl p-5 flex flex-col gap-3 shadow-sm`}>
                     <div className="text-[11px] text-neutral-400 font-semibold leading-relaxed">
-                      Lengkapi keempat sub-tab di atas secara bertahap. Klik simpan untuk menerbitkan paket secara resmi ke katalog pelanggan.
+                      Pilih status penyimpanan paket tour: Simpan sebagai <strong>Draft</strong> untuk persiapan internal, atau <strong>Publikasikan</strong> agar tampil di katalog website pelanggan.
                     </div>
-                    <div className="grid grid-cols-2 gap-3 mt-1">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-1">
                       <button 
                         type="button" 
                         onClick={() => {
@@ -2028,20 +2044,31 @@ export default function AdminView() {
                         Batal
                       </button>
                       <button 
-                        type="submit" 
-                        className="px-4 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-neutral-950 text-xs font-black transition-all shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+                        type="button"
+                        onClick={() => handleSaveTourWithStatus('draft')}
+                        className="px-4 py-3 rounded-xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
                       >
-                        <Save className="h-4 w-4 shrink-0" />
-                        <span>Simpan Paket</span>
+                        <Clock className="h-4 w-4 shrink-0" />
+                        <span>Simpan Draft</span>
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => handleSaveTourWithStatus('published')}
+                        className="px-4 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-neutral-950 text-xs font-black transition-all shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <CheckCircle2 className="h-4 w-4 shrink-0" />
+                        <span>Publikasikan</span>
                       </button>
                     </div>
                   </div>
 
                 </div>
               </form>
-            </div>
-          );
-        }
+            );
+          })()}
+        </div>
+      );
+    }
 
         // Tour list with creation, edit, publish/unpublish
         return (
@@ -2155,15 +2182,54 @@ export default function AdminView() {
                           </div>
                         </td>
                         <td className="p-4">
-                          <span className="inline-flex items-center gap-1 text-[10px] font-mono font-black uppercase text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">
-                            <Check className="h-3 w-3" /> Published
-                          </span>
+                          {(tour.status === 'draft' || tour.status === 'unpublished') ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono font-black uppercase text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full">
+                              <Clock className="h-3 w-3" /> Draft
+                            </span>
+                          ) : (tour.status === 'archived' || (tour as any).isDeleted) ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono font-black uppercase text-neutral-400 bg-neutral-800 border border-neutral-700 px-2.5 py-0.5 rounded-full">
+                              <Archive className="h-3 w-3" /> Archived
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono font-black uppercase text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">
+                              <Check className="h-3 w-3" /> Published
+                            </span>
+                          )}
                         </td>
                         <td className="p-4 text-right">
                           <div className="flex justify-end gap-1.5">
+                            {/* Toggle Publish / Draft */}
+                            {(tour.status === 'draft' || tour.status === 'unpublished') ? (
+                              <button 
+                                onClick={async () => {
+                                  await updateTour({ ...tour, status: 'published' });
+                                  triggerToast(`Paket "${tour.name}" berhasil dipublikasikan ke katalog pelanggan!`);
+                                }}
+                                className="p-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-all cursor-pointer" 
+                                title="Publikasikan ke Website"
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                              </button>
+                            ) : (
+                              <button 
+                                onClick={async () => {
+                                  await updateTour({ ...tour, status: 'draft' });
+                                  triggerToast(`Paket "${tour.name}" dialihkan menjadi Draft (disembunyikan dari publik)`);
+                                }}
+                                className="p-2 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 transition-all cursor-pointer" 
+                                title="Jadikan Draft / Sembunyikan dari Publik"
+                              >
+                                <EyeOff className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+
                             {/* 1. View published item on customer frontend */}
                             <button 
                               onClick={() => {
+                                if (tour.status === 'draft' || tour.status === 'unpublished') {
+                                  triggerToast(`Paket "${tour.name}" masih berstatus DRAFT (hanya dapat dilihat di admin)`);
+                                  return;
+                                }
                                 setPage('tours');
                                 setSearchParams({ ...searchParams, selectedTourId: tour.id });
                                 triggerToast(`Membuka halaman website untuk paket "${tour.name}"`);
