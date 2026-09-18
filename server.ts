@@ -3212,11 +3212,7 @@ app.post(['/api/artopay/webhook', '/artopay/webhook'], (req, res) => {
     const receivedAmount = Number(body.amount || body.gross_amount || body.data?.amount || body.data?.gross_amount || 0);
     const expectedAmount = Number(booking.paymentAmount || booking.totalPriceIDR || booking.totalPrice || 0);
     if (receivedAmount > 0 && expectedAmount > 0 && Math.abs(receivedAmount - expectedAmount) > 1) {
-      console.error(`[ArtoPay Webhook Amount Mismatch] Order ${orderId || booking.id}: Expected ${expectedAmount}, received ${receivedAmount}`);
-      booking.paymentStatus = 'Amount Mismatch';
-      booking.paymentNotes = `Amount mismatch: expected ${expectedAmount} (Base: ${booking.baseAmount || '-'} + Code: ${booking.uniqueCode || '-'}), received ${receivedAmount}`;
-      db.bookings[index] = booking;
-      writeDB(db);
+      console.error(`[ArtoPay Webhook Amount Mismatch] Order ${orderId || booking.id}: Expected ${expectedAmount}, received ${receivedAmount}. Zero database mutation applied.`);
       return res.status(400).json({
         error: 'Payment amount mismatch',
         expectedAmount,
