@@ -770,7 +770,7 @@ function writeAdminDrafts(drafts: Record<string, any>): void {
   }
 }
 
-app.get('/api/admin/drafts', (req, res) => {
+app.get('/api/admin/drafts', requireAdminAuth, (req, res) => {
   try {
     const drafts = readAdminDrafts();
     const key = req.query.key as string;
@@ -783,7 +783,7 @@ app.get('/api/admin/drafts', (req, res) => {
   }
 });
 
-app.post('/api/admin/drafts', (req, res) => {
+app.post('/api/admin/drafts', requireAdminAuth, (req, res) => {
   try {
     const draft = req.body;
     if (!draft || !draft.key) {
@@ -802,7 +802,7 @@ app.post('/api/admin/drafts', (req, res) => {
   }
 });
 
-app.delete('/api/admin/drafts/:key', (req, res) => {
+app.delete('/api/admin/drafts/:key', requireAdminAuth, (req, res) => {
   try {
     const key = req.params.key;
     const drafts = readAdminDrafts();
@@ -2282,6 +2282,14 @@ app.post('/api/private-tour/bookings/:id/confirm', requireAdminAuth, (req, res) 
     }
 
     const booking = db.bookings[index];
+
+    // STRICT VALIDATION: Booking must be Paid before it can be confirmed
+    if (booking.paymentStatus !== 'Paid') {
+      return res.status(400).json({ 
+        error: 'Booking belum dibayar (Payment Status: ' + (booking.paymentStatus || 'Pending') + '). Pembayaran harus berstatus "Paid" sebelum dapat dikonfirmasi.' 
+      });
+    }
+
     booking.status = 'Confirmed';
     booking.confirmedAt = new Date().toISOString();
     if (req.body?.adminNotes) {

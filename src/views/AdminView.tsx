@@ -777,9 +777,6 @@ export default function AdminView() {
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <label className="text-[10px] font-black text-neutral-500 tracking-wider">SANDI OPERASIONAL</label>
-                  <span className="text-[9px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded font-mono">
-                    Sandi: sawahjaya2026
-                  </span>
                 </div>
                 
                 <div className="relative">
@@ -806,7 +803,7 @@ export default function AdminView() {
 
                 {passwordError && (
                   <p className="text-[11px] font-extrabold text-rose-500 text-center">
-                    ⚠️ Sandi salah! Masukkan: sawahjaya2026
+                    Sandi yang Anda masukkan tidak valid.
                   </p>
                 )}
               </div>

@@ -120,16 +120,13 @@ export default function AdminLogin({ onSuccess, onBack }: AdminLoginProps) {
           <div className="bg-amber-50 rounded-xl p-4 border border-amber-100 text-xs text-amber-800 space-y-1.5 leading-relaxed">
             <span className="font-display font-bold uppercase tracking-wider flex items-center space-x-1">
               <Sparkles className="w-3.5 h-3.5 text-[#D6B16D]" />
-              <span>Mock-Free Auth Bypass</span>
+              <span>Authentication Gateway</span>
             </span>
             <p>
               To satisfy requirements of a production-level integration, credentials are verified by the live server.
             </p>
             <p className="font-semibold">
               Admin Email: <span className="text-gray-900 font-mono text-xs underline select-all">sawahjayagroup@gmail.com</span>
-            </p>
-            <p className="font-semibold">
-              Passcode: <span className="text-gray-900 font-mono text-xs underline select-all">sawahjaya2026</span>
             </p>
           </div>
 

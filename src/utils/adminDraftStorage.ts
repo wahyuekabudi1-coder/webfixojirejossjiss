@@ -60,6 +60,19 @@ export function getIsOnline(): boolean {
   return window.navigator.onLine !== false;
 }
 
+function getAdminAuthHeaders(): Record<string, string> {
+  const token = typeof window !== 'undefined' 
+    ? (localStorage.getItem('smart_journey_admin_token') || localStorage.getItem('smartjourney_admin_token') || '')
+    : '';
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 /**
  * Background non-blocking sync to server endpoint
  */
@@ -68,7 +81,7 @@ async function syncDraftToServer(draft: AdminDraft): Promise<void> {
   try {
     await fetch('/api/admin/drafts', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAdminAuthHeaders(),
       body: JSON.stringify(draft)
     });
   } catch (err) {
@@ -84,7 +97,8 @@ async function deleteDraftFromServer(key: string): Promise<void> {
   if (typeof window === 'undefined' || !getIsOnline()) return;
   try {
     await fetch(`/api/admin/drafts/${encodeURIComponent(key)}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: getAdminAuthHeaders()
     });
   } catch (err) {
     console.debug('[AutoSave] Backend draft deletion skipped:', err);
