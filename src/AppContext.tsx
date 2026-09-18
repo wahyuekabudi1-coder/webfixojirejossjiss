@@ -168,14 +168,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isTermsOpen, setTermsOpen] = useState(false);
   const [isComingSoonOpen, setComingSoonOpen] = useState(false);
   const [comingSoonService, setComingSoonService] = useState<'tours' | 'airport' | 'taxi' | null>(null);
-  const [maxBookingsPerDay, setMaxBookingsPerDayState] = useState<number>(() => {
-    const stored = localStorage.getItem('smartjourney_max_bookings_per_day');
-    return stored ? parseInt(stored, 10) : 5;
-  });
+  const [maxBookingsPerDay, setMaxBookingsPerDayState] = useState<number>(5);
 
-  const setMaxBookingsPerDay = (limit: number) => {
+  const setMaxBookingsPerDay = async (limit: number) => {
     setMaxBookingsPerDayState(limit);
-    localStorage.setItem('smartjourney_max_bookings_per_day', limit.toString());
+    try {
+      await fetch('/api/service-limits', {
+        method: 'POST',
+        headers: getAdminHeaders(),
+        body: JSON.stringify({ tour: limit })
+      });
+    } catch (e) {
+      console.warn('Failed to persist max bookings per day limit:', e);
+    }
   };
 
   const [serviceLimits, setServiceLimits] = useState<{
@@ -183,53 +188,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     airport: number;
     taxi: number;
     rental: number;
-  }>(() => {
-    const stored = localStorage.getItem('smartjourney_service_limits');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        return {
-          tour: parsed.tour ?? 5,
-          airport: parsed.airport ?? 5,
-          taxi: parsed.taxi ?? 5,
-          rental: parsed.rental ?? 5,
-        };
-      } catch (e) {
-        console.error('Failed to parse service limits', e);
-      }
-    }
-    return {
-      tour: 5,
-      airport: 5,
-      taxi: 5,
-      rental: 5,
-    };
+  }>({
+    tour: 5,
+    airport: 5,
+    taxi: 5,
+    rental: 5,
   });
 
-  const setServiceLimit = (type: 'tour' | 'airport' | 'taxi' | 'rental', limit: number) => {
-    setServiceLimits(prev => {
-      const updated = { ...prev, [type]: limit };
-      localStorage.setItem('smartjourney_service_limits', JSON.stringify(updated));
-      return updated;
-    });
+  const setServiceLimit = async (type: 'tour' | 'airport' | 'taxi' | 'rental', limit: number) => {
+    const updated = { ...serviceLimits, [type]: limit };
+    setServiceLimits(updated);
+    if (type === 'tour') {
+      setMaxBookingsPerDayState(limit);
+    }
+    try {
+      await fetch('/api/service-limits', {
+        method: 'POST',
+        headers: getAdminHeaders(),
+        body: JSON.stringify(updated)
+      });
+    } catch (err) {
+      console.error('Failed to persist service limits to server:', err);
+    }
   };
 
-  const [reviews, setReviews] = useState<Review[]>(() => {
-    const stored = localStorage.getItem('smartjourney_reviews');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          return parsed;
-        }
-      } catch (e) {
-        console.error('Failed to parse reviews', e);
-      }
-    }
-    return [];
-  });
+  const [reviews, setReviews] = useState<Review[]>([]);
 
-  const addReview = (reviewData: Omit<Review, 'id' | 'date'>) => {
+  const addReview = async (reviewData: Omit<Review, 'id' | 'date'>) => {
     const today = new Date();
     const formattedDate = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
     const newReview: Review = {
@@ -238,112 +223,78 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       date: formattedDate,
       status: 'pending'
     };
-    setReviews(prev => {
-      const updated = [newReview, ...prev];
-      localStorage.setItem('smartjourney_reviews', JSON.stringify(updated));
-      return updated;
-    });
+    setReviews(prev => [newReview, ...prev]);
+    try {
+      await fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newReview)
+      });
+    } catch (err) {
+      console.error('Failed to persist review to server:', err);
+    }
   };
 
-  const approveReview = (id: string) => {
-    setReviews(prev => {
-      const updated = prev.map(r => r.id === id ? { ...r, status: 'approved' as const } : r);
-      localStorage.setItem('smartjourney_reviews', JSON.stringify(updated));
-      return updated;
-    });
+  const approveReview = async (id: string) => {
+    setReviews(prev => prev.map(r => r.id === id ? { ...r, status: 'approved' as const } : r));
+    try {
+      await fetch(`/api/reviews/${encodeURIComponent(id)}/status`, {
+        method: 'PATCH',
+        headers: getAdminHeaders(),
+        body: JSON.stringify({ status: 'approved' })
+      });
+    } catch (err) {
+      console.error('Failed to update review status on server:', err);
+    }
   };
 
-  const rejectReview = (id: string) => {
-    setReviews(prev => {
-      const updated = prev.filter(r => r.id !== id);
-      localStorage.setItem('smartjourney_reviews', JSON.stringify(updated));
-      return updated;
-    });
+  const rejectReview = async (id: string) => {
+    setReviews(prev => prev.filter(r => r.id !== id));
+    try {
+      await fetch(`/api/reviews/${encodeURIComponent(id)}/status`, {
+        method: 'PATCH',
+        headers: getAdminHeaders(),
+        body: JSON.stringify({ status: 'rejected' })
+      });
+    } catch (err) {
+      console.error('Failed to update review status on server:', err);
+    }
   };
   
-  const [bookings, setBookings] = useState<Booking[]>(() => {
-    const stored = localStorage.getItem('smartjourney_bookings');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) return parsed;
-      } catch (e) {
-        console.error('Failed to parse bookings', e);
-      }
-    }
-    return [];
-  });
+  // Authoritative server state for bookings - initialized empty, populated exclusively via API
+  const [bookings, setBookings] = useState<Booking[]>([]);
 
   const [searchParams, setSearchParams] = useState<any>({});
   
-  // Custom states for Admin Panel (Synchronized with Server-Side Authoritative Source)
-  const [tours, setTours] = useState<Tour[]>(() => {
-    const stored = localStorage.getItem('smartjourney_tours');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) return parsed;
-      } catch (e) {
-        console.error('Failed to parse tours from cache', e);
-      }
-    }
-    return [];
-  });
+  // Authoritative server state for Tours - initialized empty, populated exclusively via API
+  const [tours, setTours] = useState<Tour[]>([]);
 
-  // Server fetch and sync for Main Website Tours
+  // Server fetch for Main Website Tours (authoritative source)
   const refreshTours = useCallback(async () => {
     try {
-      const res = await fetch('/api/main-tours?all=true');
+      const adminToken = typeof window !== 'undefined'
+        ? (localStorage.getItem('smart_journey_admin_token') || localStorage.getItem('smartjourney_admin_token') || '')
+        : '';
+      const headers: Record<string, string> = {
+        'x-secret-key': 'sawahjaya_secret_2026'
+      };
+      if (adminToken) {
+        headers['Authorization'] = `Bearer ${adminToken}`;
+      }
+      const url = adminToken ? '/api/main-tours?all=true' : '/api/main-tours';
+      const res = await fetch(url, { headers });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          if (data.length > 0) {
-            // Authoritative server data
-            setTours(data);
-            try {
-              localStorage.setItem('smartjourney_tours', JSON.stringify(data));
-            } catch (e) {
-              console.warn('Could not cache tours to localStorage:', e);
-            }
-            return;
-          } else {
-            // Server returned empty list.
-            // Check if local cache has tours that should be synced to persistent server storage
-            const cached = localStorage.getItem('smartjourney_tours');
-            if (cached) {
-              try {
-                const localParsed = JSON.parse(cached);
-                if (Array.isArray(localParsed) && localParsed.length > 0) {
-                  console.info(`[Sync] Migrating ${localParsed.length} cached tours to persistent server storage...`);
-                  await fetch('/api/main-tours/sync-local', {
-                    method: 'POST',
-                    headers: getAdminHeaders(),
-                    body: JSON.stringify({ localTours: localParsed })
-                  });
-                  const verifyRes = await fetch('/api/main-tours?all=true');
-                  if (verifyRes.ok) {
-                    const verified = await verifyRes.json();
-                    if (Array.isArray(verified) && verified.length > 0) {
-                      setTours(verified);
-                      return;
-                    }
-                  }
-                  setTours(localParsed);
-                  return;
-                }
-              } catch (e) {
-                console.warn('Error checking cached tours for sync:', e);
-              }
-            }
-            setTours([]);
-            try {
-              localStorage.setItem('smartjourney_tours', JSON.stringify([]));
-            } catch (e) {}
-          }
+          // Authoritative server data: directly set state, no localStorage fallback or sync-local
+          setTours(data);
+          return;
         }
+      } else {
+        console.error(`[API Error] Failed to fetch tours from server: HTTP ${res.status}`);
       }
     } catch (err) {
-      console.warn('Could not fetch tours from server API, preserving existing tours state:', err);
+      console.error('[Network Error] Could not fetch tours from server API, preserving existing state:', err);
     }
   }, []);
 
@@ -355,31 +306,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const serverBookings = await res.json();
         if (Array.isArray(serverBookings)) {
           setBookings(serverBookings);
-          try {
-            localStorage.setItem('smartjourney_bookings', JSON.stringify(serverBookings));
-          } catch (e) {}
         }
+      } else {
+        console.error(`[API Error] Failed to fetch bookings from server: HTTP ${res.status}`);
       }
     } catch (err) {
-      console.warn('Could not fetch bookings from server API:', err);
+      console.error('[Network Error] Could not fetch bookings from server API:', err);
     }
   }, []);
 
-  const [schedules, setSchedules] = useState<any[]>(() => {
-    const stored = localStorage.getItem('smartjourney_schedules');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) return parsed;
-      } catch (e) {
-        console.error('Failed to parse schedules', e);
+  // Server fetch for Reviews
+  const refreshReviews = useCallback(async () => {
+    try {
+      const res = await fetch('/api/reviews');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setReviews(data);
+        }
       }
+    } catch (err) {
+      console.warn('Could not fetch reviews from server:', err);
     }
-    return [];
-  });
+  }, []);
+
+  // Server fetch for Service Limits
+  const refreshServiceLimits = useCallback(async () => {
+    try {
+      const res = await fetch('/api/service-limits');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && typeof data === 'object') {
+          setServiceLimits(prev => ({ ...prev, ...data }));
+          if (data.tour) setMaxBookingsPerDayState(data.tour);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not fetch service limits from server:', err);
+    }
+  }, []);
+
+  // Authoritative server state for Schedules
+  const [schedules, setSchedules] = useState<any[]>([]);
 
   const [logs, setLogs] = useState<any[]>(() => {
-    const stored = localStorage.getItem('smartjourney_logs');
+    const stored = typeof window !== 'undefined' ? localStorage.getItem('smartjourney_logs') : null;
     if (stored) {
       try {
         return JSON.parse(stored);
@@ -390,122 +361,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return [];
   });
 
-  const [airportRoutes, setAirportRoutes] = useState<AirportRoute[]>(() => {
-    const saved = localStorage.getItem('sj_airport_routes');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { }
-    }
-    return [];
-  });
+  // Airport Transfer states
+  const [airportRoutes, setAirportRoutes] = useState<AirportRoute[]>([]);
 
-  const [airports, setAirports] = useState<Airport[]>(() => {
-    const saved = localStorage.getItem('sj_airports_list');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { }
-    }
-    return [
-      { code: 'DPS', name: 'Ngurah Rai International Airport (DPS - Bali)', description: 'Bandara Internasional utama Bali di Tuban, Kuta. Melayani rute pariwisata premium internasional & domestik.', status: 'Active', surchargeUSD: 5, surchargeIDR: 75000 },
-      { code: 'SUB', name: 'Juanda International Airport (SUB - Surabaya)', description: 'Bandara Internasional Jawa Timur berlokasi di Sidoarjo, melayani rute bisnis & wisata regional.', status: 'Active', surchargeUSD: 3, surchargeIDR: 45000 },
-      { code: 'YIA', name: 'Yogyakarta International Airport (YIA)', description: 'Bandara megah modern di Kulon Progo, melayani pariwisata Candi Borobudur, Prambanan dan DIY Yogyakarta.', status: 'Active', surchargeUSD: 4, surchargeIDR: 60000 },
-      { code: 'CGK', name: 'Soekarno-Hatta International Airport (CGK - Jakarta)', description: 'Bandara Internasional metropolitan tersibuk di Indonesia berlokasi di Tangerang, gerbang utama ibukota Jakarta.', status: 'Active', surchargeUSD: 5, surchargeIDR: 75000 }
-    ];
-  });
+  const [airports, setAirports] = useState<Airport[]>([
+    { code: 'DPS', name: 'Ngurah Rai International Airport (DPS - Bali)', description: 'Bandara Internasional utama Bali di Tuban, Kuta. Melayani rute pariwisata premium internasional & domestik.', status: 'Active', surchargeUSD: 5, surchargeIDR: 75000 },
+    { code: 'SUB', name: 'Juanda International Airport (SUB - Surabaya)', description: 'Bandara Internasional Jawa Timur berlokasi di Sidoarjo, melayani rute bisnis & wisata regional.', status: 'Active', surchargeUSD: 3, surchargeIDR: 45000 },
+    { code: 'YIA', name: 'Yogyakarta International Airport (YIA)', description: 'Bandara megah modern di Kulon Progo, melayani pariwisata Candi Borobudur, Prambanan dan DIY Yogyakarta.', status: 'Active', surchargeUSD: 4, surchargeIDR: 60000 },
+    { code: 'CGK', name: 'Soekarno-Hatta International Airport (CGK - Jakarta)', description: 'Bandara Internasional metropolitan tersibuk di Indonesia berlokasi di Tangerang, gerbang utama ibukota Jakarta.', status: 'Active', surchargeUSD: 5, surchargeIDR: 75000 }
+  ]);
 
   // Taxi Service States
-  const [taxiMasterAreas, setTaxiMasterAreas] = useState<TaxiMasterArea[]>(() => {
-    const saved = localStorage.getItem('sj_taxi_master_areas');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return [];
-  });
-
-  const [taxiMasterDestinations, setTaxiMasterDestinations] = useState<TaxiMasterDestination[]>(() => {
-    const saved = localStorage.getItem('sj_taxi_master_destinations');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return [];
-  });
-
-  const [taxiPricingRules, setTaxiPricingRules] = useState<TaxiPricingRule[]>(() => {
-    const saved = localStorage.getItem('sj_taxi_pricing_rules');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return [];
-  });
-
-  const [taxiAreaRules, setTaxiAreaRules] = useState<TaxiAreaRule[]>(() => {
-    const saved = localStorage.getItem('sj_taxi_area_rules');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return [];
-  });
-
-  const [taxiImportHistory, setTaxiImportHistory] = useState<TaxiImportHistory[]>(() => {
-    const saved = localStorage.getItem('sj_taxi_import_history');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return [];
-  });
+  const [taxiMasterAreas, setTaxiMasterAreas] = useState<TaxiMasterArea[]>([]);
+  const [taxiMasterDestinations, setTaxiMasterDestinations] = useState<TaxiMasterDestination[]>([]);
+  const [taxiPricingRules, setTaxiPricingRules] = useState<TaxiPricingRule[]>([]);
+  const [taxiAreaRules, setTaxiAreaRules] = useState<TaxiAreaRule[]>([]);
+  const [taxiImportHistory, setTaxiImportHistory] = useState<TaxiImportHistory[]>([]);
 
   // Car Rental States
-  const [rentalCities, setRentalCities] = useState<OperationalCity[]>(() => {
-    const saved = localStorage.getItem('sj_rental_cities');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return [];
-  });
-
-  const [rentalLocations, setRentalLocations] = useState<RentalLocation[]>(() => {
-    const saved = localStorage.getItem('sj_rental_locations');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
-      } catch (e) {}
-    }
-    return [];
-  });
-
-  const [rentalCategories, setRentalCategories] = useState<RentalCategory[]>(() => {
-    const saved = localStorage.getItem('sj_rental_categories_v3');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return [];
-  });
-
-  const [rentalVehicles, setRentalVehicles] = useState<RentalVehicle[]>(() => {
-    const saved = localStorage.getItem('sj_rental_vehicles_v3');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return [];
-  });
-
-  const [rentalAddons, setRentalAddons] = useState<RentalAddon[]>(() => {
-    const saved = localStorage.getItem('sj_rental_addons');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return [];
-  });
-
-  const [rentalZonePricing, setRentalZonePricing] = useState<ZonePricing[]>(() => {
-    const saved = localStorage.getItem('sj_rental_zone_pricing');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
-      } catch (e) {}
-    }
-    return [];
-  });
+  const [rentalCities, setRentalCities] = useState<OperationalCity[]>([]);
+  const [rentalLocations, setRentalLocations] = useState<RentalLocation[]>([]);
+  const [rentalCategories, setRentalCategories] = useState<RentalCategory[]>([]);
+  const [rentalVehicles, setRentalVehicles] = useState<RentalVehicle[]>([]);
+  const [rentalAddons, setRentalAddons] = useState<RentalAddon[]>([]);
+  const [rentalZonePricing, setRentalZonePricing] = useState<ZonePricing[]>([]);
 
   // Server Fetchers for all services
   const isRentalsLoaded = useRef(false);
@@ -585,7 +464,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const data = await res.json();
         if (Array.isArray(data)) {
           setSchedules(data);
-          try { localStorage.setItem('smartjourney_schedules', JSON.stringify(data)); } catch (e) {}
         }
       }
     } catch (err) {
@@ -601,17 +479,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     refreshAirports();
     refreshTaxi();
     refreshSchedules();
-  }, [refreshTours, refreshBookings, refreshRentals, refreshAirports, refreshTaxi, refreshSchedules]);
+    refreshReviews();
+    refreshServiceLimits();
+  }, [refreshTours, refreshBookings, refreshRentals, refreshAirports, refreshTaxi, refreshSchedules, refreshReviews, refreshServiceLimits]);
 
-  // Automated persistence sync effects
+  // Automated persistence sync effects to backend server
   useEffect(() => {
-    localStorage.setItem('sj_rental_cities', JSON.stringify(rentalCities));
-    localStorage.setItem('sj_rental_locations', JSON.stringify(rentalLocations));
-    localStorage.setItem('sj_rental_categories_v3', JSON.stringify(rentalCategories));
-    localStorage.setItem('sj_rental_vehicles_v3', JSON.stringify(rentalVehicles));
-    localStorage.setItem('sj_rental_addons', JSON.stringify(rentalAddons));
-    localStorage.setItem('sj_rental_zone_pricing', JSON.stringify(rentalZonePricing));
-
     if (!isRentalsLoaded.current) return;
     const timer = setTimeout(() => {
       fetch('/api/rentals/sync', {
@@ -631,12 +504,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [rentalCities, rentalLocations, rentalCategories, rentalVehicles, rentalAddons, rentalZonePricing]);
 
   useEffect(() => {
-    localStorage.setItem('sj_taxi_master_areas', JSON.stringify(taxiMasterAreas));
-    localStorage.setItem('sj_taxi_master_destinations', JSON.stringify(taxiMasterDestinations));
-    localStorage.setItem('sj_taxi_pricing_rules', JSON.stringify(taxiPricingRules));
-    localStorage.setItem('sj_taxi_area_rules', JSON.stringify(taxiAreaRules));
-    localStorage.setItem('sj_taxi_import_history', JSON.stringify(taxiImportHistory));
-
     if (!isTaxiLoaded.current) return;
     const timer = setTimeout(() => {
       fetch('/api/taxi/sync', {
@@ -655,9 +522,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [taxiMasterAreas, taxiMasterDestinations, taxiPricingRules, taxiAreaRules, taxiImportHistory]);
 
   useEffect(() => {
-    localStorage.setItem('sj_airport_routes', JSON.stringify(airportRoutes));
-    localStorage.setItem('sj_airports_list', JSON.stringify(airports));
-
     if (!isAirportsLoaded.current) return;
     const timer = setTimeout(() => {
       fetch('/api/airport-transfers/sync', {
@@ -733,7 +597,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const updated = [newBooking, ...bookings];
     setBookings(updated);
-    localStorage.setItem('smartjourney_bookings', JSON.stringify(updated));
     addLog(`New booking ${id} received for ${bookingData.serviceName} (Status: Pending Payment)`);
 
     // Post to server DB for ArtoPay webhook tracking and persistent storage
@@ -760,7 +623,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         paymentStatus: 'Pending',
         details: bookingData.details || {}
       })
-    }).catch(err => {
+    })
+    .then(async res => {
+      if (res.ok) {
+        const saved = await res.json();
+        setBookings(prev => [saved, ...prev.filter(b => b.id !== id && b.id !== saved.id)]);
+      }
+    })
+    .catch(err => {
       console.warn('Server booking sync warning:', err);
     });
 
@@ -783,7 +653,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return b;
     });
     setBookings(updated);
-    try { localStorage.setItem('smartjourney_bookings', JSON.stringify(updated)); } catch (e) {}
     addLog(`Booking ${id} status updated to ${status}${paymentStatus ? ` (${paymentStatus})` : ''}`);
 
     try {
@@ -824,11 +693,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     
     // Optimistic UI state
-    setTours(prev => {
-      const next = [tourWithStatus, ...prev.filter(t => t.id !== tourWithStatus.id)];
-      try { localStorage.setItem('smartjourney_tours', JSON.stringify(next)); } catch (e) {}
-      return next;
-    });
+    setTours(prev => [tourWithStatus, ...prev.filter(t => t.id !== tourWithStatus.id)]);
     addLog(`Paket tour baru dibuat: ${tourWithStatus.name} (${tourWithStatus.id})`);
 
     try {
@@ -839,11 +704,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       if (res.ok) {
         const saved: Tour = await res.json();
-        setTours(prev => {
-          const next = [saved, ...prev.filter(t => t.id !== saved.id)];
-          try { localStorage.setItem('smartjourney_tours', JSON.stringify(next)); } catch (e) {}
-          return next;
-        });
+        setTours(prev => [saved, ...prev.filter(t => t.id !== saved.id)]);
       } else {
         console.error('Failed to persist tour to server database:', await res.text());
       }
@@ -858,11 +719,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updatedAt: new Date().toISOString()
     };
 
-    setTours(prev => {
-      const next = prev.map(t => t.id === tourWithTimestamp.id ? tourWithTimestamp : t);
-      try { localStorage.setItem('smartjourney_tours', JSON.stringify(next)); } catch (e) {}
-      return next;
-    });
+    setTours(prev => prev.map(t => t.id === tourWithTimestamp.id ? tourWithTimestamp : t));
     addLog(`Paket tour ${tourWithTimestamp.id} (${tourWithTimestamp.name}) diperbarui`);
 
     try {
@@ -873,11 +730,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       if (res.ok) {
         const saved: Tour = await res.json();
-        setTours(prev => {
-          const next = prev.map(t => t.id === saved.id ? saved : t);
-          try { localStorage.setItem('smartjourney_tours', JSON.stringify(next)); } catch (e) {}
-          return next;
-        });
+        setTours(prev => prev.map(t => t.id === saved.id ? saved : t));
       } else {
         console.error('Failed to update tour on server database:', await res.text());
       }
@@ -887,11 +740,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteTour = async (id: string) => {
-    setTours(prev => {
-      const next = prev.filter(t => t.id !== id);
-      try { localStorage.setItem('smartjourney_tours', JSON.stringify(next)); } catch (e) {}
-      return next;
-    });
+    setTours(prev => prev.filter(t => t.id !== id));
     addLog(`Paket tour ${id} dihapus dari inventaris`);
 
     try {
@@ -919,7 +768,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newSchedule = { ...schedule, id: `sc-${Date.now()}` };
     const updated = [newSchedule, ...schedules];
     setSchedules(updated);
-    try { localStorage.setItem('smartjourney_schedules', JSON.stringify(updated)); } catch (e) {}
     addLog(`Added schedule rule: ${schedule.type} on ${schedule.date}`);
     try {
       await fetch('/api/schedules', {
@@ -935,7 +783,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateSchedule = async (updatedSchedule: any) => {
     const updated = schedules.map(s => s.id === updatedSchedule.id ? updatedSchedule : s);
     setSchedules(updated);
-    try { localStorage.setItem('smartjourney_schedules', JSON.stringify(updated)); } catch (e) {}
     addLog(`Updated schedule rule ${updatedSchedule.id}`);
     try {
       await fetch(`/api/schedules/${encodeURIComponent(updatedSchedule.id)}`, {
@@ -951,7 +798,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteSchedule = async (id: string) => {
     const updated = schedules.filter(s => s.id !== id);
     setSchedules(updated);
-    try { localStorage.setItem('smartjourney_schedules', JSON.stringify(updated)); } catch (e) {}
     addLog(`Deleted schedule rule ${id}`);
     try {
       await fetch(`/api/schedules/${encodeURIComponent(id)}`, {

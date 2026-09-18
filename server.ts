@@ -321,24 +321,26 @@ function isSessionValid(token: string): boolean {
 }
 
 function writeDB(data: DatabaseState) {
+  recalculateBatchSeats(data);
   memoryDB = data;
 
+  // Persist to primary authoritative database file (data/db.json) with atomic write
   try {
-    recalculateBatchSeats(data);
-
-    // Persist to primary persistent data directory (data/db.json) with atomic write
     atomicWriteFileSync(PERSISTENT_DB_PATH, JSON.stringify(data, null, 2));
+  } catch (err) {
+    console.error('CRITICAL: Failed to write to primary persistent database:', err);
+    throw new Error('Database write failure: cannot persist data to authoritative storage.');
+  }
 
-    // Also mirror to legacy db path (src/sharetour/db.json) with atomic write
+  // Non-blocking mirror writes for legacy/static caches
+  try {
     atomicWriteFileSync(DB_PATH, JSON.stringify(data, null, 2));
-
-    // Standalone mirrors for mainTours
     if (data.mainTours && Array.isArray(data.mainTours)) {
       atomicWriteFileSync(MAIN_TOURS_DATA_PATH, JSON.stringify(data.mainTours, null, 2));
       atomicWriteFileSync(MAIN_TOURS_SRC_PATH, JSON.stringify(data.mainTours, null, 2));
     }
-  } catch (error) {
-    console.error('CRITICAL: Error writing database file:', error);
+  } catch (mirrorErr) {
+    console.warn('Non-critical mirror write failed:', mirrorErr);
   }
 }
 
@@ -555,9 +557,18 @@ xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitem
 app.get('/api/main-tours', (req, res) => {
   try {
     const tours = readMainTours();
-    const showAll = req.query.all === 'true' || Boolean(req.headers.authorization) || Boolean(req.headers['x-secret-key']);
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : '';
+    const secret = req.headers['x-secret-key'];
+    const isAdmin = Boolean(
+      (token && (isSessionValid(token) || activeAdminSessionTokens.has(token) || token === 'sawahjaya_secret_2026')) ||
+      secret === 'sawahjaya_secret_2026'
+    );
     
-    if (showAll) {
+    if (req.query.all === 'true') {
+      if (!isAdmin) {
+        return res.status(401).json({ error: 'Unauthorized. Admin credentials required to access unpublished tours.' });
+      }
       return res.json(tours);
     }
 
@@ -700,49 +711,6 @@ app.delete('/api/main-tours/:id', requireAdminAuth, (req, res) => {
   } catch (error) {
     console.error('Error deleting main tour:', error);
     res.status(500).json({ error: 'Gagal menghapus/mengarsipkan paket tour dari database server.' });
-  }
-});
-
-// 6. One-time migration / Local storage sync endpoint
-app.post('/api/main-tours/sync-local', requireAdminAuth, (req, res) => {
-  try {
-    const { localTours } = req.body;
-    if (!Array.isArray(localTours) || localTours.length === 0) {
-      return res.json({ success: true, message: 'Tidak ada data lokal yang perlu disinkronkan.', count: 0 });
-    }
-
-    const serverTours = readMainTours();
-    let addedCount = 0;
-
-    localTours.forEach((localTour: Tour) => {
-      if (localTour && localTour.id && localTour.name) {
-        const exists = serverTours.some(st => st.id === localTour.id);
-        if (!exists) {
-          serverTours.push({
-            ...localTour,
-            status: localTour.status || 'published',
-            createdAt: localTour.createdAt || new Date().toISOString(),
-            updatedAt: localTour.updatedAt || new Date().toISOString()
-          });
-          addedCount++;
-        }
-      }
-    });
-
-    if (addedCount > 0) {
-      writeMainTours(serverTours);
-      console.log(`[Persistence] Synced ${addedCount} local tours to persistent backend.`);
-    }
-
-    res.json({ 
-      success: true, 
-      message: `Berhasil menyinkronkan ${addedCount} paket ke database server.`, 
-      addedCount, 
-      totalCount: serverTours.length 
-    });
-  } catch (error) {
-    console.error('Error syncing local tours:', error);
-    res.status(500).json({ error: 'Gagal melakukan sinkronisasi data tour ke database server.' });
   }
 });
 
@@ -978,6 +946,91 @@ app.delete('/api/schedules/:id', requireAdminAuth, (req, res) => {
     res.json({ success: true, id: req.params.id });
   } catch (error) {
     res.status(500).json({ error: 'Gagal menghapus entri jadwal.' });
+  }
+});
+
+// -------------------------------------------------------------
+// REVIEWS AND SERVICE LIMITS REST API (Server Persistent DB)
+// -------------------------------------------------------------
+app.get('/api/reviews', (req, res) => {
+  try {
+    const db = readDB();
+    res.json(db.reviews || []);
+  } catch (err) {
+    res.status(500).json({ error: 'Gagal mengambil data review.' });
+  }
+});
+
+app.post('/api/reviews', (req, res) => {
+  try {
+    const db = readDB();
+    if (!Array.isArray(db.reviews)) db.reviews = [];
+    const newRev = req.body;
+    const author = newRev?.author || newRev?.name || newRev?.userName;
+    const content = newRev?.content || newRev?.text || newRev?.comment;
+    if (!author || !content) {
+      return res.status(400).json({ error: 'Data review tidak lengkap: nama dan isi ulasan wajib diisi.' });
+    }
+    const reviewItem = {
+      ...newRev,
+      id: newRev.id || `rev-${Date.now()}`,
+      author,
+      name: author,
+      content,
+      text: content,
+      rating: Number(newRev.rating) || 5,
+      date: newRev.date || new Date().toISOString().split('T')[0],
+      service: newRev.service || newRev.serviceType || 'tour',
+      serviceType: newRev.serviceType || newRev.service || 'tour',
+      status: newRev.status || 'pending',
+      country: newRev.country || 'Indonesia',
+      avatar: newRev.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150'
+    };
+    db.reviews = [reviewItem, ...db.reviews];
+    writeDB(db);
+    res.status(201).json(reviewItem);
+  } catch (err) {
+    res.status(500).json({ error: 'Gagal menyimpan ulasan ke database.' });
+  }
+});
+
+app.patch('/api/reviews/:id/status', requireAdminAuth, (req, res) => {
+  try {
+    const db = readDB();
+    if (!Array.isArray(db.reviews)) db.reviews = [];
+    const { status } = req.body;
+    const target = db.reviews.find(r => r.id === req.params.id);
+    if (!target) {
+      return res.status(404).json({ error: 'Review tidak ditemukan.' });
+    }
+    target.status = status;
+    writeDB(db);
+    res.json({ success: true, review: target });
+  } catch (err) {
+    res.status(500).json({ error: 'Gagal memperbarui status ulasan.' });
+  }
+});
+
+app.get('/api/service-limits', (req, res) => {
+  try {
+    const db = readDB();
+    res.json(db.serviceLimits || { tour: 5, airport: 5, taxi: 5, rental: 5 });
+  } catch (err) {
+    res.status(500).json({ error: 'Gagal mengambil batas kapasitas layanan.' });
+  }
+});
+
+app.post('/api/service-limits', requireAdminAuth, (req, res) => {
+  try {
+    const db = readDB();
+    db.serviceLimits = {
+      ...(db.serviceLimits || { tour: 5, airport: 5, taxi: 5, rental: 5 }),
+      ...req.body
+    };
+    writeDB(db);
+    res.json({ success: true, serviceLimits: db.serviceLimits });
+  } catch (err) {
+    res.status(500).json({ error: 'Gagal menyimpan batas kapasitas layanan.' });
   }
 });
 

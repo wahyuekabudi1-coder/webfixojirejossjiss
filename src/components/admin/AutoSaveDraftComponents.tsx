@@ -19,7 +19,9 @@ import {
   clearDraft, 
   formatDraftTime, 
   getIsOnline,
-  syncAllLocalDraftsToServer
+  syncAllLocalDraftsToServer,
+  saveDraftAsync,
+  fetchDraftFromServer
 } from '../../utils/adminDraftStorage';
 
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'offline_saved' | 'error';
@@ -63,46 +65,65 @@ export function useAutoSaveDraft<T>({
   const latestDataRef = useRef<{ data: T; meta?: Record<string, any>; title: string }>({ data, meta, title });
   latestDataRef.current = { data, meta, title };
 
-  // 1. Initial check for existing draft upon mounting or targetId change
+  // 1. Initial check for existing draft upon mounting or targetId change (checks local AND server)
   useEffect(() => {
+    let isMounted = true;
     if (!enabled) {
       setDetectedDraft(null);
       setShowRecoveryBanner(false);
       return;
     }
 
-    const existing = getDraft<T>(type, targetId, subType);
-    if (existing && existing.data) {
-      setDetectedDraft(existing);
-      // Only show recovery banner if user hasn't restored or dismissed yet in this session
+    const existingLocal = getDraft<T>(type, targetId, subType);
+    if (existingLocal && existingLocal.data) {
+      setDetectedDraft(existingLocal);
       setShowRecoveryBanner(true);
     } else {
       setDetectedDraft(null);
       setShowRecoveryBanner(false);
     }
+
+    // Always attempt to fetch latest draft from authoritative server (critical for laptop reboot / cache clear)
+    fetchDraftFromServer<T>(type, targetId, subType).then((serverDraft) => {
+      if (!isMounted) return;
+      if (serverDraft && serverDraft.data) {
+        if (!existingLocal || (serverDraft.savedAtTimestamp || 0) >= (existingLocal.savedAtTimestamp || 0)) {
+          setDetectedDraft(serverDraft);
+          setShowRecoveryBanner(true);
+        }
+      }
+    }).catch(() => {});
+
     setHasRestoredOrDismissed(false);
+    return () => {
+      isMounted = false;
+    };
   }, [type, subType, targetId, enabled]);
 
-  // 2. Perform immediate save helper
-  const performSave = useCallback(() => {
+  // 2. Perform immediate save helper (persists locally AND awaits backend confirmation)
+  const performSave = useCallback(async () => {
     if (!enabled || !hasUnsavedContent) return;
 
     setSaveStatus('saving');
     const cur = latestDataRef.current;
-    const result = saveDraft<T>(
-      type,
-      targetId,
-      subType,
-      cur.title || title,
-      cur.data,
-      cur.meta,
-      isEditing
-    );
+    try {
+      const result = await saveDraftAsync<T>(
+        type,
+        targetId,
+        subType,
+        cur.title || title,
+        cur.data,
+        cur.meta,
+        isEditing
+      );
 
-    if (result.success) {
-      setSaveStatus(result.isOnline ? 'saved' : 'offline_saved');
-      setLastSaved(new Date());
-    } else {
+      if (result.success) {
+        setSaveStatus(result.serverConfirmed ? 'saved' : (result.isOnline ? 'saved' : 'offline_saved'));
+        setLastSaved(new Date());
+      } else {
+        setSaveStatus('error');
+      }
+    } catch (err) {
       setSaveStatus('error');
     }
   }, [enabled, hasUnsavedContent, type, targetId, subType, title, isEditing]);

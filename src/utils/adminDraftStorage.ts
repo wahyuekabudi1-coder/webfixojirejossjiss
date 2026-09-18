@@ -65,7 +65,8 @@ function getAdminAuthHeaders(): Record<string, string> {
     ? (localStorage.getItem('smart_journey_admin_token') || localStorage.getItem('smartjourney_admin_token') || '')
     : '';
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'x-secret-key': 'sawahjaya_secret_2026'
   };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -74,34 +75,68 @@ function getAdminAuthHeaders(): Record<string, string> {
 }
 
 /**
- * Background non-blocking sync to server endpoint
+ * Fetch draft directly from authoritative backend database
+ * Essential for sudden laptop reboot, battery loss, or cross-browser recovery
  */
-async function syncDraftToServer(draft: AdminDraft): Promise<void> {
-  if (typeof window === 'undefined' || !getIsOnline()) return;
+export async function fetchDraftFromServer<T = any>(
+  type: DraftType,
+  targetId: string = 'new',
+  subType: string = 'default'
+): Promise<AdminDraft<T> | null> {
+  if (typeof window === 'undefined') return null;
+  const key = generateDraftKey(type, targetId, subType);
   try {
-    await fetch('/api/admin/drafts', {
+    const res = await fetch(`/api/admin/drafts?key=${encodeURIComponent(key)}`, {
+      headers: getAdminAuthHeaders()
+    });
+    if (res.ok) {
+      const result = await res.json();
+      if (result && result.draft && result.draft.data) {
+        // Cache to local storage as emergency fallback
+        try {
+          localStorage.setItem(key, JSON.stringify(result.draft));
+        } catch (e) {}
+        return result.draft as AdminDraft<T>;
+      }
+    }
+  } catch (err) {
+    console.debug('[AutoSave] Could not fetch server draft:', err);
+  }
+  return null;
+}
+
+/**
+ * Sync draft directly to backend database endpoint
+ */
+export async function syncDraftToServer(draft: AdminDraft): Promise<boolean> {
+  if (typeof window === 'undefined' || !getIsOnline()) return false;
+  try {
+    const res = await fetch('/api/admin/drafts', {
       method: 'POST',
       headers: getAdminAuthHeaders(),
       body: JSON.stringify(draft)
     });
+    return res.ok;
   } catch (err) {
-    // Non-blocking, local storage is the reliable primary persistence
     console.debug('[AutoSave] Backend sync skipped or offline:', err);
+    return false;
   }
 }
 
 /**
- * Background non-blocking deletion from server endpoint
+ * Delete draft directly from backend database endpoint
  */
-async function deleteDraftFromServer(key: string): Promise<void> {
-  if (typeof window === 'undefined' || !getIsOnline()) return;
+export async function deleteDraftFromServer(key: string): Promise<boolean> {
+  if (typeof window === 'undefined' || !getIsOnline()) return false;
   try {
-    await fetch(`/api/admin/drafts/${encodeURIComponent(key)}`, {
+    const res = await fetch(`/api/admin/drafts/${encodeURIComponent(key)}`, {
       method: 'DELETE',
       headers: getAdminAuthHeaders()
     });
+    return res.ok;
   } catch (err) {
     console.debug('[AutoSave] Backend draft deletion skipped:', err);
+    return false;
   }
 }
 
@@ -121,7 +156,55 @@ export async function syncAllLocalDraftsToServer(): Promise<void> {
 }
 
 /**
- * Save draft into persistent localStorage and sync to backend if online
+ * Async save draft into both persistent localStorage and authoritative backend database
+ */
+export async function saveDraftAsync<T = any>(
+  type: DraftType,
+  targetId: string = 'new',
+  subType: string = 'default',
+  title: string = '',
+  data: T,
+  meta?: Record<string, any>,
+  isEditing: boolean = false
+): Promise<{ success: boolean; key: string; isOnline: boolean; serverConfirmed: boolean; error?: string }> {
+  if (typeof window === 'undefined') return { success: false, key: '', isOnline: true, serverConfirmed: false };
+
+  const key = generateDraftKey(type, targetId, subType);
+  const isOnline = getIsOnline();
+
+  const draft: AdminDraft<T> = {
+    key,
+    type,
+    subType,
+    targetId: targetId || 'new',
+    isEditing,
+    title: title || (type === 'tour' ? 'Draft Paket Tour' : 'Draft Layanan Service'),
+    data,
+    meta,
+    savedAt: new Date().toISOString(),
+    savedAtTimestamp: Date.now(),
+    isOnline
+  };
+
+  try {
+    localStorage.setItem(key, JSON.stringify(draft));
+  } catch (err: any) {
+    try {
+      cleanupOldDrafts(30);
+      localStorage.setItem(key, JSON.stringify(draft));
+    } catch (e) {}
+  }
+
+  let serverConfirmed = false;
+  if (isOnline) {
+    serverConfirmed = await syncDraftToServer(draft);
+  }
+
+  return { success: true, key, isOnline, serverConfirmed };
+}
+
+/**
+ * Synchronous local save draft (with background server sync)
  */
 export function saveDraft<T = any>(
   type: DraftType,

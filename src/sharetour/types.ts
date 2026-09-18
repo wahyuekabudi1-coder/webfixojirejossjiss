@@ -178,5 +178,12 @@ export interface DatabaseState {
     importHistory: TaxiImportHistory[];
   };
   schedules?: any[];
+  reviews?: any[];
+  serviceLimits?: {
+    tour?: number;
+    airport?: number;
+    taxi?: number;
+    rental?: number;
+  };
 }
 
