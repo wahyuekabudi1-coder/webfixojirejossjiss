@@ -65,8 +65,7 @@ function getAdminAuthHeaders(): Record<string, string> {
     ? (localStorage.getItem('smart_journey_admin_token') || localStorage.getItem('smartjourney_admin_token') || '')
     : '';
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'x-secret-key': 'sawahjaya_secret_2026'
+    'Content-Type': 'application/json'
   };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;

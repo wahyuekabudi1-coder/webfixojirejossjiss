@@ -141,7 +141,6 @@ function getAdminHeaders(): Record<string, string> {
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  headers['x-secret-key'] = 'sawahjaya_secret_2026';
   return headers;
 }
 
@@ -275,9 +274,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const adminToken = typeof window !== 'undefined'
         ? (localStorage.getItem('smart_journey_admin_token') || localStorage.getItem('smartjourney_admin_token') || '')
         : '';
-      const headers: Record<string, string> = {
-        'x-secret-key': 'sawahjaya_secret_2026'
-      };
+      const headers: Record<string, string> = {};
       if (adminToken) {
         headers['Authorization'] = `Bearer ${adminToken}`;
       }

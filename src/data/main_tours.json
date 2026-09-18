@@ -1,136 +1,81 @@
 [
   {
-    "id": "tour-test-pub-1789730705109",
-    "name": "Bromo Sunset Adventure Live Test (Updated)",
+    "id": "tour-prod-1789732893143",
+    "name": "Bromo & Ijen Midnight Expedition",
+    "slug": "bromo-ijen-midnight-expedition",
     "status": "archived",
-    "days": 3,
-    "nights": 2,
-    "startingPrice": 65,
-    "startingPriceIDR": 1100000,
-    "highlights": [
-      "Sunset Penanjakan",
-      "Savana Bromo"
-    ],
-    "itinerary": [
-      "Day 1: Malang to Bromo",
-      "Day 2: Sunrise & Return"
-    ],
-    "includes": [
+    "category": "Private Tour",
+    "duration": "3D2N",
+    "price": 2500000,
+    "description": "Exclusive 3D2N overland tour from Malang to Bromo and Ijen Crater with Blue Fire experience.",
+    "destination": "East Java",
+    "included": [
+      "Transport",
       "Jeep 4x4",
-      "Driver"
+      "Hotel",
+      "Entrance Tickets",
+      "Tour Guide"
     ],
-    "excludes": [
-      "Personal meals"
+    "excluded": [
+      "Personal Expenses",
+      "Tips"
     ],
-    "createdAt": "2026-09-18T11:25:05.217Z",
-    "updatedAt": "2026-09-18T11:25:05.288Z",
-    "duration": "3 Hari 2 Malam",
-    "isDeleted": true
+    "createdAt": "2026-09-18T12:01:33.144Z",
+    "updatedAt": "2026-09-18T12:01:33.198Z",
+    "isDeleted": true,
+    "isArchived": true
   },
   {
-    "id": "tour-test-pub-1789730663972",
-    "name": "Bromo Sunset Adventure Live Test (Updated)",
+    "id": "tour-prod-1789732806430",
+    "name": "Bromo & Ijen Midnight Expedition",
+    "slug": "bromo-ijen-midnight-expedition",
     "status": "archived",
-    "days": 3,
-    "nights": 2,
-    "startingPrice": 65,
-    "startingPriceIDR": 1100000,
-    "highlights": [
-      "Sunset Penanjakan",
-      "Savana Bromo"
-    ],
-    "itinerary": [
-      "Day 1: Malang to Bromo",
-      "Day 2: Sunrise & Return"
-    ],
-    "includes": [
+    "category": "Private Tour",
+    "duration": "3D2N",
+    "price": 2500000,
+    "description": "Exclusive 3D2N overland tour from Malang to Bromo and Ijen Crater with Blue Fire experience.",
+    "destination": "East Java",
+    "included": [
+      "Transport",
       "Jeep 4x4",
-      "Driver"
+      "Hotel",
+      "Entrance Tickets",
+      "Tour Guide"
     ],
-    "excludes": [
-      "Personal meals"
+    "excluded": [
+      "Personal Expenses",
+      "Tips"
     ],
-    "createdAt": "2026-09-18T11:24:24.073Z",
-    "updatedAt": "2026-09-18T11:24:24.142Z",
-    "duration": "3 Hari 2 Malam",
-    "isDeleted": true
+    "createdAt": "2026-09-18T12:00:06.431Z",
+    "updatedAt": "2026-09-18T12:00:06.481Z",
+    "isDeleted": true,
+    "isArchived": true
   },
   {
-    "id": "tour-test-pub-1789730614313",
-    "name": "Bromo Sunset Adventure Live Test (Updated)",
+    "id": "tour-prod-1789732793958",
+    "name": "Bromo & Ijen Midnight Expedition",
+    "slug": "bromo-ijen-midnight-expedition",
     "status": "archived",
-    "days": 3,
-    "nights": 2,
-    "startingPrice": 65,
-    "startingPriceIDR": 1100000,
-    "highlights": [
-      "Sunset Penanjakan",
-      "Savana Bromo"
-    ],
-    "itinerary": [
-      "Day 1: Malang to Bromo",
-      "Day 2: Sunrise & Return"
-    ],
-    "includes": [
+    "category": "Private Tour",
+    "duration": "3D2N",
+    "price": 2500000,
+    "description": "Exclusive 3D2N overland tour from Malang to Bromo and Ijen Crater with Blue Fire experience.",
+    "destination": "East Java",
+    "included": [
+      "Transport",
       "Jeep 4x4",
-      "Driver"
+      "Hotel",
+      "Entrance Tickets",
+      "Tour Guide"
     ],
-    "excludes": [
-      "Personal meals"
+    "excluded": [
+      "Personal Expenses",
+      "Tips"
     ],
-    "createdAt": "2026-09-18T11:23:34.445Z",
-    "updatedAt": "2026-09-18T11:23:34.509Z",
-    "duration": "3 Hari 2 Malam",
-    "isDeleted": true
-  },
-  {
-    "id": "tour-private-draft-1789730545953",
-    "name": "Unpublished Internal Secret Tour",
-    "status": "archived",
-    "startingPriceIDR": 500000,
-    "createdAt": "2026-09-18T11:22:25.957Z",
-    "updatedAt": "2026-09-18T11:22:25.985Z",
-    "isDeleted": true
-  },
-  {
-    "id": "tour-test-draft-1789730545757",
-    "name": "Ijen Blue Fire Secret Draft Tour",
-    "status": "archived",
-    "days": 1,
-    "nights": 0,
-    "startingPrice": 40,
-    "startingPriceIDR": 600000,
-    "createdAt": "2026-09-18T11:22:25.871Z",
-    "updatedAt": "2026-09-18T11:22:25.941Z",
-    "isDeleted": true
-  },
-  {
-    "id": "tour-test-pub-1789730545757",
-    "name": "Bromo Sunset Adventure Live Test (Updated)",
-    "status": "archived",
-    "days": 3,
-    "nights": 2,
-    "startingPrice": 65,
-    "startingPriceIDR": 1100000,
-    "highlights": [
-      "Sunset Penanjakan",
-      "Savana Bromo"
-    ],
-    "itinerary": [
-      "Day 1: Malang to Bromo",
-      "Day 2: Sunrise & Return"
-    ],
-    "includes": [
-      "Jeep 4x4",
-      "Driver"
-    ],
-    "excludes": [
-      "Personal meals"
-    ],
-    "createdAt": "2026-09-18T11:22:25.853Z",
-    "updatedAt": "2026-09-18T11:22:25.917Z",
-    "duration": "3 Hari 2 Malam",
-    "isDeleted": true
+    "createdAt": "2026-09-18T11:59:53.959Z",
+    "updatedAt": "2026-09-18T11:59:54.012Z",
+    "isDeleted": true,
+    "isArchived": true
   },
   {
     "id": "tour-audit-verify-1789728802588",

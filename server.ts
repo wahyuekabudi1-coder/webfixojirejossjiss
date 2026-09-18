@@ -193,31 +193,17 @@ function readDB(): DatabaseState {
     return memoryDB;
   }
 
-  // 1. Check primary persistent database file (data/db.json)
-  try {
-    if (fs.existsSync(PERSISTENT_DB_PATH)) {
+  // Sole authoritative persistent database file (data/db.json)
+  if (fs.existsSync(PERSISTENT_DB_PATH)) {
+    try {
       const raw = fs.readFileSync(PERSISTENT_DB_PATH, 'utf8');
       const parsed = JSON.parse(raw) as DatabaseState;
       if (parsed && typeof parsed === 'object') {
         memoryDB = parsed;
       }
-    }
-  } catch (err) {
-    console.error('Error reading from persistent db path:', err);
-  }
-
-  // 2. Check legacy database file (src/sharetour/db.json) if not yet loaded
-  if (!memoryDB) {
-    try {
-      if (fs.existsSync(DB_PATH)) {
-        const raw = fs.readFileSync(DB_PATH, 'utf8');
-        const parsed = JSON.parse(raw) as DatabaseState;
-        if (parsed && typeof parsed === 'object') {
-          memoryDB = parsed;
-        }
-      }
-    } catch (error) {
-      console.error('Error reading database file, using default map:', error);
+    } catch (err) {
+      console.error('CRITICAL: Error reading authoritative persistent db.json:', err);
+      throw err;
     }
   }
 
@@ -229,6 +215,8 @@ function readDB(): DatabaseState {
   if (!memoryDB.batches) memoryDB.batches = [];
   if (!memoryDB.bookings) memoryDB.bookings = [];
   if (!memoryDB.mainTours) memoryDB.mainTours = [];
+  if (!(memoryDB as any).adminSessions) (memoryDB as any).adminSessions = [];
+  if (!(memoryDB as any).adminDrafts) (memoryDB as any).adminDrafts = {};
 
   if (!(memoryDB as any).contactInfo) {
     (memoryDB as any).contactInfo = {
@@ -240,30 +228,12 @@ function readDB(): DatabaseState {
     };
   }
 
-  // Check if mainTours is empty, and attempt to hydrate from standalone persistent tour files if available
-  if (memoryDB.mainTours.length === 0) {
-    for (const filePath of [MAIN_TOURS_DATA_PATH, MAIN_TOURS_SRC_PATH]) {
-      try {
-        if (fs.existsSync(filePath)) {
-          const raw = fs.readFileSync(filePath, 'utf8');
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            memoryDB.mainTours = parsed;
-            break;
-          }
-        }
-      } catch (e) {
-        // Continue to next check
-      }
-    }
-  }
-
   recalculateBatchSeats(memoryDB);
   return memoryDB;
 }
 
 // -------------------------------------------------------------
-// Safe Atomic File Write Helper (Prevents Corrupted Files on Crash/Restart)
+// Safe Atomic File Write Helper with fsync (Flushes to Disk)
 // -------------------------------------------------------------
 function atomicWriteFileSync(filePath: string, content: string): void {
   const dir = path.dirname(filePath);
@@ -271,12 +241,19 @@ function atomicWriteFileSync(filePath: string, content: string): void {
     fs.mkdirSync(dir, { recursive: true });
   }
   const tempPath = `${filePath}.tmp.${Date.now()}.${Math.random().toString(36).substring(2, 8)}`;
-  fs.writeFileSync(tempPath, content, 'utf8');
+  const fd = fs.openSync(tempPath, 'w');
+  try {
+    fs.writeFileSync(fd, content, 'utf8');
+    fs.fsyncSync(fd);
+  } finally {
+    fs.closeSync(fd);
+  }
   fs.renameSync(tempPath, filePath);
 }
 
 // -------------------------------------------------------------
 // Security: Persistent Admin Session Store (Survives Server Restarts)
+// Authoritative single source of truth: db.adminSessions in data/db.json
 // -------------------------------------------------------------
 const ADMIN_SESSIONS_PATH = path.join(PROJECT_ROOT, 'data', 'admin_sessions.json');
 
@@ -289,48 +266,42 @@ interface AdminSessionRecord {
 function loadAdminSessions(): Map<string, AdminSessionRecord> {
   const map = new Map<string, AdminSessionRecord>();
   try {
-    let list: any = null;
-    if (fs.existsSync(ADMIN_SESSIONS_PATH)) {
-      const raw = fs.readFileSync(ADMIN_SESSIONS_PATH, 'utf8');
-      list = JSON.parse(raw);
-    } else {
-      const db = readDB();
-      if (Array.isArray((db as any).adminSessions)) {
-        list = (db as any).adminSessions;
-      }
-    }
-    if (Array.isArray(list)) {
-      const now = Date.now();
-      for (const s of list) {
-        if (s && s.token && s.expiresAt > now) {
-          map.set(s.token, s);
-        }
+    const db = readDB();
+    const list = Array.isArray((db as any).adminSessions) ? (db as any).adminSessions : [];
+    const now = Date.now();
+    for (const s of list) {
+      if (s && s.token && s.expiresAt > now) {
+        map.set(s.token, s);
       }
     }
   } catch (err) {
-    console.error('Error reading admin sessions:', err);
+    console.error('Error reading admin sessions from db.json:', err);
   }
   return map;
 }
 
 function saveAdminSession(token: string): void {
   try {
-    const map = loadAdminSessions();
+    const db = readDB();
+    const existingList: AdminSessionRecord[] = Array.isArray((db as any).adminSessions) ? (db as any).adminSessions : [];
     const now = Date.now();
-    map.set(token, {
+    const filtered = existingList.filter(s => s && s.token && s.expiresAt > now && s.token !== token);
+    const newRecord: AdminSessionRecord = {
       token,
       createdAt: new Date().toISOString(),
       expiresAt: now + (30 * 24 * 60 * 60 * 1000) // 30 days valid
-    });
-    const sessionList = Array.from(map.values());
-    atomicWriteFileSync(ADMIN_SESSIONS_PATH, JSON.stringify(sessionList, null, 2));
+    };
+    filtered.push(newRecord);
+    (db as any).adminSessions = filtered;
+    writeDB(db);
 
-    // Also mirror to primary authoritative db.json
-    const db = readDB();
-    (db as any).adminSessions = sessionList;
-    atomicWriteFileSync(PERSISTENT_DB_PATH, JSON.stringify(db, null, 2));
+    // Non-blocking auxiliary mirror
+    try {
+      atomicWriteFileSync(ADMIN_SESSIONS_PATH, JSON.stringify(filtered, null, 2));
+    } catch (_) {}
   } catch (err) {
-    console.error('Error saving admin session:', err);
+    console.error('Error saving admin session to authoritative db.json:', err);
+    throw err;
   }
 }
 
@@ -460,42 +431,41 @@ const paymentLimiter = createRateLimiter(25, 15 * 60 * 1000); // 25 attempts per
 
 // -------------------------------------------------------------
 // Security: Admin Authentication Middleware (Strict Environment / Session Auth)
+// Authoritative Admin Session Storage in data/db.json
 // -------------------------------------------------------------
 
-// In-memory registry of issued session tokens from successful admin authentication
-const activeAdminSessionTokens = new Set<string>();
-
 function getAdminConfiguredSecret(): string {
-  return (process.env.ADMIN_SECRET_KEY || 'sawahjaya_secret_2026').trim();
+  return (process.env.ADMIN_SECRET_KEY || '').trim();
+}
+
+function checkIsAdmin(req: express.Request): boolean {
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : '';
+  const secret = req.headers['x-secret-key'] ? String(req.headers['x-secret-key']).trim() : '';
+  const configuredKey = getAdminConfiguredSecret();
+
+  if (configuredKey.length > 0 && (token === configuredKey || secret === configuredKey)) {
+    return true;
+  }
+  if (token && isSessionValid(token)) {
+    return true;
+  }
+  return false;
 }
 
 function requireAdminAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
-  const authHeader = req.headers.authorization;
-  const secretKeyHeader = req.headers['x-secret-key'];
-
-  let token = '';
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    token = authHeader.substring(7).trim();
-  } else if (secretKeyHeader) {
-    token = String(secretKeyHeader).trim();
-  }
-
-  if (!token) {
-    return res.status(401).json({ error: 'Akses ditolak: Membutuhkan Token Autentikasi Admin yang valid.' });
-  }
-
-  const configuredKey = getAdminConfiguredSecret();
-  // Valid if matches configured ADMIN_SECRET_KEY OR matches in-memory session OR matches persistent session in data/admin_sessions.json
-  const matchesConfigured = configuredKey.length > 0 && (token === configuredKey || token === 'sawahjaya_secret_2026');
-  const matchesMemory = activeAdminSessionTokens.has(token);
-  const matchesPersistent = isSessionValid(token);
-
-  if (matchesConfigured || matchesMemory || matchesPersistent) {
-    activeAdminSessionTokens.add(token);
+  if (checkIsAdmin(req)) {
     return next();
   }
 
-  // If credentials are invalid or environment variable is missing, fail securely
+  const authHeader = req.headers.authorization;
+  const secretKeyHeader = req.headers['x-secret-key'];
+  const hasCredential = Boolean((authHeader && authHeader.startsWith('Bearer ')) || secretKeyHeader);
+
+  if (!hasCredential) {
+    return res.status(401).json({ error: 'Akses ditolak: Membutuhkan Token Autentikasi Admin yang valid.' });
+  }
+
   return res.status(401).json({ error: 'Akses ditolak: Token Autentikasi Admin tidak valid atau telah kedaluwarsa.' });
 }
 
@@ -588,13 +558,7 @@ xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitem
 app.get('/api/main-tours', (req, res) => {
   try {
     const tours = readMainTours();
-    const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : '';
-    const secret = req.headers['x-secret-key'];
-    const isAdmin = Boolean(
-      (token && (isSessionValid(token) || activeAdminSessionTokens.has(token) || token === 'sawahjaya_secret_2026')) ||
-      secret === 'sawahjaya_secret_2026'
-    );
+    const isAdmin = checkIsAdmin(req);
     
     if (req.query.all === 'true') {
       if (!isAdmin) {
@@ -603,11 +567,12 @@ app.get('/api/main-tours', (req, res) => {
       return res.json(tours);
     }
 
-    // Public front-end: only return published and non-deleted tours
+    // Public front-end: only return published, non-deleted, and non-archived tours
     const published = tours.filter(t => {
       const s = (t.status || 'published').toLowerCase().trim();
       const isDeleted = Boolean((t as any).isDeleted);
-      return s === 'published' && !isDeleted;
+      const isArchived = Boolean((t as any).isArchived || s === 'archived');
+      return s === 'published' && !isDeleted && !isArchived;
     });
     res.json(published);
   } catch (error) {
@@ -626,19 +591,14 @@ app.get('/api/main-tours/:id', (req, res) => {
       return res.status(404).json({ error: 'Paket tour tidak ditemukan.' });
     }
 
-    const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : '';
-    const secret = req.headers['x-secret-key'];
-    const isAdmin = Boolean(
-      (token && (isSessionValid(token) || activeAdminSessionTokens.has(token) || token === 'sawahjaya_secret_2026')) ||
-      secret === 'sawahjaya_secret_2026'
-    );
+    const isAdmin = checkIsAdmin(req);
 
-    // If requester is not admin, only published and non-deleted tours may be viewed
+    // If requester is not admin, only published, non-deleted, non-archived tours may be viewed
     if (!isAdmin) {
       const s = (tour.status || 'published').toLowerCase().trim();
       const isDeleted = Boolean((tour as any).isDeleted);
-      if (s !== 'published' || isDeleted) {
+      const isArchived = Boolean((tour as any).isArchived || s === 'archived');
+      if (s !== 'published' || isDeleted || isArchived) {
         return res.status(404).json({ error: 'Paket tour tidak ditemukan atau belum dipublikasikan.' });
       }
     }
@@ -745,6 +705,7 @@ app.delete('/api/main-tours/:id', requireAdminAuth, (req, res) => {
     // Default & Safe: Soft Delete (Archive) to preserve booking history integrity
     tour.status = 'archived';
     (tour as any).isDeleted = true;
+    (tour as any).isArchived = true;
     tour.updatedAt = new Date().toISOString();
     writeMainTours(tours);
     console.log(`[Persistence] Tour soft-deleted/archived to preserve booking integrity: ${tourId}`);
@@ -1088,39 +1049,28 @@ const PERSISTENT_DRAFTS_PATH = path.join(PROJECT_ROOT, 'data', 'admin_drafts.jso
 
 function readAdminDrafts(): Record<string, any> {
   try {
-    for (const p of [PERSISTENT_DRAFTS_PATH, DRAFTS_PATH]) {
-      if (fs.existsSync(p)) {
-        const raw = fs.readFileSync(p, 'utf-8');
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === 'object') {
-          return parsed;
-        }
-      }
-    }
     const db = readDB();
     if ((db as any).adminDrafts && typeof (db as any).adminDrafts === 'object') {
       return (db as any).adminDrafts;
     }
     return {};
   } catch (err) {
-    console.error('Error reading admin drafts:', err);
+    console.error('Error reading admin drafts from authoritative db.json:', err);
     return {};
   }
 }
 
 function writeAdminDrafts(drafts: Record<string, any>): void {
+  const db = readDB();
+  (db as any).adminDrafts = drafts;
+  writeDB(db);
+
+  // Non-blocking mirror write
   try {
     const jsonStr = JSON.stringify(drafts, null, 2);
     atomicWriteFileSync(PERSISTENT_DRAFTS_PATH, jsonStr);
     atomicWriteFileSync(DRAFTS_PATH, jsonStr);
-
-    // Also mirror into primary data/db.json
-    const db = readDB();
-    (db as any).adminDrafts = drafts;
-    atomicWriteFileSync(PERSISTENT_DB_PATH, JSON.stringify(db, null, 2));
-  } catch (err) {
-    console.error('Error writing admin drafts:', err);
-  }
+  } catch (_) {}
 }
 
 app.get('/api/admin/drafts', requireAdminAuth, (req, res) => {
@@ -1151,7 +1101,8 @@ app.post('/api/admin/drafts', requireAdminAuth, (req, res) => {
     writeAdminDrafts(drafts);
     res.json({ success: true, key: draft.key });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to save draft' });
+    console.error('Failed to persist admin draft:', err);
+    res.status(500).json({ error: 'Failed to save draft to persistent database' });
   }
 });
 
@@ -1165,7 +1116,8 @@ app.delete('/api/admin/drafts/:key', requireAdminAuth, (req, res) => {
     }
     res.json({ success: true, key });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete draft' });
+    console.error('Failed to delete admin draft:', err);
+    res.status(500).json({ error: 'Failed to delete draft from persistent database' });
   }
 });
 
@@ -2771,23 +2723,24 @@ app.post('/api/bookings/purge', requireAdminAuth, (req, res) => {
 
 const handleAdminLogin = (req: express.Request, res: express.Response) => {
   const { email, password, secretKey } = req.body || {};
-  const adminEmail = (process.env.ADMIN_EMAIL || 'sawahjayagroup@gmail.com').trim().toLowerCase();
-  const validEmails = [adminEmail, 'admin@smartjourney.com', 'sawahjayagroup@gmail.com'];
+  const configuredEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+  const configuredPassword = (process.env.ADMIN_PASSWORD || '').trim();
+  const configuredSecret = (process.env.ADMIN_SECRET_KEY || '').trim();
 
-  const rawAdminPassword = (process.env.ADMIN_PASSWORD || 'sawahjaya2026').trim();
-  const configuredSecret = (process.env.ADMIN_SECRET_KEY || 'sawahjaya_secret_2026').trim();
-
-  // Allow secretKey login or email+password login
-  const isSecretValid = secretKey && (secretKey === configuredSecret || secretKey === 'sawahjaya_secret_2026');
+  // Validate secretKey against configured secret
+  const isSecretValid = Boolean(configuredSecret.length > 0 && secretKey && String(secretKey).trim() === configuredSecret);
   
+  // Validate email and password against environment configuration
   const cleanInputEmail = email ? String(email).trim().toLowerCase() : '';
-  const isEmailValid = cleanInputEmail ? validEmails.includes(cleanInputEmail) : false;
-  const isPasswordValid = password && (password === rawAdminPassword || password === 'sawahjaya2026');
+  const isEmailValid = Boolean(
+    (configuredEmail.length > 0 && cleanInputEmail === configuredEmail) ||
+    cleanInputEmail === 'admin@smartjourney.com'
+  );
+  const isPasswordValid = Boolean(configuredPassword.length > 0 && password && String(password).trim() === configuredPassword);
 
   if (isSecretValid || (isEmailValid && isPasswordValid)) {
     // Generate secure random session token
     const sessionToken = crypto.randomBytes(32).toString('hex');
-    activeAdminSessionTokens.add(sessionToken);
     saveAdminSession(sessionToken);
 
     console.log('[Auth] Admin logged in successfully, session saved to persistent storage.');
@@ -2797,8 +2750,24 @@ const handleAdminLogin = (req: express.Request, res: express.Response) => {
   return res.status(401).json({ error: 'Kredensial login tidak valid. Silakan coba lagi.' });
 };
 
+const handleAdminLogout = (req: express.Request, res: express.Response) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : '';
+  if (token) {
+    try {
+      const db = readDB();
+      const existingList: AdminSessionRecord[] = Array.isArray((db as any).adminSessions) ? (db as any).adminSessions : [];
+      (db as any).adminSessions = existingList.filter(s => s && s.token !== token);
+      writeDB(db);
+    } catch (_) {}
+  }
+  return res.json({ success: true, message: 'Admin session terminated' });
+};
+
 app.post('/api/auth/login', loginLimiter, handleAdminLogin);
 app.post('/api/admin/login', loginLimiter, handleAdminLogin);
+app.post('/api/auth/logout', handleAdminLogout);
+app.post('/api/admin/logout', handleAdminLogout);
 
 // -------------------------------------------------------------
 // First-Party Analytics Engine & Secure Endpoints

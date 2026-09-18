@@ -171,7 +171,6 @@ export default function TaxiAirportBuilders({
       : '';
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    headers['x-secret-key'] = 'sawahjaya_secret_2026';
     return headers;
   };
 
