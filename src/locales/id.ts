@@ -326,7 +326,7 @@ export const idTranslations = {
     licenseTitle: 'Legalitas Perusahaan',
     companyName: 'PT SAWAH JAYA TRANS 1',
     nib: 'Nomor Induk Berusaha (NIB): 0220108920194',
-    address: 'Kantor Operasional: Jl. Puntadewa No. 192, Tumpang, Malang, Jawa Timur 65156',
+    address: 'Kantor Operasional: Jl. Puntadewa No. 192, Tumpang, Malang, Jawa Timur 65156, Indonesia',
   },
 
   // Partnerships View

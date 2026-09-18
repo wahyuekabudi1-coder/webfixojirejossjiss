@@ -1026,6 +1026,13 @@ const dynamicDatabaseZH: Record<string, string> = {
 
 export const LanguageCurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>(() => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const paramLang = urlParams.get("lang");
+      if (paramLang === "id" || paramLang === "en" || paramLang === "zh") {
+        return paramLang as Language;
+      }
+    } catch (e) {}
     return (localStorage.getItem("sj_lang") as Language) || "en";
   });
 

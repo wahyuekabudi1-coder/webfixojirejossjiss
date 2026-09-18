@@ -1,6 +1,6 @@
 {
   "name": "Smart Journey",
-  "description": "Layanan travel premium, tur privat, transfer bandara, taksi, dan kemitraan lokal terverifikasi di Indonesia bersama Smart Journey.",
+  "description": "Smart Journey menyediakan layanan tur privat Bromo, Kawah Ijen, dan Jawa Timur, serta sewa mobil, taksi privat, dan transfer bandara resmi dengan pelayanan profesional.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

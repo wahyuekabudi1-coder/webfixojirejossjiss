@@ -336,8 +336,10 @@ export default function HomeView() {
                 <span className="inline-flex items-center gap-1.5 bg-amber-500/20 text-amber-300 font-extrabold uppercase tracking-widest font-mono text-[10px] sm:text-xs px-3.5 py-1.5 rounded-full border border-amber-500/30 backdrop-blur-sm drop-shadow-md">
                   ★ {safeSlide.tag}
                 </span>
-                <h1 className="text-3xl sm:text-5xl lg:text-6.5xl font-black tracking-tight text-white leading-tight drop-shadow-xl">
-                  {safeSlide.title}
+                <h1 id="homepage-main-h1" className="text-3xl sm:text-5xl lg:text-6.5xl font-black tracking-tight text-white leading-tight drop-shadow-xl">
+                  <span className="text-amber-400 block sm:inline">Smart Journey</span>
+                  <span className="hidden sm:inline text-amber-200/80 mx-2.5 font-light">—</span>
+                  <span className="block sm:inline text-white">{safeSlide.title}</span>
                 </h1>
                 <p className="text-sm sm:text-lg text-neutral-200 lg:text-neutral-100 font-medium max-w-2xl mx-auto drop-shadow-sm leading-relaxed">
                   {safeSlide.subtitle}

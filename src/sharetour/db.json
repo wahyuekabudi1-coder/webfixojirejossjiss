@@ -6833,6 +6833,128 @@
       "type": "Tours",
       "discount": 0,
       "adminNotes": ""
+    },
+    {
+      "id": "book-1789716887474",
+      "bookingCode": "SJ-DETV4Q",
+      "tripId": "tour-bromo-private",
+      "tripTitle": "Bromo Sunrise Exclusive Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-10-15",
+      "fullName": "David Miller",
+      "customerName": "David Miller",
+      "email": "david.miller.887465@example.com",
+      "customerEmail": "david.miller.887465@example.com",
+      "phone": "+6281234567890",
+      "customerPhone": "+6281234567890",
+      "participantsCount": 3,
+      "participantsNames": [
+        "David Miller",
+        "Sarah Miller",
+        "Leo Miller"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Pending",
+      "paymentStatus": "Pending",
+      "totalPrice": 3600000,
+      "totalPriceIDR": 3600000,
+      "baseAmount": 3600000,
+      "uniqueCode": 99,
+      "paymentAmount": 3600099,
+      "createdAt": "2026-09-18T07:34:47.474Z",
+      "details": {
+        "pickupLocation": "Hotel Tugu Malang Lobby",
+        "pickupTime": "00:30 WIB",
+        "vehicleName": "Toyota HiAce Premio Luxury",
+        "package": "Private VIP Platinum",
+        "duration": "1 Hari"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-bromo-private",
+        "tourName": "Bromo Sunrise Exclusive Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Toyota HiAce Premio Luxury",
+        "startingPriceIDR": 3600000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "serviceName": "Bromo Sunrise Exclusive Tour",
+      "type": "tour",
+      "nationalityType": "WNA_EUROPE",
+      "discount": 0,
+      "adminNotes": ""
+    },
+    {
+      "id": "book-1789716887497",
+      "bookingCode": "SJ-QST3Z6",
+      "tripId": "tour-komodo-private",
+      "tripTitle": "Komodo Island Overland & Boat Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-11-20",
+      "fullName": "Chen Wei",
+      "customerName": "Chen Wei",
+      "email": "chen.wei.887496b@example.com",
+      "customerEmail": "chen.wei.887496b@example.com",
+      "phone": "+6281987654321",
+      "customerPhone": "+6281987654321",
+      "participantsCount": 2,
+      "participantsNames": [
+        "Chen Wei"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Pending",
+      "paymentStatus": "Pending",
+      "totalPrice": 5000000,
+      "totalPriceIDR": 5000000,
+      "baseAmount": 5000000,
+      "uniqueCode": 37,
+      "paymentAmount": 5000037,
+      "createdAt": "2026-09-18T07:34:47.497Z",
+      "details": {
+        "pickupLocation": "Komodo Airport Labuan Bajo",
+        "package": "VIP Island Hopper",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-komodo-private",
+        "tourName": "Komodo Island Overland & Boat Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 5000000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "serviceName": "Komodo Island Overland & Boat Tour",
+      "type": "tour",
+      "nationalityType": "WNA_CHINA",
+      "items": [
+        {
+          "no": 1,
+          "description": "Komodo Island Speedboat Charter (Private)",
+          "qty": "1 Boat",
+          "unitPrice": 3500000,
+          "amount": 3500000
+        },
+        {
+          "no": 2,
+          "description": "Komodo National Park Ranger & Guide Service",
+          "qty": "2 Pax",
+          "unitPrice": 500000,
+          "amount": 1000000
+        },
+        {
+          "no": 3,
+          "description": "Snorkeling Gear & Safety Equipment Rental",
+          "qty": "2 Set",
+          "unitPrice": 250000,
+          "amount": 500000
+        }
+      ],
+      "discount": 0,
+      "adminNotes": ""
     }
   ],
   "mainTours": []

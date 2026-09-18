@@ -326,7 +326,7 @@ export const zhTranslations = {
     licenseTitle: '企业营业执照与合法资质',
     companyName: 'PT SAWAH JAYA TRANS 1',
     nib: '印尼企业唯一登记号 (NIB): 0220108920194',
-    address: '营运总部地址：Jl. Puntadewa No. 192, Tumpang, Malang, East Java 65156, Indonesia',
+    address: '营运总部地址：Jl. Puntadewa No. 192, Tumpang, Malang, Jawa Timur 65156, Indonesia',
   },
 
   // Partnerships View

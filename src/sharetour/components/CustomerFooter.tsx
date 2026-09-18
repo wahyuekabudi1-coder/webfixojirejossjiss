@@ -160,7 +160,7 @@ export default function CustomerFooter({ onNavigate }: CustomerFooterProps) {
                 <MapPin className="w-4 h-4 text-[#D6B16D] shrink-0 mt-0.5" />
                 <span className="text-xs leading-normal font-sans">
                   <strong className="block text-white font-semibold">Malang Office:</strong>
-                  Jl. Puntadewa No. 192, Tumpang, Malang 65156
+                  Jl. Puntadewa No. 192, Tumpang, Malang, Jawa Timur 65156, Indonesia
                 </span>
               </li>
               <li className="flex items-start space-x-3 text-gray-300 col-span-1 sm:col-span-2">

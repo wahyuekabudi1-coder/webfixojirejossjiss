@@ -326,7 +326,7 @@ export const enTranslations = {
     licenseTitle: 'Company Legalities & Licensing',
     companyName: 'PT SAWAH JAYA TRANS 1',
     nib: 'Business Identification Number (NIB): 0220108920194',
-    address: 'Operational Office: Jl. Puntadewa No. 192, Tumpang, Malang, East Java 65156, Indonesia',
+    address: 'Operational Office: Jl. Puntadewa No. 192, Tumpang, Malang, Jawa Timur 65156, Indonesia',
   },
 
   // Partnerships View

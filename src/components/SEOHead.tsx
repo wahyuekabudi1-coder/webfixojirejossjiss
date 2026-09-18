@@ -13,7 +13,7 @@ interface PageMetadata {
   schemaData: object;
 }
 
-const BASE_URL = 'https://smartjourney.co.id';
+const BASE_URL = 'https://smartjourney.id';
 const OFFICIAL_PHONE = '+6285212347289';
 const OFFICIAL_ADDRESS = {
   '@type': 'PostalAddress',
@@ -21,49 +21,69 @@ const OFFICIAL_ADDRESS = {
   'addressLocality': 'Malang',
   'addressRegion': 'Jawa Timur',
   'postalCode': '65156',
-  'addressCountry': 'ID'
+  'addressCountry': 'Indonesia'
 };
 
 const defaultCompanySchema = {
   '@context': 'https://schema.org',
   '@type': 'TravelAgency',
-  'name': 'Smart Journey Indonesia',
-  'legalName': 'PT Sawah Jaya Trans 1',
-  'image': 'https://images.unsplash.com/photo-1605538032432-a9f0c8d9baac?auto=format&fit=crop&w=1200&q=80',
-  'url': BASE_URL,
+  '@id': `${BASE_URL}/#organization`,
+  'name': 'Smart Journey',
+  'alternateName': 'Smart Journey Indonesia',
+  'legalName': 'PT Sawah Jaya Trans',
+  'image': `${BASE_URL}/logo.png`,
+  'logo': `${BASE_URL}/logo.png`,
+  'url': `${BASE_URL}/`,
   'telephone': OFFICIAL_PHONE,
-  'email': 'sawahjayatrans@gmail.com',
+  'email': 'Info@sawahjayatrans.com',
   'priceRange': 'IDR 175.000 - IDR 5.000.000',
+  'currenciesAccepted': 'IDR, USD, CNY',
+  'paymentAccepted': 'ArtoPay, QRIS, Virtual Account, Credit Card, Bank Transfer',
   'address': OFFICIAL_ADDRESS,
   'geo': {
     '@type': 'GeoCoordinates',
-    'latitude': -7.983908,
-    'longitude': 112.621391
+    'latitude': -8.0045585,
+    'longitude': 112.7585294
   },
+  'hasMap': 'https://www.google.com/maps/place/Smart+Journey/@-8.0045371,112.7482296,15z/data=!4m8!3m7!1s0x2dd625bdc0ad5b79:0x3446d2c5e7fdfe18!8m2!3d-8.0045585!4d112.7585294!9m1!1b1!16s%2Fg%2F11xfx6lnnw?entry=ttu&g_ep=EgoyMDI2MDYyOS4wIKXMDSoASAFQAw%3D%3D',
   'openingHoursSpecification': {
     '@type': 'OpeningHoursSpecification',
     'dayOfWeek': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
     'opens': '00:00',
     'closes': '23:59'
   },
-  'aggregateRating': {
-    '@type': 'AggregateRating',
-    'ratingValue': '4.9',
-    'reviewCount': '849'
-  }
+  'sameAs': [
+    'https://www.google.com/maps/place/Smart+Journey/@-8.0045371,112.7482296,15z/data=!4m8!3m7!1s0x2dd625bdc0ad5b79:0x3446d2c5e7fdfe18!8m2!3d-8.0045585!4d112.7585294!9m1!1b1!16s%2Fg%2F11xfx6lnnw?entry=ttu&g_ep=EgoyMDI2MDYyOS4wIKXMDSoASAFQAw%3D%3D',
+    'https://www.instagram.com/smartjourney.id',
+    'https://www.tiktok.com/@smartjourney.id',
+    'https://www.xiaohongshu.com/user/profile/smartjourney.id',
+    'https://www.linkedin.com/company/smartjourney-id'
+  ]
+};
+
+const websiteSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  '@id': `${BASE_URL}/#website`,
+  'name': 'Smart Journey',
+  'url': `${BASE_URL}/`,
+  'publisher': {
+    '@id': `${BASE_URL}/#organization`
+  },
+  'inLanguage': ['id', 'en', 'zh-Hans']
 };
 
 const pageSEOData: Record<string, PageMetadata> = {
   home: {
     title: {
-      id: 'Smart Journey | Paket Tour Bromo Ijen, Sewa Mobil & Transfer Bandara',
-      en: 'Smart Journey | Bromo Ijen Volcano Tours, Car Rental & Airport Transfers',
-      zh: 'Smart Journey 慧捷之旅 | 布罗莫宜珍火山游、包车租车与机场接送'
+      id: 'Smart Journey | Bromo, Ijen & East Java Private Tours',
+      en: 'Smart Journey | Bromo, Ijen & East Java Private Tours',
+      zh: 'Smart Journey 慧捷之旅 | 布罗莫、宜珍火山与东爪哇私人定制游'
     },
     description: {
-      id: 'Smart Journey (PT Sawah Jaya Trans 1) menyediakan paket tour Bromo Ijen Blue Fire, sewa mobil Innova Zenix HiAce, taksi privat antar kota, dan transfer bandara 24 jam.',
-      en: 'Smart Journey provides private Mount Bromo & Ijen Blue Fire volcano tours, Innova Zenix & HiAce car rental, intercity private taxis, and 24/7 airport transfers in East Java & Bali.',
-      zh: 'Smart Journey 专注印尼东爪哇与巴厘岛布罗莫火山日出、宜珍神秘蓝火私人包车定制游、Innova与HiAce商务车租车及24小时机场接送机服务。'
+      id: 'Smart Journey menyediakan layanan tur privat Bromo, Kawah Ijen, dan Jawa Timur, serta sewa mobil, taksi privat, dan transfer bandara resmi dengan pelayanan profesional.',
+      en: 'Smart Journey provides official private Mount Bromo, Ijen Crater, and East Java tours, as well as car rental, private taxis, and 24/7 airport transfers.',
+      zh: 'Smart Journey 慧捷之旅提供印尼布罗莫火山、宜珍火山蓝火及东爪哇私人定制游、包车租车、城际专车与机场接送机服务。'
     },
     keywords: {
       id: 'paket tour bromo, tour ijen blue fire, sewa mobil surabaya, rental hiace malang, transfer bandara juanda, smart journey, private tour bali',
@@ -185,19 +205,19 @@ const pageSEOData: Record<string, PageMetadata> = {
   },
   about: {
     title: {
-      id: 'Tentang Kami - PT Sawah Jaya Trans 1 (Smart Journey)',
-      en: 'About Us - PT Sawah Jaya Trans 1 (Smart Journey)',
-      zh: '关于我们 - PT Sawah Jaya Trans 1 (Smart Journey 慧捷之旅)'
+      id: 'Tentang Kami - PT Sawah Jaya Trans (Smart Journey)',
+      en: 'About Us - PT Sawah Jaya Trans (Smart Journey)',
+      zh: '关于我们 - PT Sawah Jaya Trans (Smart Journey 慧捷之旅)'
     },
     description: {
-      id: 'Profil PT Sawah Jaya Trans 1, legalitas izin pariwisata resmi, visi keselamatan berkendara, dan komitmen layanan prima Smart Journey Indonesia.',
-      en: 'Learn about PT Sawah Jaya Trans 1, our official tourism transport licenses, strict safety standards, and commitment to hospitality in Indonesia.',
-      zh: '了解 PT Sawah Jaya Trans 1 企业资质、正规营运牌照、安全行车标准与高品质客户服务承诺。'
+      id: 'Profil PT Sawah Jaya Trans, legalitas izin pariwisata resmi, visi keselamatan berkendara, dan komitmen layanan prima Smart Journey Indonesia.',
+      en: 'Learn about PT Sawah Jaya Trans, our official tourism transport licenses, strict safety standards, and commitment to hospitality in Indonesia.',
+      zh: '了解 PT Sawah Jaya Trans 企业资质、正规营运牌照、安全行车标准与高品质客户服务承诺。'
     },
     keywords: {
-      id: 'tentang smart journey, pt sawah jaya trans 1, legalitas travel jawa timur, profil perusahaan tour malang',
-      en: 'about smart journey, pt sawah jaya trans 1, official tour operator east java, licensed transport company',
-      zh: '关于慧捷之旅, PT Sawah Jaya Trans 1, 正规印尼地接社, 官方牌照车队'
+      id: 'tentang smart journey, pt sawah jaya trans, legalitas travel jawa timur, profil perusahaan tour malang',
+      en: 'about smart journey, pt sawah jaya trans, official tour operator east java, licensed transport company',
+      zh: '关于慧捷之旅, PT Sawah Jaya Trans, 正规印尼地接社, 官方牌照车队'
     },
     canonical: `${BASE_URL}/#/about`,
     breadcrumbsName: {
@@ -270,7 +290,7 @@ const SEOHead: React.FC = () => {
     let keywords = '';
     let canonical = '';
     let breadcrumbItemName = '';
-    let ogImage = 'https://images.unsplash.com/photo-1605538032432-a9f0c8d9baac?auto=format&fit=crop&w=1200&q=80';
+    let ogImage = `${BASE_URL}/logo.png`;
     let schemaList: object[] = [];
 
     const activeTour = searchParams?.selectedTourId 
@@ -357,7 +377,26 @@ const SEOHead: React.FC = () => {
         ]
       };
 
-      schemaList = [mainSchema, breadcrumbSchema];
+      if (activePage === 'home') {
+        const webpageSchema = {
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          '@id': `${BASE_URL}/#webpage`,
+          'url': `${BASE_URL}/`,
+          'name': title,
+          'isPartOf': {
+            '@id': `${BASE_URL}/#website`
+          },
+          'about': {
+            '@id': `${BASE_URL}/#organization`
+          },
+          'inLanguage': language === 'zh' ? 'zh-Hans' : language === 'id' ? 'id' : 'en',
+          'description': description
+        };
+        schemaList = [mainSchema, websiteSchema, webpageSchema];
+      } else {
+        schemaList = [mainSchema, breadcrumbSchema];
+      }
     }
 
     // 1. Update Document Title
@@ -396,7 +435,9 @@ const SEOHead: React.FC = () => {
 
     // Geo Location Tags
     setMetaTag('meta[name="geo.region"]', 'name', 'geo.region', 'ID-JI');
-    setMetaTag('meta[name="geo.placename"]', 'name', 'geo.placename', 'Malang');
+    setMetaTag('meta[name="geo.placename"]', 'name', 'geo.placename', 'Malang, Jawa Timur');
+    setMetaTag('meta[name="geo.position"]', 'name', 'geo.position', '-8.004559;112.758529');
+    setMetaTag('meta[name="ICBM"]', 'name', 'ICBM', '-8.004559, 112.758529');
 
     // Open Graph Tags
     const ogLocale = language === 'zh' ? 'zh_CN' : language === 'en' ? 'en_US' : 'id_ID';

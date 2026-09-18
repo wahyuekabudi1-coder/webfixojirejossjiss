@@ -308,6 +308,7 @@ app.use((req, res, next) => {
   const allowedOrigins = [
     process.env.PRODUCTION_URL,
     process.env.PUBLIC_URL,
+    'https://smartjourney.id',
     'https://smartjourney.co.id'
   ].filter(Boolean) as string[];
 
@@ -461,46 +462,16 @@ app.get('/robots.txt', (req, res) => {
 Allow: /
 Disallow: /admin
 Disallow: /api/
-Sitemap: https://smartjourney.co.id/sitemap.xml
+
+Sitemap: https://smartjourney.id/sitemap.xml
 `);
 });
 
 app.get('/sitemap.xml', (req, res) => {
   res.type('application/xml');
 
-  const baseUrl = 'https://smartjourney.co.id';
+  const baseUrl = 'https://smartjourney.id';
   const currentDate = new Date().toISOString().split('T')[0];
-  let tripsXml = '';
-
-  try {
-    const db = readDB();
-
-    if (db && db.trips) {
-      tripsXml = db.trips
-        .map((t: any) => `
-<url>
-<loc>${baseUrl}/#/share-tour?id=${t.id || t.slug}</loc>
-<lastmod>${currentDate}</lastmod>
-<changefreq>daily</changefreq>
-<priority>0.8</priority>
-</url>`)
-        .join('');
-    }
-
-    const mainTours = readMainTours();
-    if (mainTours && mainTours.length > 0) {
-      const publishedTours = mainTours.filter(t => t.status !== 'draft' && t.status !== 'unpublished');
-      tripsXml += publishedTours.map((t: any) => `
-<url>
-<loc>${baseUrl}/#/tours?id=${t.id}</loc>
-<lastmod>${currentDate}</lastmod>
-<changefreq>daily</changefreq>
-<priority>0.85</priority>
-</url>`).join('');
-    }
-  } catch {
-    // ignore
-  }
 
   const sitemapContent = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
@@ -512,54 +483,6 @@ xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitem
 <changefreq>daily</changefreq>
 <priority>1.0</priority>
 </url>
-<url>
-<loc>${baseUrl}/#/tours</loc>
-<lastmod>${currentDate}</lastmod>
-<changefreq>daily</changefreq>
-<priority>0.9</priority>
-</url>
-<url>
-<loc>${baseUrl}/#/car-rental</loc>
-<lastmod>${currentDate}</lastmod>
-<changefreq>daily</changefreq>
-<priority>0.9</priority>
-</url>
-<url>
-<loc>${baseUrl}/#/share-tour</loc>
-<lastmod>${currentDate}</lastmod>
-<changefreq>daily</changefreq>
-<priority>0.85</priority>
-</url>
-<url>
-<loc>${baseUrl}/#/airport</loc>
-<lastmod>${currentDate}</lastmod>
-<changefreq>weekly</changefreq>
-<priority>0.8</priority>
-</url>
-<url>
-<loc>${baseUrl}/#/taxi</loc>
-<lastmod>${currentDate}</lastmod>
-<changefreq>weekly</changefreq>
-<priority>0.8</priority>
-</url>
-<url>
-<loc>${baseUrl}/#/about</loc>
-<lastmod>${currentDate}</lastmod>
-<changefreq>monthly</changefreq>
-<priority>0.6</priority>
-</url>
-<url>
-<loc>${baseUrl}/#/partnerships</loc>
-<lastmod>${currentDate}</lastmod>
-<changefreq>weekly</changefreq>
-<priority>0.7</priority>
-</url>
-<url>
-<loc>${baseUrl}/#/bookings</loc>
-<lastmod>${currentDate}</lastmod>
-<changefreq>daily</changefreq>
-<priority>0.5</priority>
-</url>${tripsXml}
 </urlset>`;
 
   res.send(sitemapContent);
@@ -1607,11 +1530,11 @@ app.get(['/api/private-tour/final-summary/:bookingCode', '/api/private-tour/fina
       },
       company: {
         name: 'Smart Journey Indonesia',
-        legalEntity: 'PT Smart Journey Transindo',
+        legalEntity: 'PT Sawah Jaya Trans',
         brand: 'Smart Journey',
         hotline: '+62 852-1234-7289',
-        email: 'support@smartjourney.co.id',
-        website: 'https://smartjourney.co.id',
+        email: 'Info@sawahjayatrans.com',
+        website: 'https://smartjourney.id',
         operationalHub: 'Malang & Surabaya, Jawa Timur, Indonesia'
       }
     });

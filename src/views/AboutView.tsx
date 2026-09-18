@@ -1207,7 +1207,7 @@ export default function AboutView() {
                   <div>
                     <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 font-mono">Address</h4>
                     <p className="text-sm sm:text-base font-black text-slate-900 mt-0.5">
-                      Jl. Puntadewa No. 192, Kel. Tumpang, Kec. Tumpang, Kabupaten Malang 65156
+                      Jl. Puntadewa No. 192, Tumpang, Malang, Jawa Timur 65156, Indonesia
                     </p>
                   </div>
                 </div>

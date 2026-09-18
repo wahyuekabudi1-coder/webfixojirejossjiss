@@ -691,7 +691,7 @@ async function main() {
         <div class="dot dot-red"></div>
         <div class="dot dot-yellow"></div>
         <div class="dot dot-green"></div>
-        <div class="browser-url">https://smartjourney.co.id/tours</div>
+        <div class="browser-url">https://smartjourney.id/tours</div>
       </div>
       <img src="${imgFlow1}" class="screenshot-img" alt="Katalog Tur" />
     </div>
@@ -738,7 +738,7 @@ async function main() {
         <div class="dot dot-red"></div>
         <div class="dot dot-yellow"></div>
         <div class="dot dot-green"></div>
-        <div class="browser-url">https://smartjourney.co.id/tours?selectedTourId=tour-sj870002</div>
+        <div class="browser-url">https://smartjourney.id/tours?selectedTourId=tour-sj870002</div>
       </div>
       <img src="${imgFlow2}" class="screenshot-img" alt="Detail Tur" />
     </div>
@@ -785,7 +785,7 @@ async function main() {
         <div class="dot dot-red"></div>
         <div class="dot dot-yellow"></div>
         <div class="dot dot-green"></div>
-        <div class="browser-url">https://smartjourney.co.id/tours#booking-section</div>
+        <div class="browser-url">https://smartjourney.id/tours#booking-section</div>
       </div>
       <img src="${imgFlow3}" class="screenshot-img" alt="Kalender & Kategori Tamu" />
     </div>
@@ -832,7 +832,7 @@ async function main() {
         <div class="dot dot-red"></div>
         <div class="dot dot-yellow"></div>
         <div class="dot dot-green"></div>
-        <div class="browser-url">https://smartjourney.co.id/tours/checkout#registration</div>
+        <div class="browser-url">https://smartjourney.id/tours/checkout#registration</div>
       </div>
       <img src="${imgFlow4}" class="screenshot-img" alt="Formulir Data Tamu" />
     </div>
@@ -879,7 +879,7 @@ async function main() {
         <div class="dot dot-red"></div>
         <div class="dot dot-yellow"></div>
         <div class="dot dot-green"></div>
-        <div class="browser-url">https://smartjourney.co.id/tours/checkout#payment-options</div>
+        <div class="browser-url">https://smartjourney.id/tours/checkout#payment-options</div>
       </div>
       <img src="${imgFlow5}" class="screenshot-img" alt="Review Biaya & Opsi Bayar" />
     </div>
@@ -973,7 +973,7 @@ async function main() {
         <div class="dot dot-red"></div>
         <div class="dot dot-yellow"></div>
         <div class="dot dot-green"></div>
-        <div class="browser-url">https://smartjourney.co.id/bookings</div>
+        <div class="browser-url">https://smartjourney.id/bookings</div>
       </div>
       <img src="${imgFlow7}" class="screenshot-img" alt="Status Booking & E-Ticket" />
     </div>

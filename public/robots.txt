@@ -3,4 +3,4 @@ Allow: /
 Disallow: /admin
 Disallow: /api/
 
-Sitemap: https://smartjourney.co.id/sitemap.xml
+Sitemap: https://smartjourney.id/sitemap.xml

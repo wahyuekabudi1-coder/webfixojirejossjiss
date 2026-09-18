@@ -107,7 +107,7 @@ export default function Header() {
             {!imageFailed ? (
               <img 
                 src="/logo.png" 
-                alt="Smart Journey Logo" 
+                alt="Smart Journey" 
                 className="h-9 sm:h-11 w-auto max-w-[160px] sm:max-w-[180px] object-contain group-hover:scale-105 transition-transform duration-300"
                 onError={() => setImageFailed(true)}
               />

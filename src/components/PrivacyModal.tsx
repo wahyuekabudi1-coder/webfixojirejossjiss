@@ -294,7 +294,7 @@ export default function PrivacyModal() {
                     <div className="flex items-start gap-2.5 text-slate-300">
                       <MapPin className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
                       <div className="leading-snug">
-                        <strong>Kantor Pusat:</strong> Jl. Puntadewa No. 192, Tumpang, Malang, Jawa Timur, Indonesia
+                        <strong>Kantor Pusat:</strong> Jl. Puntadewa No. 192, Tumpang, Malang, Jawa Timur 65156, Indonesia
                       </div>
                     </div>
                   </div>

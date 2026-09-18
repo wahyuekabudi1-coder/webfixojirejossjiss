@@ -100,7 +100,7 @@ export default function Footer() {
               {!footerLogoError ? (
                 <img 
                   src="/logo.png" 
-                  alt="Smart Journey Logo" 
+                  alt="Smart Journey" 
                   className="h-10 sm:h-11 w-auto max-w-[160px] object-contain group-hover:scale-105 transition-transform duration-300"
                   onError={() => setFooterLogoError(true)}
                 />
@@ -209,7 +209,7 @@ export default function Footer() {
               <li className="flex items-start space-x-2.5">
                 <MapPin className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
                 <div className="text-xs text-neutral-700 space-y-0.5 leading-snug">
-                  <div><strong>Malang:</strong> Jl. Puntadewa No. 192, Tumpang</div>
+                  <div><strong>Malang:</strong> Jl. Puntadewa No. 192, Tumpang, Malang, Jawa Timur 65156, Indonesia</div>
                   <div><strong>Bali:</strong> Jl. By Pass Ngurah Rai, Denpasar</div>
                 </div>
               </li>
