@@ -1,4 +1,19 @@
-import type { Tour } from '../types.ts';
+import type {
+  Tour,
+  OperationalCity,
+  RentalLocation,
+  RentalCategory,
+  RentalVehicle,
+  RentalAddon,
+  ZonePricing,
+  Airport,
+  AirportRoute,
+  TaxiMasterArea,
+  TaxiMasterDestination,
+  TaxiPricingRule,
+  TaxiAreaRule,
+  TaxiImportHistory
+} from '../types.ts';
 
 export interface TimeSchedule {
   time: string;
@@ -143,5 +158,25 @@ export interface DatabaseState {
   batches: Batch[];
   bookings: Booking[];
   mainTours?: Tour[];
+  rentals?: {
+    cities: OperationalCity[];
+    locations: RentalLocation[];
+    categories: RentalCategory[];
+    vehicles: RentalVehicle[];
+    addons: RentalAddon[];
+    zonePricing: ZonePricing[];
+  };
+  airportTransfers?: {
+    airports: Airport[];
+    routes: AirportRoute[];
+  };
+  taxiServices?: {
+    masterAreas: TaxiMasterArea[];
+    destinations: TaxiMasterDestination[];
+    pricingRules: TaxiPricingRule[];
+    areaRules: TaxiAreaRule[];
+    importHistory: TaxiImportHistory[];
+  };
+  schedules?: any[];
 }
 

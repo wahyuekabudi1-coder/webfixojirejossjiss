@@ -1,6 +1,127 @@
 {
-  "trips": [],
-  "batches": [],
+  "trips": [
+    {
+      "id": "trip-2",
+      "title": "Ancient Java: Bromo Sunrise & Mt. Ijen Blue Fire",
+      "slug": "bromo-ijen",
+      "location": "East Java (Probolinggo & Banyuwangi)",
+      "duration": "3 Days 2 Nights",
+      "days": 3,
+      "nights": 2,
+      "category": "Adventure",
+      "description": "Witness the surreal sea of sand surrounding Mount Bromo, feel the cold mountain air as the sun rises over smoke-venting volcanos, and venture deep inside Mount Ijen to see the magical neon-blue sulfuric fire of Banyuwangi.",
+      "coverImage": "https://images.unsplash.com/photo-1605538032432-a9f0c8d9baac?auto=format&fit=crop&w=1200&q=80",
+      "included": [
+        "AC Transport throughout Java tour (3 days)",
+        "4x4 Private Jeep in Mount Bromo",
+        "Local mountain guides for Bromo & Ijen",
+        "Entrance fees for Bromo and Ijen National Parks",
+        "1 Night at Bromo mountain lodge, 1 Night at Banyuwangi hotel",
+        "Gas masks for Mt. Ijen sulfuric fumes",
+        "Daily mineral water and breakfast"
+      ],
+      "excluded": [
+        "Lunch and Dinner meals",
+        "Horse riding fees in Bromo",
+        "Flights or trains to Surabaya/Malang",
+        "Tips for guides and drivers"
+      ],
+      "highlight": "Private 4x4 Jeep sunrise convoy across Bromo's whispering sand sea, and a midnight trek into Ijen crater to see the rare glowing sulfuric blue flame.",
+      "gallery": [
+        "https://images.unsplash.com/photo-1605538032432-a9f0c8d9baac?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1516690561799-46d8f74f9abf?auto=format"
+      ],
+      "faq": [
+        {
+          "question": "Do you supply protective equipment?",
+          "answer": "Yes, we provide professional active-carbon gas masks and headlamps for the Mt. Ijen sulfur hike."
+        }
+      ],
+      "status": "published",
+      "startingPrice": 150,
+      "price": 150,
+      "startingPriceIDR": 2250000,
+      "itinerary": [
+        {
+          "day": 1,
+          "title": "Pick up from Surabaya & Bromo Mountain Check-in",
+          "description": "Pick up from Surabaya Airport/Train Station. Enjoy a private scenic 4-hour drive to Cemoro Lawang village. Check into your cozy room sitting directly on the rim of the Tengger Caldera.",
+          "timeSchedules": [
+            {
+              "time": "12:00",
+              "activity": "Surabaya airport pickup & meet private driver"
+            },
+            {
+              "time": "16:00",
+              "activity": "Check-in at mountain caldera overlook lodge"
+            }
+          ]
+        },
+        {
+          "day": 2,
+          "title": "Bromo Sunrise, Crater Trek & Banyuwangi Drive",
+          "description": "Wake up at 3:00 AM. Board your private 4x4 Jeep to Penanjakan viewpoint to witness the world-famous sunrise over Mt. Bromo. Afterward, cross the Whispering Sand and hike 250 steps to Bromo's crater rim. Transfer drive to Banyuwangi.",
+          "timeSchedules": [
+            {
+              "time": "03:00",
+              "activity": "Board 4x4 Offroad Jeep to sunrise overlook"
+            },
+            {
+              "time": "08:00",
+              "activity": "Volcanic crater rim hike & Whispering Sand crossing"
+            },
+            {
+              "time": "12:00",
+              "activity": "Checkout and transfer drive to Banyuwangi"
+            }
+          ]
+        },
+        {
+          "day": 3,
+          "title": "Ijen Midnight Hike, Blue Flame Experience & Bali Ferry Transfer",
+          "description": "Start at 1:00 AM. Hike 2 hours up Mount Ijen. Descent safely into the crater alongside sulfur miners to see the stunning Neon Blue Acid Flames of Ijen. Return to base for breakfast, then transfer to Banyuwangi harbor or catch a ferry to Bali.",
+          "timeSchedules": [
+            {
+              "time": "01:00",
+              "activity": "Midnight departure and trek up Mt. Ijen summit"
+            },
+            {
+              "time": "03:30",
+              "activity": "Sulfur crater descent & glowing blue fire viewing"
+            },
+            {
+              "time": "06:00",
+              "activity": "Sunrise view over toxic acid green lake"
+            },
+            {
+              "time": "11:00",
+              "activity": "Breakfast checkout & ferry transfer drop-off"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "batches": [
+    {
+      "id": "batch-4",
+      "tripId": "trip-2",
+      "departureDate": "2026-07-22",
+      "quota": 12,
+      "availableSeats": 12,
+      "price": 150,
+      "status": "Open"
+    },
+    {
+      "id": "batch-5",
+      "tripId": "trip-2",
+      "departureDate": "2026-08-18",
+      "quota": 12,
+      "availableSeats": 12,
+      "price": 150,
+      "status": "Open"
+    }
+  ],
   "bookings": [
     {
       "id": "book-1788779251752",
@@ -6957,5 +7078,708 @@
       "adminNotes": ""
     }
   ],
-  "mainTours": []
+  "mainTours": [
+    {
+      "id": "tour-sj870002",
+      "name": "1D Bromo Sunrise Tour",
+      "description": "Paket tur privat 1 hari menyaksikan matahari terbit spektakuler di Penanjakan Bromo, trekking kawah aktif Bromo, dan melintasi lautan pasir berbisik dengan Jeep 4x4 eksklusif.",
+      "duration": "1 Hari",
+      "days": 1,
+      "nights": 0,
+      "startingPrice": 130,
+      "startingPriceIDR": 2000000,
+      "wniPrice": 2000000,
+      "wnaPrice": 130,
+      "rating": 5,
+      "reviewCount": 42,
+      "image": "https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&w=1200&q=80",
+      "highlights": [
+        "Private 4x4 Jeep Hardtop Bromo",
+        "Spot Sunrise Penanjakan 1 / King Kong Hill",
+        "Eksplorasi Kawah Bromo & Pura Luhur Poten",
+        "Pasir Berbisik & Savana Bukit Teletubbies"
+      ],
+      "itinerary": [
+        "Day 1 | 00:30 | Penjemputan | Penjemputan di Malang/Surabaya (Hotel/Stasiun/Bandara)",
+        "Day 1 | 03:00 | Transit Jeep 4x4 | Tiba di rest area transit Jeep Sukapura/Tosari",
+        "Day 1 | 04:30 | Golden Sunrise | Menyaksikan sunrise menakjubkan di Viewpoint Penanjakan",
+        "Day 1 | 06:30 | Kawah Aktif Bromo | Trekking menuju bibir kawah Gunung Bromo & Pura Poten",
+        "Day 1 | 08:30 | Pasir Berbisik | Foto sesi di Pasir Berbisik dan Savana Bukit Teletubbies",
+        "Day 1 | 10:30 | Sarapan & Kembali | Sarapan pagi dan perjalanan kembali ke titik awal"
+      ],
+      "category": "Adventure",
+      "status": "published",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-09-18T00:00:00.000Z"
+    },
+    {
+      "id": "tour-bromo-sunrise-safari",
+      "name": "Bromo Sunrise & Crater Safari",
+      "description": "Eksplorasi mendalam Gunung Bromo 2 Hari 1 Malam dengan menginap di kawasan kaldera Tengger. Termasuk jeep privat, tiket taman nasional, dan armada premium.",
+      "duration": "2 Hari 1 Malam",
+      "days": 2,
+      "nights": 1,
+      "startingPrice": 190,
+      "startingPriceIDR": 2850000,
+      "wniPrice": 2850000,
+      "wnaPrice": 190,
+      "rating": 4.9,
+      "reviewCount": 56,
+      "image": "https://images.unsplash.com/photo-1605538032432-a9f0c8d9baac?auto=format&fit=crop&w=1200&q=80",
+      "highlights": [
+        "Sunrise Penanjakan 1 Tanpa Antre",
+        "Private 4x4 Jeep Safari",
+        "Stay at Caldera Viewpoint Lodge",
+        "Trekking Kawah Bromo & Savana Hijau"
+      ],
+      "itinerary": [
+        "Day 1 - Malang → Bromo | 10:00 | Penjemputan | Hotel / Stasiun / Bandara",
+        "Day 1 - Malang → Bromo | 13:00 | Makan Siang | Resto Lokal Khas Tengger",
+        "Day 1 - Bromo | 15:30 | Check-in Lodge | Istirahat menikmati kabut pegunungan",
+        "Day 2 - Bromo → Malang | 03:00 | Sunrise Tour | Puncak Penanjakan Bromo",
+        "Day 2 - Bromo | 06:00 | Crater Hike | Kawah Aktif Bromo & Pasir Berbisik",
+        "Day 2 - Bromo → Malang | 11:00 | Check-out & Drop | Pengantaran kembali ke Malang/Surabaya"
+      ],
+      "category": "Nature",
+      "status": "published",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-09-18T00:00:00.000Z"
+    },
+    {
+      "id": "tour-bromo-private",
+      "name": "Bromo Sunrise Exclusive Tour",
+      "description": "Paket tur privat eksklusif VIP ke Gunung Bromo dengan armada Toyota Innova Reborn / Hiace Premio, driver profesional, dan fasilitas premium lengkap.",
+      "duration": "1 Hari",
+      "days": 1,
+      "nights": 0,
+      "startingPrice": 240,
+      "startingPriceIDR": 3600000,
+      "wniPrice": 3600000,
+      "wnaPrice": 240,
+      "rating": 5,
+      "reviewCount": 38,
+      "image": "https://images.unsplash.com/photo-1588668214407-6ea9a6d8c272?auto=format&fit=crop&w=1200&q=80",
+      "highlights": [
+        "Layanan VIP Eksklusif",
+        "Armada Eksekutif Terbaru",
+        "Jeep Bromo Khusus Rombongan Anda",
+        "Dokumentasi Foto Kualitas Tinggi"
+      ],
+      "itinerary": [
+        "Day 1 | 00:00 | VIP Pickup | Penjemputan di Surabaya/Malang dengan armada VIP",
+        "Day 1 | 03:00 | Jeep Eksklusif | Naik Jeep Bromo privat menuju Seruni Point / Penanjakan",
+        "Day 1 | 05:00 | Sunrise & Snack | Menikmati sunrise hangat ditemani kopi/teh dan snack",
+        "Day 1 | 07:00 | Kawah & Pura | Eksplorasi Kawah Bromo, Pasir Berbisik, & Bukit Teletubbies",
+        "Day 1 | 11:00 | Kuliner Lokal | Santap siang menu khas Jawa Timur",
+        "Day 1 | 14:00 | VIP Drop-off | Pengantaran kembali ke Surabaya/Malang"
+      ],
+      "category": "Adventure",
+      "status": "published",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-09-18T00:00:00.000Z"
+    },
+    {
+      "id": "tour-komodo-private",
+      "name": "Komodo Island Overland & Boat Tour",
+      "description": "Petualangan eksotis 3 Hari 2 Malam menjelajahi habitat asli Komodo Dragon, Pulau Padar, Pink Beach, dan berenang bersama Pari Manta di Labuan Bajo.",
+      "duration": "3 Hari 2 Malam",
+      "days": 3,
+      "nights": 2,
+      "startingPrice": 330,
+      "startingPriceIDR": 5000000,
+      "wniPrice": 5000000,
+      "wnaPrice": 330,
+      "rating": 5,
+      "reviewCount": 29,
+      "image": "https://images.unsplash.com/photo-1518548419970-58e3b4079ab2?auto=format&fit=crop&w=1200&q=80",
+      "highlights": [
+        "Trekking Pulau Padar View 3 Warna Pantai",
+        "Melihat Komodo Dragon bersama Ranger",
+        "Snorkeling di Pink Beach & Manta Point",
+        "Speedboat Phinisi Eksklusif"
+      ],
+      "itinerary": [
+        "Day 1 | 09:00 | Penjemputan Labuan Bajo | Bandara Komodo (LBJ) ke Pelabuhan Labuan Bajo",
+        "Day 1 | 11:00 | Pulau Kelor & Manjarite | Snorkeling terumbu karang dan pantai pasir putih",
+        "Day 1 | 17:30 | Sunset Pulau Kalong | Menyaksikan ribuan kelelawar terbang saat senja",
+        "Day 2 | 05:30 | Sunrise Pulau Padar | Trekking puncak Pulau Padar untuk panorama legendaris",
+        "Day 2 | 09:00 | Pink Beach & Komodo | Relaksasi di Pink Beach dan jelajah Pulau Komodo",
+        "Day 2 | 14:00 | Manta Point | Berenang dan snorkeling bersama Pari Manta liar",
+        "Day 3 | 08:00 | Gua Rangko | Berenang di gua air asin kristal sebelum transfer bandara"
+      ],
+      "category": "Adventure",
+      "status": "published",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-09-18T00:00:00.000Z"
+    }
+  ],
+  "rentals": {
+    "cities": [
+      {
+        "id": "city-sub",
+        "name": "Surabaya",
+        "status": "Active",
+        "displayOrder": 1
+      },
+      {
+        "id": "city-mlg",
+        "name": "Malang",
+        "status": "Active",
+        "displayOrder": 2
+      },
+      {
+        "id": "city-bali",
+        "name": "Bali",
+        "status": "Active",
+        "displayOrder": 3
+      },
+      {
+        "id": "city-bwi",
+        "name": "Banyuwangi",
+        "status": "Active",
+        "displayOrder": 4
+      },
+      {
+        "id": "city-jog",
+        "name": "Yogyakarta",
+        "status": "Active",
+        "displayOrder": 5
+      }
+    ],
+    "locations": [
+      {
+        "id": "loc-sub-apt",
+        "cityId": "city-sub",
+        "name": "Bandara Juanda (SUB) T1/T2",
+        "zone": "Zone 0",
+        "status": "Active",
+        "displayOrder": 1
+      },
+      {
+        "id": "loc-sub-gubeng",
+        "cityId": "city-sub",
+        "name": "Stasiun Surabaya Gubeng",
+        "zone": "Zone 0",
+        "status": "Active",
+        "displayOrder": 2
+      },
+      {
+        "id": "loc-mlg-apt",
+        "cityId": "city-mlg",
+        "name": "Bandara Abdulrachman Saleh (MLG)",
+        "zone": "Zone 0",
+        "status": "Active",
+        "displayOrder": 1
+      },
+      {
+        "id": "loc-bali-dps",
+        "cityId": "city-bali",
+        "name": "Bandara Ngurah Rai (DPS)",
+        "zone": "Zone 0",
+        "status": "Active",
+        "displayOrder": 1
+      }
+    ],
+    "categories": [
+      {
+        "id": "cat-std",
+        "name": "Standard MPV",
+        "description": "Ekonomis & efisien, cocok untuk keluarga kecil (Avanza / Xpander)",
+        "displayOrder": 1,
+        "status": "Active",
+        "priceZone0USD": 40,
+        "priceZone0IDR": 600000,
+        "priceZone1USD": 50,
+        "priceZone1IDR": 750000,
+        "priceZone2USD": 65,
+        "priceZone2IDR": 975000
+      },
+      {
+        "id": "cat-prem",
+        "name": "Premium MPV",
+        "description": "Kenyamanan maksimal untuk perjalanan bisnis & wisata (Innova Reborn / Zenix)",
+        "displayOrder": 2,
+        "status": "Active",
+        "priceZone0USD": 60,
+        "priceZone0IDR": 900000,
+        "priceZone1USD": 75,
+        "priceZone1IDR": 1125000,
+        "priceZone2USD": 95,
+        "priceZone2IDR": 1425000
+      },
+      {
+        "id": "cat-comm",
+        "name": "Microbus Commuter",
+        "description": "Kapasitas besar 14-15 penumpang (Toyota Hiace Commuter)",
+        "displayOrder": 3,
+        "status": "Active",
+        "priceZone0USD": 85,
+        "priceZone0IDR": 1300000,
+        "priceZone1USD": 105,
+        "priceZone1IDR": 1600000,
+        "priceZone2USD": 130,
+        "priceZone2IDR": 1950000
+      },
+      {
+        "id": "cat-premio",
+        "name": "Luxury Van Premio",
+        "description": "Kemewahan kabin eksklusif (Toyota Hiace Premio Luxury)",
+        "displayOrder": 4,
+        "status": "Active",
+        "priceZone0USD": 110,
+        "priceZone0IDR": 1700000,
+        "priceZone1USD": 135,
+        "priceZone1IDR": 2050000,
+        "priceZone2USD": 165,
+        "priceZone2IDR": 2500000
+      }
+    ],
+    "vehicles": [
+      {
+        "id": "veh-avanza-sub",
+        "name": "Toyota All New Avanza",
+        "categoryId": "cat-std",
+        "cityId": "city-sub",
+        "passengers": 5,
+        "luggage": 2,
+        "hasAC": true,
+        "pricePerDay": 40,
+        "pricePerDayIDR": 600000,
+        "image": "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80",
+        "description": "MPV andalan keluarga Indonesia, irit bahan bakar dan lincah.",
+        "features": [
+          "Full AC Dual Blower",
+          "Audio Bluetooth",
+          "Driver Berpengalaman",
+          "Termasuk BBM"
+        ],
+        "status": "Active",
+        "supportedZones": [
+          "Zone 0",
+          "Zone 1",
+          "Zone 2"
+        ]
+      },
+      {
+        "id": "veh-innova-sub",
+        "name": "Toyota Innova Reborn",
+        "categoryId": "cat-prem",
+        "cityId": "city-sub",
+        "passengers": 7,
+        "luggage": 4,
+        "hasAC": true,
+        "pricePerDay": 60,
+        "pricePerDayIDR": 900000,
+        "image": "https://images.unsplash.com/photo-1617788138017-80ad40651399?auto=format&fit=crop&w=800&q=80",
+        "description": "Kenyamanan suspensi terbaik di kelasnya untuk perjalanan jarak jauh.",
+        "features": [
+          "Plush Captain Seats",
+          "Triple Zone AC",
+          "Kabin Kedap Suara",
+          "Driver Profesional"
+        ],
+        "status": "Active",
+        "supportedZones": [
+          "Zone 0",
+          "Zone 1",
+          "Zone 2"
+        ]
+      },
+      {
+        "id": "veh-hiace-sub",
+        "name": "Toyota Hiace Commuter",
+        "categoryId": "cat-comm",
+        "cityId": "city-sub",
+        "passengers": 15,
+        "luggage": 6,
+        "hasAC": true,
+        "pricePerDay": 85,
+        "pricePerDayIDR": 1300000,
+        "image": "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80",
+        "description": "Pilihan ideal untuk rombongan wisata, study tour, dan family gathering.",
+        "features": [
+          "15 Reclining Seats",
+          "High Ceiling",
+          "Bagasi Luas",
+          "Driver Wisata"
+        ],
+        "status": "Active",
+        "supportedZones": [
+          "Zone 0",
+          "Zone 1",
+          "Zone 2"
+        ]
+      },
+      {
+        "id": "veh-premio-sub",
+        "name": "Toyota Hiace Premio Luxury",
+        "categoryId": "cat-premio",
+        "cityId": "city-sub",
+        "passengers": 11,
+        "luggage": 8,
+        "hasAC": true,
+        "pricePerDay": 110,
+        "pricePerDayIDR": 1700000,
+        "image": "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80",
+        "description": "Kendaraan VIP eksklusif dengan jok captain semi-kulit dan kabin lega.",
+        "features": [
+          "11 VIP Captain Seats",
+          "USB Charger per Seat",
+          "Suspensi Halus",
+          "Driver Eksekutif"
+        ],
+        "status": "Active",
+        "supportedZones": [
+          "Zone 0",
+          "Zone 1",
+          "Zone 2"
+        ]
+      },
+      {
+        "id": "veh-avanza-mlg",
+        "name": "Toyota All New Avanza (Malang)",
+        "categoryId": "cat-std",
+        "cityId": "city-mlg",
+        "passengers": 5,
+        "luggage": 2,
+        "hasAC": true,
+        "pricePerDay": 40,
+        "pricePerDayIDR": 600000,
+        "image": "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80",
+        "description": "MPV andalan keluarga Indonesia untuk trip Kota Malang & Batu.",
+        "features": [
+          "Full AC Dual Blower",
+          "Driver Lokal Menguasai Rute",
+          "Termasuk BBM"
+        ],
+        "status": "Active",
+        "supportedZones": [
+          "Zone 0",
+          "Zone 1",
+          "Zone 2"
+        ]
+      },
+      {
+        "id": "veh-innova-mlg",
+        "name": "Toyota Innova Reborn (Malang)",
+        "categoryId": "cat-prem",
+        "cityId": "city-mlg",
+        "passengers": 7,
+        "luggage": 4,
+        "hasAC": true,
+        "pricePerDay": 60,
+        "pricePerDayIDR": 900000,
+        "image": "https://images.unsplash.com/photo-1617788138017-80ad40651399?auto=format&fit=crop&w=800&q=80",
+        "description": "Kenyamanan suspensi terbaik untuk eksplorasi wisata Malang & Batu.",
+        "features": [
+          "Plush Captain Seats",
+          "Triple Zone AC",
+          "Driver Profesional"
+        ],
+        "status": "Active",
+        "supportedZones": [
+          "Zone 0",
+          "Zone 1",
+          "Zone 2"
+        ]
+      }
+    ],
+    "addons": [
+      {
+        "id": "addon-bbm",
+        "name": "Paket BBM Luar Kota",
+        "description": "Cover bahan bakar rute antar kota Jawa Timur",
+        "priceUSD": 20,
+        "priceIDR": 300000,
+        "pricingType": "Per Day",
+        "status": "Active",
+        "displayOrder": 1,
+        "applicableCategories": [
+          "cat-std",
+          "cat-prem",
+          "cat-comm",
+          "cat-premio"
+        ],
+        "isRequired": false
+      },
+      {
+        "id": "addon-toll",
+        "name": "Paket Tol Trans Jawa",
+        "description": "Saldo e-toll untuk kelancaran tol lintas kota",
+        "priceUSD": 15,
+        "priceIDR": 225000,
+        "pricingType": "Fixed",
+        "status": "Active",
+        "displayOrder": 2,
+        "applicableCategories": [
+          "cat-std",
+          "cat-prem",
+          "cat-comm",
+          "cat-premio"
+        ],
+        "isRequired": false
+      },
+      {
+        "id": "addon-english",
+        "name": "English-Speaking Driver",
+        "description": "Pengemudi fasih berbahasa Inggris untuk tamu mancanegara",
+        "priceUSD": 10,
+        "priceIDR": 150000,
+        "pricingType": "Per Day",
+        "status": "Active",
+        "displayOrder": 3,
+        "applicableCategories": [
+          "cat-std",
+          "cat-prem",
+          "cat-comm",
+          "cat-premio"
+        ],
+        "isRequired": false
+      }
+    ],
+    "zonePricing": []
+  },
+  "airportTransfers": {
+    "airports": [
+      {
+        "code": "DPS",
+        "name": "Ngurah Rai International Airport (DPS - Bali)",
+        "description": "Bandara Internasional utama Bali di Tuban, Kuta. Melayani rute pariwisata premium internasional & domestik.",
+        "status": "Active",
+        "surchargeUSD": 5,
+        "surchargeIDR": 75000
+      },
+      {
+        "code": "SUB",
+        "name": "Juanda International Airport (SUB - Surabaya)",
+        "description": "Bandara Internasional Jawa Timur berlokasi di Sidoarjo, melayani rute bisnis & wisata regional.",
+        "status": "Active",
+        "surchargeUSD": 3,
+        "surchargeIDR": 45000
+      },
+      {
+        "code": "YIA",
+        "name": "Yogyakarta International Airport (YIA)",
+        "description": "Bandara megah modern di Kulon Progo, melayani pariwisata Candi Borobudur, Prambanan dan DIY Yogyakarta.",
+        "status": "Active",
+        "surchargeUSD": 4,
+        "surchargeIDR": 60000
+      },
+      {
+        "code": "CGK",
+        "name": "Soekarno-Hatta International Airport (CGK - Jakarta)",
+        "description": "Bandara Internasional metropolitan tersibuk di Indonesia berlokasi di Tangerang, gerbang utama ibukota Jakarta.",
+        "status": "Active",
+        "surchargeUSD": 5,
+        "surchargeIDR": 75000
+      }
+    ],
+    "routes": [
+      {
+        "id": "sub-surabaya-center",
+        "airport": "SUB",
+        "city": "Surabaya Kota (Pusat / Gubeng / Tunjungan)",
+        "priceUSD": 20,
+        "priceIDR": 300000,
+        "status": "Published"
+      },
+      {
+        "id": "sub-malang",
+        "airport": "SUB",
+        "city": "Malang / Kota Batu",
+        "priceUSD": 45,
+        "priceIDR": 675000,
+        "status": "Published"
+      },
+      {
+        "id": "sub-bromo",
+        "airport": "SUB",
+        "city": "Gunung Bromo (Sukapura / Cemoro Lawang)",
+        "priceUSD": 60,
+        "priceIDR": 900000,
+        "status": "Published"
+      },
+      {
+        "id": "dps-kuta-seminyak",
+        "airport": "DPS",
+        "city": "Kuta / Legian / Seminyak",
+        "priceUSD": 18,
+        "priceIDR": 270000,
+        "status": "Published"
+      },
+      {
+        "id": "dps-ubud",
+        "airport": "DPS",
+        "city": "Ubud Center",
+        "priceUSD": 30,
+        "priceIDR": 450000,
+        "status": "Published"
+      },
+      {
+        "id": "yia-malioboro",
+        "airport": "YIA",
+        "city": "Yogyakarta Kota / Malioboro",
+        "priceUSD": 25,
+        "priceIDR": 375000,
+        "status": "Published"
+      }
+    ]
+  },
+  "taxiServices": {
+    "masterAreas": [
+      {
+        "id": "A001",
+        "name": "Surabaya",
+        "code": "SUB",
+        "type": "City",
+        "lat": -7.2575,
+        "lon": 112.7521,
+        "status": "Active"
+      },
+      {
+        "id": "A002",
+        "name": "Malang",
+        "code": "MLG",
+        "type": "City",
+        "lat": -7.9666,
+        "lon": 112.6326,
+        "status": "Active"
+      },
+      {
+        "id": "A003",
+        "name": "Kota Batu",
+        "code": "BATU",
+        "type": "City",
+        "lat": -7.8671,
+        "lon": 112.5239,
+        "status": "Active"
+      },
+      {
+        "id": "A004",
+        "name": "Banyuwangi",
+        "code": "BWX",
+        "type": "City",
+        "lat": -8.2192,
+        "lon": 114.3692,
+        "status": "Active"
+      },
+      {
+        "id": "A005",
+        "name": "Probolinggo (Bromo Gateway)",
+        "code": "PROB",
+        "type": "City",
+        "lat": -7.7543,
+        "lon": 113.2159,
+        "status": "Active"
+      }
+    ],
+    "destinations": [
+      {
+        "id": "D001",
+        "area_id": "A001",
+        "name": "Stasiun Surabaya Pasar Turi / Gubeng",
+        "lat": -7.2484,
+        "lon": 112.7314,
+        "status": "Active"
+      },
+      {
+        "id": "D002",
+        "area_id": "A002",
+        "name": "Stasiun Malang Kotabaru",
+        "lat": -7.9774,
+        "lon": 112.6375,
+        "status": "Active"
+      },
+      {
+        "id": "D003",
+        "area_id": "A003",
+        "name": "Jatim Park 1, 2, 3 / Museum Angkut",
+        "lat": -7.8864,
+        "lon": 112.5312,
+        "status": "Active"
+      },
+      {
+        "id": "D004",
+        "area_id": "A005",
+        "name": "Cemoro Lawang (Bromo Overlook)",
+        "lat": -7.9221,
+        "lon": 112.9619,
+        "status": "Active"
+      }
+    ],
+    "pricingRules": [
+      {
+        "id": "P001",
+        "source_id": "A001",
+        "destination_id": "A002",
+        "vehicle_type": "Standard",
+        "price_usd": 35,
+        "price_idr": 500000,
+        "status": "Active"
+      },
+      {
+        "id": "P002",
+        "source_id": "A001",
+        "destination_id": "A002",
+        "vehicle_type": "Premium",
+        "price_usd": 50,
+        "price_idr": 750000,
+        "status": "Active"
+      },
+      {
+        "id": "P003",
+        "source_id": "A001",
+        "destination_id": "A003",
+        "vehicle_type": "Standard",
+        "price_usd": 40,
+        "price_idr": 600000,
+        "status": "Active"
+      },
+      {
+        "id": "P004",
+        "source_id": "A001",
+        "destination_id": "A005",
+        "vehicle_type": "Standard",
+        "price_usd": 45,
+        "price_idr": 650000,
+        "status": "Active"
+      },
+      {
+        "id": "P005",
+        "source_id": "A002",
+        "destination_id": "A004",
+        "vehicle_type": "Standard",
+        "price_usd": 65,
+        "price_idr": 950000,
+        "status": "Active"
+      }
+    ],
+    "areaRules": [
+      {
+        "id": "AR001",
+        "area_id": "A005",
+        "surcharge_usd": 5,
+        "surcharge_idr": 75000,
+        "is_blackout": false,
+        "note": "Kawasan Pegunungan Bromo"
+      }
+    ],
+    "importHistory": [
+      {
+        "id": "imp-init",
+        "date": "2026-09-18T00:00:00.000Z",
+        "filename": "Tarif_Resmi_Taxi_SmartJourney_2026.xlsx",
+        "importedBy": "Admin Sawah Jaya",
+        "importedRows": 5,
+        "updatedRows": 5,
+        "skippedRows": 0,
+        "failedRows": 0,
+        "status": "Success",
+        "log": [
+          "Inisialisasi tarif antarkota utama Jawa Timur."
+        ]
+      }
+    ]
+  },
+  "schedules": []
 }

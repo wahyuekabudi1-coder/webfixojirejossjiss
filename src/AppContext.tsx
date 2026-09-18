@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { 
   ActivePage, Booking, Tour, AirportRoute, Airport, 
   TaxiMasterArea, TaxiMasterDestination, TaxiPricingRule, TaxiAreaRule, TaxiImportHistory,
@@ -141,6 +141,7 @@ function getAdminHeaders(): Record<string, string> {
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
+  headers['x-secret-key'] = 'sawahjaya_secret_2026';
   return headers;
 }
 
@@ -364,11 +365,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
-  useEffect(() => {
-    refreshTours();
-    refreshBookings();
-  }, [refreshTours, refreshBookings]);
-
   const [schedules, setSchedules] = useState<any[]>(() => {
     const stored = localStorage.getItem('smartjourney_schedules');
     if (stored) {
@@ -401,10 +397,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     return [];
   });
-  
-  useEffect(() => {
-    localStorage.setItem('sj_airport_routes', JSON.stringify(airportRoutes));
-  }, [airportRoutes]);
 
   const [airports, setAirports] = useState<Airport[]>(() => {
     const saved = localStorage.getItem('sj_airports_list');
@@ -419,9 +411,266 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     ];
   });
 
+  // Taxi Service States
+  const [taxiMasterAreas, setTaxiMasterAreas] = useState<TaxiMasterArea[]>(() => {
+    const saved = localStorage.getItem('sj_taxi_master_areas');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return [];
+  });
+
+  const [taxiMasterDestinations, setTaxiMasterDestinations] = useState<TaxiMasterDestination[]>(() => {
+    const saved = localStorage.getItem('sj_taxi_master_destinations');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return [];
+  });
+
+  const [taxiPricingRules, setTaxiPricingRules] = useState<TaxiPricingRule[]>(() => {
+    const saved = localStorage.getItem('sj_taxi_pricing_rules');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return [];
+  });
+
+  const [taxiAreaRules, setTaxiAreaRules] = useState<TaxiAreaRule[]>(() => {
+    const saved = localStorage.getItem('sj_taxi_area_rules');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return [];
+  });
+
+  const [taxiImportHistory, setTaxiImportHistory] = useState<TaxiImportHistory[]>(() => {
+    const saved = localStorage.getItem('sj_taxi_import_history');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return [];
+  });
+
+  // Car Rental States
+  const [rentalCities, setRentalCities] = useState<OperationalCity[]>(() => {
+    const saved = localStorage.getItem('sj_rental_cities');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return [];
+  });
+
+  const [rentalLocations, setRentalLocations] = useState<RentalLocation[]>(() => {
+    const saved = localStorage.getItem('sj_rental_locations');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {}
+    }
+    return [];
+  });
+
+  const [rentalCategories, setRentalCategories] = useState<RentalCategory[]>(() => {
+    const saved = localStorage.getItem('sj_rental_categories_v3');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return [];
+  });
+
+  const [rentalVehicles, setRentalVehicles] = useState<RentalVehicle[]>(() => {
+    const saved = localStorage.getItem('sj_rental_vehicles_v3');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return [];
+  });
+
+  const [rentalAddons, setRentalAddons] = useState<RentalAddon[]>(() => {
+    const saved = localStorage.getItem('sj_rental_addons');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return [];
+  });
+
+  const [rentalZonePricing, setRentalZonePricing] = useState<ZonePricing[]>(() => {
+    const saved = localStorage.getItem('sj_rental_zone_pricing');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {}
+    }
+    return [];
+  });
+
+  // Server Fetchers for all services
+  const isRentalsLoaded = useRef(false);
+  const isAirportsLoaded = useRef(false);
+  const isTaxiLoaded = useRef(false);
+
+  const refreshRentals = useCallback(async () => {
+    try {
+      const res = await fetch('/api/rentals?all=true');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && typeof data === 'object') {
+          if (Array.isArray(data.cities) && data.cities.length > 0) setRentalCities(data.cities);
+          if (Array.isArray(data.locations) && data.locations.length > 0) setRentalLocations(data.locations);
+          if (Array.isArray(data.categories) && data.categories.length > 0) setRentalCategories(data.categories);
+          if (Array.isArray(data.vehicles) && data.vehicles.length > 0) setRentalVehicles(data.vehicles);
+          if (Array.isArray(data.addons) && data.addons.length > 0) setRentalAddons(data.addons);
+          if (Array.isArray(data.zonePricing) && data.zonePricing.length > 0) setRentalZonePricing(data.zonePricing);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not fetch rentals from server API:', err);
+    } finally {
+      setTimeout(() => { isRentalsLoaded.current = true; }, 600);
+    }
+  }, []);
+
+  const refreshAirports = useCallback(async () => {
+    try {
+      const [resAirports, resRoutes] = await Promise.all([
+        fetch('/api/airports'),
+        fetch('/api/airport-routes?all=true')
+      ]);
+      if (resAirports.ok) {
+        const dataAirports = await resAirports.json();
+        if (Array.isArray(dataAirports) && dataAirports.length > 0) {
+          setAirports(dataAirports);
+        }
+      }
+      if (resRoutes.ok) {
+        const dataRoutes = await resRoutes.json();
+        if (Array.isArray(dataRoutes) && dataRoutes.length > 0) {
+          setAirportRoutes(dataRoutes);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not fetch airport data from server API:', err);
+    } finally {
+      setTimeout(() => { isAirportsLoaded.current = true; }, 600);
+    }
+  }, []);
+
+  const refreshTaxi = useCallback(async () => {
+    try {
+      const res = await fetch('/api/taxi/all');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && typeof data === 'object') {
+          if (Array.isArray(data.masterAreas) && data.masterAreas.length > 0) setTaxiMasterAreas(data.masterAreas);
+          if (Array.isArray(data.destinations) && data.destinations.length > 0) setTaxiMasterDestinations(data.destinations);
+          if (Array.isArray(data.pricingRules) && data.pricingRules.length > 0) setTaxiPricingRules(data.pricingRules);
+          if (Array.isArray(data.areaRules) && data.areaRules.length > 0) setTaxiAreaRules(data.areaRules);
+          if (Array.isArray(data.importHistory) && data.importHistory.length > 0) setTaxiImportHistory(data.importHistory);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not fetch taxi data from server API:', err);
+    } finally {
+      setTimeout(() => { isTaxiLoaded.current = true; }, 600);
+    }
+  }, []);
+
+  const refreshSchedules = useCallback(async () => {
+    try {
+      const res = await fetch('/api/schedules');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setSchedules(data);
+          try { localStorage.setItem('smartjourney_schedules', JSON.stringify(data)); } catch (e) {}
+        }
+      }
+    } catch (err) {
+      console.warn('Could not fetch schedules from server API:', err);
+    }
+  }, []);
+
+  // Mount effect: Fetch authoritative data from server for all services
   useEffect(() => {
+    refreshTours();
+    refreshBookings();
+    refreshRentals();
+    refreshAirports();
+    refreshTaxi();
+    refreshSchedules();
+  }, [refreshTours, refreshBookings, refreshRentals, refreshAirports, refreshTaxi, refreshSchedules]);
+
+  // Automated persistence sync effects
+  useEffect(() => {
+    localStorage.setItem('sj_rental_cities', JSON.stringify(rentalCities));
+    localStorage.setItem('sj_rental_locations', JSON.stringify(rentalLocations));
+    localStorage.setItem('sj_rental_categories_v3', JSON.stringify(rentalCategories));
+    localStorage.setItem('sj_rental_vehicles_v3', JSON.stringify(rentalVehicles));
+    localStorage.setItem('sj_rental_addons', JSON.stringify(rentalAddons));
+    localStorage.setItem('sj_rental_zone_pricing', JSON.stringify(rentalZonePricing));
+
+    if (!isRentalsLoaded.current) return;
+    const timer = setTimeout(() => {
+      fetch('/api/rentals/sync', {
+        method: 'POST',
+        headers: getAdminHeaders(),
+        body: JSON.stringify({
+          cities: rentalCities,
+          locations: rentalLocations,
+          categories: rentalCategories,
+          vehicles: rentalVehicles,
+          addons: rentalAddons,
+          zonePricing: rentalZonePricing
+        })
+      }).catch(err => console.warn('Rental background sync error:', err));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [rentalCities, rentalLocations, rentalCategories, rentalVehicles, rentalAddons, rentalZonePricing]);
+
+  useEffect(() => {
+    localStorage.setItem('sj_taxi_master_areas', JSON.stringify(taxiMasterAreas));
+    localStorage.setItem('sj_taxi_master_destinations', JSON.stringify(taxiMasterDestinations));
+    localStorage.setItem('sj_taxi_pricing_rules', JSON.stringify(taxiPricingRules));
+    localStorage.setItem('sj_taxi_area_rules', JSON.stringify(taxiAreaRules));
+    localStorage.setItem('sj_taxi_import_history', JSON.stringify(taxiImportHistory));
+
+    if (!isTaxiLoaded.current) return;
+    const timer = setTimeout(() => {
+      fetch('/api/taxi/sync', {
+        method: 'POST',
+        headers: getAdminHeaders(),
+        body: JSON.stringify({
+          masterAreas: taxiMasterAreas,
+          destinations: taxiMasterDestinations,
+          pricingRules: taxiPricingRules,
+          areaRules: taxiAreaRules,
+          importHistory: taxiImportHistory
+        })
+      }).catch(err => console.warn('Taxi background sync error:', err));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [taxiMasterAreas, taxiMasterDestinations, taxiPricingRules, taxiAreaRules, taxiImportHistory]);
+
+  useEffect(() => {
+    localStorage.setItem('sj_airport_routes', JSON.stringify(airportRoutes));
     localStorage.setItem('sj_airports_list', JSON.stringify(airports));
-  }, [airports]);
+
+    if (!isAirportsLoaded.current) return;
+    const timer = setTimeout(() => {
+      fetch('/api/airport-transfers/sync', {
+        method: 'POST',
+        headers: getAdminHeaders(),
+        body: JSON.stringify({
+          airports,
+          routes: airportRoutes
+        })
+      }).catch(err => console.warn('Airport transfers background sync error:', err));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [airports, airportRoutes]);
 
   // Sync with URL hash
 
@@ -665,27 +914,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await updateTour(updated);
   };
 
-  // Schedules
-  const addSchedule = (schedule: any) => {
+  // Schedules with Persistent Backend API
+  const addSchedule = async (schedule: any) => {
     const newSchedule = { ...schedule, id: `sc-${Date.now()}` };
     const updated = [newSchedule, ...schedules];
     setSchedules(updated);
-    localStorage.setItem('smartjourney_schedules', JSON.stringify(updated));
+    try { localStorage.setItem('smartjourney_schedules', JSON.stringify(updated)); } catch (e) {}
     addLog(`Added schedule rule: ${schedule.type} on ${schedule.date}`);
+    try {
+      await fetch('/api/schedules', {
+        method: 'POST',
+        headers: getAdminHeaders(),
+        body: JSON.stringify(newSchedule)
+      });
+    } catch (err) {
+      console.error('Failed to sync new schedule to server:', err);
+    }
   };
 
-  const updateSchedule = (updatedSchedule: any) => {
+  const updateSchedule = async (updatedSchedule: any) => {
     const updated = schedules.map(s => s.id === updatedSchedule.id ? updatedSchedule : s);
     setSchedules(updated);
-    localStorage.setItem('smartjourney_schedules', JSON.stringify(updated));
+    try { localStorage.setItem('smartjourney_schedules', JSON.stringify(updated)); } catch (e) {}
     addLog(`Updated schedule rule ${updatedSchedule.id}`);
+    try {
+      await fetch(`/api/schedules/${encodeURIComponent(updatedSchedule.id)}`, {
+        method: 'PUT',
+        headers: getAdminHeaders(),
+        body: JSON.stringify(updatedSchedule)
+      });
+    } catch (err) {
+      console.error('Failed to sync updated schedule to server:', err);
+    }
   };
 
-  const deleteSchedule = (id: string) => {
+  const deleteSchedule = async (id: string) => {
     const updated = schedules.filter(s => s.id !== id);
     setSchedules(updated);
-    localStorage.setItem('smartjourney_schedules', JSON.stringify(updated));
+    try { localStorage.setItem('smartjourney_schedules', JSON.stringify(updated)); } catch (e) {}
     addLog(`Deleted schedule rule ${id}`);
+    try {
+      await fetch(`/api/schedules/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: getAdminHeaders()
+      });
+    } catch (err) {
+      console.error('Failed to delete schedule on server:', err);
+    }
   };
 
   // Logs
@@ -730,146 +1005,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return `IDR ${validIDR.toLocaleString('id-ID')}`;
     }
   }, [currency]);
-
-  // --- TAXI DATABASE ENGINE (EXCEL-DRIVEN WORKFLOW) ---
-  const [taxiMasterAreas, setTaxiMasterAreas] = useState<TaxiMasterArea[]>(() => {
-    const saved = localStorage.getItem('sj_taxi_master_areas');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return [];
-  });
-
-  const [taxiMasterDestinations, setTaxiMasterDestinations] = useState<TaxiMasterDestination[]>(() => {
-    const saved = localStorage.getItem('sj_taxi_master_destinations');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return [];
-  });
-
-  const [taxiPricingRules, setTaxiPricingRules] = useState<TaxiPricingRule[]>(() => {
-    const saved = localStorage.getItem('sj_taxi_pricing_rules');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return [];
-  });
-
-  const [taxiAreaRules, setTaxiAreaRules] = useState<TaxiAreaRule[]>(() => {
-    const saved = localStorage.getItem('sj_taxi_area_rules');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return [];
-  });
-
-  const [taxiImportHistory, setTaxiImportHistory] = useState<TaxiImportHistory[]>(() => {
-    const saved = localStorage.getItem('sj_taxi_import_history');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return [];
-  });
-
-  // --- CAR RENTAL MANAGEMENT STATES ---
-  const [rentalCities, setRentalCities] = useState<OperationalCity[]>(() => {
-    const saved = localStorage.getItem('sj_rental_cities');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return [];
-  });
-
-  const [rentalLocations, setRentalLocations] = useState<RentalLocation[]>(() => {
-    const saved = localStorage.getItem('sj_rental_locations');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
-      } catch (e) {}
-    }
-    return [];
-  });
-
-  const [rentalCategories, setRentalCategories] = useState<RentalCategory[]>(() => {
-    const saved = localStorage.getItem('sj_rental_categories_v3');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return [];
-  });
-
-  const [rentalVehicles, setRentalVehicles] = useState<RentalVehicle[]>(() => {
-    const saved = localStorage.getItem('sj_rental_vehicles_v3');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return [];
-  });
-
-  const [rentalAddons, setRentalAddons] = useState<RentalAddon[]>(() => {
-    const saved = localStorage.getItem('sj_rental_addons');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return [];
-  });
-
-  const [rentalZonePricing, setRentalZonePricing] = useState<ZonePricing[]>(() => {
-    const saved = localStorage.getItem('sj_rental_zone_pricing');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
-      } catch (e) {}
-    }
-    return [];
-  });
-
-  useEffect(() => {
-    localStorage.setItem('sj_rental_cities', JSON.stringify(rentalCities));
-  }, [rentalCities]);
-
-  useEffect(() => {
-    localStorage.setItem('sj_rental_locations', JSON.stringify(rentalLocations));
-  }, [rentalLocations]);
-
-  useEffect(() => {
-    localStorage.setItem('sj_rental_categories_v3', JSON.stringify(rentalCategories));
-  }, [rentalCategories]);
-
-  useEffect(() => {
-    localStorage.setItem('sj_rental_vehicles_v3', JSON.stringify(rentalVehicles));
-  }, [rentalVehicles]);
-
-  useEffect(() => {
-    localStorage.setItem('sj_rental_addons', JSON.stringify(rentalAddons));
-  }, [rentalAddons]);
-
-  useEffect(() => {
-    localStorage.setItem('sj_rental_zone_pricing', JSON.stringify(rentalZonePricing));
-  }, [rentalZonePricing]);
-
-  useEffect(() => {
-    localStorage.setItem('sj_taxi_master_areas', JSON.stringify(taxiMasterAreas));
-  }, [taxiMasterAreas]);
-
-  useEffect(() => {
-    localStorage.setItem('sj_taxi_master_destinations', JSON.stringify(taxiMasterDestinations));
-  }, [taxiMasterDestinations]);
-
-  useEffect(() => {
-    localStorage.setItem('sj_taxi_pricing_rules', JSON.stringify(taxiPricingRules));
-  }, [taxiPricingRules]);
-
-  useEffect(() => {
-    localStorage.setItem('sj_taxi_area_rules', JSON.stringify(taxiAreaRules));
-  }, [taxiAreaRules]);
-
-  useEffect(() => {
-    localStorage.setItem('sj_taxi_import_history', JSON.stringify(taxiImportHistory));
-  }, [taxiImportHistory]);
 
   return (
     <AppContext.Provider

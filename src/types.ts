@@ -20,7 +20,7 @@ export interface Tour {
   excludes?: string[];
   gallery?: string[];
   whatToBring?: string[];
-  status?: 'published' | 'draft' | 'unpublished';
+  status?: 'published' | 'draft' | 'unpublished' | 'archived';
   createdAt?: string;
   updatedAt?: string;
 }
