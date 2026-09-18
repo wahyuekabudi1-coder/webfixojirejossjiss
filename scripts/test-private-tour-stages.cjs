@@ -1,4 +1,5 @@
 const http = require('http');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
@@ -25,13 +26,20 @@ async function runPrivateTour16Tests() {
 
   function makeRequest(urlPath, options = {}, body = null) {
     return new Promise((resolve, reject) => {
+      const headers = Object.assign({ 'Content-Type': 'application/json' }, options.headers || {});
+      const secret = process.env.WEBHOOK_SECRET || process.env.ARTOPAY_SECRET_KEY || 'artopay-secret-key-smartjourney2026';
+      if (urlPath.includes('/webhook') && body && !headers['x-artopay-signature'] && !headers['webhook-signature'] && !options.noSign) {
+        const payloadStr = typeof body === 'string' ? body : JSON.stringify(body);
+        headers['x-artopay-signature'] = crypto.createHmac('sha256', secret).update(payloadStr).digest('hex');
+      }
+
       const req = http.request(
         {
           host: '127.0.0.1',
           port: 3000,
           path: urlPath,
           method: options.method || 'GET',
-          headers: options.headers || { 'Content-Type': 'application/json' }
+          headers
         },
         (res) => {
           const chunks = [];

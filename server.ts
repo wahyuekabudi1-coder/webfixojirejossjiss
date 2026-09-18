@@ -365,7 +365,7 @@ function createRateLimiter(maxRequests: number, windowMs: number) {
   };
 }
 
-const loginLimiter = createRateLimiter(10, 15 * 60 * 1000); // 10 attempts per 15 min
+const loginLimiter = createRateLimiter(process.env.NODE_ENV === 'production' ? 15 : 200, 15 * 60 * 1000); // 200 in dev/test, 15 in prod
 const paymentLimiter = createRateLimiter(25, 15 * 60 * 1000); // 25 attempts per 15 min
 
 // -------------------------------------------------------------
@@ -2335,12 +2335,10 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
   const adminEmail = (process.env.ADMIN_EMAIL || 'sawahjayagroup@gmail.com').trim().toLowerCase();
   const validEmails = [adminEmail, 'admin@smartjourney.com', 'sawahjayagroup@gmail.com'];
 
-  // PART 1: SATU PASSWORD ADMIN PUSAT
-  // Development / Testing: ADMIN_PASSWORD=sawahjaya2026 (or process.env.ADMIN_PASSWORD)
-  // Production: MUST be explicitly defined via process.env.ADMIN_PASSWORD, otherwise FAIL CLOSED
-  const rawAdminPassword = (process.env.ADMIN_PASSWORD !== undefined && process.env.ADMIN_PASSWORD !== '')
-    ? process.env.ADMIN_PASSWORD.trim()
-    : (process.env.NODE_ENV !== 'production' ? 'sawahjaya2026' : '');
+  // Admin password HANYA valid jika cocok dengan process.env.ADMIN_PASSWORD.
+  // HAPUS semua fallback password seperti sawahjaya2026 atau smartjourney2026.
+  // Jika env ADMIN_PASSWORD kosong → tolak login (fail-closed).
+  const rawAdminPassword = (process.env.ADMIN_PASSWORD || '').trim();
 
   if (!rawAdminPassword) {
     return res.status(401).json({ error: 'Akses Admin ditolak: ADMIN_PASSWORD tidak dikonfigurasi pada server (Fail Closed).' });
@@ -3145,32 +3143,36 @@ app.post(['/api/artopay/webhook', '/artopay/webhook'], (req, res) => {
 
     const webhookSecret = (process.env.WEBHOOK_SECRET || process.env.ARTOPAY_SECRET_KEY || '').trim();
 
-    // STRICT HMAC VERIFICATION: If webhook secret is configured, enforce valid HMAC signature
-    if (webhookSecret) {
-      if (!incomingSignature) {
-        console.error('[ArtoPay Webhook Security] Webhook signature missing in headers or payload.');
-        return res.status(401).json({ error: 'Missing webhook signature' });
-      }
+    // STRICT HMAC FAIL-CLOSED:
+    // 1. Secret kosong -> HTTP 503 / 401
+    // 2. Signature kosong -> HTTP 401
+    // 3. Signature salah -> HTTP 401
+    // Request yang ditolak TIDAK BOLEH mengubah database.
+    if (!webhookSecret) {
+      console.error('[ArtoPay Webhook Security] FAIL-CLOSED: WEBHOOK_SECRET or ARTOPAY_SECRET_KEY is not configured.');
+      return res.status(503).json({ error: 'Webhook secret is not configured on server (Fail Closed)' });
+    }
 
-      try {
-        const rawPayload = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-        const expectedSignature = crypto
-          .createHmac('sha256', webhookSecret)
-          .update(rawPayload)
-          .digest('hex');
+    if (!incomingSignature) {
+      console.error('[ArtoPay Webhook Security] FAIL-CLOSED: Missing webhook signature in headers or payload.');
+      return res.status(401).json({ error: 'Missing webhook signature' });
+    }
 
-        if (incomingSignature.toLowerCase() !== expectedSignature.toLowerCase()) {
-          console.error('[ArtoPay Webhook Security] Mismatched webhook signature received:', {
-            incoming: incomingSignature,
-            expected: expectedSignature
-          });
-          return res.status(401).json({ error: 'Invalid webhook signature' });
-        }
-        console.log('[ArtoPay Webhook Signature Verified] Authenticity confirmed via HMAC-SHA256.');
-      } catch (sigErr) {
-        console.error('[ArtoPay Webhook Signature Verification Exception]:', sigErr);
-        return res.status(401).json({ error: 'Webhook signature verification failed' });
+    try {
+      const rawPayload = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+      const expectedSignature = crypto
+        .createHmac('sha256', webhookSecret)
+        .update(rawPayload)
+        .digest('hex');
+
+      if (incomingSignature.toLowerCase() !== expectedSignature.toLowerCase()) {
+        console.error('[ArtoPay Webhook Security] FAIL-CLOSED: Invalid webhook signature received.');
+        return res.status(401).json({ error: 'Invalid webhook signature' });
       }
+      console.log('[ArtoPay Webhook Signature Verified] Authenticity confirmed via HMAC-SHA256.');
+    } catch (sigErr) {
+      console.error('[ArtoPay Webhook Security] Error during HMAC signature verification:', sigErr);
+      return res.status(401).json({ error: 'Webhook signature verification failed' });
     }
 
     const orderId = body.orderId || body.order_id || body.orderID || body.metadata?.orderId || body.data?.orderId || body.data?.order_id;
@@ -3208,10 +3210,12 @@ app.post(['/api/artopay/webhook', '/artopay/webhook'], (req, res) => {
       });
     }
 
-    // AMOUNT VALIDATION: Ensure amount matches authoritative price in database
-    const receivedAmount = Number(body.amount || body.gross_amount || body.data?.amount || body.data?.gross_amount || 0);
+    // AMOUNT VALIDATION: Ensure amount matches authoritative price in database exactly
+    const hasIncomingAmount = body.amount !== undefined || body.gross_amount !== undefined || body.data?.amount !== undefined || body.data?.gross_amount !== undefined;
+    const receivedAmount = Number(body.amount ?? body.gross_amount ?? body.data?.amount ?? body.data?.gross_amount ?? 0);
     const expectedAmount = Number(booking.paymentAmount || booking.totalPriceIDR || booking.totalPrice || 0);
-    if (receivedAmount > 0 && expectedAmount > 0 && Math.abs(receivedAmount - expectedAmount) > 1) {
+
+    if (hasIncomingAmount && expectedAmount > 0 && receivedAmount !== expectedAmount) {
       console.error(`[ArtoPay Webhook Amount Mismatch] Order ${orderId || booking.id}: Expected ${expectedAmount}, received ${receivedAmount}. Zero database mutation applied.`);
       return res.status(400).json({
         error: 'Payment amount mismatch',

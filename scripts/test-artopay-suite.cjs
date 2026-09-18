@@ -22,13 +22,20 @@ async function runTests() {
 
   function makeRequest(path, options = {}, body = null) {
     return new Promise((resolve, reject) => {
+      const headers = Object.assign({ 'Content-Type': 'application/json' }, options.headers || {});
+      const secret = process.env.WEBHOOK_SECRET || process.env.ARTOPAY_SECRET_KEY || 'artopay-secret-key-smartjourney2026';
+      if (path.includes('/webhook') && body && !headers['x-artopay-signature'] && !headers['webhook-signature'] && !options.noSign) {
+        const payloadStr = typeof body === 'string' ? body : JSON.stringify(body);
+        headers['x-artopay-signature'] = crypto.createHmac('sha256', secret).update(payloadStr).digest('hex');
+      }
+
       const req = http.request(
         {
           host: '127.0.0.1',
           port: 3000,
           path,
           method: options.method || 'GET',
-          headers: options.headers || { 'Content-Type': 'application/json' }
+          headers
         },
         (res) => {
           let data = '';
@@ -250,7 +257,7 @@ async function runTests() {
     // Test K: Webhook HMAC Signature Verification Header
     // ----------------------------------------------------
     console.log('\n--- TEST K: Webhook Signature Header Handling ---');
-    const secret = process.env.WEBHOOK_SECRET || process.env.ARTOPAY_SECRET_KEY || 'test-secret';
+    const secret = process.env.WEBHOOK_SECRET || process.env.ARTOPAY_SECRET_KEY || 'artopay-secret-key-smartjourney2026';
     const sigPayload = JSON.stringify({ orderId: testOrderId, status: 'PAID' });
     const signature = crypto.createHmac('sha256', secret).update(sigPayload).digest('hex');
 
