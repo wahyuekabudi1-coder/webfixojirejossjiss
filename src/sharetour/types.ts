@@ -130,6 +130,12 @@ export interface Booking {
   adminNotes?: string;
   paymentNotes?: string;
   nationalityType?: NationalityType | string;
+  items?: any[];
+  lineItems?: any[];
+  discount?: number;
+  invoiceNumber?: string;
+  paymentProvider?: string;
+  notes?: string;
 }
 
 export interface DatabaseState {

@@ -1,6 +1,17 @@
 import PDFDocument from 'pdfkit';
+import path from 'path';
+import fs from 'fs';
+
+export interface InvoiceLineItem {
+  no?: number;
+  description: string;
+  qty: number | string;
+  unitPrice: number;
+  amount: number;
+}
 
 export interface FinalSummaryPdfInput {
+  invoiceNumber?: string;
   bookingCode: string;
   bookingDate: string;
   bookingStatus: string;
@@ -8,10 +19,12 @@ export interface FinalSummaryPdfInput {
   confirmedAt?: string;
   verificationCode?: string;
   verificationHash?: string;
+  notes?: string;
   customer: {
     name: string;
     email: string;
     phone: string;
+    nationality?: string;
     pickupLocation: string;
     dropoffLocation?: string;
   };
@@ -33,104 +46,34 @@ export interface FinalSummaryPdfInput {
     dropoffLocation?: string;
     itinerary?: any[];
   };
+  items?: InvoiceLineItem[];
   payment: {
     baseAmount: number;
     uniqueCode: number;
+    discount?: number;
     totalPaid: number;
     currency: string;
     paidAt: string;
     paymentDate: string;
     paymentId: string;
     paymentMethod: string;
+    paymentProvider?: string;
+    paymentReference?: string;
   };
   company?: {
     name: string;
+    legalName: string;
     brand: string;
-    hotline: string;
+    address: string;
+    cityCountry: string;
+    phone: string;
     email: string;
-    operationalHub: string;
+    website: string;
   };
 }
 
 function formatRupiah(amount: number): string {
-  return 'Rp ' + Number(amount || 0).toLocaleString('id-ID');
-}
-
-interface ParsedDayGroup {
-  dayTitle: string;
-  activities: string[];
-}
-
-function parseItinerary(itinerary: any[]): ParsedDayGroup[] {
-  if (!Array.isArray(itinerary) || itinerary.length === 0) {
-    return [];
-  }
-
-  // If already structured objects
-  if (typeof itinerary[0] === 'object' && itinerary[0] !== null && (itinerary[0].day || itinerary[0].dayTitle || itinerary[0].title)) {
-    return itinerary.map((item, idx) => {
-      const dayTitle = (item.dayTitle || item.title || `DAY ${item.day || idx + 1}`).toUpperCase();
-      let activities: string[] = [];
-      if (Array.isArray(item.activities)) {
-        activities = item.activities.map((a: any) => typeof a === 'string' ? a : `${a.time || ''} — ${a.title || a.desc || ''}`.trim());
-      } else if (item.desc) {
-        activities = [item.desc];
-      }
-      return { dayTitle, activities };
-    });
-  }
-
-  // If string array
-  const dayGroups: Map<number, { dayTitle: string; activities: string[] }> = new Map();
-  let defaultDay = 1;
-
-  for (const rawItem of itinerary) {
-    const item = String(rawItem).trim();
-    if (!item) continue;
-
-    if (item.startsWith('Day ') && item.includes('|')) {
-      const parts = item.split('|').map(p => p.trim());
-      const dayPart = parts[0];
-      const time = parts[1] || '';
-      const title = parts[2] || '';
-      const desc = parts[3] || '';
-      
-      const dayNumMatch = dayPart.match(/\d+/);
-      const dayNum = dayNumMatch ? parseInt(dayNumMatch[0]) : 1;
-      
-      let dayTitle = `DAY ${dayNum}`;
-      if (dayPart.includes('-')) {
-        const sub = dayPart.substring(dayPart.indexOf('-') + 1).trim();
-        dayTitle = `DAY ${dayNum} — ${sub.toUpperCase()}`;
-      }
-
-      if (!dayGroups.has(dayNum)) {
-        dayGroups.set(dayNum, { dayTitle, activities: [] });
-      }
-
-      const actText = time ? `${time} — ${title || desc}` : `${title || desc}`;
-      dayGroups.get(dayNum)!.activities.push(actText);
-    } else if (item.includes('-') && /^\d{1,2}[:.]\d{2}/.test(item)) {
-      const dashIdx = item.indexOf('-');
-      const time = item.substring(0, dashIdx).trim();
-      const act = item.substring(dashIdx + 1).trim();
-      if (!dayGroups.has(defaultDay)) {
-        dayGroups.set(defaultDay, { dayTitle: `DAY ${defaultDay} — JADWAL PERJALANAN`, activities: [] });
-      }
-      dayGroups.get(defaultDay)!.activities.push(`${time} — ${act}`);
-    } else {
-      if (!dayGroups.has(defaultDay)) {
-        dayGroups.set(defaultDay, { dayTitle: `DAY ${defaultDay} — JADWAL PERJALANAN`, activities: [] });
-      }
-      dayGroups.get(defaultDay)!.activities.push(item);
-    }
-  }
-
-  if (dayGroups.size === 0) return [];
-
-  return Array.from(dayGroups.entries())
-    .sort(([a], [b]) => a - b)
-    .map(([_, grp]) => grp);
+  return 'Rp ' + Math.max(0, Math.round(amount || 0)).toLocaleString('id-ID');
 }
 
 export function generatePrivateTourPdf(data: FinalSummaryPdfInput): Promise<Buffer> {
@@ -142,9 +85,9 @@ export function generatePrivateTourPdf(data: FinalSummaryPdfInput): Promise<Buff
         bufferPages: true,
         info: {
           Title: `SmartJourney-Final-Booking-${data.bookingCode}`,
-          Author: 'Smart Journey',
-          Subject: 'FINAL BOOKING CONFIRMATION - Booking Summary & Payment Receipt',
-          Keywords: 'Smart Journey, Private Tour, Final Booking Confirmation, Receipt, Voucher'
+          Author: 'Smart Journey (PT Sawah Jaya Trans)',
+          Subject: 'INVOICE - PRIVATE TOUR - Booking Summary & Payment Receipt',
+          Keywords: 'Smart Journey, Invoice, Private Tour, Booking Summary, Payment Receipt, Official'
         }
       });
 
@@ -153,283 +96,391 @@ export function generatePrivateTourPdf(data: FinalSummaryPdfInput): Promise<Buff
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', (err) => reject(err));
 
-      const primaryEmerald = '#134e4a'; // Deep Emerald Slate
-      const darkSlate = '#0f172a';      // Slate 900
-      const bodySlate = '#334155';      // Slate 700
-      const mutedSlate = '#64748b';     // Slate 500
-      const cardBg = '#f8fafc';         // Slate 50
-      const strokeLine = '#e2e8f0';     // Slate 200
-      const emeraldBg = '#ecfdf5';      // Emerald 50
-      const emeraldBorder = '#10b981';  // Emerald 500
-      const emeraldText = '#065f46';    // Emerald 800
+      // Color Palette: Smart Journey Premium Corporate Identity
+      const primaryTeal = '#0f766e';      // Brand Deep Teal
+      const darkSlate = '#0f172a';        // Headings / Primary Text
+      const bodySlate = '#334155';        // Body Text
+      const mutedSlate = '#64748b';       // Secondary Labels
+      const borderSlate = '#e2e8f0';      // Subtle Borders
+      const bgCard = '#f8fafc';           // Slate 50 Soft Card Background
+      const paidGreen = '#16a34a';        // Emerald Green Status
+      const paidGreenBg = '#ecfdf5';      // Emerald 50
+      const paidGreenBorder = '#10b981';  // Emerald 500
+      const paidGreenText = '#065f46';    // Emerald 800
 
       const pageWidth = 595.28;
-      const contentWidth = pageWidth - 72; // 36 margin on left and right
+      const contentWidth = pageWidth - 72; // 523.28 pt
+      const leftMargin = 36;
+      const rightMargin = pageWidth - 36;  // 559.28 pt
 
       // =========================================================================
-      // 1. OFFICIAL DOCUMENT HEADER
+      // 1. HEADER (KIRI: Logo Resmi Smart Journey, KANAN: Informasi Perusahaan)
       // =========================================================================
-      // Brand Bar
-      doc.rect(36, 36, contentWidth, 62).fill(primaryEmerald);
+      const headerTopY = 36;
+      const logoPath = path.join(process.cwd(), 'public', 'logo.png');
 
-      doc.fillColor('#ffffff').fontSize(16).font('Helvetica-Bold')
-        .text('SMART JOURNEY', 50, 48, { characterSpacing: 1.5 });
-      
-      doc.fillColor('#99f6e4').fontSize(11).font('Helvetica-Bold')
-        .text('FINAL BOOKING CONFIRMATION', 50, 68);
+      if (fs.existsSync(logoPath)) {
+        // Logo resmi Smart Journey: proporsional 1:1, tidak stretch / distorsi
+        doc.image(logoPath, leftMargin, headerTopY, { fit: [64, 64] });
+      } else {
+        // Fallback typography branding jika logo file tidak ditemukan
+        doc.font('Helvetica-Bold').fontSize(16).fillColor(primaryTeal).text('SMART JOURNEY', leftMargin, headerTopY + 12);
+        doc.font('Helvetica').fontSize(9).fillColor(mutedSlate).text('Go Beyond', leftMargin, headerTopY + 32);
+      }
 
-      doc.fillColor('#cbd5e1').fontSize(8).font('Helvetica')
-        .text('Booking Summary & Payment Receipt', 50, 82);
+      // KANAN: Data Resmi Perusahaan Smart Journey (Existing Project Data)
+      const companyX = 260;
+      const companyW = rightMargin - companyX;
 
-      // Top Right Status Badges inside Brand Bar
-      const topBadgeX = pageWidth - 160;
-      doc.roundedRect(topBadgeX, 46, 110, 20, 4).fill(emeraldBg);
-      doc.roundedRect(topBadgeX, 46, 110, 20, 4).strokeColor(emeraldBorder).lineWidth(1).stroke();
-      doc.fillColor(emeraldText).fontSize(8).font('Helvetica-Bold')
-        .text('✓ CONFIRMED & PAID', topBadgeX + 6, 52, { width: 98, align: 'center' });
+      doc.font('Helvetica-Bold').fontSize(11).fillColor(darkSlate)
+        .text('Smart Journey', companyX, headerTopY, { width: companyW, align: 'right' });
 
-      doc.fillColor('#cbd5e1').fontSize(7.5).font('Helvetica')
-        .text(`Code: ${data.bookingCode}`, topBadgeX, 72, { width: 110, align: 'center' });
+      doc.font('Helvetica-Bold').fontSize(8).fillColor(primaryTeal)
+        .text('PT Sawah Jaya Trans', companyX, headerTopY + 14, { width: companyW, align: 'right' });
 
-      let curY = 106;
+      doc.font('Helvetica').fontSize(7.5).fillColor(bodySlate)
+        .text('Jl. Puntadewa No. 192, Tumpang, Malang, Jawa Timur', companyX, headerTopY + 26, { width: companyW, align: 'right' });
+
+      doc.font('Helvetica').fontSize(7.5).fillColor(mutedSlate)
+        .text('Email: Info@sawahjayatrans.com  |  WhatsApp: +62 852-1234-7289', companyX, headerTopY + 38, { width: companyW, align: 'right' });
+
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(primaryTeal)
+        .text('www.smartjourney.id', companyX, headerTopY + 50, { width: companyW, align: 'right' });
+
+      // Separator Garis Branding
+      const sepY = 108;
+      doc.strokeColor(borderSlate).lineWidth(1).moveTo(leftMargin, sepY).lineTo(rightMargin, sepY).stroke();
+      doc.strokeColor(primaryTeal).lineWidth(2.5).moveTo(leftMargin, sepY).lineTo(leftMargin + 90, sepY).stroke();
 
       // =========================================================================
-      // 2. BOOKING STATUS & CUSTOMER INFORMATION (Two Column Row)
+      // 2. JUDUL DOKUMEN & STATUS BADGE
       // =========================================================================
-      const colWidth = (contentWidth - 12) / 2;
-      const leftColX = 36;
-      const rightColX = 36 + colWidth + 12;
+      const titleY = 120;
 
-      // LEFT: BOOKING STATUS
-      const statusBoxHeight = 84;
-      doc.roundedRect(leftColX, curY, colWidth, statusBoxHeight, 5).fill(cardBg);
-      doc.roundedRect(leftColX, curY, colWidth, statusBoxHeight, 5).strokeColor(strokeLine).lineWidth(0.8).stroke();
+      // Judul Utama: INVOICE
+      doc.font('Helvetica-Bold').fontSize(22).fillColor(darkSlate)
+        .text('INVOICE', leftMargin, titleY, { characterSpacing: 1 });
 
-      doc.fillColor(primaryEmerald).fontSize(8.5).font('Helvetica-Bold')
-        .text('BOOKING STATUS', leftColX + 12, curY + 8);
+      // Subtitle 1: PRIVATE TOUR
+      doc.font('Helvetica-Bold').fontSize(11).fillColor(primaryTeal)
+        .text('PRIVATE TOUR', leftMargin, titleY + 26, { characterSpacing: 0.5 });
 
-      doc.fillColor(mutedSlate).fontSize(7.5).font('Helvetica').text('Booking Code:', leftColX + 12, curY + 22);
-      doc.fillColor(darkSlate).fontSize(10).font('Helvetica-Bold').text(data.bookingCode, leftColX + 85, curY + 20);
+      // Subtitle 2: Booking Summary & Payment Receipt
+      doc.font('Helvetica').fontSize(8.5).fillColor(mutedSlate)
+        .text('Booking Summary & Payment Receipt', leftMargin, titleY + 41);
 
-      doc.fillColor(mutedSlate).fontSize(7.5).font('Helvetica').text('Booking Status:', leftColX + 12, curY + 37);
-      doc.fillColor(emeraldText).fontSize(8.5).font('Helvetica-Bold').text('CONFIRMED', leftColX + 85, curY + 36);
+      // Status Badge: PAID (Hanya jika backend menyatakan lunas)
+      const isPaid = (data.paymentStatus || '').toLowerCase() === 'paid';
+      const badgeW = 96;
+      const badgeH = 24;
+      const badgeX = rightMargin - badgeW;
 
-      doc.fillColor(mutedSlate).fontSize(7.5).font('Helvetica').text('Payment Status:', leftColX + 12, curY + 52);
-      doc.fillColor(emeraldText).fontSize(8.5).font('Helvetica-Bold').text('PAID', leftColX + 85, curY + 51);
+      doc.roundedRect(badgeX, titleY + 2, badgeW, badgeH, 4).fill(paidGreenBg);
+      doc.roundedRect(badgeX, titleY + 2, badgeW, badgeH, 4).strokeColor(paidGreenBorder).lineWidth(1).stroke();
+      doc.font('Helvetica-Bold').fontSize(9.5).fillColor(paidGreenText)
+        .text(isPaid ? '✓ PAID' : 'PENDING', badgeX, titleY + 9, { width: badgeW, align: 'center' });
 
-      doc.fillColor(mutedSlate).fontSize(7.5).font('Helvetica').text('Booking Date:', leftColX + 12, curY + 67);
-      doc.fillColor(darkSlate).fontSize(7.5).font('Helvetica-Bold').text(data.bookingDate || '-', leftColX + 85, curY + 67);
+      const invoiceNum = data.invoiceNumber || `INV-${data.bookingCode}`;
+      doc.font('Helvetica-Bold').fontSize(8.5).fillColor(darkSlate)
+        .text(`Invoice No: ${invoiceNum}`, companyX, titleY + 36, { width: companyW, align: 'right' });
 
-      // RIGHT: CUSTOMER INFORMATION
-      doc.roundedRect(rightColX, curY, colWidth, statusBoxHeight, 5).fill(cardBg);
-      doc.roundedRect(rightColX, curY, colWidth, statusBoxHeight, 5).strokeColor(strokeLine).lineWidth(0.8).stroke();
+      // =========================================================================
+      // 3. BOOKING INFORMATION CARD (Data Aktual Dinamis)
+      // =========================================================================
+      const cardY = 176;
+      const cardH = 78;
+      doc.roundedRect(leftMargin, cardY, contentWidth, cardH, 6).fill(bgCard);
+      doc.roundedRect(leftMargin, cardY, contentWidth, cardH, 6).strokeColor(borderSlate).lineWidth(0.8).stroke();
 
-      doc.fillColor(primaryEmerald).fontSize(8.5).font('Helvetica-Bold')
-        .text('CUSTOMER INFORMATION', rightColX + 12, curY + 8);
+      const col1X = leftMargin + 14;
+      const col2X = leftMargin + (contentWidth / 2) + 6;
+      const labelW = 82;
+      const valW1 = (contentWidth / 2) - labelW - 20;
+      const valW2 = (contentWidth / 2) - labelW - 20;
 
-      doc.fillColor(mutedSlate).fontSize(7.5).font('Helvetica').text('Customer Name:', rightColX + 12, curY + 22);
-      doc.fillColor(darkSlate).fontSize(8.5).font('Helvetica-Bold').text(data.customer.name || '-', rightColX + 85, curY + 22, { width: colWidth - 95 });
+      // Baris 1: Invoice No. & Customer Name
+      doc.font('Helvetica').fontSize(7.5).fillColor(mutedSlate).text('Invoice No.', col1X, cardY + 10);
+      doc.font('Helvetica-Bold').fontSize(8).fillColor(darkSlate).text(invoiceNum, col1X + labelW, cardY + 10, { width: valW1 });
 
-      doc.fillColor(mutedSlate).fontSize(7.5).font('Helvetica').text('Email:', rightColX + 12, curY + 37);
-      doc.fillColor(bodySlate).fontSize(7.5).font('Helvetica').text(data.customer.email || '-', rightColX + 85, curY + 37, { width: colWidth - 95 });
+      doc.font('Helvetica').fontSize(7.5).fillColor(mutedSlate).text('Customer', col2X, cardY + 10);
+      doc.font('Helvetica-Bold').fontSize(8).fillColor(darkSlate).text(data.customer.name || '-', col2X + labelW, cardY + 10, { width: valW2 });
 
-      doc.fillColor(mutedSlate).fontSize(7.5).font('Helvetica').text('Phone:', rightColX + 12, curY + 52);
-      doc.fillColor(bodySlate).fontSize(7.5).font('Helvetica').text(data.customer.phone || '-', rightColX + 85, curY + 52);
+      // Baris 2: Booking ID & Nationality
+      doc.font('Helvetica').fontSize(7.5).fillColor(mutedSlate).text('Booking ID', col1X, cardY + 26);
+      doc.font('Helvetica-Bold').fontSize(8).fillColor(primaryTeal).text(data.bookingCode, col1X + labelW, cardY + 26, { width: valW1 });
+
+      doc.font('Helvetica').fontSize(7.5).fillColor(mutedSlate).text('Nationality', col2X, cardY + 26);
+      doc.font('Helvetica').fontSize(8).fillColor(bodySlate).text(data.customer.nationality || 'Indonesia (Domestic)', col2X + labelW, cardY + 26, { width: valW2 });
+
+      // Baris 3: Booking Date & No. of Pax
+      doc.font('Helvetica').fontSize(7.5).fillColor(mutedSlate).text('Booking Date', col1X, cardY + 42);
+      doc.font('Helvetica').fontSize(8).fillColor(bodySlate).text(data.bookingDate || '-', col1X + labelW, cardY + 42, { width: valW1 });
 
       const guestCount = data.trip.participantsCount || (data.trip.participantsNames ? data.trip.participantsNames.length : 1);
-      doc.fillColor(mutedSlate).fontSize(7.5).font('Helvetica').text('Number of Guests:', rightColX + 12, curY + 67);
-      doc.fillColor(darkSlate).fontSize(7.5).font('Helvetica-Bold').text(`${guestCount} Orang`, rightColX + 85, curY + 67);
+      doc.font('Helvetica').fontSize(7.5).fillColor(mutedSlate).text('No. of Pax', col2X, cardY + 42);
+      doc.font('Helvetica-Bold').fontSize(8).fillColor(darkSlate).text(`${guestCount} Pax`, col2X + labelW, cardY + 42, { width: valW2 });
 
-      curY += statusBoxHeight + 10;
+      // Baris 4: Travel Date & Fleet / Package Info
+      doc.font('Helvetica').fontSize(7.5).fillColor(mutedSlate).text('Travel Date', col1X, cardY + 58);
+      doc.font('Helvetica-Bold').fontSize(8).fillColor(darkSlate).text(data.trip.departureDate || '-', col1X + labelW, cardY + 58, { width: valW1 });
+
+      const fleetText = `${data.trip.title}${data.trip.vehicleName ? ' • ' + data.trip.vehicleName : ''}`;
+      doc.font('Helvetica').fontSize(7.5).fillColor(mutedSlate).text('Tour / Fleet', col2X, cardY + 58);
+      doc.font('Helvetica').fontSize(8).fillColor(bodySlate).text(fleetText, col2X + labelW, cardY + 58, { width: valW2, ellipsis: true });
 
       // =========================================================================
-      // 3. TRIP INFORMATION & PICKUP INFORMATION
+      // 4. INVOICE ITEMS TABLE (WAJIB DINAMIS: No. | Description | Qty | Unit Price | Amount)
       // =========================================================================
-      const tripBoxHeight = 84;
-      doc.roundedRect(leftColX, curY, colWidth, tripBoxHeight, 5).fill('#ffffff');
-      doc.roundedRect(leftColX, curY, colWidth, tripBoxHeight, 5).strokeColor(strokeLine).lineWidth(0.8).stroke();
+      let curY = 268;
 
-      doc.fillColor(primaryEmerald).fontSize(8.5).font('Helvetica-Bold')
-        .text('TRIP INFORMATION', leftColX + 12, curY + 8);
+      // Resolusi Dynamic Line Items dari Data Booking Aktual
+      let lineItems: InvoiceLineItem[] = [];
 
-      doc.fillColor(mutedSlate).fontSize(7.5).font('Helvetica').text('Tour Name:', leftColX + 12, curY + 22);
-      doc.fillColor(darkSlate).fontSize(8).font('Helvetica-Bold').text(data.trip.title, leftColX + 75, curY + 22, { width: colWidth - 85 });
-
-      doc.fillColor(mutedSlate).fontSize(7.5).font('Helvetica').text('Package:', leftColX + 12, curY + 37);
-      doc.fillColor(bodySlate).fontSize(7.5).font('Helvetica-Bold').text(data.trip.package, leftColX + 75, curY + 37, { width: colWidth - 85 });
-
-      doc.fillColor(mutedSlate).fontSize(7.5).font('Helvetica').text('Travel Date:', leftColX + 12, curY + 52);
-      doc.fillColor(darkSlate).fontSize(7.5).font('Helvetica-Bold').text(data.trip.departureDate || '-', leftColX + 75, curY + 52);
-
-      doc.fillColor(mutedSlate).fontSize(7.5).font('Helvetica').text('Duration & Fleet:', leftColX + 12, curY + 67);
-      doc.fillColor(bodySlate).fontSize(7.5).font('Helvetica').text(`${data.trip.duration || '1 Hari'} • ${data.trip.vehicleName || 'Private Vehicle'}`, leftColX + 75, curY + 67, { width: colWidth - 85 });
-
-      // RIGHT: PICKUP INFORMATION
-      doc.roundedRect(rightColX, curY, colWidth, tripBoxHeight, 5).fill('#ffffff');
-      doc.roundedRect(rightColX, curY, colWidth, tripBoxHeight, 5).strokeColor(strokeLine).lineWidth(0.8).stroke();
-
-      doc.fillColor(primaryEmerald).fontSize(8.5).font('Helvetica-Bold')
-        .text('PICKUP INFORMATION', rightColX + 12, curY + 8);
-
-      const pickupLoc = data.pickup?.location || data.customer.pickupLocation || data.trip.pickupLocation || 'Hotel Lobby / Meeting Point';
-      doc.fillColor(mutedSlate).fontSize(7.5).font('Helvetica').text('Pickup Location:', rightColX + 12, curY + 22);
-      doc.fillColor(darkSlate).fontSize(7.5).font('Helvetica-Bold').text(pickupLoc, rightColX + 85, curY + 22, { width: colWidth - 95 });
-
-      const pickupDate = data.pickup?.date || data.trip.departureDate || '-';
-      doc.fillColor(mutedSlate).fontSize(7.5).font('Helvetica').text('Pickup Date:', rightColX + 12, curY + 50);
-      doc.fillColor(bodySlate).fontSize(7.5).font('Helvetica').text(pickupDate, rightColX + 85, curY + 50);
-
-      const pickupTime = data.pickup?.time;
-      if (pickupTime) {
-        doc.fillColor(mutedSlate).fontSize(7.5).font('Helvetica').text('Pickup Time:', rightColX + 12, curY + 65);
-        doc.fillColor(emeraldText).fontSize(7.5).font('Helvetica-Bold').text(pickupTime, rightColX + 85, curY + 65);
+      if (Array.isArray(data.items) && data.items.length > 0) {
+        lineItems = data.items.map((it, idx) => ({
+          no: it.no || idx + 1,
+          description: it.description || 'Private Tour Service Item',
+          qty: it.qty ?? 1,
+          unitPrice: Number(it.unitPrice) || 0,
+          amount: Number(it.amount) || (Number(it.qty || 1) * Number(it.unitPrice || 0))
+        }));
       } else {
-        doc.fillColor(mutedSlate).fontSize(7.5).font('Helvetica').text('Pickup Time:', rightColX + 12, curY + 65);
-        doc.fillColor(mutedSlate).fontSize(7.5).font('Helvetica').text('Sesuai jadwal konfirmasi driver', rightColX + 85, curY + 65);
-      }
+        // Fallback dinamis dari spesifikasi booking & snapshot aktual
+        const paxCount = guestCount || 1;
+        const baseAmount = data.payment.baseAmount || data.payment.totalPaid;
+        const packageDesc = `${data.trip.title}${data.trip.package ? ' - ' + data.trip.package : ''}`;
+        const fleetDetail = data.trip.vehicleName ? ` (Fleet: ${data.trip.vehicleName})` : '';
 
-      curY += tripBoxHeight + 10;
+        lineItems.push({
+          no: 1,
+          description: `${packageDesc}${fleetDetail}`,
+          qty: paxCount > 1 ? `${paxCount} Pax` : '1 Package',
+          unitPrice: paxCount > 1 ? Math.round(baseAmount / paxCount) : baseAmount,
+          amount: baseAmount
+        });
 
-      // =========================================================================
-      // 4. ITINERARY SECTION (Day-by-Day Structure)
-      // =========================================================================
-      doc.fillColor(darkSlate).fontSize(9).font('Helvetica-Bold')
-        .text('ITINERARY (RENCANA PERJALANAN)', 36, curY);
-
-      curY += 14;
-      const parsedItinerary = parseItinerary(data.trip.itinerary || []);
-
-      if (parsedItinerary.length > 0) {
-        // Display up to 3 day groups cleanly
-        for (const group of parsedItinerary.slice(0, 3)) {
-          doc.rect(36, curY, contentWidth, 16).fill('#f1f5f9');
-          doc.rect(36, curY, contentWidth, 16).strokeColor(strokeLine).lineWidth(0.5).stroke();
-          doc.fillColor(primaryEmerald).fontSize(7.5).font('Helvetica-Bold')
-            .text(group.dayTitle, 46, curY + 4);
-          curY += 16;
-
-          const acts = group.activities.slice(0, 4);
-          for (const act of acts) {
-            doc.rect(36, curY, contentWidth, 14).fill('#ffffff');
-            doc.rect(36, curY, contentWidth, 14).strokeColor(strokeLine).lineWidth(0.5).stroke();
-            doc.fillColor(darkSlate).fontSize(7.5).font('Helvetica')
-              .text(`•  ${act}`, 48, curY + 3, { width: contentWidth - 24, ellipsis: true });
-            curY += 14;
-          }
+        if (data.payment.uniqueCode && data.payment.uniqueCode > 0) {
+          lineItems.push({
+            no: 2,
+            description: 'Payment Verification Code (Kode Unik Pembayaran Otomatis)',
+            qty: '1 Transaksi',
+            unitPrice: data.payment.uniqueCode,
+            amount: data.payment.uniqueCode
+          });
         }
-      } else {
-        doc.rect(36, curY, contentWidth, 24).fill(cardBg);
-        doc.rect(36, curY, contentWidth, 24).strokeColor(strokeLine).lineWidth(0.5).stroke();
-        doc.fillColor(bodySlate).fontSize(7.5).font('Helvetica')
-          .text('Itinerary private tour disesuaikan secara personal oleh tim Smart Journey berdasarkan paket dan titik penjemputan.', 46, curY + 7);
-        curY += 28;
       }
 
-      curY += 10;
+      // Definisi Lebar Kolom Tabel (Total = 523.28 pt = contentWidth)
+      const colNoW = 32;
+      const colDescW = 275;
+      const colQtyW = 45;
+      const colUnitW = 82;
+      const colAmtW = contentWidth - (colNoW + colDescW + colQtyW + colUnitW); // 89.28 pt
 
-      // =========================================================================
-      // 5. PAYMENT DETAILS & BOOKING CONFIRMATION
-      // =========================================================================
-      const payBoxHeight = 86;
-      // LEFT: PAYMENT DETAILS
-      doc.roundedRect(leftColX, curY, colWidth, payBoxHeight, 5).fill('#ffffff');
-      doc.roundedRect(leftColX, curY, colWidth, payBoxHeight, 5).strokeColor(strokeLine).lineWidth(0.8).stroke();
+      const colNoX = leftMargin;
+      const colDescX = colNoX + colNoW;
+      const colQtyX = colDescX + colDescW;
+      const colUnitX = colQtyX + colQtyW;
+      const colAmtX = colUnitX + colUnitW;
 
-      doc.fillColor(primaryEmerald).fontSize(8.5).font('Helvetica-Bold')
-        .text('PAYMENT DETAILS', leftColX + 12, curY + 8);
+      function renderTableHeader(yPos: number) {
+        const headerH = 22;
+        doc.rect(leftMargin, yPos, contentWidth, headerH).fill('#f1f5f9');
+        doc.rect(leftMargin, yPos, contentWidth, headerH).strokeColor(borderSlate).lineWidth(0.8).stroke();
 
-      doc.fillColor(mutedSlate).fontSize(7.5).font('Helvetica').text('Package Price:', leftColX + 12, curY + 22);
-      doc.fillColor(darkSlate).fontSize(7.5).font('Helvetica-Bold').text(formatRupiah(data.payment.baseAmount), leftColX + colWidth - 95, curY + 22, { width: 85, align: 'right' });
+        doc.font('Helvetica-Bold').fontSize(8).fillColor(darkSlate);
+        doc.text('No.', colNoX, yPos + 6, { width: colNoW, align: 'center' });
+        doc.text('Description', colDescX + 8, yPos + 6, { width: colDescW - 12, align: 'left' });
+        doc.text('Qty', colQtyX, yPos + 6, { width: colQtyW, align: 'center' });
+        doc.text('Unit Price', colUnitX, yPos + 6, { width: colUnitW - 8, align: 'right' });
+        doc.text('Amount', colAmtX, yPos + 6, { width: colAmtW - 8, align: 'right' });
 
-      doc.fillColor(mutedSlate).fontSize(7.5).font('Helvetica').text('Unique Payment Code:', leftColX + 12, curY + 34);
-      doc.fillColor('#0284c7').fontSize(7.5).font('Helvetica-Bold').text(formatRupiah(data.payment.uniqueCode), leftColX + colWidth - 95, curY + 34, { width: 85, align: 'right' });
-
-      doc.rect(leftColX + 6, curY + 46, colWidth - 12, 18).fill(emeraldBg);
-      doc.fillColor(emeraldText).fontSize(8).font('Helvetica-Bold').text('TOTAL PAID:', leftColX + 12, curY + 51);
-      doc.fillColor(emeraldText).fontSize(8.5).font('Helvetica-Bold').text(formatRupiah(data.payment.totalPaid), leftColX + colWidth - 105, curY + 51, { width: 95, align: 'right' });
-
-      doc.fillColor(mutedSlate).fontSize(7).font('Helvetica')
-        .text(`Method: ${data.payment.paymentMethod || 'ArtoPay'} • Ref: ${data.bookingCode} • Status: PAID`, leftColX + 12, curY + 70);
-
-      // RIGHT: BOOKING CONFIRMATION SEAL
-      doc.roundedRect(rightColX, curY, colWidth, payBoxHeight, 5).fill(cardBg);
-      doc.roundedRect(rightColX, curY, colWidth, payBoxHeight, 5).strokeColor(strokeLine).lineWidth(0.8).stroke();
-
-      doc.fillColor(primaryEmerald).fontSize(8.5).font('Helvetica-Bold')
-        .text('BOOKING CONFIRMATION', rightColX + 12, curY + 8);
-
-      doc.fillColor(emeraldText).fontSize(7.5).font('Helvetica-Bold')
-        .text('This booking has been successfully confirmed by Smart Journey.', rightColX + 12, curY + 22, { width: colWidth - 24 });
-
-      doc.fillColor(mutedSlate).fontSize(7.5).font('Helvetica').text('Booking Code:', rightColX + 12, curY + 44);
-      doc.fillColor(darkSlate).fontSize(7.5).font('Helvetica-Bold').text(data.bookingCode, rightColX + 85, curY + 44);
-
-      doc.fillColor(mutedSlate).fontSize(7.5).font('Helvetica').text('Booking Status:', rightColX + 12, curY + 56);
-      doc.fillColor(emeraldText).fontSize(7.5).font('Helvetica-Bold').text('CONFIRMED', rightColX + 85, curY + 56);
-
-      doc.fillColor(mutedSlate).fontSize(7.5).font('Helvetica').text('Payment Status:', rightColX + 12, curY + 68);
-      doc.fillColor(emeraldText).fontSize(7.5).font('Helvetica-Bold').text('PAID', rightColX + 85, curY + 68);
-
-      if (data.confirmedAt) {
-        doc.fillColor(mutedSlate).fontSize(7).font('Helvetica')
-          .text(`Confirmed At: ${data.confirmedAt}`, rightColX + 12, curY + 78);
+        return yPos + headerH;
       }
 
-      curY += payBoxHeight + 10;
+      curY = renderTableHeader(curY);
+
+      // Render Baris-Baris Items
+      lineItems.forEach((item, index) => {
+        // Hitung ketinggian baris secara dinamis agar description panjang wrap dengan rapi
+        doc.font('Helvetica').fontSize(8);
+        const textH = doc.heightOfString(item.description, { width: colDescW - 16 });
+        const rowH = Math.max(24, textH + 12);
+
+        // Pagination jika item sangat banyak
+        if (curY + rowH > 700) {
+          doc.addPage();
+          curY = renderTableHeader(36);
+        }
+
+        // Alternating background
+        if (index % 2 === 1) {
+          doc.rect(leftMargin, curY, contentWidth, rowH).fill('#fafbfd');
+        }
+
+        doc.rect(leftMargin, curY, contentWidth, rowH).strokeColor(borderSlate).lineWidth(0.5).stroke();
+
+        const textY = curY + 7;
+        doc.font('Helvetica').fontSize(8).fillColor(mutedSlate)
+          .text(String(item.no || index + 1), colNoX, textY, { width: colNoW, align: 'center' });
+
+        doc.font('Helvetica').fontSize(8).fillColor(darkSlate)
+          .text(item.description, colDescX + 8, textY, { width: colDescW - 16, align: 'left' });
+
+        doc.font('Helvetica').fontSize(8).fillColor(bodySlate)
+          .text(String(item.qty), colQtyX, textY, { width: colQtyW, align: 'center' });
+
+        doc.font('Helvetica').fontSize(8).fillColor(bodySlate)
+          .text(formatRupiah(item.unitPrice), colUnitX, textY, { width: colUnitW - 8, align: 'right' });
+
+        doc.font('Helvetica-Bold').fontSize(8).fillColor(darkSlate)
+          .text(formatRupiah(item.amount), colAmtX, textY, { width: colAmtW - 8, align: 'right' });
+
+        curY += rowH;
+      });
 
       // =========================================================================
-      // 6. IMPORTANT INFORMATION & CONTACT & VERIFICATION
+      // 5. TOTAL SECTION & PAYMENT INFORMATION
       // =========================================================================
-      const infoBoxHeight = 58;
-      // LEFT: IMPORTANT INFORMATION
-      doc.roundedRect(leftColX, curY, colWidth, infoBoxHeight, 5).fill('#ffffff');
-      doc.roundedRect(leftColX, curY, colWidth, infoBoxHeight, 5).strokeColor(strokeLine).lineWidth(0.8).stroke();
+      curY += 14;
 
-      doc.fillColor(primaryEmerald).fontSize(8).font('Helvetica-Bold')
-        .text('IMPORTANT INFORMATION', leftColX + 12, curY + 6);
-
-      doc.fillColor(bodySlate).fontSize(7).font('Helvetica')
-        .text('•  Please ensure your pickup location is correct.', leftColX + 12, curY + 18)
-        .text('•  Please be ready before the scheduled pickup time.', leftColX + 12, curY + 29)
-        .text('•  Keep this document for your trip reference.', leftColX + 12, curY + 40);
-
-      // RIGHT: VERIFICATION & CONTACT
-      doc.roundedRect(rightColX, curY, colWidth, infoBoxHeight, 5).fill('#ffffff');
-      doc.roundedRect(rightColX, curY, colWidth, infoBoxHeight, 5).strokeColor(strokeLine).lineWidth(0.8).stroke();
-
-      doc.fillColor(primaryEmerald).fontSize(8).font('Helvetica-Bold')
-        .text('VERIFICATION & CONTACT', rightColX + 12, curY + 6);
-
-      doc.fillColor(mutedSlate).fontSize(7).font('Helvetica').text('Booking Code:', rightColX + 12, curY + 18);
-      doc.fillColor(darkSlate).fontSize(7.5).font('Helvetica-Bold').text(data.bookingCode, rightColX + 70, curY + 18);
-
-      if (data.verificationCode || data.verificationHash) {
-        const vCode = data.verificationCode || data.verificationHash;
-        doc.fillColor(mutedSlate).fontSize(7).font('Helvetica').text('Verification:', rightColX + 128, curY + 18);
-        doc.fillColor(darkSlate).fontSize(7).font('Helvetica-Bold').text(vCode!, rightColX + 170, curY + 18, { width: colWidth - 175 });
+      // Pastikan ada ruang cukup sebelum halaman bawah
+      if (curY + 120 > 720) {
+        doc.addPage();
+        curY = 40;
       }
 
-      doc.fillColor(primaryEmerald).fontSize(6.5).font('Helvetica')
-        .text('Verify your booking through Check Booking on Smart Journey.', rightColX + 12, curY + 29);
+      const blockTopY = curY;
+      const leftColW = 270;
+      const rightColW = contentWidth - leftColW - 14; // 239.28 pt
+      const rightColX = leftMargin + leftColW + 14;
 
-      doc.fillColor(mutedSlate).fontSize(6.5).font('Helvetica')
-        .text('PT Sawah Jaya Trans • WhatsApp: +62 852-1234-7289', rightColX + 12, curY + 39)
-        .text('Email: Info@sawahjayatrans.com • Hub: Malang & Bali', rightColX + 12, curY + 47);
+      // KIRI: PAYMENT INFORMATION (Data Pembayaran Tersimpan Backend)
+      const payBoxH = 94;
+      doc.roundedRect(leftMargin, blockTopY, leftColW, payBoxH, 6).fill(bgCard);
+      doc.roundedRect(leftMargin, blockTopY, leftColW, payBoxH, 6).strokeColor(borderSlate).lineWidth(0.8).stroke();
+
+      doc.font('Helvetica-Bold').fontSize(8.5).fillColor(primaryTeal)
+        .text('PAYMENT INFORMATION', leftMargin + 12, blockTopY + 8);
+
+      const payLabelW = 88;
+      const payValW = leftColW - payLabelW - 20;
+
+      doc.font('Helvetica').fontSize(7.5).fillColor(mutedSlate).text('Payment Method', leftMargin + 12, blockTopY + 24);
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(darkSlate)
+        .text(data.payment.paymentMethod || 'Bank Transfer / QRIS', leftMargin + payLabelW, blockTopY + 24, { width: payValW });
+
+      doc.font('Helvetica').fontSize(7.5).fillColor(mutedSlate).text('Payment Provider', leftMargin + 12, blockTopY + 38);
+      doc.font('Helvetica').fontSize(7.5).fillColor(bodySlate)
+        .text(data.payment.paymentProvider || 'ArtoPay Gateway', leftMargin + payLabelW, blockTopY + 38, { width: payValW });
+
+      doc.font('Helvetica').fontSize(7.5).fillColor(mutedSlate).text('Payment Reference', leftMargin + 12, blockTopY + 52);
+      doc.font('Helvetica').fontSize(7.5).fillColor(bodySlate)
+        .text(data.payment.paymentReference || data.payment.paymentId || data.bookingCode, leftMargin + payLabelW, blockTopY + 52, { width: payValW, ellipsis: true });
+
+      doc.font('Helvetica').fontSize(7.5).fillColor(mutedSlate).text('Payment Date', leftMargin + 12, blockTopY + 66);
+      doc.font('Helvetica').fontSize(7.5).fillColor(bodySlate)
+        .text(data.payment.paymentDate || data.payment.paidAt || '-', leftMargin + payLabelW, blockTopY + 66, { width: payValW });
+
+      doc.font('Helvetica').fontSize(7.5).fillColor(mutedSlate).text('Payment Status', leftMargin + 12, blockTopY + 80);
+      doc.font('Helvetica-Bold').fontSize(8).fillColor(paidGreen)
+        .text(isPaid ? 'PAID (Lunas Terverifikasi)' : 'PENDING', leftMargin + payLabelW, blockTopY + 80, { width: payValW });
+
+      // KANAN: TOTAL SECTION (Subtotal, Discount, Total)
+      const subtotal = lineItems.reduce((sum, it) => sum + Number(it.amount || 0), 0);
+      const discount = data.payment.discount || 0;
+      const finalTotal = data.payment.totalPaid || (subtotal - discount);
+
+      doc.roundedRect(rightColX, blockTopY, rightColW, payBoxH, 6).fill('#ffffff');
+      doc.roundedRect(rightColX, blockTopY, rightColW, payBoxH, 6).strokeColor(borderSlate).lineWidth(0.8).stroke();
+
+      const totLabelW = 80;
+      const totValW = rightColW - totLabelW - 20;
+
+      // Subtotal
+      doc.font('Helvetica').fontSize(8).fillColor(mutedSlate).text('Subtotal', rightColX + 12, blockTopY + 12);
+      doc.font('Helvetica-Bold').fontSize(8.5).fillColor(darkSlate)
+        .text(formatRupiah(subtotal), rightColX + totLabelW, blockTopY + 12, { width: totValW, align: 'right' });
+
+      // Discount
+      doc.font('Helvetica').fontSize(8).fillColor(mutedSlate).text('Discount', rightColX + 12, blockTopY + 28);
+      doc.font('Helvetica').fontSize(8.5).fillColor(discount > 0 ? '#dc2626' : bodySlate)
+        .text(discount > 0 ? ('- ' + formatRupiah(discount)) : 'Rp 0', rightColX + totLabelW, blockTopY + 28, { width: totValW, align: 'right' });
+
+      // Divider sebelum Total
+      doc.strokeColor(borderSlate).lineWidth(0.5)
+        .moveTo(rightColX + 12, blockTopY + 44).lineTo(rightColX + rightColW - 12, blockTopY + 44).stroke();
+
+      // Highlight Box Total
+      const totalBoxY = blockTopY + 50;
+      const totalBoxH = 34;
+      doc.roundedRect(rightColX + 8, totalBoxY, rightColW - 16, totalBoxH, 4).fill(paidGreenBg);
+      doc.roundedRect(rightColX + 8, totalBoxY, rightColW - 16, totalBoxH, 4).strokeColor(paidGreenBorder).lineWidth(1).stroke();
+
+      doc.font('Helvetica-Bold').fontSize(10).fillColor(paidGreenText)
+        .text('TOTAL', rightColX + 18, totalBoxY + 11);
+
+      doc.font('Helvetica-Bold').fontSize(11).fillColor(paidGreenText)
+        .text(formatRupiah(finalTotal), rightColX + totLabelW, totalBoxY + 10, { width: totValW - 6, align: 'right' });
+
+      curY = blockTopY + payBoxH + 12;
 
       // =========================================================================
-      // 7. FOOTER
+      // 6. TERMS & NOTES (Resmi & Relevan Smart Journey)
       // =========================================================================
-      const footerY = 790;
-      doc.strokeColor(strokeLine).lineWidth(0.8)
-        .moveTo(36, footerY).lineTo(pageWidth - 36, footerY).stroke();
+      const notesH = data.notes ? 72 : 62;
+      if (curY + notesH > 740) {
+        doc.addPage();
+        curY = 40;
+      }
 
-      doc.fillColor(primaryEmerald).fontSize(8).font('Helvetica-Bold')
-        .text('SMART JOURNEY', 36, footerY + 6, { continued: true })
-        .fillColor(mutedSlate).font('Helvetica')
-        .text('   •   Go Beyond   •   Travel • Explore • Experience', { align: 'left' });
+      doc.roundedRect(leftMargin, curY, contentWidth, notesH, 6).fill('#ffffff');
+      doc.roundedRect(leftMargin, curY, contentWidth, notesH, 6).strokeColor(borderSlate).lineWidth(0.8).stroke();
 
-      doc.fillColor(mutedSlate).fontSize(7).font('Helvetica')
-        .text(`Official Document SJ-${data.bookingCode} • Generated: ${new Date().toISOString().substring(0, 10)}`, pageWidth - 260, footerY + 6, { width: 224, align: 'right' });
+      doc.font('Helvetica-Bold').fontSize(8).fillColor(primaryTeal)
+        .text('TERMS & NOTES', leftMargin + 12, curY + 7);
+
+      doc.font('Helvetica').fontSize(6.8).fillColor(bodySlate)
+        .text('1. Dokumen invoice ini merupakan bukti konfirmasi pemesanan dan tanda terima pembayaran resmi yang sah dari Smart Journey (PT Sawah Jaya Trans).', leftMargin + 12, curY + 20)
+        .text('2. Rincian penjemputan dan armada telah terjadwal secara resmi. Harap siap di lokasi penjemputan 15 menit sebelum waktu keberangkatan.', leftMargin + 12, curY + 30)
+        .text('3. Dokumen ini dapat ditunjukkan langsung kepada pengemudi / tim penjemputan resmi Smart Journey saat hari keberangkatan.', leftMargin + 12, curY + 40)
+        .text('4. Bantuan operasional & perubahan jadwal dapat dikonfirmasikan melalui WhatsApp resmi Smart Journey di +62 852-1234-7289.', leftMargin + 12, curY + 50);
+
+      if (data.notes) {
+        doc.font('Helvetica-Bold').fontSize(6.8).fillColor(darkSlate)
+          .text(`Catatan Khusus Tamu: ${data.notes}`, leftMargin + 12, curY + 60, { width: contentWidth - 24, ellipsis: true });
+      }
+
+      // =========================================================================
+      // 7. FOOTER PADA SETIAP HALAMAN (Multi-page Safe via bufferedPageRange)
+      // =========================================================================
+      const range = doc.bufferedPageRange();
+      for (let i = range.start; i < range.start + range.count; i++) {
+        doc.switchToPage(i);
+        const footerY = 800;
+
+        // Garis Pembatas Footer
+        doc.strokeColor(borderSlate).lineWidth(0.8)
+          .moveTo(leftMargin, footerY).lineTo(rightMargin, footerY).stroke();
+
+        // Footer Kiri: Branding, Legalitas, Hotline
+        doc.font('Helvetica-Bold').fontSize(7.5).fillColor(primaryTeal)
+          .text('SMART JOURNEY', leftMargin, footerY + 6, { continued: true })
+          .font('Helvetica').fillColor(mutedSlate)
+          .text('  •  Go Beyond  •  PT Sawah Jaya Trans (Lisensi Resmi Biro Perjalanan Wisata)', { align: 'left' });
+
+        doc.font('Helvetica').fontSize(6.8).fillColor(mutedSlate)
+          .text('Hub Operasional: Malang & Denpasar Bali  |  Hotline 24/7: +62 852-1234-7289', leftMargin, footerY + 16);
+
+        // Footer Kanan: Kontak Web, Invoice Code, Pagination
+        const vHash = data.verificationHash || `SJ-VERIFIED-${data.bookingCode}`;
+        const pageText = range.count > 1 ? `Hal. ${i + 1} dari ${range.count}` : 'Dokumen Resmi Sah';
+        doc.font('Helvetica').fontSize(6.8).fillColor(mutedSlate)
+          .text(`Email: Info@sawahjayatrans.com  |  Web: www.smartjourney.id`, 300, footerY + 6, { width: rightMargin - 300, align: 'right' });
+
+        doc.font('Helvetica').fontSize(6.8).fillColor(mutedSlate)
+          .text(`Kode Verifikasi: ${vHash}  •  ${pageText}`, 300, footerY + 16, { width: rightMargin - 300, align: 'right' });
+      }
 
       doc.end();
     } catch (err) {

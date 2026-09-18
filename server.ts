@@ -1178,6 +1178,8 @@ app.post('/api/bookings', (req, res) => {
         serviceName: payload.serviceName || resolvedTitle,
         type: payload.type || 'tour',
         nationalityType: payload.nationalityType,
+        items: payload.items || payload.lineItems || payload.details?.items || undefined,
+        discount: payload.discount || payload.details?.discount || 0,
         adminNotes: payload.adminNotes || ''
       };
 
@@ -1730,17 +1732,23 @@ app.get([
       ? new Date(booking.confirmedAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB'
       : undefined;
 
+    const rawBooking = booking as any;
     const pdfBuffer = await generatePrivateTourPdf({
+      invoiceNumber: rawBooking.invoiceNumber || `INV-${bookingCode}`,
       bookingCode,
       bookingDate: bookingDateFormatted,
       bookingStatus: 'Confirmed',
       paymentStatus: 'Paid',
       confirmedAt: confirmedAtFormatted,
       verificationHash,
+      notes: booking.participantData?.specialRequests || booking.details?.notes || booking.adminNotes || rawBooking.notes || undefined,
       customer: {
         name: booking.customerName || booking.fullName || booking.participantData?.name || 'Tamu Terdaftar',
         email: booking.customerEmail || booking.email || booking.participantData?.email || '-',
         phone: booking.customerPhone || booking.phone || booking.participantData?.whatsapp || '-',
+        nationality: booking.nationalityType === 'WNI' || booking.nationalityType === 'domestic'
+          ? 'Indonesia (Domestic)'
+          : (booking.nationalityType === 'WNA_CHINA' ? 'China' : (booking.nationalityType === 'WNA_EUROPE' ? 'Europe / International' : (booking.nationalityType || 'Indonesia (Domestic)'))),
         pickupLocation: booking.details?.pickupLocation || booking.participantData?.pickupLocation || 'Sesuai Konfirmasi',
         dropoffLocation: booking.details?.dropoffLocation || booking.participantData?.dropoffLocation || undefined,
       },
@@ -1762,15 +1770,19 @@ app.get([
         dropoffLocation: booking.details?.dropoffLocation || booking.participantData?.dropoffLocation || undefined,
         itinerary: tourSnapshot.itinerary || []
       },
+      items: rawBooking.items || rawBooking.lineItems || rawBooking.orderItems || booking.details?.items || (tourSnapshot as any)?.items || undefined,
       payment: {
         baseAmount,
         uniqueCode,
+        discount: rawBooking.discount || booking.details?.discount || 0,
         totalPaid: paymentAmount,
         currency: 'IDR',
         paidAt: booking.paidAt || '',
         paymentDate: paymentDateFormatted,
         paymentId: booking.paymentId || booking.paymentIntentId || 'SETTLED_ARTOPAY',
-        paymentMethod: booking.participantData?.paymentMethod || 'ArtoPay Gateway'
+        paymentMethod: booking.participantData?.paymentMethod || 'ArtoPay Gateway',
+        paymentProvider: rawBooking.paymentProvider || 'ArtoPay',
+        paymentReference: booking.paymentId || booking.paymentIntentId || `TX-${bookingCode}`
       }
     });
 
