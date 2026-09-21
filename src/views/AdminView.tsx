@@ -2242,15 +2242,19 @@ export default function AdminView() {
 
                             {/* 2. Duplicate item */}
                             <button 
-                              onClick={() => {
+                              onClick={async () => {
                                 const randomSuffix = Math.floor(1000 + Math.random() * 9000);
                                 const duplicatedTour = {
                                   ...tour,
                                   id: `${tour.id}-copy-${randomSuffix}`,
                                   name: `${tour.name} (Salinan)`
                                 };
-                                addTour(duplicatedTour);
-                                triggerToast(`Berhasil menduplikasi paket "${tour.name}"`);
+                                try {
+                                  await addTour(duplicatedTour);
+                                  triggerToast(`Berhasil menduplikasi paket "${tour.name}"`);
+                                } catch (err) {
+                                  triggerToast('Gagal menduplikasi paket tour ke database server.');
+                                }
                               }}
                               className={`p-2 rounded-xl border ${theme.border} ${theme.hover} text-emerald-400 hover:text-emerald-300 transition-all cursor-pointer`} 
                               title="Duplikat Paket"

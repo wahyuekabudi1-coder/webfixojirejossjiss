@@ -286,9 +286,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           // Authoritative server data: directly set state, no fallback
           setTours(data);
           return;
+        } else {
+          console.error('[API Error] Server returned non-array for main tours:', data);
+        }
+      } else if (adminToken && (res.status === 401 || res.status === 403)) {
+        // Stale or expired admin token in localStorage must not block customer/public tour visibility
+        console.warn(`[Auth Notice] Admin request with ?all=true returned HTTP ${res.status}. Falling back to public published tours.`);
+        const pubRes = await fetch('/api/main-tours');
+        if (pubRes.ok) {
+          const pubData = await pubRes.json();
+          if (Array.isArray(pubData)) {
+            setTours(pubData);
+            return;
+          }
+        } else {
+          console.error(`[API Error] Public tours fallback request failed: HTTP ${pubRes.status}`);
         }
       } else {
         console.error(`[API Error] Failed to fetch tours from server: HTTP ${res.status}`);
+        // Do not clear tours state on error
       }
     } catch (err) {
       console.error('[Network Error] Could not fetch tours from server API, preserving existing state:', err);
@@ -684,7 +700,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Tours actions with Server-Side Authoritative Persistence
+  // Tours actions with Server-Side Authoritative Persistence (Strictly Server-Authoritative)
   const addTour = async (tour: Tour): Promise<Tour> => {
     const tourWithStatus: Tour = {
       ...tour,
@@ -693,10 +709,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: tour.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    
-    // Optimistic UI state
-    setTours(prev => [tourWithStatus, ...prev.filter(t => t.id !== tourWithStatus.id)]);
-    addLog(`Paket tour baru dibuat: ${tourWithStatus.name} (${tourWithStatus.id})`);
 
     try {
       const res = await fetch('/api/main-tours', {
@@ -706,17 +718,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       if (res.ok) {
         const saved: Tour = await res.json();
+        if (!saved || !saved.id) {
+          throw new Error('Format respon server tidak valid saat menyimpan paket tour.');
+        }
+        // Authoritative server state update only after verified server response
         setTours(prev => [saved, ...prev.filter(t => t.id !== saved.id)]);
+        addLog(`Paket tour baru berhasil disimpan di database server: ${saved.name} (${saved.id})`);
         return saved;
       } else {
         const errText = await res.text();
         console.error('Failed to persist tour to server database:', errText);
-        setTours(prev => prev.filter(t => t.id !== tourWithStatus.id));
         throw new Error(errText || 'Gagal menyimpan tour ke server database.');
       }
     } catch (err) {
-      setTours(prev => prev.filter(t => t.id !== tourWithStatus.id));
-      console.error('Network error saving tour to server:', err);
+      console.error('Network or server error saving tour to database:', err);
       throw err;
     }
   };
@@ -727,10 +742,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updatedAt: new Date().toISOString()
     };
 
-    const previous = tours.find(t => t.id === tourWithTimestamp.id);
-    setTours(prev => prev.map(t => t.id === tourWithTimestamp.id ? tourWithTimestamp : t));
-    addLog(`Paket tour ${tourWithTimestamp.id} (${tourWithTimestamp.name}) diperbarui`);
-
     try {
       const res = await fetch(`/api/main-tours/${encodeURIComponent(tourWithTimestamp.id)}`, {
         method: 'PUT',
@@ -739,30 +750,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       if (res.ok) {
         const saved: Tour = await res.json();
+        if (!saved || !saved.id) {
+          throw new Error('Format respon server tidak valid saat memperbarui paket tour.');
+        }
+        // Authoritative server state update
         setTours(prev => prev.map(t => t.id === saved.id ? saved : t));
+        addLog(`Paket tour ${saved.id} (${saved.name}) berhasil diperbarui di database server`);
         return saved;
       } else {
         const errText = await res.text();
         console.error('Failed to update tour on server database:', errText);
-        if (previous) {
-          setTours(prev => prev.map(t => t.id === previous.id ? previous : t));
-        }
         throw new Error(errText || 'Gagal memperbarui tour pada database server.');
       }
     } catch (err) {
-      if (previous) {
-        setTours(prev => prev.map(t => t.id === previous.id ? previous : t));
-      }
-      console.error('Network error updating tour on server:', err);
+      console.error('Network or server error updating tour on server:', err);
       throw err;
     }
   };
 
   const deleteTour = async (id: string): Promise<void> => {
-    const previous = tours.find(t => t.id === id);
-    setTours(prev => prev.filter(t => t.id !== id));
-    addLog(`Paket tour ${id} dihapus dari inventaris`);
-
     try {
       const res = await fetch(`/api/main-tours/${encodeURIComponent(id)}`, {
         method: 'DELETE',
@@ -771,21 +777,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (res.ok) {
         const data = await res.json();
         // If soft-deleted / archived on server to protect bookings, keep state in sync
-        if (data.mode === 'archived' && previous) {
-          setTours(prev => [{ ...previous, status: 'archived', isDeleted: true }, ...prev.filter(t => t.id !== id)]);
+        if (data.mode === 'archived') {
+          setTours(prev => prev.map(t => t.id === id ? { ...t, status: 'archived', isDeleted: true } : t));
+        } else {
+          setTours(prev => prev.filter(t => t.id !== id));
         }
+        addLog(`Paket tour ${id} berhasil dihapus dari database server`);
       } else {
         const errText = await res.text();
         console.error('Failed to delete tour from server database:', errText);
-        if (previous) {
-          setTours(prev => [...prev, previous]);
-        }
         throw new Error(errText || 'Gagal menghapus tour pada database server.');
       }
     } catch (err) {
-      if (previous) {
-        setTours(prev => [...prev, previous]);
-      }
       console.error('Network error deleting tour from server:', err);
       throw err;
     }

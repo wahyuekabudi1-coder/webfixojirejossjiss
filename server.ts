@@ -112,20 +112,20 @@ function readDB(): DatabaseState {
   // Sole authoritative persistent database file (data/db.json ONLY)
   if (fs.existsSync(DB_PATH)) {
     try {
-      const stat = fs.statSync(DB_PATH);
-      if (memoryDB && stat.mtimeMs <= lastDbMtime) {
-        return memoryDB;
-      }
       const raw = fs.readFileSync(DB_PATH, 'utf8');
       const parsed = JSON.parse(raw) as DatabaseState;
       if (parsed && typeof parsed === 'object') {
         memoryDB = parsed;
-        lastDbMtime = stat.mtimeMs;
+        try {
+          const stat = fs.statSync(DB_PATH);
+          lastDbMtime = stat.mtimeMs;
+        } catch (_) {}
       }
     } catch (err) {
-      if (memoryDB) return memoryDB;
-      console.error('CRITICAL: Error reading authoritative persistent data/db.json:', err);
-      throw err;
+      if (!memoryDB) {
+        console.error('CRITICAL: Error reading authoritative persistent data/db.json:', err);
+        throw err;
+      }
     }
   }
 
@@ -261,9 +261,21 @@ function writeDB(data: DatabaseState) {
 
 // -------------------------------------------------------------
 // UNIFIED BACKEND PERSISTENCE FOR PUBLISHED TOURS
-// Master source of truth: db.mainTours in persistent backend database
+// Master source of truth: db.mainTours in persistent backend database (data/db.json)
 // -------------------------------------------------------------
 function readMainTours(): Tour[] {
+  try {
+    if (fs.existsSync(DB_PATH)) {
+      const raw = fs.readFileSync(DB_PATH, 'utf8');
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && Array.isArray(parsed.mainTours)) {
+        if (memoryDB) memoryDB.mainTours = parsed.mainTours;
+        return parsed.mainTours;
+      }
+    }
+  } catch (err) {
+    console.error('[Persistence Error] Failed reading mainTours directly from disk (data/db.json):', err);
+  }
   const db = readDB();
   return db.mainTours || [];
 }
@@ -554,9 +566,21 @@ app.post('/api/main-tours', requireAdminAuth, (req, res) => {
       tours.unshift(newTour);
     }
 
+    // Step 1: Write to data/db.json
     writeMainTours(tours);
-    console.log(`[Persistence] Tour successfully saved to persistent backend: ${newTour.name} (${newTour.id}), total: ${tours.length}`);
-    res.status(201).json(newTour);
+
+    // Step 2: Read back from data/db.json on disk to verify persistence
+    const verifyRaw = fs.readFileSync(DB_PATH, 'utf8');
+    const verifyDB = JSON.parse(verifyRaw);
+    const verifiedTour = (verifyDB.mainTours || []).find((t: any) => t.id === newTour.id);
+
+    if (!verifiedTour) {
+      console.error(`[CRITICAL] Tour ${newTour.id} missing from data/db.json after write!`);
+      return res.status(500).json({ error: 'Verifikasi persistence gagal: paket tour tidak ditemukan di data/db.json setelah penulisan.' });
+    }
+
+    console.log(`[Persistence Verified] Tour successfully saved & verified in data/db.json: ${verifiedTour.name} (${verifiedTour.id}), total: ${verifyDB.mainTours.length}`);
+    return res.status(201).json(verifiedTour);
   } catch (error) {
     console.error('Error creating main tour:', error);
     res.status(500).json({ error: 'Gagal menyimpan paket tour baru ke database server.' });
@@ -583,8 +607,19 @@ app.put('/api/main-tours/:id', requireAdminAuth, (req, res) => {
 
     tours[index] = updatedTour;
     writeMainTours(tours);
-    console.log(`[Persistence] Tour updated in persistent backend: ${updatedTour.name} (${tourId})`);
-    res.json(updatedTour);
+
+    // Verify persistence from disk
+    const verifyRaw = fs.readFileSync(DB_PATH, 'utf8');
+    const verifyDB = JSON.parse(verifyRaw);
+    const verifiedTour = (verifyDB.mainTours || []).find((t: any) => t.id === tourId);
+
+    if (!verifiedTour) {
+      console.error(`[CRITICAL] Updated tour ${tourId} missing from data/db.json after write!`);
+      return res.status(500).json({ error: 'Verifikasi persistence gagal: paket tour yang diperbarui tidak ditemukan di database server.' });
+    }
+
+    console.log(`[Persistence Verified] Tour updated & verified in data/db.json: ${verifiedTour.name} (${tourId})`);
+    res.json(verifiedTour);
   } catch (error) {
     console.error('Error updating main tour:', error);
     res.status(500).json({ error: 'Gagal memperbarui paket tour di database server.' });
@@ -611,7 +646,17 @@ app.delete('/api/main-tours/:id', requireAdminAuth, (req, res) => {
       // Hard delete allowed when no historical bookings reference this tour
       const filtered = tours.filter(t => t.id !== tourId);
       writeMainTours(filtered);
-      console.log(`[Persistence] Tour deleted from catalog: ${tourId}`);
+
+      // Verify deletion on disk
+      const verifyRaw = fs.readFileSync(DB_PATH, 'utf8');
+      const verifyDB = JSON.parse(verifyRaw);
+      const stillExists = (verifyDB.mainTours || []).some((t: any) => t.id === tourId);
+      if (stillExists) {
+        console.error(`[CRITICAL] Tour ${tourId} still present in data/db.json after deletion!`);
+        return res.status(500).json({ error: 'Verifikasi penghapusan gagal: data masih ada di database server.' });
+      }
+
+      console.log(`[Persistence Verified] Tour deleted from catalog: ${tourId}`);
       return res.json({ success: true, id: tourId, mode: 'deleted' });
     }
 
@@ -621,7 +666,17 @@ app.delete('/api/main-tours/:id', requireAdminAuth, (req, res) => {
     (tour as any).isArchived = true;
     tour.updatedAt = new Date().toISOString();
     writeMainTours(tours);
-    console.log(`[Persistence] Tour soft-deleted/archived to preserve booking integrity: ${tourId}`);
+
+    // Verify archived on disk
+    const verifyRaw = fs.readFileSync(DB_PATH, 'utf8');
+    const verifyDB = JSON.parse(verifyRaw);
+    const verifiedTour = (verifyDB.mainTours || []).find((t: any) => t.id === tourId);
+    if (!verifiedTour || verifiedTour.status !== 'archived') {
+      console.error(`[CRITICAL] Tour ${tourId} archive status not verified in data/db.json!`);
+      return res.status(500).json({ error: 'Verifikasi pengarsipan gagal: status tour tidak terarsip di database server.' });
+    }
+
+    console.log(`[Persistence Verified] Tour soft-deleted/archived to preserve booking integrity: ${tourId}`);
     return res.json({ 
       success: true, 
       id: tourId, 
@@ -630,7 +685,7 @@ app.delete('/api/main-tours/:id', requireAdminAuth, (req, res) => {
     });
   } catch (error) {
     console.error('Error deleting main tour:', error);
-    res.status(500).json({ error: 'Gagal menghapus/mengarsipkan paket tour dari database server.' });
+    res.status(500).json({ error: 'Gagal memproses penghapusan paket tour.' });
   }
 });
 
