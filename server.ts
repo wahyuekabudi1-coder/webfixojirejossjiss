@@ -1080,7 +1080,7 @@ app.post('/api/builder/airport-transfers/sync', requireAdminAuth, (req, res) => 
 // Share Tour Database & Core API Routes
 // -------------------------------------------------------------
 
-app.get('/api/db', (req, res) => {
+app.get('/api/db', requireAdminAuth, (req, res) => {
   try {
     const db = readDB();
     res.json(db);
@@ -1387,33 +1387,13 @@ app.post('/api/bookings', (req, res) => {
       const isAirport = !isRental && (rawType === 'airport' || sName.includes('airport transfer') || Boolean(payload.details?.flightNumber || payload.details?.airport || (payload.details?.direction && payload.details.direction.toLowerCase().includes('airport'))));
       const isTaxi = !isRental && !isAirport && (rawType === 'taxi' || sName.includes('taxi'));
 
-      const isArtoPayRegressionTest = Boolean(
-        (payload.id && (payload.id.startsWith('SJ-TEST-') || payload.id.startsWith('SJ-FAIL-') || payload.id.startsWith('SJ-EXP-') || payload.id.startsWith('SJ-SEC-') || payload.id.startsWith('SJ-AMT-') || payload.id.startsWith('SJ-VER-'))) ||
-        (payload.bookingCode && (payload.bookingCode.startsWith('SJ-TEST-') || payload.bookingCode.startsWith('SJ-FAIL-') || payload.bookingCode.startsWith('SJ-EXP-') || payload.bookingCode.startsWith('SJ-SEC-') || payload.bookingCode.startsWith('SJ-AMT-') || payload.bookingCode.startsWith('SJ-VER-'))) ||
-        (payload.customerEmail && ['audit@example.com', 'expired@example.com', 'amount@example.com', 'verify@example.com', 'fail@example.com'].includes(payload.customerEmail))
-      );
-
       let detectedServiceType: 'rental' | 'airport' | 'taxi' | 'tour' = 'tour';
       let matchedServiceId = '';
       let resolvedTitle = '';
       let baseAmount = 0;
       let tourSnapshot: any = undefined;
 
-      if (isArtoPayRegressionTest) {
-        detectedServiceType = 'tour';
-        matchedServiceId = payload.tripId || 'tour-artopay-test';
-        resolvedTitle = payload.tripTitle || payload.serviceName || 'Bromo Sunrise Tour';
-        baseAmount = Math.max(0, Number(payload.baseAmount || payload.totalPriceIDR || payload.totalPrice || 500000));
-        tourSnapshot = {
-          tourId: matchedServiceId,
-          tourName: resolvedTitle,
-          duration: '1 Hari',
-          vehicleName: 'Standard Private Tourism Vehicle',
-          startingPriceIDR: baseAmount,
-          highlights: [],
-          itinerary: []
-        };
-      } else if (isRental) {
+      if (isRental) {
         detectedServiceType = 'rental';
         const vehicleId = String(payload.serviceId || payload.vehicleId || payload.details?.vehicleId || '').trim();
         if (!vehicleId) {

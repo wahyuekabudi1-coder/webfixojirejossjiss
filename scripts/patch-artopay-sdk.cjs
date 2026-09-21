@@ -1,6 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 
+const envPublicKey = (process.env.VITE_ARTOPAY_PUBLIC_KEY || process.env.ARTOPAY_PUBLIC_KEY || '').trim();
+const envKeyExpr = envPublicKey ? JSON.stringify(envPublicKey) : 'undefined';
+
 const targetFiles = [
   path.join(__dirname, '..', 'node_modules', '@arto-pay', 'js-sdk', 'dist', 'arto-pay-sdk.esm.js'),
   path.join(__dirname, '..', 'node_modules', '@arto-pay', 'js-sdk', 'dist', 'arto-pay-sdk.umd.js')
@@ -13,13 +16,13 @@ targetFiles.forEach(file => {
     // 1. Ensure dynamic public key fallback lookup
     code = code.replace(
       /null===\(S=document\.currentScript\)\|\|void 0===S\?void 0:S\.getAttribute\("data-client-key"\)/g,
-      'typeof document !== "undefined" ? (document.currentScript?.getAttribute("data-client-key") || (document.getElementById("arto-pay-sdk-script")?.getAttribute("data-client-key") && !document.getElementById("arto-pay-sdk-script")?.getAttribute("data-client-key")?.startsWith("%") ? document.getElementById("arto-pay-sdk-script")?.getAttribute("data-client-key") : undefined) || (typeof window !== "undefined" ? window.__ARTOPAY_PUBLIC_KEY__ : undefined) || "pk_41cb9f2fd802ef417de4e82f8c32a80d356a02cdf32b52e68ad0") : undefined'
+      `typeof document !== "undefined" ? (document.currentScript?.getAttribute("data-client-key") || (document.getElementById("arto-pay-sdk-script")?.getAttribute("data-client-key") && !document.getElementById("arto-pay-sdk-script")?.getAttribute("data-client-key")?.startsWith("%") ? document.getElementById("arto-pay-sdk-script")?.getAttribute("data-client-key") : undefined) || (typeof window !== "undefined" ? (window.__ARTOPAY_PUBLIC_KEY__ || window.VITE_ARTOPAY_PUBLIC_KEY) : undefined) || ${envKeyExpr}) : undefined`
     );
 
     // 2. Ensure openPayment / $ accepts direct publicKey or dynamic lookup
     code = code.replace(
       /if\(!I\)throw new Error\("\[arto-pay\/js-sdk\] Payment publicKey is required"\);/g,
-      'const resolvedKey = n.publicKey || I || (typeof window !== "undefined" ? (window.__ARTOPAY_PUBLIC_KEY__ || (document.getElementById("arto-pay-sdk-script")?.getAttribute("data-client-key") && !document.getElementById("arto-pay-sdk-script")?.getAttribute("data-client-key")?.startsWith("%") ? document.getElementById("arto-pay-sdk-script")?.getAttribute("data-client-key") : undefined)) : undefined); if(!resolvedKey) throw new Error("[arto-pay/js-sdk] Payment publicKey is required");'
+      `const resolvedKey = n.publicKey || I || (typeof window !== "undefined" ? (window.__ARTOPAY_PUBLIC_KEY__ || window.VITE_ARTOPAY_PUBLIC_KEY || (document.getElementById("arto-pay-sdk-script")?.getAttribute("data-client-key") && !document.getElementById("arto-pay-sdk-script")?.getAttribute("data-client-key")?.startsWith("%") ? document.getElementById("arto-pay-sdk-script")?.getAttribute("data-client-key") : undefined)) : undefined) || ${envKeyExpr}; if(!resolvedKey) throw new Error("[arto-pay/js-sdk] Payment publicKey is required");`
     );
 
     code = code.replace(
