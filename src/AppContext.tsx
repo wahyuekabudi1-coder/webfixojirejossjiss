@@ -298,12 +298,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Server fetch for Bookings (authoritative source)
   const refreshBookings = useCallback(async () => {
     try {
-      const res = await fetch('/api/bookings');
+      const headers = getAdminHeaders();
+      const res = await fetch('/api/bookings', { headers });
       if (res.ok) {
         const serverBookings = await res.json();
         if (Array.isArray(serverBookings)) {
           setBookings(serverBookings);
         }
+      } else if (res.status === 401 || res.status === 403) {
+        // Expected for unauthenticated public customers: full bookings list is admin-only
       } else {
         console.error(`[API Error] Failed to fetch bookings from server: HTTP ${res.status}`);
       }

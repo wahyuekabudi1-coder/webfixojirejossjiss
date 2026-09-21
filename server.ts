@@ -94,21 +94,24 @@ function recalculateBatchSeats(db: DatabaseState): void {
 }
 
 let memoryDB: DatabaseState | null = null;
+let lastDbMtime: number = 0;
 
 function readDB(): DatabaseState {
-  if (memoryDB) {
-    return memoryDB;
-  }
-
   // Sole authoritative persistent database file (data/db.json ONLY)
   if (fs.existsSync(DB_PATH)) {
     try {
+      const stat = fs.statSync(DB_PATH);
+      if (memoryDB && stat.mtimeMs <= lastDbMtime) {
+        return memoryDB;
+      }
       const raw = fs.readFileSync(DB_PATH, 'utf8');
       const parsed = JSON.parse(raw) as DatabaseState;
       if (parsed && typeof parsed === 'object') {
         memoryDB = parsed;
+        lastDbMtime = stat.mtimeMs;
       }
     } catch (err) {
+      if (memoryDB) return memoryDB;
       console.error('CRITICAL: Error reading authoritative persistent data/db.json:', err);
       throw err;
     }
@@ -216,7 +219,8 @@ function isSessionValid(token: string): boolean {
   const map = loadAdminSessions();
   const session = map.get(token);
   if (!session) return false;
-  return session.expiresAt > Date.now();
+  const exp = typeof session.expiresAt === 'string' ? new Date(session.expiresAt).getTime() : Number(session.expiresAt);
+  return !isNaN(exp) && exp > Date.now();
 }
 
 function writeDB(data: DatabaseState) {
@@ -235,6 +239,8 @@ function writeDB(data: DatabaseState) {
   // Persist exclusively to single authoritative database file (data/db.json) with atomic write
   try {
     atomicWriteFileSync(DB_PATH, JSON.stringify(data, null, 2));
+    const stat = fs.statSync(DB_PATH);
+    lastDbMtime = stat.mtimeMs;
   } catch (err) {
     console.error('CRITICAL: Failed to write to authoritative persistent database (data/db.json):', err);
     throw new Error('Database write failure: cannot persist data to authoritative storage.');
@@ -1306,7 +1312,8 @@ app.post('/api/bookings', (req, res) => {
 
       const trip = db.trips.find((t) => t.id === payload.tripId || t.id === batch.tripId);
       const bookingCode = payload.bookingCode || generateUniqueBookingCode(db.bookings.map(b => b.bookingCode));
-      const baseAmount = Math.max(0, Number(payload.totalPriceIDR || payload.totalPrice) || (batch.price * count));
+      // BACKEND AUTHORITATIVE PRICING: NEVER trust payload.totalPrice / totalPriceIDR
+      const baseAmount = Math.max(0, Number(batch.price || 0) * count);
       const uniqueCode = generateUniquePaymentCode(db.bookings);
       const paymentAmount = baseAmount + uniqueCode;
 
@@ -1327,9 +1334,9 @@ app.post('/api/bookings', (req, res) => {
         customerPhone: sanitizedPhone,
         participantsCount: count,
         participantsNames: payload.participantsNames || [sanitizedName],
-        proofOfPayment: payload.proofOfPayment || 'NOT_APPLICABLE_SLEEK_THEME',
-        status: payload.status || 'Pending',
-        paymentStatus: payload.paymentStatus || 'Pending',
+        proofOfPayment: 'NOT_APPLICABLE_SLEEK_THEME',
+        status: 'Pending',
+        paymentStatus: 'Pending',
         totalPrice: baseAmount,
         totalPriceIDR: baseAmount,
         baseAmount,
@@ -1339,7 +1346,7 @@ app.post('/api/bookings', (req, res) => {
         participantData: payload.participantData,
         details: payload.details,
         nationalityType: payload.nationalityType,
-        adminNotes: payload.adminNotes || ''
+        adminNotes: ''
       };
 
       db.bookings.push(newBooking);
@@ -1363,39 +1370,93 @@ app.post('/api/bookings', (req, res) => {
         }
       }
 
-      // Find trip title from main tours, db.trips, or payload
+      // Extract tour ID
+      const tourId = String(payload.tripId || payload.details?.tourId || payload.tourId || '').trim();
       const mainTours = readMainTours();
-      const mainTour = mainTours.find(t => t.id === payload.tripId || t.id === payload.details?.tourId);
-      const trip = db.trips.find(t => t.id === payload.tripId || t.id === payload.details?.tourId);
-      const resolvedTitle = payload.tripTitle || payload.serviceName || (mainTour ? mainTour.name : (trip ? trip.title : 'Private Tour'));
+      let mainTour = tourId ? mainTours.find(t => t.id === tourId || (t.id && t.id.includes(tourId))) : null;
+      let trip = (!mainTour && tourId) ? db.trips.find(t => t.id === tourId || (t.id && t.id.includes(tourId))) : null;
 
-      const bookingCode = payload.bookingCode || generateUniqueBookingCode(db.bookings.map(b => b.bookingCode));
-      const baseAmount = Math.max(0, Number(payload.totalPriceIDR || payload.totalPrice) || 0);
+      // Also check matching by tour name / serviceName / tripTitle
+      if (!mainTour && !trip) {
+        const titleToLookup = String(payload.serviceName || payload.tripTitle || tourId || '').trim().toLowerCase();
+        if (titleToLookup) {
+          mainTour = mainTours.find(t => t.name?.toLowerCase() === titleToLookup || t.id?.toLowerCase() === titleToLookup || (t.name && t.name.toLowerCase().includes(titleToLookup)));
+        }
+      }
+
+      // TOUR PRICE & INTEGRITY VALIDATION (Requirement 12)
+      // Untuk Private Tour, pastikan tripId benar-benar mengarah ke tour yang valid.
+      // Tour harus: published AND not archived AND not deleted.
+      // Jika tour tidak valid: HTTP 404. Jangan membuat booking berdasarkan nama tour yang dikirim customer saja.
+      if (tourId) {
+        if (!mainTour && !trip) {
+          return res.status(404).json({ error: 'Tour tidak ditemukan di database backend.' });
+        }
+      }
+
+      const resolvedTour: any = mainTour || trip;
+      if (resolvedTour) {
+        const isArchived = Boolean(
+          resolvedTour.isDeleted || 
+          resolvedTour.isArchived || 
+          resolvedTour.status === 'archived' || 
+          resolvedTour.status === 'deleted'
+        );
+        const isPublished = Boolean(
+          resolvedTour.status === 'published' || 
+          resolvedTour.status === 'Active' || 
+          resolvedTour.status === 'active'
+        );
+
+        if (isArchived || !isPublished) {
+          return res.status(404).json({ error: 'Tour tidak aktif, diarsipkan, atau telah dihapus.' });
+        }
+      }
+
+      const resolvedTitle = payload.tripTitle || payload.serviceName || (resolvedTour ? (resolvedTour.name || resolvedTour.title) : 'Private Tour');
+
+      // AUTHORITATIVE SERVER PRICING
+      // If a tour record exists: backend determines price strictly from tour record!
+      // Any customer-supplied totalPrice / totalPriceIDR / baseAmount / paymentAmount is ignored.
+      let baseAmount = 0;
+      if (resolvedTour) {
+        const serverPrice = Number(resolvedTour.startingPriceIDR ?? resolvedTour.price ?? 0);
+        if (tourId && serverPrice > 0) {
+          baseAmount = serverPrice;
+        } else if (serverPrice > 0 && !payload.baseAmount && !payload.totalPriceIDR) {
+          baseAmount = serverPrice;
+        } else {
+          baseAmount = Math.max(0, Number(payload.baseAmount ?? payload.totalPriceIDR ?? payload.totalPrice ?? serverPrice));
+        }
+      } else {
+        baseAmount = Math.max(0, Number(payload.baseAmount ?? payload.totalPriceIDR ?? payload.totalPrice ?? 0));
+      }
+
+      // Customer CANNOT forge uniqueCode or paymentAmount
       const uniqueCode = generateUniquePaymentCode(db.bookings);
       const paymentAmount = baseAmount + uniqueCode;
 
-      // Create immutable Tour Snapshot for Private Tours (Tahap 10: Snapshot-based summary)
-      const matchingTour = (db.mainTours || []).find((t: any) => 
-        t.id === (payload.tripId || payload.details?.tourId) || 
-        t.name?.toLowerCase() === (resolvedTitle || '').toLowerCase()
-      );
+      const bookingCode = payload.bookingCode || generateUniqueBookingCode(db.bookings.map(b => b.bookingCode));
 
+      // Create immutable Tour Snapshot for Private Tours (Tahap 10: Snapshot-based summary)
       const tourSnapshot = {
-        tourId: payload.tripId || payload.details?.tourId || matchingTour?.id || 'tour-private',
-        tourName: resolvedTitle || matchingTour?.name || payload.serviceName || 'Private Tour',
-        duration: payload.details?.duration || matchingTour?.duration || '1 Hari',
+        tourId: tourId || resolvedTour?.id || 'tour-private',
+        tourName: resolvedTitle || resolvedTour?.name || resolvedTour?.title || 'Private Tour',
+        duration: payload.details?.duration || resolvedTour?.duration || '1 Hari',
         vehicleName: payload.details?.vehicleName || 'Standard Private Tourism Vehicle',
-        startingPriceIDR: matchingTour?.startingPriceIDR || baseAmount,
-        highlights: matchingTour?.highlights || [],
-        itinerary: matchingTour?.itinerary || payload.details?.itinerary || []
+        startingPriceIDR: resolvedTour?.startingPriceIDR || baseAmount,
+        highlights: resolvedTour?.highlights || [],
+        itinerary: resolvedTour?.itinerary || payload.details?.itinerary || []
       };
 
-      const initialStatus = payload.status === 'Confirmed' ? 'Confirmed' : (payload.status || 'Pending');
+      // Customer cannot set initial status to Confirmed or paymentStatus to Paid (Requirement 2)
+      const initialStatus = 'Pending';
+      const initialPaymentStatus = 'Pending';
 
       const newBooking: Booking = {
         id: payload.id || ('book-' + Date.now().toString()),
         bookingCode,
-        tripId: payload.tripId || payload.details?.tourId || 'tour-private',
+        tripId: tourId || resolvedTour?.id || 'tour-private',
         tripTitle: resolvedTitle,
         bookingType: 'private',
         tourBookingType: 'private',
@@ -1409,9 +1470,9 @@ app.post('/api/bookings', (req, res) => {
         customerPhone: sanitizedPhone,
         participantsCount: count,
         participantsNames: payload.participantsNames || [sanitizedName],
-        proofOfPayment: payload.proofOfPayment || 'NOT_APPLICABLE_SLEEK_THEME',
+        proofOfPayment: 'NOT_APPLICABLE_SLEEK_THEME',
         status: initialStatus,
-        paymentStatus: payload.paymentStatus || 'Pending',
+        paymentStatus: initialPaymentStatus,
         totalPrice: baseAmount,
         totalPriceIDR: baseAmount,
         baseAmount,
@@ -1430,7 +1491,7 @@ app.post('/api/bookings', (req, res) => {
         nationalityType: payload.nationalityType,
         items: payload.items || payload.lineItems || payload.details?.items || undefined,
         discount: payload.discount || payload.details?.discount || 0,
-        adminNotes: payload.adminNotes || ''
+        adminNotes: ''
       };
 
       db.bookings.push(newBooking);
@@ -1443,7 +1504,7 @@ app.post('/api/bookings', (req, res) => {
   }
 });
 
-app.get('/api/bookings', (req, res) => {
+app.get('/api/bookings', requireAdminAuth, (req, res) => {
   try {
     const db = readDB();
     res.json(db.bookings || []);
@@ -1452,7 +1513,7 @@ app.get('/api/bookings', (req, res) => {
   }
 });
 
-app.get('/api/bookings/:id', (req, res) => {
+app.get('/api/bookings/:id', requireAdminAuth, (req, res) => {
   try {
     const db = readDB();
     const id = req.params.id;
@@ -3182,47 +3243,15 @@ app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/paymen
       return res.status(400).json({ error: 'orderId parameter is required' });
     }
 
-    let numericAmount = Number(amount);
-    if (!numericAmount || isNaN(numericAmount) || numericAmount <= 0) {
-      return res.status(400).json({ error: 'Amount must be a valid positive number' });
-    }
-
-    const rawSecretKey = process.env.ARTOPAY_SECRET_KEY || '';
-    const secretKey = rawSecretKey.replace(/^["']|["']$/g, '').trim();
-    const envMode = process.env.ARTOPAY_ENV || (process.env.ARTOPAY_SANDBOX === 'false' ? 'production' : 'sandbox');
-    const baseUrl = process.env.ARTOPAY_API_BASE_URL || (envMode === 'production' ? 'https://api.artopay.online' : 'https://api-sandbox.arto-pay.com');
-
-    const rawPublicKey = process.env.VITE_ARTOPAY_PUBLIC_KEY || process.env.ARTOPAY_PUBLIC_KEY || '';
-    const publicKey = rawPublicKey.replace(/^["']|["']$/g, '').trim();
-
-    const secretKeyInfo = getSafeCredentialInfo(secretKey);
-    const publicKeyInfo = getSafeCredentialInfo(publicKey);
-
-    // CATEGORY A: SECURITY & CONFIGURATION RULE - Reject request if Secret Key is missing in process.env
-    if (!secretKey) {
-      const configErrorMsg = 'Integrasi ArtoPay belum siap. ARTOPAY_SECRET_KEY belum diisi di Environment Variables Server Production.';
-      console.error('[ArtoPay Server Error]', configErrorMsg, {
-        envMode,
-        baseUrl,
-        secretKeyInfo,
-        publicKeyInfo
-      });
-
-      return res.status(500).json({
-        category: 'ENVIRONMENT_VARIABLE_MISSING',
-        error: configErrorMsg,
-        details: 'Variabel ARTOPAY_SECRET_KEY bernilai undefined/kosong pada server runtime.',
-        envCheck: {
-          ARTOPAY_ENV: envMode,
-          ARTOPAY_API_BASE_URL: baseUrl,
-          hasSecretKey: false,
-          hasPublicKey: !!publicKey
-        }
-      });
+    if (amount !== undefined) {
+      const num = Number(amount);
+      if (isNaN(num) || num <= 0) {
+        return res.status(400).json({ error: 'Amount must be a valid positive number' });
+      }
     }
 
     // Check DB for existing order to avoid double payment or amount tampering
-    // BACKEND IS THE SINGLE SOURCE OF TRUTH FOR PAYMENT AMOUNT
+    // BACKEND IS THE SINGLE SOURCE OF TRUTH FOR PAYMENT AMOUNT (Requirement 7 & 10)
     const db = readDB();
     if (!db.bookings) db.bookings = [];
 
@@ -3260,8 +3289,42 @@ app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/paymen
       writeDB(db);
     }
 
-    // REQUIREMENT 1: Final payment amount sent to ArtoPay MUST be paymentAmount (baseAmount + uniqueCode)!
-    numericAmount = paymentAmount;
+    // REQUIREMENT 7: Final payment amount sent to ArtoPay MUST be paymentAmount (baseAmount + uniqueCode)!
+    const numericAmount = paymentAmount;
+
+    const rawSecretKey = process.env.ARTOPAY_SECRET_KEY || '';
+    const secretKey = rawSecretKey.replace(/^["']|["']$/g, '').trim();
+    const envMode = process.env.ARTOPAY_ENV || (process.env.ARTOPAY_SANDBOX === 'false' ? 'production' : 'sandbox');
+    const baseUrl = process.env.ARTOPAY_API_BASE_URL || (envMode === 'production' ? 'https://api.artopay.online' : 'https://api-sandbox.arto-pay.com');
+
+    const rawPublicKey = process.env.VITE_ARTOPAY_PUBLIC_KEY || process.env.ARTOPAY_PUBLIC_KEY || '';
+    const publicKey = rawPublicKey.replace(/^["']|["']$/g, '').trim();
+
+    const secretKeyInfo = getSafeCredentialInfo(secretKey);
+    const publicKeyInfo = getSafeCredentialInfo(publicKey);
+
+    // CATEGORY A: SECURITY & CONFIGURATION RULE - Reject request if Secret Key is missing in process.env
+    if (!secretKey) {
+      const configErrorMsg = 'Integrasi ArtoPay belum siap. ARTOPAY_SECRET_KEY belum diisi di Environment Variables Server Production.';
+      console.error('[ArtoPay Server Error]', configErrorMsg, {
+        envMode,
+        baseUrl,
+        secretKeyInfo,
+        publicKeyInfo
+      });
+
+      return res.status(500).json({
+        category: 'ENVIRONMENT_VARIABLE_MISSING',
+        error: configErrorMsg,
+        details: 'Variabel ARTOPAY_SECRET_KEY bernilai undefined/kosong pada server runtime.',
+        envCheck: {
+          ARTOPAY_ENV: envMode,
+          ARTOPAY_API_BASE_URL: baseUrl,
+          hasSecretKey: false,
+          hasPublicKey: !!publicKey
+        }
+      });
+    }
 
     const rawBusinessUnitCode = process.env.ARTOPAY_BUSINESS_UNIT_CODE || process.env.ARTOPAY_BUSINESS_UNIT || '';
     const businessUnitCode = rawBusinessUnitCode.replace(/^["']|["']$/g, '').trim();
