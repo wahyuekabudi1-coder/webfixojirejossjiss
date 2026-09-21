@@ -76,7 +76,7 @@ async function runFinalVerification() {
                                     /password\s*===\s*['"`]smartjourney2026/i.test(serverSource);
   assert(!hasServerPasswordFallback, 3, 'Source check: Server fallback passwords eliminated', 'No fallback password in server.ts authentication logic');
 
-  const secret = process.env.WEBHOOK_SECRET || process.env.ARTOPAY_SECRET_KEY || 'artopay-secret-key-smartjourney2026';
+  const secret = (process.env.WEBHOOK_SECRET || process.env.ARTOPAY_SECRET_KEY || '').trim();
 
   // ---------------------------------------------------------------------------
   // Check 4: Test webhook secret kosong → 503

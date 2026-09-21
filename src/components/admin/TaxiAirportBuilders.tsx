@@ -180,45 +180,29 @@ export default function TaxiAirportBuilders({
     fetch('/api/builder/taxi-routes')
       .then(res => res.ok ? res.json() : null)
       .then(serverRoutes => {
-        if (Array.isArray(serverRoutes) && serverRoutes.length > 0) {
+        if (Array.isArray(serverRoutes)) {
           setTaxiRoutes(serverRoutes);
         } else {
-          const defaultTaxi: TaxiRoute[] = [
-            { id: 'tx-1', code: 'TX-MLG-SUB-01', name: 'Malang Town ➔ Surabaya City Center', pickupCity: 'Malang', pickupArea: 'Malang Downtown', destinationCity: 'Surabaya', destinationArea: 'Tunjungan Plaza Area', vehicle: 'Toyota Innova Reborn', maxPassengers: 6, maxLuggage: 4, price: 43, priceIDR: 650000, status: 'Active' },
-            { id: 'tx-2', code: 'TX-SUB-MLG-02', name: 'Surabaya Airport ➔ Malang / Batu', pickupCity: 'Surabaya', pickupArea: 'Juanda Airport T1', destinationCity: 'Malang', destinationArea: 'Batu Tourist Center', vehicle: 'Toyota Avanza Veloz', maxPassengers: 4, maxLuggage: 2, price: 38, priceIDR: 580000, status: 'Active' },
-            { id: 'tx-3', code: 'TX-DPS-UBUD-03', name: 'Denpasar ➔ Ubud Fixed Shuttle', pickupCity: 'Denpasar (Bali)', pickupArea: 'Kuta Beach Area', destinationCity: 'Gianyar (Bali)', destinationArea: 'Ubud Center Palace', vehicle: 'Toyota Innova Reborn', maxPassengers: 6, maxLuggage: 4, price: 30, priceIDR: 450000, status: 'Active' }
-          ];
-          setTaxiRoutes(defaultTaxi);
-          fetch('/api/builder/taxi-routes/sync', {
-            method: 'POST',
-            headers: getAdminAuthHeaders(),
-            body: JSON.stringify({ routes: defaultTaxi })
-          }).catch(() => {});
+          setTaxiRoutes([]);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setTaxiRoutes([]);
+      });
 
     // 2. Fetch Airport Transfers from server
     fetch('/api/builder/airport-transfers')
       .then(res => res.ok ? res.json() : null)
       .then(serverTransfers => {
-        if (Array.isArray(serverTransfers) && serverTransfers.length > 0) {
+        if (Array.isArray(serverTransfers)) {
           setAirportTransfers(serverTransfers);
         } else {
-          const defaultAirport: AirportTransfer[] = [
-            { id: 'ap-1', airportName: 'Juanda Airport (SUB)', terminal: 'Terminal 1 Domestik', direction: 'Arrival', destinationArea: 'Malang Hotel Area', vehicle: 'Toyota Innova Reborn', maxPassengers: 6, maxLuggage: 4, meetAndGreet: true, flightNumRequired: true, price: 40, priceIDR: 600000, status: 'Active' },
-            { id: 'ap-2', airportName: 'Ngurah Rai Airport (DPS)', terminal: 'Terminal Internasional', direction: 'Arrival', destinationArea: 'Ubud Village Villa', vehicle: 'Toyota Avanza Veloz', maxPassengers: 4, maxLuggage: 2, meetAndGreet: true, flightNumRequired: true, price: 28, priceIDR: 420000, status: 'Active' },
-            { id: 'ap-3', airportName: 'Juanda Airport (SUB)', terminal: 'Terminal 2 Internasional', direction: 'Departure', destinationArea: 'Batu Resort Area', vehicle: 'Toyota HiAce Commuter', maxPassengers: 12, maxLuggage: 6, meetAndGreet: false, flightNumRequired: true, price: 78, priceIDR: 1200000, status: 'Active' }
-          ];
-          setAirportTransfers(defaultAirport);
-          fetch('/api/builder/airport-transfers/sync', {
-            method: 'POST',
-            headers: getAdminAuthHeaders(),
-            body: JSON.stringify({ transfers: defaultAirport })
-          }).catch(() => {});
+          setAirportTransfers([]);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setAirportTransfers([]);
+      });
   }, []);
 
   // Save taxi

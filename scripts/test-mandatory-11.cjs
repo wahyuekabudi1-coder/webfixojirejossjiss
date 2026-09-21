@@ -52,7 +52,7 @@ async function run11MandatoryTests() {
     }
   }
 
-  const secret = process.env.WEBHOOK_SECRET || process.env.ARTOPAY_SECRET_KEY || 'artopay-secret-key-smartjourney2026';
+  const secret = (process.env.WEBHOOK_SECRET || process.env.ARTOPAY_SECRET_KEY || '').trim();
 
   // ---------------------------------------------------------------------------
   // TEST 1: WEBHOOK_SECRET kosong → reject (Fail Closed)

@@ -1,5 +1,6 @@
 export interface Tour {
   id: string;
+  slug?: string;
   name: string;
   description: string;
   duration: string;
@@ -56,6 +57,8 @@ export interface Review {
 export interface Booking {
   id: string;
   type: 'tour' | 'airport' | 'taxi' | 'rental';
+  serviceType?: 'tour' | 'airport' | 'taxi' | 'rental' | 'shared' | string;
+  serviceId?: string;
   serviceName: string; // e.g., "Mount Bromo Adventure Tour" or "Juanda Airport Transfer"
   details: {
     pickupLocation?: string;

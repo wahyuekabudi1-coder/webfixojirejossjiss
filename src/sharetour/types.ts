@@ -98,6 +98,8 @@ export type TourBookingType = 'private' | 'shared';
 export interface Booking {
   id: string;
   bookingCode: string;
+  serviceType?: string;
+  serviceId?: string;
   tripId: string;
   tripTitle?: string;
   bookingType?: 'private' | 'shared';

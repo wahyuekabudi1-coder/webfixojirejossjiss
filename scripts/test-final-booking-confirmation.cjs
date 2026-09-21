@@ -6,10 +6,11 @@
 const http = require('http');
 const crypto = require('crypto');
 const fs = require('fs');
+require('dotenv').config();
 
 const PORT = 3000;
 const HOST = '127.0.0.1';
-const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || process.env.ARTOPAY_SECRET_KEY || 'artopay-secret-key-smartjourney2026';
+const WEBHOOK_SECRET = (process.env.WEBHOOK_SECRET || process.env.ARTOPAY_SECRET_KEY || '').trim();
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'sawahjaya2026';
 
 function makeRequest(path, options = {}, body = null) {
