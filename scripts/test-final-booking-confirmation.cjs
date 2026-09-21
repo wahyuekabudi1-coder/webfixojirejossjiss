@@ -311,7 +311,7 @@ async function runTests() {
     // -------------------------------------------------------------------------
     console.log('\n--- EXECUTING TEST I: Snapshot Immutability ---');
     // Read and mutate catalog trip in db.json if exists
-    let dbPath = fs.existsSync('data/db.json') ? 'data/db.json' : 'src/sharetour/db.json';
+    const dbPath = 'data/db.json';
     const dbRaw = fs.readFileSync(dbPath, 'utf8');
     const db = JSON.parse(dbRaw);
 

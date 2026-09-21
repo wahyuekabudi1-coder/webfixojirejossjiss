@@ -30,10 +30,7 @@ function resolveProjectRoot(): string {
 }
 
 const PROJECT_ROOT = resolveProjectRoot();
-const DB_PATH = path.join(PROJECT_ROOT, 'src', 'sharetour', 'db.json');
-const PERSISTENT_DB_PATH = path.join(PROJECT_ROOT, 'data', 'db.json');
-const MAIN_TOURS_DATA_PATH = path.join(PROJECT_ROOT, 'data', 'main_tours.json');
-const MAIN_TOURS_SRC_PATH = path.join(PROJECT_ROOT, 'src', 'data', 'main_tours.json');
+const DB_PATH = path.join(PROJECT_ROOT, 'data', 'db.json');
 
 // Helper to generate a unique booking code: SJ-[6 RANDOM ALPHANUMERIC CHARACTERS]
 function generateUniqueBookingCode(existingCodes: string[]): string {
@@ -57,109 +54,19 @@ function generateUniqueBookingCode(existingCodes: string[]): string {
   return 'SJ-' + Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
-// Initial Mock/Pre-seeded DB
+// Clean Default Database Schema (No dummy production tours or fake bookings)
 const defaultDB: DatabaseState = {
-  trips: [
-    {
-      id: 'trip-2',
-      title: 'Ancient Java: Bromo Sunrise & Mt. Ijen Blue Fire',
-      slug: 'bromo-ijen',
-      location: 'East Java (Probolinggo & Banyuwangi)',
-      duration: '3 Days 2 Nights',
-      description:
-        'Witness the surreal sea of sand surrounding Mount Bromo, feel the cold mountain air as the sun rises over smoke-venting volcanos, and venture deep inside Mount Ijen to see the magical neon-blue sulfuric fire of Banyuwangi.',
-      coverImage:
-        'https://images.unsplash.com/photo-1605538032432-a9f0c8d9baac?auto=format&fit=crop&w=1200&q=80',
-      included: [
-        'AC Transport throughout Java tour (3 days)',
-        '4x4 Private Jeep in Mount Bromo',
-        'Local mountain guides for Bromo & Ijen',
-        'Entrance fees for Bromo and Ijen National Parks',
-        '1 Night at Bromo mountain lodge, 1 Night at Banyuwangi hotel',
-        'Gas masks for Mt. Ijen sulfuric fumes',
-        'Daily mineral water and breakfast'
-      ],
-      excluded: [
-        'Lunch and Dinner meals',
-        'Horse riding fees in Bromo',
-        'Flights or trains to Surabaya/Malang',
-        'Tips for guides and drivers'
-      ],
-      highlight:
-        'Private 4x4 Jeep sunrise convoy across Bromo\'s whispering sand sea, and a midnight trek into Ijen crater to see the rare glowing sulfuric blue flame.',
-      gallery: [
-        'https://images.unsplash.com/photo-1605538032432-a9f0c8d9baac?auto=format&fit=crop&w=1200&q=80',
-        'https://images.unsplash.com/photo-1516690561799-46d8f74f9abf?auto=format'
-      ],
-      faq: [
-        {
-          question: 'Do you supply protective equipment?',
-          answer:
-            'Yes, we provide professional active-carbon gas masks and headlamps for the Mt. Ijen sulfur hike.'
-        }
-      ],
-      status: 'published',
-      startingPrice: 150,
-      price: 150,
-      itinerary: [
-        {
-          day: 1,
-          title: 'Pick up from Surabaya & Bromo Mountain Check-in',
-          description:
-            'Pick up from Surabaya Airport/Train Station. Enjoy a private scenic 4-hour drive to Cemoro Lawang village. Check into your cozy room sitting directly on the rim of the Tengger Caldera. Feel the crisp mountain air and rest early for the pre-dawn expedition.',
-          timeSchedules: [
-            { time: '12:00', activity: 'Surabaya airport pickup & meet private driver' },
-            { time: '16:00', activity: 'Check-in at mountain caldera overlook lodge' }
-          ]
-        },
-        {
-          day: 2,
-          title: 'Bromo Sunrise, Crater Trek & Banyuwangi Drive',
-          description:
-            'Wake up at 3:00 AM. Board your private 4x4 Jeep to Penanjakan viewpoint to witness the world-famous sunrise over Mt. Bromo, Mt. Batok, and Mt. Semeru. Afterward, cross the dramatic Whispering Sand and hike 250 steps to Bromo\'s active crater rim. Return, check out, and take a 6-hour scenic drive to Banyuwangi.',
-          timeSchedules: [
-            { time: '03:00', activity: 'Board 4x4 Offroad Jeep to sunrise overlook' },
-            { time: '08:00', activity: 'Volcanic crater rim hike & Whispering Sand crossing' },
-            { time: '12:00', activity: 'Checkout and transfer drive to Banyuwangi' }
-          ]
-        },
-        {
-          day: 3,
-          title: 'Ijen Midnight Hike, Blue Flame Experience & Bali Ferry Transfer',
-          description:
-            'Start at 1:00 AM. Hike 2 hours up Mount Ijen. Descent safely into the crater alongside sulfur miners to see the stunning Neon Blue Acid Flames of Ijen. Walk around the giant turquoise acidic lake at sunrise. Return to base for breakfast, then transfer to Banyuwangi harbor or catch a ferry to Bali.',
-          timeSchedules: [
-            { time: '01:00', activity: 'Midnight departure and trek up Mt. Ijen summit' },
-            { time: '03:30', activity: 'Sulfur crater descent & glowing blue fire viewing' },
-            { time: '06:00', activity: 'Sunrise view over toxic acid green lake' },
-            { time: '11:00', activity: 'Breakfast checkout & ferry transfer drop-off' }
-          ]
-        }
-      ]
-    }
-  ],
-  batches: [
-    {
-      id: 'batch-4',
-      tripId: 'trip-2',
-      departureDate: '2026-07-22',
-      quota: 12,
-      availableSeats: 12,
-      price: 150,
-      status: 'Open'
-    },
-    {
-      id: 'batch-5',
-      tripId: 'trip-2',
-      departureDate: '2026-08-18',
-      quota: 12,
-      availableSeats: 12,
-      price: 150,
-      status: 'Open'
-    }
-  ],
-  bookings: []
-};
+  mainTours: [],
+  shareTours: [],
+  trips: [],
+  batches: [],
+  bookings: [],
+  payments: [],
+  invoices: [],
+  adminSessions: [],
+  adminDrafts: {},
+  operationalData: {}
+} as any;
 
 function recalculateBatchSeats(db: DatabaseState): void {
   if (!db || !db.batches) return;
@@ -193,22 +100,27 @@ function readDB(): DatabaseState {
     return memoryDB;
   }
 
-  // Sole authoritative persistent database file (data/db.json)
-  if (fs.existsSync(PERSISTENT_DB_PATH)) {
+  // Sole authoritative persistent database file (data/db.json ONLY)
+  if (fs.existsSync(DB_PATH)) {
     try {
-      const raw = fs.readFileSync(PERSISTENT_DB_PATH, 'utf8');
+      const raw = fs.readFileSync(DB_PATH, 'utf8');
       const parsed = JSON.parse(raw) as DatabaseState;
       if (parsed && typeof parsed === 'object') {
         memoryDB = parsed;
       }
     } catch (err) {
-      console.error('CRITICAL: Error reading authoritative persistent db.json:', err);
+      console.error('CRITICAL: Error reading authoritative persistent data/db.json:', err);
       throw err;
     }
   }
 
   if (!memoryDB) {
     memoryDB = JSON.parse(JSON.stringify(defaultDB));
+    try {
+      atomicWriteFileSync(DB_PATH, JSON.stringify(memoryDB, null, 2));
+    } catch (writeErr) {
+      console.warn('Could not initialize empty db.json on disk:', writeErr);
+    }
   }
 
   if (!memoryDB.trips) memoryDB.trips = [];
@@ -255,7 +167,6 @@ function atomicWriteFileSync(filePath: string, content: string): void {
 // Security: Persistent Admin Session Store (Survives Server Restarts)
 // Authoritative single source of truth: db.adminSessions in data/db.json
 // -------------------------------------------------------------
-const ADMIN_SESSIONS_PATH = path.join(PROJECT_ROOT, 'data', 'admin_sessions.json');
 
 interface AdminSessionRecord {
   token: string;
@@ -294,11 +205,6 @@ function saveAdminSession(token: string): void {
     filtered.push(newRecord);
     (db as any).adminSessions = filtered;
     writeDB(db);
-
-    // Non-blocking auxiliary mirror
-    try {
-      atomicWriteFileSync(ADMIN_SESSIONS_PATH, JSON.stringify(filtered, null, 2));
-    } catch (_) {}
   } catch (err) {
     console.error('Error saving admin session to authoritative db.json:', err);
     throw err;
@@ -326,23 +232,12 @@ function writeDB(data: DatabaseState) {
   }
   memoryDB = data;
 
-  // Persist to primary authoritative database file (data/db.json) with atomic write
-  try {
-    atomicWriteFileSync(PERSISTENT_DB_PATH, JSON.stringify(data, null, 2));
-  } catch (err) {
-    console.error('CRITICAL: Failed to write to primary persistent database:', err);
-    throw new Error('Database write failure: cannot persist data to authoritative storage.');
-  }
-
-  // Non-blocking mirror writes for legacy/static caches
+  // Persist exclusively to single authoritative database file (data/db.json) with atomic write
   try {
     atomicWriteFileSync(DB_PATH, JSON.stringify(data, null, 2));
-    if (data.mainTours && Array.isArray(data.mainTours)) {
-      atomicWriteFileSync(MAIN_TOURS_DATA_PATH, JSON.stringify(data.mainTours, null, 2));
-      atomicWriteFileSync(MAIN_TOURS_SRC_PATH, JSON.stringify(data.mainTours, null, 2));
-    }
-  } catch (mirrorErr) {
-    console.warn('Non-critical mirror write failed:', mirrorErr);
+  } catch (err) {
+    console.error('CRITICAL: Failed to write to authoritative persistent database (data/db.json):', err);
+    throw new Error('Database write failure: cannot persist data to authoritative storage.');
   }
 }
 
@@ -1043,9 +938,8 @@ app.post('/api/service-limits', requireAdminAuth, (req, res) => {
 
 // -------------------------------------------------------------
 // Admin Auto-Save Draft Storage API (Isolated from Production Data)
+// Authoritative single source of truth: db.adminDrafts in data/db.json
 // -------------------------------------------------------------
-const DRAFTS_PATH = path.join(PROJECT_ROOT, 'src', 'data', 'admin_drafts.json');
-const PERSISTENT_DRAFTS_PATH = path.join(PROJECT_ROOT, 'data', 'admin_drafts.json');
 
 function readAdminDrafts(): Record<string, any> {
   try {
@@ -1064,13 +958,6 @@ function writeAdminDrafts(drafts: Record<string, any>): void {
   const db = readDB();
   (db as any).adminDrafts = drafts;
   writeDB(db);
-
-  // Non-blocking mirror write
-  try {
-    const jsonStr = JSON.stringify(drafts, null, 2);
-    atomicWriteFileSync(PERSISTENT_DRAFTS_PATH, jsonStr);
-    atomicWriteFileSync(DRAFTS_PATH, jsonStr);
-  } catch (_) {}
 }
 
 app.get('/api/admin/drafts', requireAdminAuth, (req, res) => {
@@ -2759,7 +2646,10 @@ const handleAdminLogout = (req: express.Request, res: express.Response) => {
       const existingList: AdminSessionRecord[] = Array.isArray((db as any).adminSessions) ? (db as any).adminSessions : [];
       (db as any).adminSessions = existingList.filter(s => s && s.token !== token);
       writeDB(db);
-    } catch (_) {}
+    } catch (err) {
+      console.error('Error invalidating admin session in database:', err);
+      return res.status(500).json({ error: 'Gagal mengakhiri sesi admin pada database.' });
+    }
   }
   return res.json({ success: true, message: 'Admin session terminated' });
 };

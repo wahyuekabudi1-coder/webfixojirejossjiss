@@ -283,7 +283,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          // Authoritative server data: directly set state, no localStorage fallback or sync-local
+          // Authoritative server data: directly set state, no fallback
           setTours(data);
           return;
         }
