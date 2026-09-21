@@ -157,7 +157,7 @@ async function runMatrix() {
     console.log(`Current Configured Base URL: ${currentBaseUrl}`);
 
     if (currentEnv === 'production') {
-      assert(currentBaseUrl === 'https://api.artopay.online', 'Production environment maps to https://api.artopay.online');
+      assert(currentBaseUrl === 'https://api.arto-pay.com', 'Production environment maps to https://api.arto-pay.com');
     } else {
       assert(currentBaseUrl === 'https://api-sandbox.arto-pay.com', 'Sandbox environment maps to https://api-sandbox.arto-pay.com');
     }

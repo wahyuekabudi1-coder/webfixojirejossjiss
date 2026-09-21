@@ -25,6 +25,7 @@ export interface PaymentIntentResponse {
   customerToken?: string;
   token?: string;
   checkoutUrl?: string;
+  url?: string;
   publicKey?: string;
   orderId?: string;
   error?: string;
@@ -95,10 +96,11 @@ export async function processArtoPayPayment({
     const data: PaymentIntentResponse = await response.json();
     console.log('[ArtoPay Gateway] Payment Intent created successfully:', data);
 
-    // If hosted checkout URL is provided by backend response, redirect
-    if (data.checkoutUrl) {
-      console.log('[ArtoPay] Redirecting to hosted gateway URL:', data.checkoutUrl);
-      window.location.href = data.checkoutUrl;
+    // If hosted Payment Link URL is provided by backend response, redirect
+    const hostedPaymentUrl = data.checkoutUrl || data.url;
+    if (hostedPaymentUrl) {
+      console.log('[ArtoPay] Redirecting to hosted payment link:', hostedPaymentUrl);
+      window.location.href = hostedPaymentUrl;
       return data;
     }
 

@@ -10,6 +10,18 @@ import { generatePrivateTourPdf } from './src/server/generatePrivateTourPdf.ts';
 // Load environment variables
 dotenv.config();
 
+// Ensure any Google AI Studio container settings are loaded
+if (fs.existsSync('/app/.dev.env.json')) {
+  try {
+    const devEnv = JSON.parse(fs.readFileSync('/app/.dev.env.json', 'utf8'));
+    for (const [key, value] of Object.entries(devEnv)) {
+      if (!process.env[key] && typeof value === 'string') {
+        process.env[key] = value;
+      }
+    }
+  } catch (e) {}
+}
+
 const PORT = Number(process.env.PORT) || 3000;
 
 // Helper to determine the actual project root directory safely across environments (AI Studio, PM2, Passenger, Hostinger)
@@ -3462,7 +3474,7 @@ function getArtoPayConfig() {
   }
 
   const rawBaseUrl = normalizeEnvVar(process.env.ARTOPAY_API_BASE_URL);
-  const apiBaseUrl = rawBaseUrl || (envMode === 'production' ? 'https://api.artopay.online' : 'https://api-sandbox.arto-pay.com');
+  const apiBaseUrl = rawBaseUrl || (envMode === 'production' ? 'https://api.arto-pay.com' : 'https://api-sandbox.arto-pay.com');
 
   const businessUnitCode = normalizeEnvVar(process.env.ARTOPAY_BUSINESS_UNIT_CODE || process.env.ARTOPAY_BUSINESS_UNIT);
 
@@ -3501,6 +3513,29 @@ app.get('/api/artopay/config', (req, res) => {
       : "ARTOPAY_SECRET_KEY is missing. Please add ARTOPAY_SECRET_KEY in Server Environment Variables."
   });
 });
+
+function parseCustomerPhone(rawPhone?: string): { countryCode: string; number: string } {
+  const clean = (rawPhone || '').replace(/[^\d+]/g, '');
+  if (!clean) {
+    return { countryCode: '+62', number: '8123456789' };
+  }
+  if (clean.startsWith('+62')) {
+    return { countryCode: '+62', number: clean.slice(3).replace(/^0+/, '') || '8123456789' };
+  }
+  if (clean.startsWith('62')) {
+    return { countryCode: '+62', number: clean.slice(2).replace(/^0+/, '') || '8123456789' };
+  }
+  if (clean.startsWith('0')) {
+    return { countryCode: '+62', number: clean.slice(1) || '8123456789' };
+  }
+  if (clean.startsWith('+')) {
+    const match = clean.match(/^(\+\d{1,3})(\d+)$/);
+    if (match) {
+      return { countryCode: match[1], number: match[2] };
+    }
+  }
+  return { countryCode: '+62', number: clean };
+}
 
 app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/payment/create-intent'], async (req, res) => {
   try {
@@ -3599,11 +3634,27 @@ app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/paymen
     }
 
     const formattedAmount = Math.round(Number(numericAmount));
-    const payloadObj: Record<string, any> = {
-      amount: formattedAmount,
+    const formattedAmountStr = formattedAmount.toFixed(2);
+
+    const customerDisplayName = String(
+      existingOrder.fullName || existingOrder.customerName || customerName || 'Customer'
+    ).substring(0, 100);
+
+    const customerEmailStr = String(
+      existingOrder.email || existingOrder.customerEmail || customerEmail || 'customer@example.com'
+    );
+
+    const customerPhoneStr = String(
+      existingOrder.phone || existingOrder.customerPhone || customerPhone || '+628123456789'
+    );
+
+    // Official ArtoPay Payment Intent payload (POST /v1.1/payment-intents)
+    // Reference: https://docs.arto-pay.com/api/payment-intents
+    const paymentIntentPayload: Record<string, any> = {
+      amount: formattedAmountStr,
       currency: currency || 'IDR',
       orderId: String(orderId),
-      description: description || `Payment for order ${orderId}`,
+      description: String(description || `Payment for order ${orderId}`).substring(0, 500),
       customerId: customerId || `cust_${String(orderId).replace(/[^a-zA-Z0-9]/g, '_')}`,
       metadata: {
         ...(existingOrder ? {
@@ -3611,27 +3662,23 @@ app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/paymen
           bookingCode: existingOrder.bookingCode,
           tourId: existingOrder.tripId,
           tourName: existingOrder.tripTitle,
-          customerName: existingOrder.fullName || existingOrder.customerName,
-          customerEmail: existingOrder.email || existingOrder.customerEmail,
-          customerPhone: existingOrder.phone || existingOrder.customerPhone,
+          customerName: customerDisplayName,
+          customerEmail: customerEmailStr,
+          customerPhone: customerPhoneStr,
           travelDate: existingOrder.departureDate,
           nationality: existingOrder.nationalityType,
           pax: existingOrder.participantsCount,
           baseAmount: existingOrder.baseAmount,
           uniqueCode: existingOrder.uniqueCode,
-          paymentAmount: existingOrder.paymentAmount,
-          amount: formattedAmount,
-          currency: currency || 'IDR'
+          paymentAmount: existingOrder.paymentAmount
         } : {}),
         ...(metadata || {})
       }
     };
 
     if (businessUnitCode) {
-      payloadObj.businessUnitCode = businessUnitCode;
+      paymentIntentPayload.businessUnitCode = businessUnitCode;
     }
-
-    const requestBody = JSON.stringify(payloadObj);
 
     const candidateHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -3642,32 +3689,20 @@ app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/paymen
       candidateHeaders['X-Business-Unit-Code'] = businessUnitCode;
     }
 
-    // Primary endpoint: /v1/payment-intents
-    const endpointV1 = `${apiBaseUrl.replace(/\/+$/, '')}/v1/payment-intents`;
-    let calledEndpoint = endpointV1;
-    console.log(`[ArtoPay Backend Request] Target: ${endpointV1} | Env: ${envMode} | SecretKey: ${secretKeyInfo.prefix}...${secretKeyInfo.suffix} (len:${secretKeyInfo.length}) | PublicKey: ${publicKeyInfo.prefix}...${publicKeyInfo.suffix} (len:${publicKeyInfo.length})`);
+    // Primary endpoint: Official ArtoPay Payment Intent endpoint /v1.1/payment-intents
+    const endpointV11 = `${apiBaseUrl.replace(/\/+$/, '')}/v1.1/payment-intents`;
+    let calledEndpoint = endpointV11;
+    console.log(`[ArtoPay Backend Request] Target: ${endpointV11} | Env: ${envMode} | Amount: "${formattedAmountStr}" | SecretKey: ${secretKeyInfo.prefix}...${secretKeyInfo.suffix} (len:${secretKeyInfo.length})`);
 
     let response: Response;
 
     // CATEGORY B: OUTBOUND NETWORK/FETCH HANDLER
     try {
-      response = await fetch(endpointV1, {
+      response = await fetch(endpointV11, {
         method: 'POST',
         headers: candidateHeaders,
-        body: requestBody
+        body: JSON.stringify(paymentIntentPayload)
       });
-
-      // Fallback to /v1.1/payment-intents if 404
-      if (response.status === 404) {
-        const endpointV11 = `${apiBaseUrl.replace(/\/+$/, '')}/v1.1/payment-intents`;
-        console.log(`[ArtoPay Backend Fallback] /v1 endpoint returned 404, trying fallback ${endpointV11}...`);
-        calledEndpoint = endpointV11;
-        response = await fetch(endpointV11, {
-          method: 'POST',
-          headers: candidateHeaders,
-          body: requestBody
-        });
-      }
     } catch (fetchErr: any) {
       console.error('[ArtoPay Network Fetch Exception]:', fetchErr);
       return res.status(500).json({
@@ -3689,7 +3724,7 @@ app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/paymen
 
       if (response.status === 401) {
         category = 'ARTOPAY_UNAUTHORIZED_401';
-        userFriendlyError = 'Autentikasi ArtoPay gagal (401 Unauthorized). Silakan periksa kembali ARTOPAY_SECRET_KEY di Production Server Environment Anda.';
+        userFriendlyError = `Autentikasi ArtoPay gagal (401 Unauthorized). Silakan periksa kembali ARTOPAY_SECRET_KEY dan kesesuaian environment (${envMode}: ${apiBaseUrl}) di Server Environment Anda.`;
         console.error('[ArtoPay 401 Unauthorized Diagnostic]:');
         console.error(`HTTP status: ${response.status}`);
         console.error(`endpoint: ${calledEndpoint}`);
@@ -3703,7 +3738,7 @@ app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/paymen
         userFriendlyError = 'Akses ArtoPay ditolak (403 Forbidden). Pastikan IP server atau domain Anda diizinkan di dashboard ArtoPay.';
       } else if (response.status === 400) {
         category = 'ARTOPAY_BAD_REQUEST_400';
-        userFriendlyError = 'Request Payment Intent ditolak ArtoPay (400 Bad Request).';
+        userFriendlyError = `Request pembayaran ditolak ArtoPay (400 Bad Request): ${errorText}`;
       } else if (response.status >= 500) {
         category = 'ARTOPAY_SERVER_ERROR_500';
         userFriendlyError = 'Server ArtoPay Gateway mengalami gangguan internal (HTTP 500).';
@@ -3728,7 +3763,8 @@ app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/paymen
     const data: any = await response.json();
     console.log('[ArtoPay API Gateway Response Success]:', {
       id: data.id || data.paymentId || data.responseData?.id,
-      orderId: data.orderId || data.responseData?.orderId
+      orderId: data.orderId || data.responseData?.orderId,
+      url: data.responseData?.url || data.url
     });
 
     const resData = data.responseData || data.data || data;
@@ -3736,13 +3772,16 @@ app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/paymen
     const paymentId = resData.id || resData.paymentId || resData.payment_id;
     const secret = resData.clientSecret || resData.secret || resData.client_secret;
     const customerToken = resData.customerToken || resData.token || resData.customer_token;
-    const checkoutUrl = resData.checkoutUrl || resData.paymentUrl || resData.redirectUrl;
+    const checkoutUrl = resData.url || resData.checkoutUrl || resData.paymentUrl || resData.redirectUrl;
 
-    // Update DB with active paymentIntentId
+    // Update DB with active paymentIntentId and checkoutUrl
     if (existingOrderIndex !== -1 && db.bookings[existingOrderIndex]) {
       db.bookings[existingOrderIndex].paymentIntentId = paymentId;
       db.bookings[existingOrderIndex].paymentStatus = 'Pending Payment';
       db.bookings[existingOrderIndex].status = 'Pending';
+      if (checkoutUrl) {
+        db.bookings[existingOrderIndex].checkoutUrl = checkoutUrl;
+      }
       writeDB(db);
     }
 
@@ -3755,6 +3794,7 @@ app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/paymen
       customerToken: customerToken,
       token: customerToken,
       checkoutUrl: checkoutUrl,
+      url: checkoutUrl,
       orderId: String(orderId),
       publicKey: publicKey || resData.publicKey || '',
       baseAmount: existingOrder.baseAmount,

@@ -117,6 +117,7 @@ export interface Booking {
   paymentStatus?: string;
   paymentIntentId?: string;
   paymentId?: string;
+  checkoutUrl?: string;
   paidAt?: string;
   confirmedAt?: string;
   verificationHash?: string;
