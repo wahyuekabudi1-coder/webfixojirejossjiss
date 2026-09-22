@@ -62,13 +62,13 @@ export default function CustomerHeader({ currentView, onNavigate, isAdminLoggedI
               </button>
             </div>
 
-            {/* Currency Selector (Dollar, Rupiah & Yuan): Tombol Dolar & Yen sementara dimatikan, jangan dihapus */}
+            {/* Currency Selector (Dollar, Rupiah & Yuan): Semua mata uang aktif */}
             <div className="flex flex-col items-center bg-[#25463c] border border-[#2b5145] rounded-lg p-0.5" id="curr-switcher" title="Pilih Mata Uang">
-              {/* Tombol Dollar (USD) - Sementara dimatikan, jangan dihapus */}
+              {/* Tombol Dollar (USD) */}
               <button
                 type="button"
                 disabled={!ENABLE_FOREIGN_CURRENCIES}
-                title={!ENABLE_FOREIGN_CURRENCIES ? "Dollar (USD) - Sementara dinonaktifkan" : "Dollar (USD)"}
+                title="Dollar (USD)"
                 onClick={() => ENABLE_FOREIGN_CURRENCIES && setCurrency("USD")}
                 className={`w-5.5 h-3.5 rounded text-[10px] font-black leading-none flex items-center justify-center transition-all duration-150 ${
                   !ENABLE_FOREIGN_CURRENCIES
@@ -81,10 +81,10 @@ export default function CustomerHeader({ currentView, onNavigate, isAdminLoggedI
                 $
               </button>
 
-              {/* Tombol Rupiah (IDR) - Aktif */}
+              {/* Tombol Rupiah (IDR) - Default */}
               <button
                 type="button"
-                title="Rupiah (IDR) - Aktif"
+                title="Rupiah (IDR)"
                 onClick={() => setCurrency("IDR")}
                 className={`w-5.5 h-3.5 rounded text-[8.5px] font-black leading-none flex items-center justify-center transition-all duration-150 cursor-pointer ${
                   currency === "IDR"
@@ -95,11 +95,11 @@ export default function CustomerHeader({ currentView, onNavigate, isAdminLoggedI
                 Rp
               </button>
 
-              {/* Tombol Yuan / Yen (CNY) - Sementara dimatikan, jangan dihapus */}
+              {/* Tombol Yuan / Yen (CNY) */}
               <button
                 type="button"
                 disabled={!ENABLE_FOREIGN_CURRENCIES}
-                title={!ENABLE_FOREIGN_CURRENCIES ? "Yen / Yuan (CNY) - Sementara dinonaktifkan" : "Yen / Yuan (CNY)"}
+                title="Yen / Yuan (CNY)"
                 onClick={() => ENABLE_FOREIGN_CURRENCIES && setCurrency("CNY")}
                 className={`w-5.5 h-3.5 rounded text-[10px] font-black leading-none flex items-center justify-center transition-all duration-150 ${
                   !ENABLE_FOREIGN_CURRENCIES

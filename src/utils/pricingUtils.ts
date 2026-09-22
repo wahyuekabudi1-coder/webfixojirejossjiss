@@ -13,11 +13,10 @@ export const EXCHANGE_RATE_USD_TO_IDR = 16000;
 export const EXCHANGE_RATE_USD_TO_CNY = 7.2;
 
 /**
- * Flag kontrol tombol mata uang asing (USD / Dolar & CNY / Yen).
- * Sementara dimatikan dulu sesuai permintaan pengguna (jangan dihapus kodenya).
- * Jika di masa depan ingin diaktifkan kembali, cukup ubah nilai ini menjadi true.
+ * Flag kontrol tombol mata uang asing (USD / Dolar & CNY / Yuan).
+ * Diaktifkan kembali: Semua mata uang (IDR, USD, CNY) aktif dengan default IDR (Rp).
  */
-export const ENABLE_FOREIGN_CURRENCIES = false;
+export const ENABLE_FOREIGN_CURRENCIES = true;
 
 export interface TourPricingResult {
   unitPriceUSD: number;
