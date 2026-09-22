@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
+try { require('dotenv').config(); } catch (e) {}
 
 const PORT = 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'sawahjaya2026';

@@ -153,7 +153,9 @@ export interface Booking {
   discount?: number;
   invoiceNumber?: string;
   paymentProvider?: string;
+  currency?: string;
   notes?: string;
+  specialRequests?: string;
 }
 
 export interface DatabaseState {

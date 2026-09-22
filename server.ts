@@ -44,6 +44,44 @@ function resolveProjectRoot(): string {
 const PROJECT_ROOT = resolveProjectRoot();
 const DB_PATH = path.join(PROJECT_ROOT, 'data', 'db.json');
 
+// Concurrency: Process-level critical section / mutex for booking creation & bulk writes
+class AsyncMutex {
+  private queue: Array<() => void> = [];
+  private locked: boolean = false;
+
+  async acquire(): Promise<() => void> {
+    return new Promise((resolve) => {
+      const release = () => {
+        if (this.queue.length > 0) {
+          const next = this.queue.shift()!;
+          next();
+        } else {
+          this.locked = false;
+        }
+      };
+
+      if (!this.locked) {
+        this.locked = true;
+        resolve(release);
+      } else {
+        this.queue.push(() => resolve(release));
+      }
+    });
+  }
+
+  async runExclusive<T>(callback: () => Promise<T> | T): Promise<T> {
+    const release = await this.acquire();
+    try {
+      return await callback();
+    } finally {
+      release();
+    }
+  }
+}
+
+const bookingMutex = new AsyncMutex();
+const bulkImportMutex = new AsyncMutex();
+
 // Helper to generate a unique booking code: SJ-[6 RANDOM ALPHANUMERIC CHARACTERS]
 function generateUniqueBookingCode(existingCodes: string[]): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -75,6 +113,16 @@ function sanitizeHtml(str: any): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+// Security: Public-safe masking of customer name (e.g. "Budi Santoso" -> "B**i S*****o")
+function maskName(name: string): string {
+  if (!name || typeof name !== 'string') return '';
+  return name.trim().split(/\s+/).map(part => {
+    if (part.length <= 1) return '*';
+    if (part.length === 2) return part[0] + '*';
+    return part[0] + '*'.repeat(part.length - 2) + part[part.length - 1];
+  }).join(' ');
 }
 
 // Security: Collision-safe entity ID generation
@@ -141,7 +189,7 @@ function recalculateBatchSeats(db: DatabaseState): void {
       0
     );
 
-    const quota = Number(batch.quota) || 12;
+    const quota = Number(batch.quota ?? (batch as any).totalSeats) || 12;
     batch.availableSeats = Math.max(0, quota - totalBooked);
 
     if (batch.availableSeats <= 0) {
@@ -242,10 +290,21 @@ function loadAdminSessions(): Map<string, AdminSessionRecord> {
     const db = readDB();
     const list = Array.isArray((db as any).adminSessions) ? (db as any).adminSessions : [];
     const now = Date.now();
+    let hasExpired = false;
+    const active: AdminSessionRecord[] = [];
+
     for (const s of list) {
       if (s && s.token && s.expiresAt > now) {
         map.set(s.token, s);
+        active.push(s);
+      } else {
+        hasExpired = true;
       }
+    }
+
+    if (hasExpired) {
+      (db as any).adminSessions = active;
+      writeDB(db);
     }
   } catch (err) {
     console.error('Error reading admin sessions from db.json:', err);
@@ -262,7 +321,7 @@ function saveAdminSession(token: string): void {
     const newRecord: AdminSessionRecord = {
       token,
       createdAt: new Date().toISOString(),
-      expiresAt: now + (30 * 24 * 60 * 60 * 1000) // 30 days valid
+      expiresAt: now + (24 * 60 * 60 * 1000) // 24 hours session lifetime
     };
     filtered.push(newRecord);
     (db as any).adminSessions = filtered;
@@ -356,7 +415,7 @@ app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', origin);
   }
 
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Secret-Key, X-Webhook-Secret');
   res.header('X-Content-Type-Options', 'nosniff');
   res.header('X-Frame-Options', 'SAMEORIGIN');
@@ -472,20 +531,8 @@ function generateUniquePaymentCode(bookings: Booking[] = []): number {
     return available[idx];
   }
 
-  // Safe expansion: if 1-99 are exhausted, expand safely to 100-999
-  const expandedAvailable: number[] = [];
-  for (let i = 100; i <= 999; i++) {
-    if (!activePendingUniqueCodes.has(i)) {
-      expandedAvailable.push(i);
-    }
-  }
-
-  if (expandedAvailable.length > 0) {
-    const idx = Math.floor(Math.random() * expandedAvailable.length);
-    return expandedAvailable[idx];
-  }
-
-  throw new Error('Semua kode unik pembayaran sedang aktif. Silakan coba sesaat lagi.');
+  // Graceful handling: signal exhaustion so caller returns a clean 503 retry response
+  return -1;
 }
 
 // -------------------------------------------------------------
@@ -1272,43 +1319,63 @@ app.get('/api/trips/:id', (req, res) => {
   }
 });
 
-app.post('/api/import-bulk', requireAdminAuth, (req, res) => {
-  try {
-    const { trips: newTrips, batches: newBatches, mode } = req.body;
-    const db = readDB();
+app.post('/api/import-bulk', requireAdminAuth, async (req, res) => {
+  return await bulkImportMutex.runExclusive(async () => {
+    try {
+      const { trips: newTrips, batches: newBatches, mode, expectedRevision, version } = req.body;
+      const db = readDB();
 
-    if (mode === 'overwrite') {
-      if (!Array.isArray(newTrips) || newTrips.length === 0) {
-        return res.status(400).json({ error: 'Operasi overwrite dibatalkan: payload trips kosong atau tidak valid.' });
+      const currentRevision = Number((db as any).tripsRevision || 1);
+      const clientExpected = expectedRevision !== undefined ? Number(expectedRevision) : (version !== undefined ? Number(version) : undefined);
+
+      if (clientExpected !== undefined && !isNaN(clientExpected) && clientExpected !== currentRevision) {
+        return res.status(409).json({
+          error: `Konflik data: Database telah diperbarui oleh administrator lain (revisi saat ini: ${currentRevision}, revisi Anda: ${clientExpected}). Silakan muat ulang halaman.`,
+          currentRevision
+        });
       }
-      if (newBatches !== undefined && !Array.isArray(newBatches)) {
-        return res.status(400).json({ error: 'Payload batches tidak valid.' });
-      }
-      for (const t of newTrips) {
-        if (!t || typeof t !== 'object' || !t.id || !t.title) {
-          return res.status(400).json({ error: 'Item trip tidak valid: setiap trip wajib memiliki id dan title.' });
+
+      if (mode === 'overwrite') {
+        if (!Array.isArray(newTrips) || newTrips.length === 0) {
+          return res.status(400).json({ error: 'Operasi overwrite dibatalkan: payload trips kosong atau tidak valid.' });
+        }
+        if (newBatches !== undefined && !Array.isArray(newBatches)) {
+          return res.status(400).json({ error: 'Payload batches tidak valid.' });
+        }
+        for (const t of newTrips) {
+          if (!t || typeof t !== 'object' || !t.id || !t.title) {
+            return res.status(400).json({ error: 'Item trip tidak valid: setiap trip wajib memiliki id dan title.' });
+          }
+        }
+        db.trips = newTrips;
+        if (Array.isArray(newBatches)) {
+          db.batches = newBatches;
+        }
+      } else {
+        if (newTrips && newTrips.length > 0) {
+          db.trips = [...db.trips, ...newTrips];
+        }
+
+        if (newBatches && newBatches.length > 0) {
+          db.batches = [...db.batches, ...newBatches];
         }
       }
-      db.trips = newTrips;
-      if (Array.isArray(newBatches)) {
-        db.batches = newBatches;
-      }
-    } else {
-      if (newTrips && newTrips.length > 0) {
-        db.trips = [...db.trips, ...newTrips];
-      }
 
-      if (newBatches && newBatches.length > 0) {
-        db.batches = [...db.batches, ...newBatches];
-      }
+      (db as any).tripsRevision = currentRevision + 1;
+      (db as any).tripsUpdatedAt = new Date().toISOString();
+
+      writeDB(db);
+      res.json({
+        success: true,
+        tripsCount: db.trips.length,
+        batchesCount: db.batches.length,
+        revision: (db as any).tripsRevision
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Failed to process bulk import of trips and batches' });
     }
-
-    writeDB(db);
-    res.json({ success: true, tripsCount: db.trips.length, batchesCount: db.batches.length });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Failed to process bulk import of trips and batches' });
-  }
+  });
 });
 
 app.post('/api/trips', requireAdminAuth, (req, res) => {
@@ -1432,9 +1499,10 @@ app.delete('/api/batches/:id', requireAdminAuth, (req, res) => {
   }
 });
 
-app.post('/api/bookings', (req, res) => {
-  try {
-    const db = readDB();
+app.post('/api/bookings', async (req, res) => {
+  return await bookingMutex.runExclusive(async () => {
+    try {
+      const db = readDB();
     const payload = req.body || {};
 
     const rawCount = payload.participantsCount ?? payload.details?.guests ?? 1;
@@ -1479,7 +1547,7 @@ app.post('/api/bookings', (req, res) => {
       }
 
       if (batch.status === 'Closed' || batch.availableSeats < count) {
-        return res.status(400).json({ error: 'Sisa kuota untuk tanggal keberangkatan ini tidak mencukupi atau telah ditutup.' });
+        return res.status(409).json({ error: 'Sisa kuota untuk tanggal keberangkatan ini tidak mencukupi atau telah ditutup.' });
       }
 
       // Decrement seats atomically
@@ -1497,6 +1565,9 @@ app.post('/api/bookings', (req, res) => {
       }
       const baseAmount = batchPrice * count;
       const uniqueCode = generateUniquePaymentCode(db.bookings);
+      if (uniqueCode === -1) {
+        return res.status(503).json({ error: 'Semua kode unik pembayaran (1-99) sedang digunakan oleh transaksi aktif lain. Silakan coba beberapa saat lagi.' });
+      }
       const paymentAmount = baseAmount + uniqueCode;
 
       const newBooking: Booking = {
@@ -1526,6 +1597,7 @@ app.post('/api/bookings', (req, res) => {
         baseAmount,
         uniqueCode,
         paymentAmount,
+        currency: 'IDR',
         createdAt: new Date().toISOString(),
         participantData: payload.participantData,
         details: payload.details,
@@ -1888,6 +1960,9 @@ app.post('/api/bookings', (req, res) => {
 
       // Customer CANNOT forge uniqueCode or paymentAmount
       const uniqueCode = generateUniquePaymentCode(db.bookings);
+      if (uniqueCode === -1) {
+        return res.status(503).json({ error: 'Semua kode unik pembayaran (1-99) sedang digunakan oleh transaksi aktif lain. Silakan coba beberapa saat lagi.' });
+      }
       const paymentAmount = baseAmount + uniqueCode;
 
       const bookingCode = payload.bookingCode || generateUniqueBookingCode(db.bookings.map(b => b.bookingCode));
@@ -1921,6 +1996,7 @@ app.post('/api/bookings', (req, res) => {
         baseAmount,
         uniqueCode,
         paymentAmount,
+        currency: 'IDR',
         createdAt: new Date().toISOString(),
         participantData: payload.participantData,
         details: {
@@ -1941,10 +2017,11 @@ app.post('/api/bookings', (req, res) => {
       writeDB(db);
       return res.status(201).json(newBooking);
     }
-  } catch (e: any) {
-    console.error('[Error in POST /api/bookings]:', e);
-    return res.status(500).json({ error: 'Gagal memproses pendaftaran booking: ' + (e.message || '') });
-  }
+    } catch (e: any) {
+      console.error('[Error in POST /api/bookings]:', e);
+      return res.status(500).json({ error: 'Gagal memproses pendaftaran booking: ' + (e.message || '') });
+    }
+  });
 });
 
 app.get('/api/bookings', requireAdminAuth, (req, res) => {
@@ -2225,26 +2302,22 @@ app.get([
       departureDate,
       duration,
       participantsCount,
-      participantsNames,
-      customerName: booking.customerName || booking.fullName || '',
-      customerEmail: booking.customerEmail || booking.email || '',
-      customerPhone: booking.customerPhone || booking.phone || '',
+      customerName: maskName(booking.customerName || booking.fullName || ''),
       vehicleName: booking.details?.vehicleName || tourSnapshot.vehicleName || (isShared ? 'Armada Wisata Open Trip' : 'Standard Private Tourism Vehicle'),
       pickupLocation: booking.details?.pickupLocation || booking.participantData?.pickupLocation || (isShared ? 'Meeting Point Open Trip' : 'Hotel Lobby / Meeting Point'),
       dropoffLocation: booking.details?.dropoffLocation || booking.participantData?.dropoffLocation || '',
       baseAmount,
       uniqueCode,
       paymentAmount,
+      currency: 'IDR',
       paymentStatus,
       bookingStatus,
       paidAt: booking.paidAt || null,
-      paymentId: booking.paymentId || booking.paymentIntentId || null,
       paymentMethod: booking.participantData?.paymentMethod ? booking.participantData.paymentMethod.toUpperCase() : 'ARTOPAY GATEWAY',
-      itinerary: tourSnapshot.itinerary || booking.details?.itinerary || [],
-      tourSnapshot,
       canDownloadFinalSummary,
       canDownloadInvoice,
       gateMessage,
+      tourSnapshot,
       createdAt: booking.createdAt || new Date().toISOString()
     });
   } catch (err: any) {
@@ -2709,11 +2782,14 @@ app.get('/api/private-tour/invoice-html/:bookingCode', (req, res) => {
     const customerEmailEscaped = sanitizeHtml(booking.customerEmail || booking.email || '-');
     const pickupEscaped = sanitizeHtml(booking.details?.pickupLocation || booking.participantData?.pickupLocation || '-');
     const dropoffEscaped = sanitizeHtml(booking.details?.dropoffLocation || booking.participantData?.dropoffLocation || '');
-    const tourNameEscaped = sanitizeHtml(booking.serviceName || booking.tripTitle || tourSnapshot.tourName);
+    const tourNameEscaped = sanitizeHtml(booking.serviceName || booking.tripTitle || tourSnapshot.tourName || '-');
     const packageNameEscaped = sanitizeHtml(booking.details?.package || tourSnapshot.packageName || 'Private Exclusive');
     const departureDateEscaped = sanitizeHtml(booking.departureDate || booking.details?.date || '-');
     const durationEscaped = sanitizeHtml(booking.details?.duration || tourSnapshot.duration || '1 Hari');
     const vehicleEscaped = sanitizeHtml(booking.details?.vehicleName || tourSnapshot.vehicleName || 'Standard Private Tourism Vehicle');
+    const paymentMethodEscaped = sanitizeHtml(booking.participantData?.paymentMethod ? booking.participantData.paymentMethod.toUpperCase() : 'ARTOPAY GATEWAY');
+    const paymentIdEscaped = sanitizeHtml(booking.paymentId || booking.paymentIntentId || 'TX-VERIFIED-ARTOPAY');
+    const specialRequestsEscaped = sanitizeHtml(booking.details?.specialRequests || booking.notes || booking.specialRequests || '');
 
     const html = `
 <!DOCTYPE html>
@@ -3055,10 +3131,17 @@ app.get('/api/private-tour/invoice-html/:bookingCode', (req, res) => {
     </table>
 
     <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-top: 6px; padding: 0 10px;">
-      <div>Metode Pembayaran: <strong>${booking.participantData?.paymentMethod ? booking.participantData.paymentMethod.toUpperCase() : 'ARTOPAY GATEWAY'}</strong></div>
-      <div>ID Transaksi: <strong>${booking.paymentId || booking.paymentIntentId || 'TX-VERIFIED-ARTOPAY'}</strong></div>
+      <div>Metode Pembayaran: <strong>${paymentMethodEscaped}</strong></div>
+      <div>ID Transaksi: <strong>${paymentIdEscaped}</strong></div>
       <div>Waktu Pelunasan: <strong>${booking.paidAt ? new Date(booking.paidAt).toLocaleString('id-ID') : '-'}</strong></div>
     </div>
+
+    ${specialRequestsEscaped ? `
+    <div class="info-card" style="margin-top: 12px;">
+      <div class="section-title" style="margin-top:0;">Permintaan Khusus / Catatan</div>
+      <div style="font-size: 12px; color: #334155;">${specialRequestsEscaped}</div>
+    </div>
+    ` : ''}
 
     <!-- Guest Manifest -->
     <div class="section-title">Guest Manifest (Daftar Tamu Peserta)</div>
@@ -3850,6 +3933,10 @@ app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/paymen
       return res.status(400).json({ error: 'Pesanan ini sudah lunas (PAID). Pembayaran ulang tidak diperlukan.' });
     }
 
+    if (existingOrder.status === 'Cancelled' || existingOrder.status === 'Rejected') {
+      return res.status(400).json({ error: 'Pesanan ini telah dibatalkan atau ditolak. Tidak dapat membuat transaksi pembayaran.' });
+    }
+
     // Backend authoritative amount check (Never trust frontend amount directly)
     let baseAmount = Number(existingOrder.baseAmount || existingOrder.totalPriceIDR || existingOrder.totalPrice);
     if (!baseAmount || isNaN(baseAmount) || baseAmount <= 0) {
@@ -3903,7 +3990,6 @@ app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/paymen
     }
 
     const formattedAmount = Math.round(Number(numericAmount));
-    const formattedAmountStr = formattedAmount.toFixed(2);
 
     const customerDisplayName = String(
       existingOrder.fullName || existingOrder.customerName || customerName || 'Customer'
@@ -3920,8 +4006,8 @@ app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/paymen
     // Official ArtoPay Payment Intent payload (POST /v1.1/payment-intents)
     // Reference: https://docs.arto-pay.com/api/payment-intents
     const paymentIntentPayload: Record<string, any> = {
-      amount: formattedAmountStr,
-      currency: currency || 'IDR',
+      amount: formattedAmount,
+      currency: 'IDR',
       orderId: String(orderId),
       description: String(description || `Payment for order ${orderId}`).substring(0, 500),
       customerId: customerId || `cust_${String(orderId).replace(/[^a-zA-Z0-9]/g, '_')}`,
@@ -3961,7 +4047,7 @@ app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/paymen
     // Primary endpoint: Official ArtoPay Payment Intent endpoint /v1.1/payment-intents
     const endpointV11 = `${apiBaseUrl.replace(/\/+$/, '')}/v1.1/payment-intents`;
     let calledEndpoint = endpointV11;
-    console.log(`[ArtoPay Backend Request] Target: ${endpointV11} | Env: ${envMode} | Amount: "${formattedAmountStr}" | SecretKey: ${secretKeyInfo.prefix}...${secretKeyInfo.suffix} (len:${secretKeyInfo.length})`);
+    console.log(`[ArtoPay Backend Request] Target: ${endpointV11} | Env: ${envMode} | Amount: ${formattedAmount} | SecretKey: ${secretKeyInfo.prefix}...${secretKeyInfo.suffix} (len:${secretKeyInfo.length})`);
 
     let response: Response;
 
@@ -4081,6 +4167,139 @@ app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/paymen
   }
 });
 
+// -------------------------------------------------------------
+// Unified Payment Verification Logic (Issue 4)
+// Shared across ArtoPay Webhook and Active Polling Endpoints
+// -------------------------------------------------------------
+
+interface PaymentVerificationResult {
+  valid: boolean;
+  status: 'PAID' | 'PENDING' | 'EXPIRED' | 'FAILED' | 'INVALID';
+  error?: string;
+  expectedAmount: number;
+  receivedAmount?: number;
+}
+
+function verifyPayment(booking: any, paymentData: any): PaymentVerificationResult {
+  const expectedAmount = Number(
+    booking.paymentAmount || 
+    (booking.uniqueCode ? ((booking.baseAmount || booking.totalPriceIDR || 0) + booking.uniqueCode) : (booking.totalPriceIDR || booking.totalPrice || 0))
+  );
+
+  if (!paymentData || typeof paymentData !== 'object') {
+    return {
+      valid: false,
+      status: 'PENDING',
+      error: 'Data pembayaran tidak ditemukan atau tidak valid',
+      expectedAmount
+    };
+  }
+
+  const rawData = paymentData.responseData || paymentData.data || paymentData;
+  const rawStatus = String(
+    paymentData.status || 
+    rawData.status || 
+    paymentData.paymentStatus || 
+    paymentData.orderStatus || 
+    paymentData.transactionStatus || 
+    paymentData.transaction_status ||
+    rawData.transaction_status ||
+    rawData.transactionStatus ||
+    paymentData.result || 
+    ''
+  ).toUpperCase().trim();
+
+  // Currency Validation: Strictly IDR enforced (Issue 6)
+  const rawCurrency = String(paymentData.currency || rawData.currency || 'IDR').toUpperCase().trim();
+  if (rawCurrency && rawCurrency !== 'IDR') {
+    return {
+      valid: false,
+      status: 'INVALID',
+      error: `Mata uang transaksi ditolak: ${rawCurrency}. Smart Journey hanya menerima transaksi IDR.`,
+      expectedAmount
+    };
+  }
+
+  const successStatuses = ['SUCCESS', 'PAID', 'SETTLEMENT', 'COMPLETED', 'CAPTURE', '00', '200', 'SUCCESSFUL', 'APPROVED'];
+  const expireStatuses = ['EXPIRED', 'EXPIRE'];
+  const failureStatuses = ['FAILED', 'FAILURE', 'CANCELLED', 'CANCELED', 'REJECTED', 'DENIED', 'CANCEL'];
+
+  const isSuccess = successStatuses.includes(rawStatus);
+  const isExpire = expireStatuses.includes(rawStatus);
+  const isFailed = failureStatuses.includes(rawStatus);
+
+  if (!isSuccess) {
+    if (isExpire) {
+      return {
+        valid: false,
+        status: 'EXPIRED',
+        error: `Status transaksi ArtoPay kedaluwarsa: ${rawStatus}`,
+        expectedAmount
+      };
+    }
+    if (isFailed) {
+      return {
+        valid: false,
+        status: 'FAILED',
+        error: `Status transaksi ArtoPay gagal/dibatalkan: ${rawStatus}`,
+        expectedAmount
+      };
+    }
+    return {
+      valid: false,
+      status: 'PENDING',
+      error: `Transaksi masih berlangsung (Status: ${rawStatus || 'PENDING'}).`,
+      expectedAmount
+    };
+  }
+
+  // Amount Validation: Ensure amount matches authoritative expected amount exactly (Issue 4)
+  const receivedAmountRaw = paymentData.amount ?? rawData.amount ?? paymentData.gross_amount ?? rawData.gross_amount;
+  if (receivedAmountRaw !== undefined && receivedAmountRaw !== null && receivedAmountRaw !== '') {
+    const receivedAmount = Math.round(Number(receivedAmountRaw));
+    if (!isNaN(receivedAmount) && expectedAmount > 0 && receivedAmount !== expectedAmount) {
+      return {
+        valid: false,
+        status: 'INVALID',
+        error: `Nominal pembayaran tidak sesuai. Diharapkan: Rp ${expectedAmount.toLocaleString('id-ID')}, Diterima: Rp ${receivedAmount.toLocaleString('id-ID')}`,
+        expectedAmount,
+        receivedAmount
+      };
+    }
+  }
+
+  // Order ID Validation if provided
+  const receivedOrderId = String(
+    paymentData.orderId || 
+    paymentData.order_id || 
+    rawData.orderId || 
+    rawData.order_id || 
+    ''
+  ).trim();
+
+  if (receivedOrderId) {
+    const expectedOrderId = String(booking.bookingCode || booking.id || '').trim();
+    if (
+      receivedOrderId.toLowerCase() !== expectedOrderId.toLowerCase() && 
+      receivedOrderId.toLowerCase() !== String(booking.id || '').toLowerCase() &&
+      receivedOrderId.toLowerCase() !== String(booking.bookingCode || '').toLowerCase()
+    ) {
+      return {
+        valid: false,
+        status: 'INVALID',
+        error: `Order ID tidak sesuai. Diharapkan: ${expectedOrderId}, Diterima: ${receivedOrderId}`,
+        expectedAmount
+      };
+    }
+  }
+
+  return {
+    valid: true,
+    status: 'PAID',
+    expectedAmount
+  };
+}
+
 // Official ArtoPay Webhook / Callback Handler Endpoint
 app.post(['/api/artopay/webhook', '/artopay/webhook'], (req, res) => {
   try {
@@ -4164,58 +4383,58 @@ app.post(['/api/artopay/webhook', '/artopay/webhook'], (req, res) => {
       });
     }
 
-    // AMOUNT VALIDATION: Ensure amount matches authoritative price in database exactly
-    const hasIncomingAmount = body.amount !== undefined || body.gross_amount !== undefined || body.data?.amount !== undefined || body.data?.gross_amount !== undefined;
-    const receivedAmount = Number(body.amount ?? body.gross_amount ?? body.data?.amount ?? body.data?.gross_amount ?? 0);
-    const expectedAmount = Number(booking.paymentAmount || booking.totalPriceIDR || booking.totalPrice || 0);
+    // UNIFIED VERIFICATION (Issue 4 & Issue 6)
+    const verification = verifyPayment(booking, body);
 
-    if (hasIncomingAmount && expectedAmount > 0 && receivedAmount !== expectedAmount) {
-      console.error(`[ArtoPay Webhook Amount Mismatch] Order ${orderId || booking.id}: Expected ${expectedAmount}, received ${receivedAmount}. Zero database mutation applied.`);
-      return res.status(400).json({
-        error: 'Payment amount mismatch',
-        expectedAmount,
-        receivedAmount
+    if (!verification.valid) {
+      if (verification.status === 'INVALID' || verification.status === 'FAILED') {
+        console.error(`[ArtoPay Webhook Verification FAILED] Order ${orderId || booking.id}: ${verification.error}`);
+        return res.status(400).json({
+          error: verification.error || 'Payment verification failed',
+          expectedAmount: verification.expectedAmount,
+          receivedAmount: verification.receivedAmount
+        });
+      }
+
+      if (verification.status === 'EXPIRED') {
+        booking.paymentStatus = 'Expired';
+        if (booking.status !== 'Confirmed' && booking.status !== 'Completed') {
+          booking.status = 'Cancelled';
+        }
+        db.bookings[index] = booking;
+        recalculateBatchSeats(db);
+        writeDB(db);
+        return res.status(200).json({
+          success: true,
+          orderId: booking.bookingCode || booking.id,
+          paymentStatus: 'Expired',
+          orderStatus: 'Cancelled',
+          bookingStatus: booking.status
+        });
+      }
+
+      // If still pending
+      return res.status(200).json({
+        success: true,
+        message: verification.error || 'Payment is still pending',
+        orderId: booking.bookingCode || booking.id,
+        paymentStatus: booking.paymentStatus,
+        bookingStatus: booking.status,
+        orderStatus: booking.status
       });
     }
 
-    const successStatuses = ['SUCCESS', 'PAID', 'SETTLEMENT', 'COMPLETED', '00', 'SUCCESSFUL', 'APPROVED', 'CAPTURE'];
-    const failureStatuses = ['FAILED', 'CANCELLED', 'DENIED', 'EXPIRED', 'EXPIRE', 'REJECTED', 'FAILURE', 'CANCEL'];
-
-    if (successStatuses.includes(rawStatus)) {
-      booking.paymentStatus = 'Paid';
-      // PAYMENT STATUS ≠ BOOKING STATUS
-      // Customer has paid, but booking is Pending Confirmation until Admin confirms
-      if (booking.status !== 'Confirmed' && booking.status !== 'Completed') {
-        booking.status = 'Pending Confirmation';
-      }
-      booking.paidAt = booking.paidAt || new Date().toISOString();
-      booking.paymentId = paymentId || booking.paymentIntentId;
-
-      console.log(`[ArtoPay Webhook SUCCESS] Order ${orderId || booking.id}: Payment Status set to PAID, Booking Status set to ${booking.status}.`);
-    } else if (failureStatuses.includes(rawStatus)) {
-      booking.paymentStatus = (rawStatus === 'EXPIRED' || rawStatus === 'EXPIRE') ? 'Expired' : 'Failed';
-      if (booking.status !== 'Confirmed' && booking.status !== 'Completed') {
-        booking.status = 'Cancelled';
-      }
-
-      console.log(`[ArtoPay Webhook FAILURE] Order ${orderId || booking.id} status set to ${booking.paymentStatus}.`);
-
-      // Restore batch seats if applicable
-      if (booking.batchId) {
-        const bIdx = db.batches.findIndex(b => b.id === booking.batchId);
-        if (bIdx !== -1) {
-          db.batches[bIdx].availableSeats += (booking.participantsCount || 1);
-          if (db.batches[bIdx].availableSeats > 0) {
-            db.batches[bIdx].status = 'Open';
-          }
-        }
-      }
-    } else {
-      booking.paymentStatus = 'Pending';
-      if (booking.status !== 'Confirmed' && booking.status !== 'Completed') {
-        booking.status = 'Pending';
-      }
+    // Status is verified PAID with matching amount and IDR currency
+    booking.paymentStatus = 'Paid';
+    // PAYMENT STATUS ≠ BOOKING STATUS
+    // Customer has paid, but booking is Pending Confirmation until Admin confirms
+    if (booking.status !== 'Confirmed' && booking.status !== 'Completed') {
+      booking.status = 'Pending Confirmation';
     }
+    booking.paidAt = booking.paidAt || new Date().toISOString();
+    booking.paymentId = paymentId || booking.paymentIntentId;
+
+    console.log(`[ArtoPay Webhook SUCCESS] Order ${orderId || booking.id}: Payment Status set to PAID, Booking Status set to ${booking.status}.`);
 
     db.bookings[index] = booking;
     recalculateBatchSeats(db);
@@ -4274,24 +4493,27 @@ app.get(['/api/orders/:orderId/payment-status', '/api/artopay/status/:orderId'],
 
           if (verifyRes.ok) {
             const statusData: any = await verifyRes.json();
-            const resData = statusData.responseData || statusData;
-            const remoteStatus = String(resData.status || resData.transaction_status || '').toUpperCase();
+            const verification = verifyPayment(booking, statusData);
 
-            if (['SUCCESS', 'PAID', 'SETTLEMENT', 'COMPLETED', '00'].includes(remoteStatus)) {
+            if (verification.valid && verification.status === 'PAID') {
               booking.paymentStatus = 'Paid';
-              if (booking.status === 'Pending') {
+              if (booking.status !== 'Confirmed' && booking.status !== 'Completed') {
                 booking.status = 'Pending Confirmation';
               }
-              booking.paidAt = new Date().toISOString();
+              booking.paidAt = booking.paidAt || new Date().toISOString();
               recalculateBatchSeats(db);
               writeDB(db);
-            } else if (['FAILED', 'CANCELLED', 'EXPIRED'].includes(remoteStatus)) {
-              booking.paymentStatus = remoteStatus === 'EXPIRED' ? 'Expired' : 'Failed';
-              if (booking.status !== 'Confirmed') {
-                booking.status = 'Cancelled';
+            } else if (verification.status === 'FAILED' || verification.status === 'EXPIRED') {
+              const resData = statusData.responseData || statusData;
+              const remoteStatus = String(resData.status || resData.transaction_status || '').toUpperCase();
+              if (['FAILED', 'CANCELLED', 'EXPIRED'].includes(remoteStatus) || verification.status === 'EXPIRED') {
+                booking.paymentStatus = remoteStatus === 'EXPIRED' || verification.status === 'EXPIRED' ? 'Expired' : 'Failed';
+                if (booking.status !== 'Confirmed' && booking.status !== 'Completed') {
+                  booking.status = 'Cancelled';
+                }
+                recalculateBatchSeats(db);
+                writeDB(db);
               }
-              recalculateBatchSeats(db);
-              writeDB(db);
             }
           }
         } catch (vErr) {
@@ -4303,6 +4525,7 @@ app.get(['/api/orders/:orderId/payment-status', '/api/artopay/status/:orderId'],
     return res.json({
       found: true,
       orderId: booking.bookingCode || booking.id,
+      bookingCode: booking.bookingCode || booking.id,
       paymentStatus: booking.paymentStatus || 'Pending',
       orderStatus: booking.status || 'Pending',
       bookingStatus: booking.status || 'Pending',
@@ -4310,7 +4533,9 @@ app.get(['/api/orders/:orderId/payment-status', '/api/artopay/status/:orderId'],
       uniqueCode: booking.uniqueCode || 0,
       paymentAmount: booking.paymentAmount || (booking.uniqueCode ? ((booking.baseAmount || booking.totalPriceIDR || 0) + booking.uniqueCode) : (booking.totalPriceIDR || booking.totalPrice || 0)),
       paidAt: booking.paidAt || null,
-      booking
+      currency: 'IDR',
+      canDownloadInvoice: booking.paymentStatus === 'Paid' && (booking.status === 'Confirmed' || booking.status === 'Completed'),
+      canDownloadFinalSummary: booking.paymentStatus === 'Paid' && (booking.status === 'Confirmed' || booking.status === 'Completed')
     });
   } catch (error: any) {
     return res.status(500).json({ error: 'Failed to retrieve payment status', details: error.message });

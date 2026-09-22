@@ -1,6 +1,7 @@
 const http = require('http');
 const crypto = require('crypto');
 const express = require('express');
+try { require('dotenv').config(); } catch (e) {}
 
 async function makeReq(port, path, options = {}, body = null) {
   return new Promise((resolve, reject) => {

@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
+try { require('dotenv').config(); } catch (e) {}
 
 async function makeReq(port, path, options = {}, body = null) {
   return new Promise((resolve, reject) => {
