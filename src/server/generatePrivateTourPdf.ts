@@ -161,24 +161,35 @@ export function generatePrivateTourPdf(data: FinalSummaryPdfInput): Promise<Buff
       doc.font('Helvetica-Bold').fontSize(22).fillColor(darkSlate)
         .text('INVOICE', leftMargin, titleY, { characterSpacing: 1 });
 
-      // Subtitle 1: PRIVATE TOUR
-      doc.font('Helvetica-Bold').fontSize(11).fillColor(primaryTeal)
-        .text('PRIVATE TOUR', leftMargin, titleY + 26, { characterSpacing: 0.5 });
-
-      // Subtitle 2: Booking Summary & Payment Receipt
-      doc.font('Helvetica').fontSize(8.5).fillColor(mutedSlate)
-        .text('Booking Summary & Payment Receipt', leftMargin, titleY + 41);
-
-      // Status Badge: PAID (Hanya jika backend menyatakan lunas)
+      // Status Badge: PAID vs PENDING
       const isPaid = (data.paymentStatus || '').toLowerCase() === 'paid';
       const badgeW = 96;
       const badgeH = 24;
       const badgeX = rightMargin - badgeW;
 
-      doc.roundedRect(badgeX, titleY + 2, badgeW, badgeH, 4).fill(paidGreenBg);
-      doc.roundedRect(badgeX, titleY + 2, badgeW, badgeH, 4).strokeColor(paidGreenBorder).lineWidth(1).stroke();
-      doc.font('Helvetica-Bold').fontSize(9.5).fillColor(paidGreenText)
+      const badgeBg = isPaid ? paidGreenBg : '#fef3c7';
+      const badgeBorder = isPaid ? paidGreenBorder : '#f59e0b';
+      const badgeText = isPaid ? paidGreenText : '#b45309';
+
+      doc.roundedRect(badgeX, titleY + 2, badgeW, badgeH, 4).fill(badgeBg);
+      doc.roundedRect(badgeX, titleY + 2, badgeW, badgeH, 4).strokeColor(badgeBorder).lineWidth(1).stroke();
+      doc.font('Helvetica-Bold').fontSize(9.5).fillColor(badgeText)
         .text(isPaid ? '✓ PAID' : 'PENDING', badgeX, titleY + 9, { width: badgeW, align: 'center' });
+
+      // Subtitle 1: Dynamic Trip Category (OPEN TRIP / SHARE TOUR vs PRIVATE TOUR)
+      const rawTrip = data.trip as any;
+      const isSharedTrip = rawTrip?.type === 'shared' || 
+        (data.trip.package || '').toLowerCase().includes('open trip') || 
+        (data.trip.title || '').toLowerCase().includes('open trip') ||
+        (data.trip.package || '').toLowerCase().includes('share tour');
+      const tripCategorySubtitle = isSharedTrip ? 'OPEN TRIP / SHARE TOUR' : 'PRIVATE TOUR';
+
+      doc.font('Helvetica-Bold').fontSize(11).fillColor(primaryTeal)
+        .text(tripCategorySubtitle, leftMargin, titleY + 26, { characterSpacing: 0.5 });
+
+      // Subtitle 2: Booking Summary & Payment Receipt
+      doc.font('Helvetica').fontSize(8.5).fillColor(mutedSlate)
+        .text(isPaid ? 'Official Booking Confirmation & Receipt' : 'Official Booking Invoice & Payment Details', leftMargin, titleY + 41);
 
       const invoiceNum = data.invoiceNumber || `INV-${data.bookingCode}`;
       doc.font('Helvetica-Bold').fontSize(8.5).fillColor(darkSlate)

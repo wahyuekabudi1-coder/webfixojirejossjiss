@@ -198,16 +198,24 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
             </div>
 
             <div className="sm:text-right bg-neutral-50 sm:bg-transparent p-3 sm:p-0 rounded-xl border sm:border-0 border-neutral-200">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-neutral-400 block font-bold">Booking Code</span>
+              <span className="text-[10px] font-mono uppercase tracking-widest text-neutral-400 block font-bold">Booking Code / ID</span>
               <span className="text-2xl font-black font-mono text-neutral-900 block" id="summary-booking-code">{data.bookingCode}</span>
               <div className="mt-1 flex sm:justify-end items-center gap-1.5 flex-wrap">
-                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                  <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                  CONFIRMED
+                <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md border ${
+                  data.bookingStatus === 'Confirmed' || data.bookingStatus === 'Completed'
+                    ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                    : 'text-amber-700 bg-amber-50 border-amber-200'
+                }`}>
+                  <CheckCircle2 className="h-3 w-3" />
+                  {data.bookingStatus === 'Confirmed' || data.bookingStatus === 'Completed' ? 'CONFIRMED' : data.bookingStatus.toUpperCase()}
                 </span>
-                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                  <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                  PAID
+                <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md border ${
+                  data.paymentStatus === 'Paid'
+                    ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                    : 'text-amber-700 bg-amber-50 border-amber-200'
+                }`}>
+                  <CheckCircle2 className="h-3 w-3" />
+                  {data.paymentStatus === 'Paid' ? 'PAID' : 'PENDING'}
                 </span>
               </div>
               {data.bookingDate && (
@@ -223,9 +231,13 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
                 <ShieldCheck className="h-5 w-5" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-emerald-950">Pemesanan Private Tour Resmi Terkonfirmasi &amp; Lunas</h4>
+                <h4 className="text-sm font-bold text-emerald-950">
+                  {data.paymentStatus === 'Paid' ? 'Pemesanan Resmi Terkonfirmasi & Lunas' : 'Pemesanan Terdaftar — Menunggu Pembayaran'}
+                </h4>
                 <p className="text-xs text-emerald-700 mt-0.5">
-                  Pembayaran lunas terverifikasi ArtoPay Gateway. Armada privat &amp; pemandu wisata telah dijadwalkan secara resmi oleh Smart Journey.
+                  {data.paymentStatus === 'Paid'
+                    ? 'Pembayaran lunas terverifikasi ArtoPay Gateway. Armada dan jadwal perjalanan telah tercatat resmi di sistem Smart Journey.'
+                    : 'Pemesanan telah tercatat di sistem Smart Journey. Silakan selesaikan pembayaran untuk konfirmasi final jadwal armada.'}
                 </p>
               </div>
             </div>
@@ -278,7 +290,7 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
             <div className="bg-neutral-50 rounded-xl p-4 border border-neutral-200/80 space-y-3">
               <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono flex items-center gap-1.5">
                 <Calendar className="h-3.5 w-3.5 text-amber-500" />
-                <span>Informasi Private Tour</span>
+                <span>Informasi Paket Wisata (Tour Information)</span>
               </h3>
               <div className="space-y-2 text-xs">
                 <div>

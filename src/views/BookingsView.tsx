@@ -214,11 +214,11 @@ export default function BookingsView() {
           </span>
           <h1 className="text-3xl sm:text-4.5xl font-black">Your Booking Portal</h1>
           <p className="text-xs sm:text-sm text-neutral-400 max-w-lg mx-auto leading-relaxed">
-            Review and manage your active executive transfers, point-to-point taxis, and guided private tours around East Java.
+            Cek Booking ID untuk peserta Open Trip maupun Private Trip, lihat rincian pemesanan, dan unduh invoice resmi Anda di sini.
           </p>
         </div>
 
-        {/* Portal Tabs: Check Private Tour Booking vs My Reservations */}
+        {/* Portal Tabs: Check Booking (Open Trip & Private) vs My Reservations */}
         <div className="flex justify-center">
           <div className="inline-flex p-1.5 rounded-2xl bg-[#203c34] border border-[#315B4F] shadow-lg">
             <button
@@ -230,7 +230,7 @@ export default function BookingsView() {
               }`}
             >
               <Search className="h-4 w-4" />
-              <span>Cek Booking Private Tour</span>
+              <span>Cek Booking ID &amp; Invoice</span>
             </button>
             <button
               onClick={() => setActiveTab('list')}

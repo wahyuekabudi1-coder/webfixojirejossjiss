@@ -494,6 +494,26 @@ export default function Header() {
               </AnimatePresence>
             </div>
 
+            {/* Mobile My Bookings Button (Directly next to Currency / Rupiah) */}
+            <button
+              onClick={() => handleNavigate('bookings')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all duration-200 flex items-center gap-1 cursor-pointer h-7 ${
+                activePage === 'bookings'
+                  ? 'text-amber-700 bg-amber-500/15 border border-amber-500/30'
+                  : 'text-neutral-700 hover:text-neutral-900 bg-neutral-100/90 border border-neutral-200 active:bg-neutral-200'
+              }`}
+              title="My Bookings (Cek Booking Open Trip & Private Trip)"
+              aria-label="My Bookings"
+            >
+              <Calendar className="h-3.5 w-3.5 text-amber-500" />
+              <span className="font-bold text-[11px] whitespace-nowrap">My Bookings</span>
+              {bookings && bookings.length > 0 && (
+                <span className="bg-amber-500 text-neutral-950 text-[9px] font-black px-1.5 py-0.2 rounded-full">
+                  {bookings.length}
+                </span>
+              )}
+            </button>
+
             {/* 3. Mobile Hamburger Navigation Toggle */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}

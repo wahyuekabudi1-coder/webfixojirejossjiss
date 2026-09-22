@@ -26,8 +26,11 @@ interface PrivateTourBookingResult {
   bookingCode: string;
   id: string;
   bookingType: string;
+  bookingCategory?: string;
+  isShared?: boolean;
   serviceName: string;
   tripTitle: string;
+  packageName?: string;
   departureDate: string;
   duration: string;
   participantsCount: number;
@@ -37,6 +40,7 @@ interface PrivateTourBookingResult {
   customerPhone: string;
   vehicleName: string;
   pickupLocation?: string;
+  dropoffLocation?: string;
   baseAmount: number;
   uniqueCode: number;
   paymentAmount: number;
@@ -47,6 +51,8 @@ interface PrivateTourBookingResult {
   paymentMethod?: string;
   itinerary?: any[];
   canDownloadFinalSummary: boolean;
+  canDownloadInvoice?: boolean;
+  gateMessage?: string;
   createdAt: string;
 }
 
@@ -80,7 +86,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
   const executeSearch = async (codeToSearch: string) => {
     const cleanCode = codeToSearch.trim();
     if (!cleanCode) {
-      setError('Silakan masukkan kode booking Private Tour Anda.');
+      setError('Silakan masukkan Booking ID / Kode Booking Anda.');
       return;
     }
 
@@ -100,7 +106,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
 
       setBooking(data);
     } catch (err: any) {
-      console.error('Failed to check private tour booking:', err);
+      console.error('Failed to check booking:', err);
       setError('Gagal menghubungi server. Periksa koneksi internet Anda dan coba lagi.');
       setBooking(null);
     } finally {
@@ -120,31 +126,32 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleDownloadSummary = async () => {
-    if (!booking || !booking.canDownloadFinalSummary) return;
+  const handleDownloadPdf = () => {
+    if (!booking) return;
+    const pdfUrl = `/api/private-tour/invoice-pdf/${encodeURIComponent(booking.bookingCode)}`;
+    const link = document.createElement('a');
+    link.href = pdfUrl;
+    link.setAttribute('download', `SmartJourney-Final-Booking-${booking.bookingCode}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
+  const handleOpenSummaryModal = async () => {
+    if (!booking) return;
     setLoadingSummary(true);
     try {
-      // 1. Direct download of the actual binary PDF file from the server
-      const pdfUrl = `/api/private-tour/invoice-pdf/${encodeURIComponent(booking.bookingCode)}`;
-      const link = document.createElement('a');
-      link.href = pdfUrl;
-      link.setAttribute('download', `SmartJourney-Final-Booking-${booking.bookingCode}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      // 2. Fetch Authoritative Final Summary data for the on-screen preview modal
       const res = await fetch(`/api/private-tour/final-summary/${encodeURIComponent(booking.bookingCode)}`);
       const data = await res.json();
-
       if (res.ok) {
         setSummaryData(data);
         setIsSummaryModalOpen(true);
+      } else {
+        alert(data.error || 'Gagal memuat pratinjau invoice.');
       }
     } catch (err) {
-      console.error('Error fetching final summary document:', err);
-      alert('Gagal mengunduh dokumen Final Summary.');
+      console.error('Error fetching invoice preview:', err);
+      alert('Gagal memuat pratinjau invoice.');
     } finally {
       setLoadingSummary(false);
     }
@@ -182,13 +189,13 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
       <div className="text-center max-w-2xl mx-auto mb-8">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold uppercase tracking-wider mb-3">
           <ShieldCheck className="h-3.5 w-3.5 text-amber-600" />
-          <span>PORTAL RESERVASI PRIVATE TOUR</span>
+          <span>PORTAL CEK BOOKING &amp; INVOICE</span>
         </div>
         <h2 className="text-2xl sm:text-3xl font-black text-neutral-900 tracking-tight">
-          Cek Status Booking &amp; Unduh Dokumen
+          Cek Status Booking &amp; Unduh Invoice
         </h2>
         <p className="text-sm text-neutral-600 mt-2">
-          Masukkan kode booking resmi Anda (contoh: <span className="font-mono font-bold text-neutral-900">SJ-8F42KD</span>) untuk melacak status pembayaran, verifikasi jadwal, dan mengunduh invoice final.
+          Masukkan kode booking resmi Anda (peserta Open Trip maupun Private Trip) untuk mengecek status pembayaran, melihat rincian perjalanan, dan mengunduh invoice final.
         </p>
       </div>
 
@@ -201,7 +208,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
               type="text"
               value={searchCode}
               onChange={(e) => setSearchCode(e.target.value.toUpperCase())}
-              placeholder="Masukkan Kode Booking (e.g. SJ-8F42KD)"
+              placeholder="Masukkan Kode Booking / Booking ID (contoh: SJ-8F42KD)"
               className="w-full pl-11 pr-4 py-3 bg-neutral-50 border border-neutral-300 rounded-xl text-neutral-900 font-mono font-bold text-base focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all"
               autoCapitalize="characters"
               autoComplete="off"
@@ -247,9 +254,13 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-100 pb-5">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-400">Kode Booking Resmi</span>
-                  <span className="text-[10px] bg-neutral-100 text-neutral-700 font-bold px-2 py-0.5 rounded-full border border-neutral-300">
-                    PRIVATE TOUR
+                  <span className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-400">Kode Booking / ID</span>
+                  <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                    booking.isShared || booking.bookingType === 'shared'
+                      ? 'bg-blue-50 text-blue-800 border-blue-200'
+                      : 'bg-amber-50 text-amber-800 border-amber-200'
+                  }`}>
+                    {booking.isShared || booking.bookingType === 'shared' ? 'OPEN TRIP / SHARE TOUR' : 'PRIVATE TOUR'}
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
@@ -522,50 +533,54 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                 </div>
               </div>
 
-              {/* TAHAP 9: DOWNLOAD GATE */}
-              <div className="pt-4 border-t border-neutral-100">
-                {booking.canDownloadFinalSummary ? (
-                  <div>
-                    <button
-                      id="btn-download-final-booking-confirmation"
-                      onClick={handleDownloadSummary}
-                      disabled={loadingSummary}
-                      className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      {loadingSummary ? (
-                        <>
-                          <RefreshCw className="h-4 w-4 animate-spin" />
-                          <span>Mempersiapkan Dokumen...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Download className="h-4 w-4" />
-                          <span>Download Final Booking Confirmation</span>
-                        </>
-                      )}
-                    </button>
-                    <span className="text-[10px] text-emerald-700 text-center block mt-1.5 font-medium">
-                      ✓ Dokumen resmi terverifikasi dan siap dicetak / disimpan sebagai PDF
-                    </span>
-                  </div>
-                ) : (
-                  <div>
-                    <button
-                      id="btn-download-final-summary-locked"
-                      disabled
-                      className="w-full py-3 px-4 bg-neutral-100 text-neutral-400 font-bold text-xs sm:text-sm rounded-xl border border-neutral-200 cursor-not-allowed flex items-center justify-center gap-2"
-                      title="Dokumen hanya dapat diunduh setelah status Pembayaran Lunas DAN Booking Dikonfirmasi oleh Admin"
-                    >
-                      <Lock className="h-4 w-4 text-neutral-400" />
-                      <span>Final Booking Confirmation (LOCKED)</span>
-                    </button>
-                    <p className="text-[11px] text-neutral-600 text-center mt-1.5 font-medium" id="summary-lock-guidance-message">
-                      {booking.paymentStatus === 'Paid'
-                        ? 'Payment received. Your booking is currently being reviewed by Smart Journey.'
-                        : (booking.gateMessage || 'Payment is still pending. Final booking document is not available yet.')}
-                    </p>
-                  </div>
+              {/* AKSI INVOICE & DOKUMEN */}
+              <div className="pt-4 border-t border-neutral-100 space-y-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    id="btn-download-invoice-pdf"
+                    onClick={handleDownloadPdf}
+                    className="w-full py-2.5 px-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span>Download Invoice (PDF)</span>
+                  </button>
+                  <button
+                    id="btn-view-invoice-modal"
+                    onClick={handleOpenSummaryModal}
+                    disabled={loadingSummary}
+                    className="w-full py-2.5 px-3 bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    {loadingSummary ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        <span>Memuat...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="h-4 w-4" />
+                        <span>Lihat Invoice</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Bayar sekarang jika belum lunas */}
+                {booking.paymentStatus !== 'Paid' && onPayNow && (
+                  <button
+                    id="btn-pay-now-artopay"
+                    onClick={() => onPayNow(booking)}
+                    className="w-full py-2.5 px-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-neutral-950 font-black text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    <span>Bayar Sekarang (ArtoPay)</span>
+                  </button>
                 )}
+
+                <span className="text-[10px] text-neutral-500 text-center block font-medium">
+                  {booking.paymentStatus === 'Paid'
+                    ? '✓ Invoice lunas resmi terverifikasi dan siap diunduh/dicetak'
+                    : 'Invoice pemesanan resmi tersedia untuk diunduh dan dicetak'}
+                </span>
               </div>
 
             </div>

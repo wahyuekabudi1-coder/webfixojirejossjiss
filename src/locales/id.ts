@@ -16,7 +16,7 @@ export const idTranslations = {
     carRentalSubtitle: 'Sewa mobil dengan driver atau lepas kunci',
     about: 'Tentang Kami',
     partnerships: 'Kemitraan B2B',
-    myBookings: 'Pesanan Saya',
+    myBookings: 'My Bookings',
     searchTours: 'Cari paket tur, destinasi...',
     contactUs: 'Hubungi Kami',
     adminLogin: 'Portal Admin',

@@ -1938,12 +1938,17 @@ app.all(['/api/bookings/:id/status'], requireAdminAuth, (req, res) => {
 
 // TAHAP 7 & 8: Check Booking endpoint specifically for Private Tour
 // Authoritative status from backend database (never localStorage)
-app.get(['/api/private-tour/check-booking/:bookingCode', '/api/private-tour/status/:bookingCode'], (req, res) => {
+// Supports checking Booking ID & Booking Code for both Open Trip (Share Tour) and Private Trip / Tour
+app.get([
+  '/api/private-tour/check-booking/:bookingCode', 
+  '/api/private-tour/status/:bookingCode',
+  '/api/bookings/check/:bookingCode'
+], (req, res) => {
   try {
     const db = readDB();
     const rawCode = (req.params.bookingCode || '').trim();
     if (!rawCode) {
-      return res.status(400).json({ error: 'Kode booking wajib diisi.' });
+      return res.status(400).json({ error: 'Booking ID atau Kode booking wajib diisi.' });
     }
 
     const booking = (db.bookings || []).find((b: any) => {
@@ -1955,24 +1960,20 @@ app.get(['/api/private-tour/check-booking/:bookingCode', '/api/private-tour/stat
 
     if (!booking) {
       return res.status(404).json({ 
-        error: 'Booking not found. Please check your Booking Code.' 
+        error: `Booking dengan ID / Kode "${rawCode}" tidak ditemukan. Harap periksa kembali Booking ID atau Kode Booking Anda.` 
       });
     }
 
-    // Check if this booking belongs to Private Tour
-    const isPrivateTour = booking.bookingType === 'private' || 
-      booking.tourBookingType === 'private' || 
-      booking.type === 'tour' || 
-      booking.type === 'Tours' ||
-      !booking.batchId;
+    // Determine whether this booking is an Open Trip (shared) or Private Tour (private)
+    const isShared = booking.bookingType === 'shared' || 
+      booking.tourBookingType === 'shared' || 
+      booking.serviceType === 'shared' || 
+      Boolean(booking.batchId);
 
-    if (!isPrivateTour) {
-      return res.status(400).json({
-        error: `Kode booking "${rawCode}" bukan merupakan reservasi Private Tour. Silakan periksa di portal pemesanan Share Tour.`
-      });
-    }
+    const bookingType = isShared ? 'shared' : 'private';
+    const bookingCategory = isShared ? 'OPEN TRIP / SHARE TOUR' : 'PRIVATE TOUR';
 
-    // Standardize statuses for Private Tour
+    // Standardize statuses
     // Payment Status: 'Pending' | 'Paid' | 'Failed' | 'Expired'
     let paymentStatus = booking.paymentStatus || 'Pending';
     if (paymentStatus === 'Unpaid' || paymentStatus === 'Pending Payment') {
@@ -1985,59 +1986,85 @@ app.get(['/api/private-tour/check-booking/:bookingCode', '/api/private-tour/stat
       bookingStatus = paymentStatus === 'Paid' ? 'Pending Confirmation' : 'Pending Payment';
     }
 
-    // CRITICAL (Tahap 8): PAID ≠ CONFIRMED
+    // CRITICAL: PAID ≠ CONFIRMED check
     // If paymentStatus is Paid, bookingStatus CANNOT be Confirmed unless Admin has confirmed it
     if (paymentStatus === 'Paid' && bookingStatus !== 'Confirmed' && bookingStatus !== 'Completed') {
       bookingStatus = 'Pending Confirmation';
     }
 
-    // TAHAP 9: Download invoice gate condition:
-    // Only accessible if paymentStatus === 'Paid' AND bookingStatus === 'Confirmed'
-    const canDownloadFinalSummary = paymentStatus === 'Paid' && (bookingStatus === 'Confirmed' || bookingStatus === 'Completed');
-
-    // Section 16 Error/Status Guidance Messaging
-    let gateMessage = '';
-    if (bookingStatus === 'Cancelled' || bookingStatus === 'Rejected') {
-      gateMessage = 'This booking has been cancelled. Final booking document is unavailable.';
-    } else if (paymentStatus !== 'Paid') {
-      gateMessage = 'Payment is still pending. Final booking document is not available yet.';
-    } else if (bookingStatus !== 'Confirmed' && bookingStatus !== 'Completed') {
-      gateMessage = 'Payment received. Your booking is waiting for confirmation from Smart Journey.';
-    } else {
-      gateMessage = 'Your booking is confirmed.';
+    // Look up shared trip / batch if applicable
+    let matchedTrip: any = null;
+    let matchedBatch: any = null;
+    if (isShared) {
+      if (booking.tripId) {
+        matchedTrip = (db.trips || []).find((t: any) => t.id === booking.tripId);
+      }
+      if (booking.batchId) {
+        matchedBatch = (db.batches || []).find((b: any) => b.id === booking.batchId);
+      }
     }
 
-    // Extract snapshot details (Tahap 10)
     const tourSnapshot = booking.tourSnapshot || {
-      tourId: booking.tripId || booking.details?.tourId || 'tour-private',
-      tourName: booking.serviceName || booking.tripTitle || 'Private Tour',
-      packageName: booking.details?.package || 'Private Exclusive',
+      tourId: booking.tripId || booking.details?.tourId || (isShared ? 'tour-open-trip' : 'tour-private'),
+      tourName: booking.serviceName || booking.tripTitle || (matchedTrip?.title) || (isShared ? 'Open Trip Smart Journey' : 'Private Tour'),
+      packageName: booking.details?.package || (isShared ? (matchedBatch?.departureDate ? `Open Trip (Jadwal: ${matchedBatch.departureDate})` : 'Paket Open Trip') : 'Private Exclusive'),
       duration: booking.details?.duration || '1 Hari',
-      vehicleName: booking.details?.vehicleName || 'Standard Private Tourism Vehicle',
+      vehicleName: booking.details?.vehicleName || (isShared ? 'Armada Wisata Open Trip (HiAce / Jeep Bromo)' : 'Standard Private Tourism Vehicle'),
       itinerary: booking.details?.itinerary || []
     };
+
+    const tripTitle = booking.tripTitle || booking.serviceName || matchedTrip?.title || tourSnapshot.tourName;
+    const departureDate = booking.departureDate || matchedBatch?.departureDate || booking.details?.date || '';
+    const duration = booking.details?.duration || tourSnapshot.duration || '1 Hari';
+
+    const rawMembers = booking.participantData?.members || booking.participantsManifest || [];
+    const participantsNames = Array.isArray(booking.participantsNames) && booking.participantsNames.length > 0
+      ? booking.participantsNames
+      : (Array.isArray(rawMembers) && rawMembers.length > 0
+          ? rawMembers.map((m: any) => m.name || m.fullName)
+          : [booking.customerName || booking.fullName || 'Tamu Utama']);
+
+    const participantsCount = booking.participantsCount || booking.details?.guests || booking.details?.passengers || participantsNames.length || 1;
 
     const baseAmount = booking.baseAmount || booking.totalPriceIDR || booking.totalPrice || 0;
     const uniqueCode = booking.uniqueCode || 0;
     const paymentAmount = booking.paymentAmount || (baseAmount + uniqueCode);
 
+    // Download invoice / final summary is accessible for any valid booking
+    const canDownloadFinalSummary = true;
+    const canDownloadInvoice = true;
+
+    // Status Guidance Messaging
+    let gateMessage = '';
+    if (bookingStatus === 'Cancelled' || bookingStatus === 'Rejected') {
+      gateMessage = 'Pemesanan ini telah dibatalkan.';
+    } else if (paymentStatus !== 'Paid') {
+      gateMessage = 'Status: Menunggu Pembayaran. Anda dapat melihat dan mengunduh invoice tagihan atau melakukan pembayaran langsung.';
+    } else if (bookingStatus !== 'Confirmed' && bookingStatus !== 'Completed') {
+      gateMessage = 'Pembayaran berhasil diterima. Pemesanan sedang menunggu konfirmasi admin.';
+    } else {
+      gateMessage = 'Pemesanan Anda telah dikonfirmasi resmi.';
+    }
+
     return res.json({
       found: true,
       bookingCode: booking.bookingCode || booking.id,
       id: booking.id,
-      bookingType: 'private',
-      serviceName: booking.serviceName || booking.tripTitle || tourSnapshot.tourName,
-      tripTitle: booking.tripTitle || booking.serviceName || tourSnapshot.tourName,
-      packageName: booking.details?.package || tourSnapshot.packageName || 'Private Exclusive',
-      departureDate: booking.departureDate || booking.details?.date || '',
-      duration: booking.details?.duration || tourSnapshot.duration || '1 Hari',
-      participantsCount: booking.participantsCount || booking.details?.guests || booking.details?.passengers || 1,
-      participantsNames: booking.participantsNames || [booking.customerName || booking.fullName || 'Tamu Utama'],
+      bookingType,
+      bookingCategory,
+      isShared,
+      serviceName: tripTitle,
+      tripTitle,
+      packageName: booking.details?.package || tourSnapshot.packageName || (isShared ? 'Paket Open Trip' : 'Private Exclusive'),
+      departureDate,
+      duration,
+      participantsCount,
+      participantsNames,
       customerName: booking.customerName || booking.fullName || '',
       customerEmail: booking.customerEmail || booking.email || '',
       customerPhone: booking.customerPhone || booking.phone || '',
-      vehicleName: booking.details?.vehicleName || tourSnapshot.vehicleName || 'Standard Private Tourism Vehicle',
-      pickupLocation: booking.details?.pickupLocation || booking.participantData?.pickupLocation || 'Hotel Lobby / Meeting Point',
+      vehicleName: booking.details?.vehicleName || tourSnapshot.vehicleName || (isShared ? 'Armada Wisata Open Trip' : 'Standard Private Tourism Vehicle'),
+      pickupLocation: booking.details?.pickupLocation || booking.participantData?.pickupLocation || (isShared ? 'Meeting Point Open Trip' : 'Hotel Lobby / Meeting Point'),
       dropoffLocation: booking.details?.dropoffLocation || booking.participantData?.dropoffLocation || '',
       baseAmount,
       uniqueCode,
@@ -2050,6 +2077,7 @@ app.get(['/api/private-tour/check-booking/:bookingCode', '/api/private-tour/stat
       itinerary: tourSnapshot.itinerary || booking.details?.itinerary || [],
       tourSnapshot,
       canDownloadFinalSummary,
+      canDownloadInvoice,
       gateMessage,
       createdAt: booking.createdAt || new Date().toISOString()
     });
@@ -2059,9 +2087,13 @@ app.get(['/api/private-tour/check-booking/:bookingCode', '/api/private-tour/stat
   }
 });
 
-// TAHAP 9 & 10: Backend Gate for Final Booking Summary / Invoice Data
-// Enforces that paymentStatus must be 'Paid' AND bookingStatus must be 'Confirmed'
-app.get(['/api/private-tour/final-summary/:bookingCode', '/api/private-tour/final-confirmation/:bookingCode'], (req, res) => {
+// Endpoint for Final Booking Summary / Invoice Data
+// Supports both Open Trip (Share Tour) and Private Tour
+app.get([
+  '/api/private-tour/final-summary/:bookingCode', 
+  '/api/private-tour/final-confirmation/:bookingCode',
+  '/api/bookings/:bookingCode/final-summary'
+], (req, res) => {
   try {
     const db = readDB();
     const rawCode = (req.params.bookingCode || '').trim();
@@ -2091,34 +2123,30 @@ app.get(['/api/private-tour/final-summary/:bookingCode', '/api/private-tour/fina
       bookingStatus = paymentStatus === 'Paid' ? 'Pending Confirmation' : 'Pending Payment';
     }
 
-    // TAHAP 9: INVOICE / FINAL SUMMARY GATE VALIDATION
-    // Must be Paid AND Confirmed. If not, reject with HTTP 403 Forbidden!
-    if (paymentStatus !== 'Paid' || (bookingStatus !== 'Confirmed' && bookingStatus !== 'Completed')) {
-      let specificMessage = 'Akses Ditolak: Dokumen Final Booking Summary hanya dapat diakses dan diunduh setelah status pembayaran LUNAS dan booking telah DIKONFIRMASI oleh Admin Pusat.';
-      if (bookingStatus === 'Cancelled' || bookingStatus === 'Rejected') {
-        specificMessage = 'This booking has been cancelled. Final booking document is unavailable.';
-      } else if (paymentStatus !== 'Paid') {
-        specificMessage = 'Payment is still pending. Final booking document is not available yet.';
-      } else {
-        specificMessage = 'Payment received. Your booking is waiting for confirmation from Smart Journey.';
-      }
-
-      return res.status(403).json({
-        error: specificMessage,
-        paymentStatus,
-        bookingStatus,
-        requiredPaymentStatus: 'Paid',
-        requiredBookingStatus: 'Confirmed'
-      });
+    if (paymentStatus === 'Paid' && bookingStatus !== 'Confirmed' && bookingStatus !== 'Completed') {
+      bookingStatus = 'Pending Confirmation';
     }
 
-    // TAHAP 10: SNAPSHOT DATA (IMMUTABLE)
+    // Determine category
+    const isShared = booking.bookingType === 'shared' || 
+      booking.tourBookingType === 'shared' || 
+      booking.serviceType === 'shared' || 
+      Boolean(booking.batchId);
+
+    let matchedTrip: any = null;
+    let matchedBatch: any = null;
+    if (isShared) {
+      if (booking.tripId) matchedTrip = (db.trips || []).find((t: any) => t.id === booking.tripId);
+      if (booking.batchId) matchedBatch = (db.batches || []).find((b: any) => b.id === booking.batchId);
+    }
+
+    // SNAPSHOT DATA
     const tourSnapshot = booking.tourSnapshot || {
-      tourId: booking.tripId || booking.details?.tourId || 'tour-private',
-      tourName: booking.serviceName || booking.tripTitle || 'Private Tour',
-      packageName: booking.details?.package || 'Private Exclusive Package',
+      tourId: booking.tripId || booking.details?.tourId || (isShared ? 'tour-open-trip' : 'tour-private'),
+      tourName: booking.serviceName || booking.tripTitle || matchedTrip?.title || (isShared ? 'Open Trip Smart Journey' : 'Private Tour'),
+      packageName: booking.details?.package || (isShared ? (matchedBatch?.departureDate ? `Open Trip (Jadwal: ${matchedBatch.departureDate})` : 'Paket Open Trip') : 'Private Exclusive Package'),
       duration: booking.details?.duration || '1 Hari',
-      vehicleName: booking.details?.vehicleName || 'Standard Private Tourism Vehicle',
+      vehicleName: booking.details?.vehicleName || (isShared ? 'Armada Wisata Open Trip' : 'Standard Private Tourism Vehicle'),
       itinerary: booking.details?.itinerary || []
     };
 
@@ -2161,26 +2189,26 @@ app.get(['/api/private-tour/final-summary/:bookingCode', '/api/private-tour/fina
       bookingCode: booking.bookingCode || booking.id,
       id: booking.id,
       bookingDate: bookingDateFormatted,
-      bookingStatus: 'Confirmed',
-      paymentStatus: 'Paid',
+      bookingStatus,
+      paymentStatus,
       verificationHash,
       customer: {
         name: booking.customerName || booking.fullName || '',
         email: booking.customerEmail || booking.email || '',
         phone: booking.customerPhone || booking.phone || '',
-        pickupLocation: booking.details?.pickupLocation || booking.participantData?.pickupLocation || 'Hotel Lobby / Meeting Point',
+        pickupLocation: booking.details?.pickupLocation || booking.participantData?.pickupLocation || (isShared ? 'Meeting Point Open Trip' : 'Hotel Lobby / Meeting Point'),
         dropoffLocation: booking.details?.dropoffLocation || booking.participantData?.dropoffLocation || ''
       },
       trip: {
-        title: booking.serviceName || booking.tripTitle || tourSnapshot.tourName,
-        package: booking.details?.package || tourSnapshot.packageName || 'Private Exclusive Package',
-        departureDate: booking.departureDate || booking.details?.date || '',
+        title: booking.serviceName || booking.tripTitle || matchedTrip?.title || tourSnapshot.tourName,
+        package: booking.details?.package || tourSnapshot.packageName || (isShared ? 'Paket Open Trip' : 'Private Exclusive Package'),
+        departureDate: booking.departureDate || matchedBatch?.departureDate || booking.details?.date || '',
         duration: booking.details?.duration || tourSnapshot.duration || '1 Hari',
         participantsCount: booking.participantsCount || booking.details?.guests || 1,
         participantsNames: booking.participantsNames || [booking.customerName || booking.fullName || 'Tamu Utama'],
         participantsManifest,
-        vehicleName: booking.details?.vehicleName || tourSnapshot.vehicleName || 'Standard Private Tourism Vehicle',
-        pickupLocation: booking.details?.pickupLocation || booking.participantData?.pickupLocation || 'Hotel Lobby / Meeting Point',
+        vehicleName: booking.details?.vehicleName || tourSnapshot.vehicleName || (isShared ? 'Armada Wisata Open Trip' : 'Standard Private Tourism Vehicle'),
+        pickupLocation: booking.details?.pickupLocation || booking.participantData?.pickupLocation || (isShared ? 'Meeting Point Open Trip' : 'Hotel Lobby / Meeting Point'),
         dropoffLocation: booking.details?.dropoffLocation || booking.participantData?.dropoffLocation || '',
         itinerary: tourSnapshot.itinerary || booking.details?.itinerary || []
       },
@@ -2222,7 +2250,8 @@ app.get([
   '/api/private-tour/final-confirmation-pdf/:bookingCode',
   '/api/private-tour/final-summary-pdf/:bookingCode',
   '/api/bookings/:bookingCode/final-summary.pdf',
-  '/api/bookings/:bookingCode/final-confirmation.pdf'
+  '/api/bookings/:bookingCode/final-confirmation.pdf',
+  '/api/bookings/:bookingCode/invoice.pdf'
 ], async (req, res) => {
   try {
     const db = readDB();
@@ -2257,32 +2286,26 @@ app.get([
       bookingStatus = 'Pending Confirmation';
     }
 
-    // PDF SECURITY GATE:
-    // Only accessible if paymentStatus === 'Paid' AND bookingStatus === 'Confirmed' (or 'Completed')
-    if (paymentStatus !== 'Paid' || (bookingStatus !== 'Confirmed' && bookingStatus !== 'Completed')) {
-      let specificMessage = 'Akses Ditolak: Dokumen Final Booking Summary PDF hanya dapat diunduh setelah status pembayaran LUNAS dan booking telah DIKONFIRMASI oleh Admin Pusat.';
-      if (bookingStatus === 'Cancelled') {
-        specificMessage = 'This booking has been cancelled. Final booking document is unavailable.';
-      } else if (paymentStatus !== 'Paid') {
-        specificMessage = 'Payment is still pending. Final booking document is not available yet.';
-      } else {
-        specificMessage = 'Payment received. Your booking is waiting for confirmation from Smart Journey.';
-      }
-      return res.status(403).json({
-        error: specificMessage,
-        canDownloadFinalSummary: false,
-        paymentStatus,
-        bookingStatus
-      });
+    // Determine category
+    const isShared = booking.bookingType === 'shared' || 
+      booking.tourBookingType === 'shared' || 
+      booking.serviceType === 'shared' || 
+      Boolean(booking.batchId);
+
+    let matchedTrip: any = null;
+    let matchedBatch: any = null;
+    if (isShared) {
+      if (booking.tripId) matchedTrip = (db.trips || []).find((t: any) => t.id === booking.tripId);
+      if (booking.batchId) matchedBatch = (db.batches || []).find((b: any) => b.id === booking.batchId);
     }
 
     // PDF DATA SOURCE: IMMUTABLE TOUR SNAPSHOT & STORED TRANSACTION DETAILS
     const tourSnapshot = booking.tourSnapshot || {
-      tourId: booking.tripId || booking.details?.tourId || 'tour-private',
-      tourName: booking.serviceName || booking.tripTitle || 'Private Tour',
-      packageName: booking.details?.package || 'Private Exclusive',
+      tourId: booking.tripId || booking.details?.tourId || (isShared ? 'tour-open-trip' : 'tour-private'),
+      tourName: booking.serviceName || booking.tripTitle || matchedTrip?.title || (isShared ? 'Open Trip Smart Journey' : 'Private Tour'),
+      packageName: booking.details?.package || (isShared ? (matchedBatch?.departureDate ? `Open Trip (Jadwal: ${matchedBatch.departureDate})` : 'Paket Open Trip') : 'Private Exclusive'),
       duration: booking.details?.duration || '1 Hari',
-      vehicleName: booking.details?.vehicleName || 'Standard Private Tourism Vehicle',
+      vehicleName: booking.details?.vehicleName || (isShared ? 'Armada Wisata Open Trip' : 'Standard Private Tourism Vehicle'),
       itinerary: booking.details?.itinerary || []
     };
 
@@ -2327,8 +2350,8 @@ app.get([
       invoiceNumber: rawBooking.invoiceNumber || `INV-${bookingCode}`,
       bookingCode,
       bookingDate: bookingDateFormatted,
-      bookingStatus: 'Confirmed',
-      paymentStatus: 'Paid',
+      bookingStatus,
+      paymentStatus,
       confirmedAt: confirmedAtFormatted,
       verificationHash,
       notes: booking.participantData?.specialRequests || booking.details?.notes || booking.adminNotes || rawBooking.notes || undefined,
@@ -2339,24 +2362,24 @@ app.get([
         nationality: booking.nationalityType === 'WNI' || booking.nationalityType === 'domestic'
           ? 'Indonesia (Domestic)'
           : (booking.nationalityType === 'WNA_CHINA' ? 'China' : (booking.nationalityType === 'WNA_EUROPE' ? 'Europe / International' : (booking.nationalityType || 'Indonesia (Domestic)'))),
-        pickupLocation: booking.details?.pickupLocation || booking.participantData?.pickupLocation || 'Sesuai Konfirmasi',
+        pickupLocation: booking.details?.pickupLocation || booking.participantData?.pickupLocation || (isShared ? 'Meeting Point Open Trip' : 'Sesuai Konfirmasi'),
         dropoffLocation: booking.details?.dropoffLocation || booking.participantData?.dropoffLocation || undefined,
       },
       pickup: {
-        location: booking.details?.pickupLocation || booking.participantData?.pickupLocation || 'Hotel Lobby / Meeting Point',
-        date: booking.departureDate || booking.details?.date || undefined,
+        location: booking.details?.pickupLocation || booking.participantData?.pickupLocation || (isShared ? 'Meeting Point Open Trip' : 'Hotel Lobby / Meeting Point'),
+        date: booking.departureDate || matchedBatch?.departureDate || booking.details?.date || undefined,
         time: booking.details?.pickupTime || (booking.participantData as any)?.pickupTime || undefined
       },
       trip: {
-        title: booking.serviceName || booking.tripTitle || tourSnapshot.tourName || 'Private Tour',
-        package: booking.details?.package || tourSnapshot.packageName || 'Private Exclusive',
-        departureDate: booking.departureDate || booking.details?.date || '',
+        title: booking.serviceName || booking.tripTitle || matchedTrip?.title || tourSnapshot.tourName || (isShared ? 'Open Trip Smart Journey' : 'Private Tour'),
+        package: booking.details?.package || tourSnapshot.packageName || (isShared ? 'Paket Open Trip' : 'Private Exclusive'),
+        departureDate: booking.departureDate || matchedBatch?.departureDate || booking.details?.date || '',
         duration: booking.details?.duration || tourSnapshot.duration || '1 Hari',
-        participantsCount: booking.participantsCount || booking.details?.guests || booking.details?.passengers || 1,
+        participantsCount: booking.participantsCount || booking.details?.guests || booking.details?.passengers || manifestItems.length || 1,
         participantsNames: booking.participantsNames || [booking.customerName || booking.fullName || 'Tamu Utama'],
         participantsManifest: manifestItems,
-        vehicleName: booking.details?.vehicleName || tourSnapshot.vehicleName || 'Standard Private Tourism Vehicle',
-        pickupLocation: booking.details?.pickupLocation || booking.participantData?.pickupLocation || 'Sesuai Konfirmasi',
+        vehicleName: booking.details?.vehicleName || tourSnapshot.vehicleName || (isShared ? 'Armada Wisata Open Trip' : 'Standard Private Tourism Vehicle'),
+        pickupLocation: booking.details?.pickupLocation || booking.participantData?.pickupLocation || (isShared ? 'Meeting Point Open Trip' : 'Sesuai Konfirmasi'),
         dropoffLocation: booking.details?.dropoffLocation || booking.participantData?.dropoffLocation || undefined,
         itinerary: tourSnapshot.itinerary || []
       },
@@ -2369,7 +2392,7 @@ app.get([
         currency: 'IDR',
         paidAt: booking.paidAt || '',
         paymentDate: paymentDateFormatted,
-        paymentId: booking.paymentId || booking.paymentIntentId || 'SETTLED_ARTOPAY',
+        paymentId: booking.paymentId || booking.paymentIntentId || (paymentStatus === 'Paid' ? 'SETTLED_ARTOPAY' : 'PENDING_PAYMENT'),
         paymentMethod: booking.participantData?.paymentMethod || 'ArtoPay Gateway',
         paymentProvider: rawBooking.paymentProvider || 'ArtoPay',
         paymentReference: booking.paymentId || booking.paymentIntentId || `TX-${bookingCode}`
@@ -2381,7 +2404,7 @@ app.get([
     res.setHeader('Content-Length', pdfBuffer.length);
     return res.end(pdfBuffer);
   } catch (error: any) {
-    console.error('Error generating Private Tour PDF:', error);
+    console.error('Error generating PDF:', error);
     return res.status(500).json({ error: 'Gagal menghasilkan dokumen PDF', details: error.message });
   }
 });
@@ -2417,37 +2440,25 @@ app.get('/api/private-tour/invoice-html/:bookingCode', (req, res) => {
       bookingStatus = paymentStatus === 'Paid' ? 'Pending Confirmation' : 'Pending Payment';
     }
 
-    // Gate validation: Must be Paid AND Confirmed
-    if (paymentStatus !== 'Paid' || (bookingStatus !== 'Confirmed' && bookingStatus !== 'Completed')) {
-      let specificMessage = 'Akses Ditolak: Dokumen Final Booking Summary hanya dapat diakses dan diunduh setelah status pembayaran LUNAS dan booking telah DIKONFIRMASI oleh Admin Pusat.';
-      if (bookingStatus === 'Cancelled') {
-        specificMessage = 'This booking has been cancelled. Final booking document is unavailable.';
-      } else if (paymentStatus !== 'Paid') {
-        specificMessage = 'Payment is still pending. Final booking document is not available yet.';
-      } else {
-        specificMessage = 'Payment received. Your booking is waiting for confirmation from Smart Journey.';
-      }
-      return res.status(403).send(`
-        <!DOCTYPE html>
-        <html>
-        <head><title>Akses Ditolak — Smart Journey</title><meta charset="utf-8"></head>
-        <body style="font-family: sans-serif; padding: 40px; text-align: center; background: #fafafa;">
-          <div style="max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; border: 1px solid #e5e5e5;">
-            <h2 style="color: #b91c1c;">403 Forbidden</h2>
-            <p style="color: #4b5563; font-size: 14px;">${specificMessage}</p>
-            <p style="color: #6b7280; font-size: 12px;">Status Pembayaran: <strong>${paymentStatus}</strong> | Status Booking: <strong>${bookingStatus}</strong></p>
-          </div>
-        </body>
-        </html>
-      `);
+    // Determine category
+    const isShared = booking.bookingType === 'shared' || 
+      booking.tourBookingType === 'shared' || 
+      booking.serviceType === 'shared' || 
+      Boolean(booking.batchId);
+
+    let matchedTrip: any = null;
+    let matchedBatch: any = null;
+    if (isShared) {
+      if (booking.tripId) matchedTrip = (db.trips || []).find((t: any) => t.id === booking.tripId);
+      if (booking.batchId) matchedBatch = (db.batches || []).find((b: any) => b.id === booking.batchId);
     }
 
     const tourSnapshot = booking.tourSnapshot || {
-      tourId: booking.tripId || booking.details?.tourId || 'tour-private',
-      tourName: booking.serviceName || booking.tripTitle || 'Private Tour',
-      packageName: booking.details?.package || 'Private Exclusive',
+      tourId: booking.tripId || booking.details?.tourId || (isShared ? 'tour-open-trip' : 'tour-private'),
+      tourName: booking.serviceName || booking.tripTitle || matchedTrip?.title || (isShared ? 'Open Trip Smart Journey' : 'Private Tour'),
+      packageName: booking.details?.package || (isShared ? (matchedBatch?.departureDate ? `Open Trip (Jadwal: ${matchedBatch.departureDate})` : 'Paket Open Trip') : 'Private Exclusive'),
       duration: booking.details?.duration || '1 Hari',
-      vehicleName: booking.details?.vehicleName || 'Standard Private Tourism Vehicle',
+      vehicleName: booking.details?.vehicleName || (isShared ? 'Armada Wisata Open Trip' : 'Standard Private Tourism Vehicle'),
       itinerary: booking.details?.itinerary || []
     };
 
@@ -2734,16 +2745,20 @@ app.get('/api/private-tour/invoice-html/:bookingCode', (req, res) => {
     <div class="header-row">
       <div>
         <h1 class="brand-title">SMART JOURNEY</h1>
-        <div class="doc-type">FINAL BOOKING SUMMARY</div>
+        <div class="doc-type">${isShared ? 'INVOICE &amp; BOOKING CONFIRMATION — OPEN TRIP' : 'INVOICE &amp; BOOKING CONFIRMATION — PRIVATE TOUR'}</div>
         <p class="brand-subtitle">PT Smart Journey Transindo • Lisensi Resmi Biro Perjalanan Wisata</p>
         <p class="brand-subtitle">Malang &amp; Surabaya, Jawa Timur • Hotline 24/7: +62 852-1234-7289</p>
         <div class="badge-wrap">
-          <span class="badge badge-confirmed">✓ BOOKING CONFIRMED</span>
-          <span class="badge badge-paid">✓ PAYMENT PAID</span>
+          <span class="badge ${bookingStatus === 'Confirmed' || bookingStatus === 'Completed' ? 'badge-confirmed' : ''}" style="${bookingStatus !== 'Confirmed' && bookingStatus !== 'Completed' ? 'background:#fef3c7;color:#b45309;border:1px solid #fcd34d;' : ''}">
+            ${bookingStatus === 'Confirmed' || bookingStatus === 'Completed' ? '✓ BOOKING CONFIRMED' : '⏳ PENDING CONFIRMATION'}
+          </span>
+          <span class="badge ${paymentStatus === 'Paid' ? 'badge-paid' : ''}" style="${paymentStatus !== 'Paid' ? 'background:#fef3c7;color:#b45309;border:1px solid #fcd34d;' : ''}">
+            ${paymentStatus === 'Paid' ? '✓ PAYMENT PAID' : '⏳ PAYMENT PENDING'}
+          </span>
         </div>
       </div>
       <div class="booking-meta">
-        <div class="code-label">Booking Code</div>
+        <div class="code-label">Booking Code / ID</div>
         <div class="code-val">${bookingCode}</div>
         <div style="font-size: 11px; color: #64748b;">Tanggal Reservasi: <strong>${booking.createdAt ? new Date(booking.createdAt).toLocaleDateString('id-ID') : '-'}</strong></div>
       </div>
