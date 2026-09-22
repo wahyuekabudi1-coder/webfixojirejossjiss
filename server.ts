@@ -66,6 +66,45 @@ function generateUniqueBookingCode(existingCodes: string[]): string {
   return 'SJ-' + Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
+// Security: Customer input HTML escaping to prevent Stored XSS
+function sanitizeHtml(str: any): string {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// Security: Collision-safe entity ID generation
+function generateEntityId(prefix: string): string {
+  const rand = crypto.randomBytes(6).toString('hex');
+  return `${prefix}-${Date.now()}-${rand}`;
+}
+
+// Security: Strict calendar date validation (prevents rollover like 2026-02-31)
+function isValidCalendarDate(dateStr: string): boolean {
+  if (!dateStr || typeof dateStr !== 'string') return false;
+  const trimmed = dateStr.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return false;
+  const parts = trimmed.split('-');
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  const day = parseInt(parts[2], 10);
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return false;
+  if (year < 1970 || year > 2100) return false;
+  if (month < 1 || month > 12) return false;
+  if (day < 1 || day > 31) return false;
+
+  const d = new Date(Date.UTC(year, month - 1, day));
+  return (
+    d.getUTCFullYear() === year &&
+    d.getUTCMonth() === month - 1 &&
+    d.getUTCDate() === day
+  );
+}
+
 // Clean Default Database Schema (No dummy production tours or fake bookings)
 const defaultDB: DatabaseState = {
   mainTours: [],
@@ -1135,9 +1174,30 @@ app.post('/api/builder/airport-transfers/sync', requireAdminAuth, (req, res) => 
 // Share Tour Database & Core API Routes
 // -------------------------------------------------------------
 
-app.get('/api/db', requireAdminAuth, (req, res) => {
+app.get('/api/db', (req, res) => {
   try {
     const db = readDB();
+    const isAdmin = checkIsAdmin(req);
+    if (!isAdmin) {
+      const safeBookings = (db.bookings || []).map((b: any) => ({
+        id: b.id,
+        bookingCode: b.bookingCode,
+        tripId: b.tripId,
+        batchId: b.batchId,
+        status: b.status,
+        paymentStatus: b.paymentStatus,
+        departureDate: b.departureDate,
+        participantsCount: b.participantsCount
+      }));
+      return res.json({
+        trips: db.trips || [],
+        batches: db.batches || [],
+        bookings: safeBookings,
+        mainTours: db.mainTours || [],
+        vehicles: (db as any).vehicles || [],
+        taxiServices: (db as any).taxiServices || {}
+      });
+    }
     res.json(db);
   } catch {
     res.status(500).json({ error: 'Failed to read database state' });
@@ -1654,72 +1714,96 @@ app.post('/api/bookings', (req, res) => {
         detectedServiceType = 'tour';
         const tourId = String(payload.tripId || payload.details?.tourId || payload.tourId || payload.serviceId || '').trim();
         if (!tourId) {
-          return res.status(400).json({ error: 'tripId atau tourId wajib disertakan untuk booking tour.' });
+          if (payload.baseAmount || payload.totalPriceIDR || payload.totalPrice) {
+            baseAmount = Number(payload.baseAmount || payload.totalPriceIDR || payload.totalPrice);
+            matchedServiceId = payload.serviceId || payload.serviceType || 'tour-custom';
+            resolvedTitle = payload.tripTitle || payload.serviceName || 'Private Tour';
+            tourSnapshot = {
+              tourId: matchedServiceId,
+              tourName: resolvedTitle,
+              duration: payload.details?.duration || '1 Hari',
+              vehicleName: payload.details?.vehicleName || 'Standard Private Tourism Vehicle',
+              startingPriceIDR: baseAmount,
+              highlights: [],
+              itinerary: []
+            };
+          } else {
+            return res.status(400).json({ error: 'tripId atau tourId wajib disertakan untuk booking tour.' });
+          }
+        } else {
+          const mainTours = readMainTours();
+          // 1. Prioritize exact ID match
+          let mainTour = mainTours.find(t => t.id === tourId);
+          let trip = (!mainTour) ? (db.trips || []).find((t: any) => t.id === tourId) : null;
+
+          // 2. Slug match
+          if (!mainTour && !trip) {
+            mainTour = mainTours.find(t => t.slug === tourId);
+            trip = (!mainTour) ? (db.trips || []).find((t: any) => t.slug === tourId) : null;
+          }
+
+          // 3. Case-insensitive exact ID match
+          if (!mainTour && !trip) {
+            mainTour = mainTours.find(t => t.id && t.id.toLowerCase() === tourId.toLowerCase());
+            trip = (!mainTour) ? (db.trips || []).find((t: any) => t.id && t.id.toLowerCase() === tourId.toLowerCase()) : null;
+          }
+
+          if (!mainTour && !trip) {
+            if (payload.baseAmount || payload.totalPriceIDR || payload.totalPrice) {
+              baseAmount = Number(payload.baseAmount || payload.totalPriceIDR || payload.totalPrice);
+              matchedServiceId = tourId || payload.serviceId || 'tour-custom';
+              resolvedTitle = payload.tripTitle || payload.serviceName || 'Private Tour';
+              tourSnapshot = {
+                tourId: matchedServiceId,
+                tourName: resolvedTitle,
+                duration: payload.details?.duration || '1 Hari',
+                vehicleName: payload.details?.vehicleName || 'Standard Private Tourism Vehicle',
+                startingPriceIDR: baseAmount,
+                highlights: payload.details?.highlights || [],
+                itinerary: payload.details?.itinerary || []
+              };
+            } else {
+              return res.status(404).json({ error: 'Tour tidak ditemukan di database backend.' });
+            }
+          } else {
+            const resolvedTour: any = mainTour || trip;
+            const isArchived = Boolean(
+              resolvedTour.isDeleted || 
+              resolvedTour.isArchived || 
+              resolvedTour.status === 'archived' || 
+              resolvedTour.status === 'deleted'
+            );
+            const isPublished = Boolean(
+              resolvedTour.status === 'published' || 
+              resolvedTour.status === 'Active' || 
+              resolvedTour.status === 'active' ||
+              resolvedTour.status === 'Published'
+            );
+
+            if (isArchived || !isPublished) {
+              return res.status(404).json({ error: 'Tour tidak aktif, diarsipkan, atau telah dihapus.' });
+            }
+
+            const serverPrice = Number(resolvedTour.startingPriceIDR ?? resolvedTour.wniPrice ?? resolvedTour.price ?? 0);
+            if (serverPrice <= 0) {
+              return res.status(400).json({ error: 'Harga tour di database backend tidak valid.' });
+            }
+
+            matchedServiceId = resolvedTour.id;
+            resolvedTitle = resolvedTour.name || resolvedTour.title || payload.tripTitle || payload.serviceName || 'Private Tour';
+            baseAmount = serverPrice;
+
+            tourSnapshot = {
+              tourId: resolvedTour.id,
+              tourName: resolvedTitle,
+              duration: payload.details?.duration || resolvedTour.duration || '1 Hari',
+              vehicleName: payload.details?.vehicleName || 'Standard Private Tourism Vehicle',
+              startingPriceIDR: baseAmount,
+              highlights: resolvedTour.highlights || [],
+              itinerary: (payload.details?.itinerary && payload.details.itinerary.length > 0) ? payload.details.itinerary : (resolvedTour.itinerary || [])
+            };
+          }
         }
-
-        const mainTours = readMainTours();
-        // 1. Prioritize exact ID match
-        let mainTour = mainTours.find(t => t.id === tourId);
-        let trip = (!mainTour) ? (db.trips || []).find((t: any) => t.id === tourId) : null;
-
-        // 2. Slug match
-        if (!mainTour && !trip) {
-          mainTour = mainTours.find(t => t.slug === tourId);
-          trip = (!mainTour) ? (db.trips || []).find((t: any) => t.slug === tourId) : null;
-        }
-
-        // 3. Case-insensitive exact ID match
-        if (!mainTour && !trip) {
-          mainTour = mainTours.find(t => t.id && t.id.toLowerCase() === tourId.toLowerCase());
-          trip = (!mainTour) ? (db.trips || []).find((t: any) => t.id && t.id.toLowerCase() === tourId.toLowerCase()) : null;
-        }
-
-        // 4. Substring fallback ONLY if still not found
-        if (!mainTour && !trip) {
-          mainTour = mainTours.find(t => t.id && t.id.includes(tourId));
-          trip = (!mainTour) ? (db.trips || []).find((t: any) => t.id && t.id.includes(tourId)) : null;
-        }
-
-        if (!mainTour && !trip) {
-          return res.status(404).json({ error: 'Tour tidak ditemukan di database backend.' });
-        }
-
-        const resolvedTour: any = mainTour || trip;
-        const isArchived = Boolean(
-          resolvedTour.isDeleted || 
-          resolvedTour.isArchived || 
-          resolvedTour.status === 'archived' || 
-          resolvedTour.status === 'deleted'
-        );
-        const isPublished = Boolean(
-          resolvedTour.status === 'published' || 
-          resolvedTour.status === 'Active' || 
-          resolvedTour.status === 'active' ||
-          resolvedTour.status === 'Published'
-        );
-
-        if (isArchived || !isPublished) {
-          return res.status(404).json({ error: 'Tour tidak aktif, diarsipkan, atau telah dihapus.' });
-        }
-
-        const serverPrice = Number(resolvedTour.startingPriceIDR ?? resolvedTour.wniPrice ?? resolvedTour.price ?? 0);
-        if (serverPrice <= 0) {
-          return res.status(400).json({ error: 'Harga tour di database backend tidak valid.' });
-        }
-
-        matchedServiceId = resolvedTour.id;
-        resolvedTitle = resolvedTour.name || resolvedTour.title || payload.tripTitle || payload.serviceName || 'Private Tour';
-        baseAmount = serverPrice;
-
-        tourSnapshot = {
-          tourId: resolvedTour.id,
-          tourName: resolvedTitle,
-          duration: payload.details?.duration || resolvedTour.duration || '1 Hari',
-          vehicleName: payload.details?.vehicleName || 'Standard Private Tourism Vehicle',
-          startingPriceIDR: baseAmount,
-          highlights: resolvedTour.highlights || [],
-          itinerary: resolvedTour.itinerary || payload.details?.itinerary || []
-        };
       }
 
       // Customer CANNOT forge uniqueCode or paymentAmount
@@ -2030,9 +2114,11 @@ app.get([
     const uniqueCode = booking.uniqueCode || 0;
     const paymentAmount = booking.paymentAmount || (baseAmount + uniqueCode);
 
-    // Download invoice / final summary is accessible for any valid booking
-    const canDownloadFinalSummary = true;
-    const canDownloadInvoice = true;
+    // Critical Fix #1: Gate Access - canDownloadFinalSummary is strictly unlocked ONLY when booking is Confirmed AND Paid
+    const isConfirmed = bookingStatus === 'Confirmed' || bookingStatus === 'Completed';
+    const isPaid = paymentStatus === 'Paid';
+    const canDownloadFinalSummary = isConfirmed && isPaid;
+    const canDownloadInvoice = canDownloadFinalSummary;
 
     // Status Guidance Messaging
     let gateMessage = '';
@@ -2041,7 +2127,7 @@ app.get([
     } else if (paymentStatus !== 'Paid') {
       gateMessage = 'Status: Menunggu Pembayaran. Anda dapat melihat dan mengunduh invoice tagihan atau melakukan pembayaran langsung.';
     } else if (bookingStatus !== 'Confirmed' && bookingStatus !== 'Completed') {
-      gateMessage = 'Pembayaran berhasil diterima. Pemesanan sedang menunggu konfirmasi admin.';
+      gateMessage = 'Pembayaran berhasil diterima. Pemesanan sedang dalam review admin (waiting for confirmation).';
     } else {
       gateMessage = 'Pemesanan Anda telah dikonfirmasi resmi.';
     }
@@ -2125,6 +2211,18 @@ app.get([
 
     if (paymentStatus === 'Paid' && bookingStatus !== 'Confirmed' && bookingStatus !== 'Completed') {
       bookingStatus = 'Pending Confirmation';
+    }
+
+    // Critical Fix #1: Enforce 403 Forbidden if not paid AND confirmed by admin (unless requester is authorized admin)
+    const isConfirmed = bookingStatus === 'Confirmed' || bookingStatus === 'Completed';
+    const isPaid = paymentStatus === 'Paid';
+    if ((!isConfirmed || !isPaid) && !checkIsAdmin(req)) {
+      return res.status(403).json({
+        error: 'Dokumen Final Booking Confirmation masih terkunci (403 Forbidden). Dokumen hanya dapat diakses setelah pembayaran lunas dan pemesanan dikonfirmasi resmi oleh admin.',
+        bookingStatus,
+        paymentStatus,
+        canDownloadFinalSummary: false
+      });
     }
 
     // Determine category
@@ -2286,6 +2384,18 @@ app.get([
       bookingStatus = 'Pending Confirmation';
     }
 
+    // Critical Fix #1: Gate access - PDF download locked (HTTP 403 Forbidden) until Paid AND Confirmed by Admin
+    const isConfirmed = bookingStatus === 'Confirmed' || bookingStatus === 'Completed';
+    const isPaid = paymentStatus === 'Paid';
+    if ((!isConfirmed || !isPaid) && !checkIsAdmin(req)) {
+      return res.status(403).json({
+        error: 'Dokumen Final Booking Confirmation masih terkunci (403 Forbidden). Dokumen hanya dapat diunduh setelah pembayaran berstatus Lunas (Paid) dan pemesanan telah dikonfirmasi resmi oleh Admin Pusat.',
+        bookingStatus,
+        paymentStatus,
+        canDownloadFinalSummary: false
+      });
+    }
+
     // Determine category
     const isShared = booking.bookingType === 'shared' || 
       booking.tourBookingType === 'shared' || 
@@ -2440,6 +2550,17 @@ app.get('/api/private-tour/invoice-html/:bookingCode', (req, res) => {
       bookingStatus = paymentStatus === 'Paid' ? 'Pending Confirmation' : 'Pending Payment';
     }
 
+    if (paymentStatus === 'Paid' && bookingStatus !== 'Confirmed' && bookingStatus !== 'Completed') {
+      bookingStatus = 'Pending Confirmation';
+    }
+
+    // Critical Fix #1: Gate access - HTML print service locked (HTTP 403 Forbidden) until Paid AND Confirmed by Admin
+    const isConfirmed = bookingStatus === 'Confirmed' || bookingStatus === 'Completed';
+    const isPaid = paymentStatus === 'Paid';
+    if ((!isConfirmed || !isPaid) && !checkIsAdmin(req)) {
+      return res.status(403).send('<h1>403 Forbidden: Dokumen Final Booking Confirmation masih terkunci. Pembayaran harus lunas dan pemesanan harus dikonfirmasi oleh Admin.</h1>');
+    }
+
     // Determine category
     const isShared = booking.bookingType === 'shared' || 
       booking.tourBookingType === 'shared' || 
@@ -2472,20 +2593,22 @@ app.get('/api/private-tour/invoice-html/:bookingCode', (req, res) => {
       booking.verificationHash = `SJ-VERIFIED-${codeClean}-${seed}`;
       writeDB(db);
     }
-    const verificationHash = booking.verificationHash;
-    const bookingCode = booking.bookingCode || booking.id;
+    const verificationHash = sanitizeHtml(booking.verificationHash);
+    const bookingCode = sanitizeHtml(booking.bookingCode || booking.id);
 
     const rawMembers = booking.participantData?.members || booking.participantsManifest || [];
     const manifestItems = Array.isArray(rawMembers) && rawMembers.length > 0
-      ? rawMembers.map((m: any, i: number) => `${i + 1}. ${m.name || m.fullName}${m.nationality ? ' — ' + m.nationality : ''}`)
+      ? rawMembers.map((m: any, i: number) => `${i + 1}. ${sanitizeHtml(m.name || m.fullName)}${m.nationality ? ' — ' + sanitizeHtml(m.nationality) : ''}`)
       : (booking.participantsNames || [booking.customerName || booking.fullName || 'Tamu Utama']).map((name: string, i: number) => 
-          `${i + 1}. ${name}${booking.nationalityType === 'foreign' ? ' — International' : (booking.nationalityType === 'domestic' ? ' — Indonesia' : '')}`
+          `${i + 1}. ${sanitizeHtml(name)}${booking.nationalityType === 'foreign' ? ' — International' : (booking.nationalityType === 'domestic' ? ' — Indonesia' : '')}`
         );
 
     const itineraryItems = Array.isArray(tourSnapshot.itinerary) && tourSnapshot.itinerary.length > 0
       ? tourSnapshot.itinerary.map((item: any, idx: number) => {
-          const title = typeof item === 'string' ? item : (item.title || item.day || `Day ${idx + 1}`);
-          const desc = typeof item === 'object' && item.desc ? item.desc : (typeof item === 'object' && item.activities ? item.activities.join(', ') : '');
+          const rawTitle = typeof item === 'string' ? item : (item.title || item.day || `Day ${idx + 1}`);
+          const rawDesc = typeof item === 'object' && item.desc ? item.desc : (typeof item === 'object' && item.activities ? item.activities.join(', ') : '');
+          const title = sanitizeHtml(rawTitle);
+          const desc = sanitizeHtml(rawDesc);
           return `
             <div style="margin-bottom: 8px; padding: 8px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
               <strong style="color: #0f172a; font-size: 13px;">${title}</strong>
@@ -2500,6 +2623,17 @@ app.get('/api/private-tour/invoice-html/:bookingCode', (req, res) => {
     // File name matches requirement: SmartJourney-Final-Booking-SJ-8F42KD.pdf
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Content-Disposition', `inline; filename="SmartJourney-Final-Booking-${bookingCode}.html"`);
+
+    const customerNameEscaped = sanitizeHtml(booking.customerName || booking.fullName || '-');
+    const customerPhoneEscaped = sanitizeHtml(booking.customerPhone || booking.phone || '-');
+    const customerEmailEscaped = sanitizeHtml(booking.customerEmail || booking.email || '-');
+    const pickupEscaped = sanitizeHtml(booking.details?.pickupLocation || booking.participantData?.pickupLocation || '-');
+    const dropoffEscaped = sanitizeHtml(booking.details?.dropoffLocation || booking.participantData?.dropoffLocation || '');
+    const tourNameEscaped = sanitizeHtml(booking.serviceName || booking.tripTitle || tourSnapshot.tourName);
+    const packageNameEscaped = sanitizeHtml(booking.details?.package || tourSnapshot.packageName || 'Private Exclusive');
+    const departureDateEscaped = sanitizeHtml(booking.departureDate || booking.details?.date || '-');
+    const durationEscaped = sanitizeHtml(booking.details?.duration || tourSnapshot.duration || '1 Hari');
+    const vehicleEscaped = sanitizeHtml(booking.details?.vehicleName || tourSnapshot.vehicleName || 'Standard Private Tourism Vehicle');
 
     const html = `
 <!DOCTYPE html>
@@ -2771,24 +2905,24 @@ app.get('/api/private-tour/invoice-html/:bookingCode', (req, res) => {
         <div class="section-title" style="margin-top:0;">Informasi Customer</div>
         <div class="info-row">
           <span class="info-label">Nama Lengkap</span>
-          <span class="info-value">${booking.customerName || booking.fullName || '-'}</span>
+          <span class="info-value">${customerNameEscaped}</span>
         </div>
         <div class="info-row">
           <span class="info-label">WhatsApp / Telepon</span>
-          <span class="info-value">${booking.customerPhone || booking.phone || '-'}</span>
+          <span class="info-value">${customerPhoneEscaped}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Email</span>
-          <span class="info-value">${booking.customerEmail || booking.email || '-'}</span>
+          <span class="info-value">${customerEmailEscaped}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Lokasi Penjemputan</span>
-          <span class="info-value">${booking.details?.pickupLocation || booking.participantData?.pickupLocation || '-'}</span>
+          <span class="info-value">${pickupEscaped}</span>
         </div>
-        ${booking.details?.dropoffLocation || booking.participantData?.dropoffLocation ? `
+        ${dropoffEscaped ? `
         <div class="info-row">
           <span class="info-label">Lokasi Pengantaran</span>
-          <span class="info-value">${booking.details?.dropoffLocation || booking.participantData?.dropoffLocation}</span>
+          <span class="info-value">${dropoffEscaped}</span>
         </div>
         ` : ''}
       </div>
@@ -2798,19 +2932,19 @@ app.get('/api/private-tour/invoice-html/:bookingCode', (req, res) => {
         <div class="section-title" style="margin-top:0;">Informasi Private Tour</div>
         <div class="info-row">
           <span class="info-label">Nama Paket Tur</span>
-          <span class="info-value" style="color: #b45309;">${booking.serviceName || booking.tripTitle || tourSnapshot.tourName}</span>
+          <span class="info-value" style="color: #b45309;">${tourNameEscaped}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Kategori / Paket</span>
-          <span class="info-value">${booking.details?.package || tourSnapshot.packageName || 'Private Exclusive'}</span>
+          <span class="info-value">${packageNameEscaped}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Tanggal Wisata</span>
-          <span class="info-value">${booking.departureDate || booking.details?.date || '-'}</span>
+          <span class="info-value">${departureDateEscaped}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Durasi</span>
-          <span class="info-value">${booking.details?.duration || tourSnapshot.duration || '1 Hari'}</span>
+          <span class="info-value">${durationEscaped}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Jumlah Peserta</span>
@@ -2818,7 +2952,7 @@ app.get('/api/private-tour/invoice-html/:bookingCode', (req, res) => {
         </div>
         <div class="info-row">
           <span class="info-label">Pilihan Kendaraan</span>
-          <span class="info-value">${booking.details?.vehicleName || tourSnapshot.vehicleName || 'Standard Private Tourism Vehicle'}</span>
+          <span class="info-value">${vehicleEscaped}</span>
         </div>
       </div>
     </div>
