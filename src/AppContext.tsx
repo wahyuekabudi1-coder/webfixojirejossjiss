@@ -334,7 +334,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Server fetch for Reviews
   const refreshReviews = useCallback(async () => {
     try {
-      const res = await fetch('/api/reviews');
+      const res = await fetch('/api/reviews', {
+        headers: getAdminHeaders()
+      });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {

@@ -263,14 +263,23 @@ function atomicWriteFileSync(filePath: string, content: string): void {
     fs.mkdirSync(dir, { recursive: true });
   }
   const tempPath = `${filePath}.tmp.${Date.now()}.${Math.random().toString(36).substring(2, 8)}`;
-  const fd = fs.openSync(tempPath, 'w');
   try {
-    fs.writeFileSync(fd, content, 'utf8');
-    fs.fsyncSync(fd);
-  } finally {
-    fs.closeSync(fd);
+    const fd = fs.openSync(tempPath, 'w');
+    try {
+      fs.writeFileSync(fd, content, 'utf8');
+      fs.fsyncSync(fd);
+    } finally {
+      fs.closeSync(fd);
+    }
+    fs.renameSync(tempPath, filePath);
+  } catch (err) {
+    try {
+      if (fs.existsSync(tempPath)) {
+        fs.unlinkSync(tempPath);
+      }
+    } catch (_) {}
+    throw err;
   }
-  fs.renameSync(tempPath, filePath);
 }
 
 // -------------------------------------------------------------
@@ -1052,9 +1061,19 @@ app.delete('/api/schedules/:id', requireAdminAuth, (req, res) => {
 app.get('/api/reviews', (req, res) => {
   try {
     const db = readDB();
-    res.json(db.reviews || []);
+    const allReviews = Array.isArray(db.reviews) ? db.reviews : [];
+    const isAdmin = checkIsAdmin(req);
+    if (isAdmin) {
+      return res.json(allReviews);
+    }
+    // Public/Customer only sees approved or published reviews
+    const publicReviews = allReviews.filter((r: any) => {
+      const status = (r.status || '').trim().toLowerCase();
+      return status === 'approved' || status === 'published' || (status === '' && status !== 'pending' && status !== 'rejected');
+    });
+    return res.json(publicReviews);
   } catch (err) {
-    res.status(500).json({ error: 'Gagal mengambil data review.' });
+    return res.status(500).json({ error: 'Gagal mengambil data review.' });
   }
 });
 
@@ -1287,8 +1306,7 @@ app.get('/api/db', (req, res) => {
         batches: db.batches || [],
         bookings: safeBookings,
         mainTours: db.mainTours || [],
-        vehicles: (db as any).vehicles || [],
-        taxiServices: (db as any).taxiServices || {}
+        vehicles: (db as any).vehicles || []
       });
     }
     res.json(db);
