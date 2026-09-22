@@ -22,7 +22,7 @@ if (fs.existsSync('/app/.dev.env.json')) {
   } catch (e) {}
 }
 
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = 3000;
 
 // Helper to determine the actual project root directory safely across environments (AI Studio, PM2, Passenger, Hostinger)
 function resolveProjectRoot(): string {
@@ -123,10 +123,18 @@ function recalculateBatchSeats(db: DatabaseState): void {
   if (!db || !db.batches) return;
   if (!db.bookings) db.bookings = [];
 
+  const inactiveStatuses = new Set(['cancelled', 'canceled', 'rejected', 'failed', 'expired']);
+  const inactivePaymentStatuses = new Set(['failed', 'expired']);
+
   db.batches.forEach((batch) => {
-    const activeBookings = db.bookings.filter(
-      (b) => Boolean(b.batchId) && b.batchId === batch.id && b.status !== 'Rejected'
-    );
+    const activeBookings = db.bookings.filter((b) => {
+      if (!b.batchId || b.batchId !== batch.id) return false;
+      const bStatus = (b.status || '').trim().toLowerCase();
+      const pStatus = (b.paymentStatus || '').trim().toLowerCase();
+      if (inactiveStatuses.has(bStatus)) return false;
+      if (inactivePaymentStatuses.has(pStatus)) return false;
+      return true;
+    });
 
     const totalBooked = activeBookings.reduce(
       (sum, b) => sum + (Number(b.participantsCount) || 1),
@@ -337,11 +345,14 @@ app.use((req, res, next) => {
   ].filter(Boolean) as string[];
 
   const origin = req.headers.origin;
-  if (origin && (allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production')) {
+  const isDev = process.env.NODE_ENV !== 'production';
+  const isLocalOrigin = origin && (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1'));
+
+  if (origin && (allowedOrigins.includes(origin) || (isDev && isLocalOrigin))) {
     res.header('Access-Control-Allow-Origin', origin);
   } else if (!origin) {
     res.header('Access-Control-Allow-Origin', '*');
-  } else {
+  } else if (isDev) {
     res.header('Access-Control-Allow-Origin', origin);
   }
 
@@ -440,10 +451,11 @@ function requireAdminAuth(req: express.Request, res: express.Response, next: exp
 function generateUniquePaymentCode(bookings: Booking[] = []): number {
   const activePendingUniqueCodes = new Set<number>();
   for (const b of bookings) {
-    if (
-      b.uniqueCode &&
-      (b.paymentStatus === 'Pending' || b.paymentStatus === 'Pending Payment' || b.paymentStatus === 'Unpaid')
-    ) {
+    const pStatus = (b.paymentStatus || '').trim().toLowerCase();
+    const bStatus = (b.status || '').trim().toLowerCase();
+    const isPending = pStatus === 'pending' || pStatus === 'pending payment' || pStatus === 'unpaid';
+    const isNotTerminated = !['cancelled', 'canceled', 'rejected', 'failed', 'expired'].includes(bStatus);
+    if (b.uniqueCode && isPending && isNotTerminated) {
       activePendingUniqueCodes.add(Number(b.uniqueCode));
     }
   }
@@ -460,8 +472,20 @@ function generateUniquePaymentCode(bookings: Booking[] = []): number {
     return available[idx];
   }
 
-  // Fallback if all 1-99 are active: random 1-99
-  return Math.floor(Math.random() * 99) + 1;
+  // Safe expansion: if 1-99 are exhausted, expand safely to 100-999
+  const expandedAvailable: number[] = [];
+  for (let i = 100; i <= 999; i++) {
+    if (!activePendingUniqueCodes.has(i)) {
+      expandedAvailable.push(i);
+    }
+  }
+
+  if (expandedAvailable.length > 0) {
+    const idx = Math.floor(Math.random() * expandedAvailable.length);
+    return expandedAvailable[idx];
+  }
+
+  throw new Error('Semua kode unik pembayaran sedang aktif. Silakan coba sesaat lagi.');
 }
 
 // -------------------------------------------------------------
@@ -586,7 +610,7 @@ app.post('/api/main-tours', requireAdminAuth, (req, res) => {
     const tours = readMainTours();
     const tourId = payload.id && payload.id.trim() !== '' 
       ? payload.id.trim() 
-      : `tour-${Date.now()}`;
+      : generateEntityId('tour');
 
     const newTour: Tour = {
       ...payload,
@@ -744,7 +768,7 @@ app.get('/api/rentals', (req, res) => {
       zonePricing: []
     };
 
-    const isAdmin = Boolean(req.headers.authorization) || Boolean(req.headers['x-secret-key']) || req.query.all === 'true';
+    const isAdmin = checkIsAdmin(req);
     if (isAdmin) {
       return res.json(rentals);
     }
@@ -807,7 +831,7 @@ app.get('/api/airport-routes', (req, res) => {
   try {
     const db = readDB();
     const routes = db.airportTransfers?.routes || [];
-    const showAll = req.query.all === 'true' || Boolean(req.headers.authorization) || Boolean(req.headers['x-secret-key']);
+    const showAll = (req.query.all === 'true' || Boolean(req.headers.authorization)) && checkIsAdmin(req);
     if (showAll) {
       return res.json(routes);
     }
@@ -838,7 +862,7 @@ app.post('/api/airport-transfers/sync', requireAdminAuth, (req, res) => {
 // TAXI SERVICE REST API (EXCEL IMPORT & PERSISTENT DB ENGINE)
 // -------------------------------------------------------------
 
-app.get('/api/taxi/all', (req, res) => {
+app.get(['/api/taxi/all', '/api/taxi'], (req, res) => {
   try {
     const db = readDB();
     const taxi = db.taxiServices || {
@@ -848,7 +872,19 @@ app.get('/api/taxi/all', (req, res) => {
       areaRules: [],
       importHistory: []
     };
-    res.json(taxi);
+
+    const isAdmin = checkIsAdmin(req);
+    if (isAdmin) {
+      return res.json(taxi);
+    }
+
+    // Public-safe projection: excludes internal importHistory
+    res.json({
+      masterAreas: taxi.masterAreas || [],
+      destinations: taxi.destinations || [],
+      pricingRules: (taxi.pricingRules || []).filter((r: any) => !r.status || r.status === 'Active'),
+      areaRules: taxi.areaRules || []
+    });
   } catch (error) {
     res.status(500).json({ error: 'Gagal mengambil database tarif taksi privat.' });
   }
@@ -934,7 +970,7 @@ app.post('/api/schedules', requireAdminAuth, (req, res) => {
     }
     const db = readDB();
     if (!Array.isArray(db.schedules)) db.schedules = [];
-    const itemId = item.id || `sch-${Date.now()}`;
+    const itemId = item.id || generateEntityId('sch');
     const entry = { ...item, id: itemId };
 
     const idx = db.schedules.findIndex(s => s.id === itemId);
@@ -975,29 +1011,39 @@ app.get('/api/reviews', (req, res) => {
   }
 });
 
-app.post('/api/reviews', (req, res) => {
+app.post('/api/reviews', loginLimiter, (req, res) => {
   try {
     const db = readDB();
     if (!Array.isArray(db.reviews)) db.reviews = [];
     const newRev = req.body;
-    const author = newRev?.author || newRev?.name || newRev?.userName;
-    const content = newRev?.content || newRev?.text || newRev?.comment;
-    if (!author || !content) {
+    const rawAuthor = newRev?.author || newRev?.name || newRev?.userName;
+    const rawContent = newRev?.content || newRev?.text || newRev?.comment;
+    if (!rawAuthor || !rawContent) {
       return res.status(400).json({ error: 'Data review tidak lengkap: nama dan isi ulasan wajib diisi.' });
     }
+
+    const author = sanitizeHtml(String(rawAuthor).trim()).slice(0, 100);
+    const content = sanitizeHtml(String(rawContent).trim()).slice(0, 2000);
+
+    const rawRating = Math.round(Number(newRev.rating));
+    const rating = (!isNaN(rawRating) && rawRating >= 1 && rawRating <= 5) ? rawRating : 5;
+
+    // Critical Fix #10: Force public reviews to 'pending' moderation status
+    const isAdmin = checkIsAdmin(req);
+    const status = isAdmin && newRev.status ? String(newRev.status) : 'pending';
+
     const reviewItem = {
-      ...newRev,
-      id: newRev.id || `rev-${Date.now()}`,
+      id: generateEntityId('rev'),
       author,
       name: author,
       content,
       text: content,
-      rating: Number(newRev.rating) || 5,
+      rating,
       date: newRev.date || new Date().toISOString().split('T')[0],
-      service: newRev.service || newRev.serviceType || 'tour',
-      serviceType: newRev.serviceType || newRev.service || 'tour',
-      status: newRev.status || 'pending',
-      country: newRev.country || 'Indonesia',
+      service: sanitizeHtml(String(newRev.service || newRev.serviceType || 'tour')).slice(0, 50),
+      serviceType: sanitizeHtml(String(newRev.serviceType || newRev.service || 'tour')).slice(0, 50),
+      status,
+      country: sanitizeHtml(String(newRev.country || 'Indonesia')).slice(0, 50),
       avatar: newRev.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150'
     };
     db.reviews = [reviewItem, ...db.reviews];
@@ -1232,8 +1278,21 @@ app.post('/api/import-bulk', requireAdminAuth, (req, res) => {
     const db = readDB();
 
     if (mode === 'overwrite') {
-      db.trips = newTrips || [];
-      db.batches = newBatches || [];
+      if (!Array.isArray(newTrips) || newTrips.length === 0) {
+        return res.status(400).json({ error: 'Operasi overwrite dibatalkan: payload trips kosong atau tidak valid.' });
+      }
+      if (newBatches !== undefined && !Array.isArray(newBatches)) {
+        return res.status(400).json({ error: 'Payload batches tidak valid.' });
+      }
+      for (const t of newTrips) {
+        if (!t || typeof t !== 'object' || !t.id || !t.title) {
+          return res.status(400).json({ error: 'Item trip tidak valid: setiap trip wajib memiliki id dan title.' });
+        }
+      }
+      db.trips = newTrips;
+      if (Array.isArray(newBatches)) {
+        db.batches = newBatches;
+      }
     } else {
       if (newTrips && newTrips.length > 0) {
         db.trips = [...db.trips, ...newTrips];
@@ -1258,7 +1317,7 @@ app.post('/api/trips', requireAdminAuth, (req, res) => {
 
     const newTrip: Trip = {
       ...req.body,
-      id: 'trip-' + Date.now().toString()
+      id: req.body.id || generateEntityId('trip')
     };
 
     db.trips.push(newTrip);
@@ -1333,7 +1392,7 @@ app.post('/api/batches', requireAdminAuth, (req, res) => {
 
     const newBatch: Batch = {
       ...req.body,
-      id: 'batch-' + Date.now().toString()
+      id: req.body.id || generateEntityId('batch')
     };
 
     db.batches.push(newBatch);
@@ -1441,7 +1500,7 @@ app.post('/api/bookings', (req, res) => {
       const paymentAmount = baseAmount + uniqueCode;
 
       const newBooking: Booking = {
-        id: payload.id || ('book-' + Date.now().toString()),
+        id: payload.id || generateEntityId('book'),
         bookingCode,
         serviceType: 'shared',
         serviceId: batch.id,
@@ -1481,18 +1540,39 @@ app.post('/api/bookings', (req, res) => {
       // -------------------------------------------------------------
       // NON-SHARED BOOKING FLOW: DETECT SERVICE TYPE & VALIDATE
       // -------------------------------------------------------------
-      const selectedDate = String(payload.departureDate || payload.details?.date || '').trim();
+      let selectedDate = String(payload.departureDate || payload.details?.date || '').trim();
 
-      // Validate date if provided: Must not be in the past
+      // Validate date if provided: Must be valid calendar date, not in the past, and not a blackout date
       if (selectedDate) {
-        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-        if (dateRegex.test(selectedDate)) {
-          const now = new Date();
-          const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-          if (selectedDate < todayStr) {
-            return res.status(400).json({ error: 'Tanggal keberangkatan tidak boleh di masa lalu.' });
+        const parsedDate = new Date(selectedDate);
+        if (isNaN(parsedDate.getTime())) {
+          return res.status(400).json({ error: 'Format tanggal keberangkatan tidak valid.' });
+        }
+        const yyyy = parsedDate.getFullYear();
+        const mm = String(parsedDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(parsedDate.getDate()).padStart(2, '0');
+        const normalizedDate = `${yyyy}-${mm}-${dd}`;
+
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        if (normalizedDate < todayStr) {
+          return res.status(400).json({ error: 'Tanggal keberangkatan tidak boleh di masa lalu.' });
+        }
+
+        if (Array.isArray(db.schedules)) {
+          const isBlackedOut = db.schedules.some((s: any) => {
+            const sDate = s.date || s.blackoutDate;
+            const sType = String(s.type || '').toLowerCase();
+            const isBlackout = sType.includes('blackout') || sType.includes('libur') || s.isBlackout;
+            if (isBlackout && sDate === normalizedDate) return true;
+            if (isBlackout && s.startDate && s.endDate && normalizedDate >= s.startDate && normalizedDate <= s.endDate) return true;
+            return false;
+          });
+          if (isBlackedOut) {
+            return res.status(400).json({ error: 'Tanggal yang dipilih merupakan tanggal libur operasional / blackout date.' });
           }
         }
+        selectedDate = normalizedDate;
       }
 
       const rawType = String(payload.serviceType || payload.type || '').trim().toLowerCase();
@@ -1813,7 +1893,7 @@ app.post('/api/bookings', (req, res) => {
       const bookingCode = payload.bookingCode || generateUniqueBookingCode(db.bookings.map(b => b.bookingCode));
 
       const newBooking: Booking = {
-        id: payload.id || ('book-' + Date.now().toString()),
+        id: payload.id || generateEntityId('book'),
         bookingCode,
         serviceType: detectedServiceType,
         serviceId: matchedServiceId,
@@ -3658,7 +3738,12 @@ function getArtoPayConfig() {
   }
 
   const rawBaseUrl = normalizeEnvVar(process.env.ARTOPAY_API_BASE_URL);
-  const apiBaseUrl = rawBaseUrl || (envMode === 'production' ? 'https://api.arto-pay.com' : 'https://api-sandbox.arto-pay.com');
+  let apiBaseUrl: string;
+  if (rawBaseUrl && !rawBaseUrl.includes('api.artopay.com') && !rawBaseUrl.includes('api.arto-pay.com')) {
+    apiBaseUrl = rawBaseUrl;
+  } else {
+    apiBaseUrl = envMode === 'production' ? 'https://api.arto-pay.com' : 'https://api-sandbox.arto-pay.com';
+  }
 
   const businessUnitCode = normalizeEnvVar(process.env.ARTOPAY_BUSINESS_UNIT_CODE || process.env.ARTOPAY_BUSINESS_UNIT);
 
@@ -4133,6 +4218,7 @@ app.post(['/api/artopay/webhook', '/artopay/webhook'], (req, res) => {
     }
 
     db.bookings[index] = booking;
+    recalculateBatchSeats(db);
     writeDB(db);
 
     return res.status(200).json({
@@ -4197,12 +4283,14 @@ app.get(['/api/orders/:orderId/payment-status', '/api/artopay/status/:orderId'],
                 booking.status = 'Pending Confirmation';
               }
               booking.paidAt = new Date().toISOString();
+              recalculateBatchSeats(db);
               writeDB(db);
             } else if (['FAILED', 'CANCELLED', 'EXPIRED'].includes(remoteStatus)) {
               booking.paymentStatus = remoteStatus === 'EXPIRED' ? 'Expired' : 'Failed';
               if (booking.status !== 'Confirmed') {
                 booking.status = 'Cancelled';
               }
+              recalculateBatchSeats(db);
               writeDB(db);
             }
           }

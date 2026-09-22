@@ -6,10 +6,18 @@ export function recalculateBatchSeats(db: DatabaseState): DatabaseState {
   if (!db || !db.batches) return db;
   if (!db.bookings) db.bookings = [];
 
+  const inactiveStatuses = new Set(['cancelled', 'canceled', 'rejected', 'failed', 'expired']);
+  const inactivePaymentStatuses = new Set(['failed', 'expired']);
+
   db.batches.forEach((batch) => {
-    const activeBookings = db.bookings.filter(
-      (b) => Boolean(b.batchId) && b.batchId === batch.id && b.status !== "Rejected"
-    );
+    const activeBookings = db.bookings.filter((b) => {
+      if (!b.batchId || b.batchId !== batch.id) return false;
+      const bStatus = (b.status || '').trim().toLowerCase();
+      const pStatus = (b.paymentStatus || '').trim().toLowerCase();
+      if (inactiveStatuses.has(bStatus)) return false;
+      if (inactivePaymentStatuses.has(pStatus)) return false;
+      return true;
+    });
     const totalBooked = activeBookings.reduce(
       (sum, b) => sum + (Number(b.participantsCount) || 1),
       0
