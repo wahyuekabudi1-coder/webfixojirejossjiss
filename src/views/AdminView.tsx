@@ -153,6 +153,7 @@ export default function AdminView() {
 
   // Custom states for Tours Administration
   const [isTourFormOpen, setIsTourFormOpen] = useState(false);
+  const [isPublishingTour, setIsPublishingTour] = useState(false);
   const [editingTour, setEditingTour] = useState<any>(null);
   const [tourForm, setTourForm] = useState({
     id: '',
@@ -1092,10 +1093,16 @@ export default function AdminView() {
               {/* Two Column Layout for Full Workspace Form */}
               {(() => {
                 const handleSaveTourWithStatus = async (targetStatus: 'published' | 'draft') => {
+                  if (isPublishingTour) return;
                   if (!tourForm.name || !tourForm.name.trim()) {
                     triggerToast('Nama paket tour wajib diisi!');
                     return;
                   }
+                  
+                  // Instantly cancel any pending background autosave timer
+                  clearTourDraft();
+                  setIsPublishingTour(true);
+
                   const parsedHighlights = tourForm.highlights.split(',').map(h => h.trim()).filter(Boolean);
                   
                   // Serialize itineraryItems or fall back to manual textarea
@@ -1142,6 +1149,8 @@ export default function AdminView() {
                   } catch (err) {
                     console.error('Save tour error:', err);
                     triggerToast('Gagal menyimpan paket tour ke server database.');
+                  } finally {
+                    setIsPublishingTour(false);
                   }
                 };
 
@@ -2035,29 +2044,32 @@ export default function AdminView() {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-1">
                       <button 
                         type="button" 
+                        disabled={isPublishingTour}
                         onClick={() => {
                           setIsTourFormOpen(false);
                           setEditingTour(null);
                         }}
-                        className={`px-4 py-3 rounded-xl border ${theme.border} bg-neutral-900/60 hover:bg-neutral-900 text-xs font-bold text-neutral-300 hover:text-white transition-all cursor-pointer text-center`}
+                        className={`px-4 py-3 rounded-xl border ${theme.border} bg-neutral-900/60 hover:bg-neutral-900 text-xs font-bold text-neutral-300 hover:text-white transition-all cursor-pointer text-center disabled:opacity-50 disabled:cursor-not-allowed`}
                       >
                         Batal
                       </button>
                       <button 
                         type="button"
+                        disabled={isPublishingTour}
                         onClick={() => handleSaveTourWithStatus('draft')}
-                        className="px-4 py-3 rounded-xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                        className="px-4 py-3 rounded-xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Clock className="h-4 w-4 shrink-0" />
-                        <span>Simpan Draft</span>
+                        <span>{isPublishingTour ? 'Menyimpan...' : 'Simpan Draft'}</span>
                       </button>
                       <button 
                         type="button"
+                        disabled={isPublishingTour}
                         onClick={() => handleSaveTourWithStatus('published')}
-                        className="px-4 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-neutral-950 text-xs font-black transition-all shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+                        className="px-4 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-neutral-950 text-xs font-black transition-all shadow-md cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <CheckCircle2 className="h-4 w-4 shrink-0" />
-                        <span>Publikasikan</span>
+                        <span>{isPublishingTour ? 'Memproses...' : 'Publikasikan'}</span>
                       </button>
                     </div>
                   </div>

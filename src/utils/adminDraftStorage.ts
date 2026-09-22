@@ -60,10 +60,13 @@ export function getIsOnline(): boolean {
   return window.navigator.onLine !== false;
 }
 
-// Circuit breaker state for 401/403 / server unavailable to prevent infinite failing request loops
-let serverAuthRejected = false;
-let lastAuthRejectTime = 0;
-const AUTH_REJECT_COOLDOWN_MS = 60000; // 60 seconds cooldown on auth failure
+// Circuit breaker state for 401/403 / 500 / timeout / server unavailable to prevent infinite failing request loops
+let serverFailureDetected = false;
+let lastServerFailureTime = 0;
+const SERVER_FAILURE_COOLDOWN_MS = 60000; // 60 seconds cooldown on failure
+
+// Track in-flight server requests by draft key to enforce SINGLE FLIGHT request
+const inFlightServerRequests = new Set<string>();
 
 // Draft key versioning to prevent race conditions when a draft is cleared while a network request is in-flight
 const draftVersions = new Map<string, number>();
@@ -79,12 +82,14 @@ export function bumpDraftVersion(key: string): number {
 }
 
 /**
- * Fetch with strict timeout using AbortController
+ * Fetch with strict timeout using AbortController (default 4000ms)
  */
-async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs: number = 5000): Promise<Response> {
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs: number = 4000): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
-    controller.abort();
+    try {
+      controller.abort();
+    } catch {}
   }, timeoutMs);
   try {
     const response = await fetch(url, {
@@ -99,14 +104,19 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
 
 function shouldSkipServerSync(): boolean {
   if (typeof window === 'undefined' || !getIsOnline()) return true;
-  if (serverAuthRejected) {
-    if (Date.now() - lastAuthRejectTime < AUTH_REJECT_COOLDOWN_MS) {
+  if (serverFailureDetected) {
+    if (Date.now() - lastServerFailureTime < SERVER_FAILURE_COOLDOWN_MS) {
       return true;
     }
-    // Cooldown expired, allow retry
-    serverAuthRejected = false;
+    // Cooldown expired, allow one trial request
+    serverFailureDetected = false;
   }
   return false;
+}
+
+function markServerFailure(): void {
+  serverFailureDetected = true;
+  lastServerFailureTime = Date.now();
 }
 
 function getAdminAuthHeaders(): Record<string, string> {
@@ -126,6 +136,7 @@ function getAdminAuthHeaders(): Record<string, string> {
 /**
  * Fetch draft directly from authoritative backend database
  * Essential for sudden laptop reboot, battery loss, or cross-browser recovery
+ * Strictly non-blocking with 3500ms timeout
  */
 export async function fetchDraftFromServer<T = any>(
   type: DraftType,
@@ -134,14 +145,16 @@ export async function fetchDraftFromServer<T = any>(
 ): Promise<AdminDraft<T> | null> {
   if (shouldSkipServerSync()) return null;
   const key = generateDraftKey(type, targetId, subType);
+  if (inFlightServerRequests.has(key)) return null;
+
+  inFlightServerRequests.add(key);
   try {
     const res = await fetchWithTimeout(`/api/admin/drafts?key=${encodeURIComponent(key)}`, {
       headers: getAdminAuthHeaders()
-    }, 5000);
+    }, 3500);
 
-    if (res.status === 401 || res.status === 403) {
-      serverAuthRejected = true;
-      lastAuthRejectTime = Date.now();
+    if (res.status === 401 || res.status === 403 || res.status >= 500) {
+      markServerFailure();
       return null;
     }
 
@@ -156,29 +169,42 @@ export async function fetchDraftFromServer<T = any>(
       }
     }
   } catch (err) {
-    console.debug('[AutoSave] Could not fetch server draft (timeout or network):', err);
+    markServerFailure();
+  } finally {
+    inFlightServerRequests.delete(key);
   }
   return null;
 }
 
 /**
- * Sync draft directly to backend database endpoint
+ * Sync draft to backend database endpoint.
+ * STRICT RULES:
+ * - Single flight per key (MAX 1 in-flight request)
+ * - Strict 4000ms timeout
+ * - Circuit breaker on 401, 403, 500, or timeout (60s cooldown)
+ * - NEVER blocks the UI
  */
 export async function syncDraftToServer(draft: AdminDraft): Promise<boolean> {
   if (shouldSkipServerSync()) return false;
   const key = draft.key;
+  
+  // Single-flight check: if already in-flight for this draft key, do not send duplicate
+  if (inFlightServerRequests.has(key)) {
+    return false;
+  }
+
   const versionBefore = getDraftVersion(key);
+  inFlightServerRequests.add(key);
 
   try {
     const res = await fetchWithTimeout('/api/admin/drafts', {
       method: 'POST',
       headers: getAdminAuthHeaders(),
       body: JSON.stringify(draft)
-    }, 5000);
+    }, 4000);
 
-    if (res.status === 401 || res.status === 403) {
-      serverAuthRejected = true;
-      lastAuthRejectTime = Date.now();
+    if (res.status === 401 || res.status === 403 || res.status >= 500) {
+      markServerFailure();
       return false;
     }
 
@@ -189,13 +215,15 @@ export async function syncDraftToServer(draft: AdminDraft): Promise<boolean> {
 
     return res.ok;
   } catch (err) {
-    console.debug('[AutoSave] Backend sync skipped or timed out:', err);
+    markServerFailure();
     return false;
+  } finally {
+    inFlightServerRequests.delete(key);
   }
 }
 
 /**
- * Delete draft directly from backend database endpoint
+ * Delete draft directly from backend database endpoint (fire and forget)
  */
 export async function deleteDraftFromServer(key: string): Promise<boolean> {
   bumpDraftVersion(key);
@@ -205,41 +233,25 @@ export async function deleteDraftFromServer(key: string): Promise<boolean> {
     const res = await fetchWithTimeout(`/api/admin/drafts/${encodeURIComponent(key)}`, {
       method: 'DELETE',
       headers: getAdminAuthHeaders()
-    }, 5000);
+    }, 3000);
 
-    if (res.status === 401 || res.status === 403) {
-      serverAuthRejected = true;
-      lastAuthRejectTime = Date.now();
+    if (res.status === 401 || res.status === 403 || res.status >= 500) {
+      markServerFailure();
       return false;
     }
 
     return res.ok;
   } catch (err) {
-    console.debug('[AutoSave] Backend draft deletion skipped or timed out:', err);
     return false;
   }
 }
 
 /**
- * Sync all local drafts to backend when connection is restored
- * Throttled to prevent mass sync spam
+ * Sync all local drafts to backend - disabled to prevent mass sync storms on online event
  */
-let lastBulkSyncTimestamp = 0;
 export async function syncAllLocalDraftsToServer(): Promise<void> {
-  if (shouldSkipServerSync()) return;
-  const now = Date.now();
-  if (now - lastBulkSyncTimestamp < 30000) return; // at most once every 30 seconds
-  lastBulkSyncTimestamp = now;
-
-  const drafts = listAllDrafts();
-  for (const draft of drafts) {
-    if (serverAuthRejected) break; // Stop immediately if server rejected auth
-    try {
-      await syncDraftToServer(draft);
-    } catch {
-      // Continue safely with others
-    }
-  }
+  // Deliberately no-op to comply with: "Jangan melakukan sync besar ketika event online terjadi."
+  return;
 }
 
 /**
@@ -300,7 +312,8 @@ export async function saveDraftAsync<T = any>(
 }
 
 /**
- * Synchronous local save draft (with background server sync)
+ * Synchronous lightweight local save draft (client-side only for recovery).
+ * Does NOT perform network requests to avoid freezing or blocking.
  */
 export function saveDraft<T = any>(
   type: DraftType,
@@ -332,20 +345,12 @@ export function saveDraft<T = any>(
 
   try {
     localStorage.setItem(key, JSON.stringify(draft));
-    // Asynchronously sync to backend if online
-    if (isOnline) {
-      syncDraftToServer(draft).catch(() => {});
-    }
     return { success: true, key, isOnline };
   } catch (err: any) {
-    console.warn(`[AutoSave] Failed to save draft under ${key}:`, err);
     // If quota exceeded, try cleaning up very old drafts (> 30 days)
     try {
       cleanupOldDrafts(30);
       localStorage.setItem(key, JSON.stringify(draft));
-      if (isOnline) {
-        syncDraftToServer(draft).catch(() => {});
-      }
       return { success: true, key, isOnline };
     } catch (retryErr: any) {
       return { success: false, key, isOnline, error: retryErr?.message || 'Storage full' };
