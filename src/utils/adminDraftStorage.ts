@@ -60,6 +60,55 @@ export function getIsOnline(): boolean {
   return window.navigator.onLine !== false;
 }
 
+// Circuit breaker state for 401/403 / server unavailable to prevent infinite failing request loops
+let serverAuthRejected = false;
+let lastAuthRejectTime = 0;
+const AUTH_REJECT_COOLDOWN_MS = 60000; // 60 seconds cooldown on auth failure
+
+// Draft key versioning to prevent race conditions when a draft is cleared while a network request is in-flight
+const draftVersions = new Map<string, number>();
+
+export function getDraftVersion(key: string): number {
+  return draftVersions.get(key) || 0;
+}
+
+export function bumpDraftVersion(key: string): number {
+  const next = (draftVersions.get(key) || 0) + 1;
+  draftVersions.set(key, next);
+  return next;
+}
+
+/**
+ * Fetch with strict timeout using AbortController
+ */
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs: number = 5000): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function shouldSkipServerSync(): boolean {
+  if (typeof window === 'undefined' || !getIsOnline()) return true;
+  if (serverAuthRejected) {
+    if (Date.now() - lastAuthRejectTime < AUTH_REJECT_COOLDOWN_MS) {
+      return true;
+    }
+    // Cooldown expired, allow retry
+    serverAuthRejected = false;
+  }
+  return false;
+}
+
 function getAdminAuthHeaders(): Record<string, string> {
   const token = typeof window !== 'undefined' 
     ? (localStorage.getItem('smart_journey_admin_token') || localStorage.getItem('smartjourney_admin_token') || '')
@@ -69,6 +118,7 @@ function getAdminAuthHeaders(): Record<string, string> {
   };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
+    headers['x-secret-key'] = token;
   }
   return headers;
 }
@@ -82,12 +132,19 @@ export async function fetchDraftFromServer<T = any>(
   targetId: string = 'new',
   subType: string = 'default'
 ): Promise<AdminDraft<T> | null> {
-  if (typeof window === 'undefined') return null;
+  if (shouldSkipServerSync()) return null;
   const key = generateDraftKey(type, targetId, subType);
   try {
-    const res = await fetch(`/api/admin/drafts?key=${encodeURIComponent(key)}`, {
+    const res = await fetchWithTimeout(`/api/admin/drafts?key=${encodeURIComponent(key)}`, {
       headers: getAdminAuthHeaders()
-    });
+    }, 5000);
+
+    if (res.status === 401 || res.status === 403) {
+      serverAuthRejected = true;
+      lastAuthRejectTime = Date.now();
+      return null;
+    }
+
     if (res.ok) {
       const result = await res.json();
       if (result && result.draft && result.draft.data) {
@@ -99,7 +156,7 @@ export async function fetchDraftFromServer<T = any>(
       }
     }
   } catch (err) {
-    console.debug('[AutoSave] Could not fetch server draft:', err);
+    console.debug('[AutoSave] Could not fetch server draft (timeout or network):', err);
   }
   return null;
 }
@@ -108,16 +165,31 @@ export async function fetchDraftFromServer<T = any>(
  * Sync draft directly to backend database endpoint
  */
 export async function syncDraftToServer(draft: AdminDraft): Promise<boolean> {
-  if (typeof window === 'undefined' || !getIsOnline()) return false;
+  if (shouldSkipServerSync()) return false;
+  const key = draft.key;
+  const versionBefore = getDraftVersion(key);
+
   try {
-    const res = await fetch('/api/admin/drafts', {
+    const res = await fetchWithTimeout('/api/admin/drafts', {
       method: 'POST',
       headers: getAdminAuthHeaders(),
       body: JSON.stringify(draft)
-    });
+    }, 5000);
+
+    if (res.status === 401 || res.status === 403) {
+      serverAuthRejected = true;
+      lastAuthRejectTime = Date.now();
+      return false;
+    }
+
+    // If draft was cleared while request was in-flight, discard
+    if (getDraftVersion(key) !== versionBefore) {
+      return false;
+    }
+
     return res.ok;
   } catch (err) {
-    console.debug('[AutoSave] Backend sync skipped or offline:', err);
+    console.debug('[AutoSave] Backend sync skipped or timed out:', err);
     return false;
   }
 }
@@ -126,30 +198,46 @@ export async function syncDraftToServer(draft: AdminDraft): Promise<boolean> {
  * Delete draft directly from backend database endpoint
  */
 export async function deleteDraftFromServer(key: string): Promise<boolean> {
-  if (typeof window === 'undefined' || !getIsOnline()) return false;
+  bumpDraftVersion(key);
+  if (shouldSkipServerSync()) return false;
+
   try {
-    const res = await fetch(`/api/admin/drafts/${encodeURIComponent(key)}`, {
+    const res = await fetchWithTimeout(`/api/admin/drafts/${encodeURIComponent(key)}`, {
       method: 'DELETE',
       headers: getAdminAuthHeaders()
-    });
+    }, 5000);
+
+    if (res.status === 401 || res.status === 403) {
+      serverAuthRejected = true;
+      lastAuthRejectTime = Date.now();
+      return false;
+    }
+
     return res.ok;
   } catch (err) {
-    console.debug('[AutoSave] Backend draft deletion skipped:', err);
+    console.debug('[AutoSave] Backend draft deletion skipped or timed out:', err);
     return false;
   }
 }
 
 /**
  * Sync all local drafts to backend when connection is restored
+ * Throttled to prevent mass sync spam
  */
+let lastBulkSyncTimestamp = 0;
 export async function syncAllLocalDraftsToServer(): Promise<void> {
-  if (typeof window === 'undefined' || !getIsOnline()) return;
+  if (shouldSkipServerSync()) return;
+  const now = Date.now();
+  if (now - lastBulkSyncTimestamp < 30000) return; // at most once every 30 seconds
+  lastBulkSyncTimestamp = now;
+
   const drafts = listAllDrafts();
   for (const draft of drafts) {
+    if (serverAuthRejected) break; // Stop immediately if server rejected auth
     try {
       await syncDraftToServer(draft);
     } catch {
-      // Continue with others
+      // Continue safely with others
     }
   }
 }
@@ -169,6 +257,7 @@ export async function saveDraftAsync<T = any>(
   if (typeof window === 'undefined') return { success: false, key: '', isOnline: true, serverConfirmed: false };
 
   const key = generateDraftKey(type, targetId, subType);
+  const versionBefore = getDraftVersion(key);
   const isOnline = getIsOnline();
 
   const draft: AdminDraft<T> = {
@@ -195,8 +284,16 @@ export async function saveDraftAsync<T = any>(
   }
 
   let serverConfirmed = false;
-  if (isOnline) {
+  if (isOnline && !shouldSkipServerSync()) {
     serverConfirmed = await syncDraftToServer(draft);
+  }
+
+  // If draft was cleared while awaiting server sync, ensure it's not resurrected
+  if (getDraftVersion(key) !== versionBefore) {
+    try {
+      localStorage.removeItem(key);
+    } catch {}
+    return { success: false, key, isOnline, serverConfirmed: false };
   }
 
   return { success: true, key, isOnline, serverConfirmed };
@@ -299,6 +396,7 @@ export function clearDraft(
 ): void {
   if (typeof window === 'undefined') return;
   const key = generateDraftKey(type, targetId, subType);
+  bumpDraftVersion(key);
   try {
     localStorage.removeItem(key);
     deleteDraftFromServer(key).catch(() => {});

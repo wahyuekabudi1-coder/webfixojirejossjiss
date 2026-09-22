@@ -383,7 +383,7 @@ export default function AdminView() {
     data: { tourForm, itineraryItems, activeFormTab },
     isEditing: Boolean(editingTour),
     enabled: isTourFormOpen,
-    debounceMs: 750,
+    debounceMs: 800,
     hasUnsavedContent: Boolean(
       tourForm.name?.trim() || 
       tourForm.description?.trim() || 
@@ -424,7 +424,7 @@ export default function AdminView() {
     data: airportForm,
     isEditing: Boolean(editingAirportRoute),
     enabled: isAirportFormOpen,
-    debounceMs: 750,
+    debounceMs: 800,
     hasUnsavedContent: Boolean(airportForm.city?.trim() || editingAirportRoute),
     onRecover: (draft) => {
       if (draft.data) {

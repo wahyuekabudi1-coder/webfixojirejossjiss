@@ -413,12 +413,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (res.ok) {
         const data = await res.json();
         if (data && typeof data === 'object') {
-          if (Array.isArray(data.cities) && data.cities.length > 0) setRentalCities(data.cities);
-          if (Array.isArray(data.locations) && data.locations.length > 0) setRentalLocations(data.locations);
-          if (Array.isArray(data.categories) && data.categories.length > 0) setRentalCategories(data.categories);
-          if (Array.isArray(data.vehicles) && data.vehicles.length > 0) setRentalVehicles(data.vehicles);
-          if (Array.isArray(data.addons) && data.addons.length > 0) setRentalAddons(data.addons);
-          if (Array.isArray(data.zonePricing) && data.zonePricing.length > 0) setRentalZonePricing(data.zonePricing);
+          if (Array.isArray(data.cities)) setRentalCities(data.cities);
+          if (Array.isArray(data.locations)) setRentalLocations(data.locations);
+          if (Array.isArray(data.categories)) setRentalCategories(data.categories);
+          if (Array.isArray(data.vehicles)) setRentalVehicles(data.vehicles);
+          if (Array.isArray(data.addons)) setRentalAddons(data.addons);
+          if (Array.isArray(data.zonePricing)) setRentalZonePricing(data.zonePricing);
         }
       }
     } catch (err) {
@@ -436,13 +436,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ]);
       if (resAirports.ok) {
         const dataAirports = await resAirports.json();
-        if (Array.isArray(dataAirports) && dataAirports.length > 0) {
+        if (Array.isArray(dataAirports)) {
           setAirports(dataAirports);
         }
       }
       if (resRoutes.ok) {
         const dataRoutes = await resRoutes.json();
-        if (Array.isArray(dataRoutes) && dataRoutes.length > 0) {
+        if (Array.isArray(dataRoutes)) {
           setAirportRoutes(dataRoutes);
         }
       }
@@ -459,11 +459,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (res.ok) {
         const data = await res.json();
         if (data && typeof data === 'object') {
-          if (Array.isArray(data.masterAreas) && data.masterAreas.length > 0) setTaxiMasterAreas(data.masterAreas);
-          if (Array.isArray(data.destinations) && data.destinations.length > 0) setTaxiMasterDestinations(data.destinations);
-          if (Array.isArray(data.pricingRules) && data.pricingRules.length > 0) setTaxiPricingRules(data.pricingRules);
-          if (Array.isArray(data.areaRules) && data.areaRules.length > 0) setTaxiAreaRules(data.areaRules);
-          if (Array.isArray(data.importHistory) && data.importHistory.length > 0) setTaxiImportHistory(data.importHistory);
+          if (Array.isArray(data.masterAreas)) setTaxiMasterAreas(data.masterAreas);
+          if (Array.isArray(data.destinations)) setTaxiMasterDestinations(data.destinations);
+          if (Array.isArray(data.pricingRules)) setTaxiPricingRules(data.pricingRules);
+          if (Array.isArray(data.areaRules)) setTaxiAreaRules(data.areaRules);
+          if (Array.isArray(data.importHistory)) setTaxiImportHistory(data.importHistory);
         }
       }
     } catch (err) {

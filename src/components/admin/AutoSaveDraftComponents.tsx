@@ -14,11 +14,13 @@ import {
 import { 
   DraftType, 
   AdminDraft, 
+  generateDraftKey,
   saveDraft, 
   getDraft, 
   clearDraft, 
   formatDraftTime, 
   getIsOnline,
+  syncDraftToServer,
   syncAllLocalDraftsToServer,
   saveDraftAsync,
   fetchDraftFromServer
@@ -50,7 +52,7 @@ export function useAutoSaveDraft<T>({
   meta,
   isEditing = false,
   enabled = true,
-  debounceMs = 750,
+  debounceMs = 800,
   onRecover,
   hasUnsavedContent = true
 }: UseAutoSaveDraftOptions<T>) {
@@ -61,9 +63,23 @@ export function useAutoSaveDraft<T>({
   const [showRecoveryBanner, setShowRecoveryBanner] = useState<boolean>(false);
   const [hasRestoredOrDismissed, setHasRestoredOrDismissed] = useState<boolean>(false);
 
+  // References to prevent re-render storms and race conditions
   const timerRef = useRef<any>(null);
-  const latestDataRef = useRef<{ data: T; meta?: Record<string, any>; title: string }>({ data, meta, title });
-  latestDataRef.current = { data, meta, title };
+  const isSavingRef = useRef<boolean>(false);
+  const pendingSaveRef = useRef<boolean>(false);
+  const isRestoringRef = useRef<boolean>(false);
+  const activeVersionRef = useRef<number>(0);
+  const lastSavedSerializedRef = useRef<string>('');
+
+  // Store latest props/state in ref to avoid recreating callbacks
+  const latestRef = useRef<{
+    data: T;
+    meta?: Record<string, any>;
+    title: string;
+    enabled: boolean;
+    hasUnsavedContent: boolean;
+  }>({ data, meta, title, enabled, hasUnsavedContent });
+  latestRef.current = { data, meta, title, enabled, hasUnsavedContent };
 
   // 1. Initial check for existing draft upon mounting or targetId change (checks local AND server)
   useEffect(() => {
@@ -83,7 +99,7 @@ export function useAutoSaveDraft<T>({
       setShowRecoveryBanner(false);
     }
 
-    // Always attempt to fetch latest draft from authoritative server (critical for laptop reboot / cache clear)
+    // Always attempt to fetch latest draft from authoritative server with timeout (emergency recovery)
     fetchDraftFromServer<T>(type, targetId, subType).then((serverDraft) => {
       if (!isMounted) return;
       if (serverDraft && serverDraft.data) {
@@ -100,72 +116,120 @@ export function useAutoSaveDraft<T>({
     };
   }, [type, subType, targetId, enabled]);
 
-  // 2. Perform immediate save helper (persists locally AND awaits backend confirmation)
+  // 2. Perform save helper: strictly non-blocking, max ONE active request, prevents loops
   const performSave = useCallback(async () => {
-    if (!enabled || !hasUnsavedContent) return;
+    const cur = latestRef.current;
+    if (!cur.enabled || !cur.hasUnsavedContent || isRestoringRef.current) {
+      return;
+    }
 
+    // Concurrency guard: if already saving, queue a pending save and exit
+    if (isSavingRef.current) {
+      pendingSaveRef.current = true;
+      return;
+    }
+
+    isSavingRef.current = true;
     setSaveStatus('saving');
-    const cur = latestDataRef.current;
+
+    const thisVersion = activeVersionRef.current;
+    let serverConfirmed = false;
+
     try {
-      const result = await saveDraftAsync<T>(
+      // 1. Instant synchronous local cache write (emergency fallback)
+      saveDraft<T>(
         type,
         targetId,
         subType,
-        cur.title || title,
+        cur.title,
         cur.data,
         cur.meta,
         isEditing
       );
 
-      if (result.success) {
-        setSaveStatus(result.serverConfirmed ? 'saved' : (result.isOnline ? 'saved' : 'offline_saved'));
-        setLastSaved(new Date());
-      } else {
-        setSaveStatus('error');
+      // Record serialized content as saved
+      try {
+        lastSavedSerializedRef.current = JSON.stringify({ data: cur.data, meta: cur.meta, title: cur.title });
+      } catch {}
+
+      // If draft was cleared/cancelled while saving, abort
+      if (activeVersionRef.current !== thisVersion) {
+        return;
       }
+
+      // 2. Background asynchronous server sync (with 5000ms timeout & circuit breaker)
+      if (getIsOnline()) {
+        try {
+          const draftObj: AdminDraft<T> = {
+            key: generateDraftKey(type, targetId, subType),
+            type,
+            subType,
+            targetId: targetId || 'new',
+            isEditing,
+            title: cur.title || (type === 'tour' ? 'Draft Paket Tour' : 'Draft Layanan Service'),
+            data: cur.data,
+            meta: cur.meta,
+            savedAt: new Date().toISOString(),
+            savedAtTimestamp: Date.now(),
+            isOnline: true
+          };
+          serverConfirmed = await syncDraftToServer(draftObj);
+        } catch {
+          serverConfirmed = false;
+        }
+      }
+
+      // Re-verify version after async server sync
+      if (activeVersionRef.current !== thisVersion) {
+        return;
+      }
+
+      setLastSaved(new Date());
+      setSaveStatus(serverConfirmed ? 'saved' : (getIsOnline() ? 'saved' : 'offline_saved'));
     } catch (err) {
-      setSaveStatus('error');
+      console.warn('[AutoSave] Save error:', err);
+      if (activeVersionRef.current === thisVersion) {
+        setSaveStatus('offline_saved');
+      }
+    } finally {
+      isSavingRef.current = false;
+
+      // If changes occurred while request was in-flight, process pending save
+      if (pendingSaveRef.current && activeVersionRef.current === thisVersion) {
+        pendingSaveRef.current = false;
+        setTimeout(() => {
+          performSave();
+        }, 100);
+      }
     }
-  }, [enabled, hasUnsavedContent, type, targetId, subType, title, isEditing]);
+  }, [type, targetId, subType, isEditing]);
 
-  // 3. Listen to network connectivity
+  // 3. Serialize data to detect actual content mutations rather than object reference changes
+  const serializedContent = React.useMemo(() => {
+    try {
+      return JSON.stringify({ data, meta, title });
+    } catch {
+      return '';
+    }
+  }, [data, meta, title]);
+
+  // 4. Debounced auto-save on real content change
   useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      syncAllLocalDraftsToServer().catch(() => {});
-      // If we have unsaved content, trigger a save to mark it as online
-      if (enabled && hasUnsavedContent) {
-        performSave();
-      }
-    };
-    const handleOffline = () => {
-      setIsOnline(false);
-      // If we have unsaved content, save it locally immediately
-      if (enabled && hasUnsavedContent) {
-        performSave();
-      }
-    };
+    if (!enabled || !hasUnsavedContent || isRestoringRef.current) {
+      return;
+    }
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, [enabled, hasUnsavedContent, performSave]);
-
-  // 4. Debounced auto-save on data or meta change
-  useEffect(() => {
-    if (!enabled || !hasUnsavedContent) return;
+    // Skip if content has not actually changed since last saved
+    if (serializedContent && serializedContent === lastSavedSerializedRef.current) {
+      return;
+    }
 
     // Clear previous pending debounce timer
     if (timerRef.current) {
       clearTimeout(timerRef.current);
     }
 
-    setSaveStatus('saving');
-
+    // Do NOT set saveStatus to 'saving' here! Keep status clean during debounce
     timerRef.current = setTimeout(() => {
       performSave();
     }, debounceMs);
@@ -175,22 +239,50 @@ export function useAutoSaveDraft<T>({
         clearTimeout(timerRef.current);
       }
     };
-  }, [data, meta, enabled, hasUnsavedContent, debounceMs, performSave]);
+  }, [serializedContent, enabled, hasUnsavedContent, debounceMs, performSave]);
 
-  // 5. Save immediately before tab close, accidental reload or crash (beforeunload)
+  // 5. Listen to network connectivity - controlled single sync
+  useEffect(() => {
+    let syncTimeout: any = null;
+
+    const handleOnline = () => {
+      setIsOnline(true);
+      if (syncTimeout) clearTimeout(syncTimeout);
+      syncTimeout = setTimeout(() => {
+        syncAllLocalDraftsToServer().catch(() => {});
+      }, 3000);
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      if (syncTimeout) clearTimeout(syncTimeout);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // 6. Save immediately before tab close (beforeunload) - purely synchronous, never async
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (enabled && hasUnsavedContent) {
-        const cur = latestDataRef.current;
-        saveDraft<T>(
-          type,
-          targetId,
-          subType,
-          cur.title || title,
-          cur.data,
-          cur.meta,
-          isEditing
-        );
+      const cur = latestRef.current;
+      if (cur.enabled && cur.hasUnsavedContent && !isRestoringRef.current) {
+        try {
+          saveDraft<T>(
+            type,
+            targetId,
+            subType,
+            cur.title,
+            cur.data,
+            cur.meta,
+            isEditing
+          );
+        } catch {}
       }
     };
 
@@ -198,40 +290,62 @@ export function useAutoSaveDraft<T>({
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [enabled, hasUnsavedContent, type, targetId, subType, title, isEditing]);
+  }, [type, targetId, subType, isEditing]);
 
   // Actions
-  const handleRecover = () => {
+  const handleRecover = useCallback(() => {
     if (detectedDraft && onRecover) {
+      isRestoringRef.current = true;
+
+      // Pre-populate lastSavedSerializedRef so restore hydration doesn't trigger an autosave loop
+      try {
+        lastSavedSerializedRef.current = JSON.stringify({
+          data: detectedDraft.data,
+          meta: detectedDraft.meta,
+          title: detectedDraft.title
+        });
+      } catch {}
+
       onRecover(detectedDraft);
       setSaveStatus('saved');
-      setLastSaved(new Date(detectedDraft.savedAtTimestamp));
+      setLastSaved(new Date(detectedDraft.savedAtTimestamp || Date.now()));
+
+      // Release restore flag after React state hydration completes
+      setTimeout(() => {
+        isRestoringRef.current = false;
+      }, 600);
     }
     setShowRecoveryBanner(false);
     setHasRestoredOrDismissed(true);
-  };
+  }, [detectedDraft, onRecover]);
 
-  const handleDismiss = () => {
+  const handleDismiss = useCallback(() => {
     setShowRecoveryBanner(false);
     setHasRestoredOrDismissed(true);
-  };
+  }, []);
 
-  const handleDiscard = () => {
+  const handleDiscard = useCallback(() => {
+    activeVersionRef.current += 1;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    pendingSaveRef.current = false;
     clearDraft(type, targetId, subType);
     setDetectedDraft(null);
     setShowRecoveryBanner(false);
     setHasRestoredOrDismissed(true);
     setSaveStatus('idle');
     setLastSaved(null);
-  };
+  }, [type, targetId, subType]);
 
-  const clearCurrentDraft = () => {
+  const clearCurrentDraft = useCallback(() => {
+    activeVersionRef.current += 1;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    pendingSaveRef.current = false;
     clearDraft(type, targetId, subType);
     setDetectedDraft(null);
     setShowRecoveryBanner(false);
     setSaveStatus('idle');
     setLastSaved(null);
-  };
+  }, [type, targetId, subType]);
 
   return {
     saveStatus,

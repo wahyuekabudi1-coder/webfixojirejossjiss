@@ -28,7 +28,9 @@ export function recalculateBatchSeats(db: DatabaseState): DatabaseState {
 }
 
 function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem("smart_journey_admin_token") || localStorage.getItem("smartjourney_admin_token") || "";
+  const token = typeof window !== "undefined"
+    ? (localStorage.getItem("smart_journey_admin_token") || localStorage.getItem("smartjourney_admin_token") || "")
+    : "";
   const headers: Record<string, string> = {
     "Content-Type": "application/json"
   };
@@ -38,7 +40,7 @@ function getAuthHeaders(): Record<string, string> {
   return headers;
 }
 
-export async function fetchDB(retries = 3, initialDelayMs = 1000, signal?: AbortSignal): Promise<DatabaseState> {
+export async function fetchDB(retries = 2, initialDelayMs = 800, signal?: AbortSignal): Promise<DatabaseState> {
   let attempt = 0;
   let lastError: any = null;
 
@@ -48,38 +50,71 @@ export async function fetchDB(retries = 3, initialDelayMs = 1000, signal?: Abort
     }
 
     try {
-      const res = await fetch(`${API_BASE}/db`, { signal });
-      if (!res.ok) {
-        if (res.status === 502 || res.status === 503 || res.status === 504) {
-          throw new Error(`Server starting up (${res.status})`);
+      // 1. Fetch public trips and batches in parallel (no admin authorization required for customers)
+      const [resTrips, resBatches] = await Promise.all([
+        fetch(`${API_BASE}/trips`, { signal }),
+        fetch(`${API_BASE}/batches`, { signal })
+      ]);
+
+      if (!resTrips.ok) {
+        if (resTrips.status === 502 || resTrips.status === 503 || resTrips.status === 504) {
+          throw new Error(`Server starting up (${resTrips.status})`);
         }
-        const errText = await res.text().catch(() => "");
-        throw new Error(`Failed to load ShareTour database (${res.status}): ${errText || res.statusText}`);
+        const errText = await resTrips.text().catch(() => "");
+        throw new Error(`Failed to load trips (${resTrips.status}): ${errText || resTrips.statusText}`);
       }
 
-      const contentType = res.headers.get("content-type") || "";
-      if (!contentType.includes("application/json")) {
-        const textPreview = await res.text().catch(() => "");
-        const shortPreview = textPreview.replace(/\s+/g, " ").trim().slice(0, 80);
-        throw new Error(
-          `Invalid database response: expected JSON but received ${contentType || "unknown"}${
-            shortPreview ? ` (${shortPreview})` : ""
-          }`
-        );
+      if (!resBatches.ok) {
+        if (resBatches.status === 502 || resBatches.status === 503 || resBatches.status === 504) {
+          throw new Error(`Server starting up (${resBatches.status})`);
+        }
+        const errText = await resBatches.text().catch(() => "");
+        throw new Error(`Failed to load batches (${resBatches.status}): ${errText || resBatches.statusText}`);
       }
 
-      let db: DatabaseState;
-      try {
-        db = await res.json();
-      } catch (jsonErr: any) {
-        throw new Error(`Failed to parse database JSON: ${jsonErr?.message || "Invalid JSON format"}`);
+      const tripsData = await resTrips.json().catch(() => null);
+      const batchesData = await resBatches.json().catch(() => null);
+
+      if (!Array.isArray(tripsData)) {
+        throw new Error("Invalid response from server: trips must be an array");
+      }
+      if (!Array.isArray(batchesData)) {
+        throw new Error("Invalid response from server: batches must be an array");
       }
 
-      if (!db || typeof db !== "object") {
-        throw new Error("Invalid database payload structure");
+      // 2. Fetch bookings only if admin token is available
+      let bookings: Booking[] = [];
+      const token = typeof window !== "undefined"
+        ? (localStorage.getItem("smart_journey_admin_token") || localStorage.getItem("smartjourney_admin_token") || "")
+        : "";
+
+      if (token) {
+        try {
+          const resBookings = await fetch(`${API_BASE}/bookings`, {
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            },
+            signal
+          });
+          if (resBookings.ok) {
+            const bookingsData = await resBookings.json().catch(() => null);
+            if (Array.isArray(bookingsData)) {
+              bookings = bookingsData;
+            }
+          }
+        } catch {
+          // If bookings fetch fails (e.g. non-admin or expired session), bookings safely remains []
+        }
       }
 
-      return db;
+      const dbState: DatabaseState = {
+        trips: tripsData,
+        batches: batchesData,
+        bookings
+      };
+
+      return recalculateBatchSeats(dbState);
     } catch (err: any) {
       if (err.name === "AbortError" || signal?.aborted) {
         throw err;
@@ -110,45 +145,70 @@ export async function fetchDB(retries = 3, initialDelayMs = 1000, signal?: Abort
   throw lastError || new Error("Failed to connect to ShareTour server database.");
 }
 
-export async function fetchTrips(retries = 2): Promise<Trip[]> {
+export async function fetchTrips(retries = 2, signal?: AbortSignal): Promise<Trip[]> {
   let attempt = 0;
+  let lastErr: any = null;
   while (attempt <= retries) {
+    if (signal?.aborted) throw new Error("Aborted");
     try {
-      const res = await fetch(`${API_BASE}/trips`);
+      const res = await fetch(`${API_BASE}/trips`, { signal });
       if (res.ok) {
         const data = await res.json();
-        return Array.isArray(data) ? data : [];
+        if (Array.isArray(data)) {
+          return data;
+        }
+        throw new Error("Invalid response format: expected array of trips");
       }
-    } catch {
-      // transient network failure, retry
+      throw new Error(`Failed to load trips (HTTP ${res.status})`);
+    } catch (err: any) {
+      if (err.name === "AbortError" || signal?.aborted) throw err;
+      lastErr = err;
     }
     attempt++;
     if (attempt <= retries) {
-      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+      await new Promise((resolve) => setTimeout(resolve, 800 * attempt));
     }
   }
-  return [];
+  throw lastErr || new Error("Failed to fetch trips from server");
 }
 
-export async function fetchBatches(tripId?: string, retries = 2): Promise<Batch[]> {
+export async function fetchBatches(tripId?: string, retries = 2, signal?: AbortSignal): Promise<Batch[]> {
   let attempt = 0;
+  let lastErr: any = null;
   const url = tripId ? `${API_BASE}/batches?tripId=${encodeURIComponent(tripId)}` : `${API_BASE}/batches`;
   while (attempt <= retries) {
+    if (signal?.aborted) throw new Error("Aborted");
     try {
-      const res = await fetch(url);
+      const res = await fetch(url, { signal });
       if (res.ok) {
         const data = await res.json();
-        return Array.isArray(data) ? data : [];
+        if (Array.isArray(data)) {
+          return data;
+        }
+        throw new Error("Invalid response format: expected array of batches");
       }
-    } catch {
-      // transient network failure, retry
+      throw new Error(`Failed to load batches (HTTP ${res.status})`);
+    } catch (err: any) {
+      if (err.name === "AbortError" || signal?.aborted) throw err;
+      lastErr = err;
     }
     attempt++;
     if (attempt <= retries) {
-      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+      await new Promise((resolve) => setTimeout(resolve, 800 * attempt));
     }
   }
-  return [];
+  throw lastErr || new Error("Failed to fetch batches from server");
+}
+
+export async function saveDB(db: Partial<DatabaseState>): Promise<void> {
+  // Never call POST /api/db. Instead, use the authoritative /api/import-bulk endpoint if bulk saving is needed.
+  if (db.trips || db.batches) {
+    await importBulk({
+      trips: db.trips || [],
+      batches: db.batches || [],
+      mode: "overwrite"
+    });
+  }
 }
 
 export async function createTrip(trip: Omit<Trip, "id">): Promise<Trip> {
