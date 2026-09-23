@@ -9,9 +9,22 @@ try { require('dotenv').config(); } catch (_) {}
 
 const PORT = 3000;
 const DB_PATH = path.join(__dirname, '..', 'data', 'db.json');
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'sawahjaya2026';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'sawahjayagroup@gmail.com';
-const WEBHOOK_SECRET = (process.env.WEBHOOK_SECRET || process.env.ARTOPAY_SECRET_KEY || 'artopay_whsec_prod_live_99281729').trim();
+
+const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || '').trim();
+if (!ADMIN_PASSWORD) {
+  console.error('\n❌ ERROR: Required test environment variable ADMIN_PASSWORD is not configured. Test cannot run safely.\n');
+  process.exit(1);
+}
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').trim();
+if (!ADMIN_EMAIL) {
+  console.error('\n❌ ERROR: Required test environment variable ADMIN_EMAIL is not configured. Test cannot run safely.\n');
+  process.exit(1);
+}
+const WEBHOOK_SECRET = (process.env.WEBHOOK_SECRET || process.env.ARTOPAY_SECRET_KEY || '').trim();
+if (!WEBHOOK_SECRET) {
+  console.error('\n❌ ERROR: Required test environment variable WEBHOOK_SECRET or ARTOPAY_SECRET_KEY is not configured. Test cannot run safely.\n');
+  process.exit(1);
+}
 
 let totalPassed = 0;
 let totalFailed = 0;
@@ -499,11 +512,130 @@ async function runZeroRegressionSuite() {
     assert(!htmlRes.raw.includes('<script>alert("adminXSS")</script>'), 'Invoice HTML does NOT contain raw executable script tag');
     assert(htmlRes.raw.includes('&lt;script&gt;alert'), 'Invoice HTML properly escaped script tag to &lt;script&gt;');
 
+    // -----------------------------------------------------------------
+    // SECTION 6: RELEASE CANDIDATE 3 REGRESSION TESTS
+    // -----------------------------------------------------------------
+    console.log('\n--- SECTION 6: Release Candidate 3 Regression Tests ---');
+
+    // TEST A: Strict Currency Validation on /api/artopay/payment-intent
+    console.log('--- Test A: Missing / Invalid Currency on /api/artopay/payment-intent ---');
+    // A.1 Missing currency
+    const noCurrencyRes = await request({
+      hostname: 'localhost',
+      port: PORT,
+      path: '/api/artopay/payment-intent',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    }, {
+      orderId: bookingCode,
+      amount: 100000
+    });
+    assert(noCurrencyRes.statusCode === 400, 'Test A.1: Missing currency rejected with HTTP 400');
+    assert(noCurrencyRes.json?.error?.includes('IDR'), 'Test A.1: Error message explicitly specifies currency must be IDR');
+
+    // A.2 Empty currency
+    const emptyCurrencyRes = await request({
+      hostname: 'localhost',
+      port: PORT,
+      path: '/api/artopay/payment-intent',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    }, {
+      orderId: bookingCode,
+      amount: 100000,
+      currency: ''
+    });
+    assert(emptyCurrencyRes.statusCode === 400, 'Test A.2: Empty currency "" rejected with HTTP 400');
+
+    // A.3 Null currency
+    const nullCurrencyRes = await request({
+      hostname: 'localhost',
+      port: PORT,
+      path: '/api/artopay/payment-intent',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    }, {
+      orderId: bookingCode,
+      amount: 100000,
+      currency: null
+    });
+    assert(nullCurrencyRes.statusCode === 400, 'Test A.3: Null currency rejected with HTTP 400');
+
+    // A.4 Non-IDR currency
+    const usdCurrencyRes = await request({
+      hostname: 'localhost',
+      port: PORT,
+      path: '/api/artopay/payment-intent',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    }, {
+      orderId: bookingCode,
+      amount: 100000,
+      currency: 'USD'
+    });
+    assert(usdCurrencyRes.statusCode === 400, 'Test A.4: Foreign currency USD rejected with HTTP 400');
+
+    // TEST B: Builder Authentication Protection
+    console.log('--- Test B: Builder Authentication Protection ---');
+    // B.1 Taxi routes unauthenticated
+    const unauthTaxiRes = await request({
+      hostname: 'localhost',
+      port: PORT,
+      path: '/api/builder/taxi-routes',
+      method: 'GET'
+    });
+    assert(unauthTaxiRes.statusCode === 401, 'Test B.1: GET /api/builder/taxi-routes without auth rejected with HTTP 401');
+
+    // B.2 Airport transfers unauthenticated
+    const unauthAirportRes = await request({
+      hostname: 'localhost',
+      port: PORT,
+      path: '/api/builder/airport-transfers',
+      method: 'GET'
+    });
+    assert(unauthAirportRes.statusCode === 401, 'Test B.2: GET /api/builder/airport-transfers without auth rejected with HTTP 401');
+
+    // B.3 Taxi routes with valid admin token
+    const authTaxiRes = await request({
+      hostname: 'localhost',
+      port: PORT,
+      path: '/api/builder/taxi-routes',
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${admToken}` }
+    });
+    assert(authTaxiRes.statusCode === 200 && Array.isArray(authTaxiRes.json), 'Test B.3: GET /api/builder/taxi-routes with valid admin token returns HTTP 200 array');
+
+    // B.4 Airport transfers with valid admin token
+    const authAirportRes = await request({
+      hostname: 'localhost',
+      port: PORT,
+      path: '/api/builder/airport-transfers',
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${admToken}` }
+    });
+    assert(authAirportRes.statusCode === 200 && Array.isArray(authAirportRes.json), 'Test B.4: GET /api/builder/airport-transfers with valid admin token returns HTTP 200 array');
+
+    // TEST C: Static Search for Hardcoded Credentials in Codebase
+    console.log('--- Test C: No Hardcoded Credentials in Codebase ---');
+    const { execSync } = require('child_process');
+    let hardcodedCount = 0;
+    try {
+      const p1 = 'sawahjaya' + '2026';
+      const p2 = 'artopay_whsec_' + 'prod_live_99281729';
+      const grepOutput = execSync(`grep -rnE "(${p1}|${p2})" server.ts src/ scripts/ 2>/dev/null || true`, { encoding: 'utf8' });
+      const matchingLines = grepOutput.trim().split('\n').filter(line => line.trim().length > 0 && !line.includes('binary file'));
+      hardcodedCount = matchingLines.length;
+      if (hardcodedCount > 0) {
+        console.error('Found hardcoded occurrences:', matchingLines);
+      }
+    } catch (_) {}
+    assert(hardcodedCount === 0, 'Test C: Zero hardcoded credentials in server.ts, src/, and scripts/ (0 instances)');
+
   } finally {
     // -----------------------------------------------------------------
-    // SECTION 6: FINAL SOURCE SANITIZATION (adminSessions === [])
+    // SECTION 7: FINAL SOURCE SANITIZATION (adminSessions === [])
     // -----------------------------------------------------------------
-    console.log('\n--- SECTION 6: Final Production Database Sanitization ---');
+    console.log('\n--- SECTION 7: Final Production Database Sanitization ---');
     const finalCleanDb = JSON.parse(originalDbState);
     finalCleanDb.adminSessions = []; // MUST BE EMPTY ARRAY FOR PRODUCTION DEPLOYMENT
     fs.writeFileSync(DB_PATH, JSON.stringify(finalCleanDb, null, 2));

@@ -131,7 +131,8 @@ async function runMatrix() {
       method: 'POST'
     }, {
       orderId: testBookingCode,
-      amount: 500 // Spoofed amount in payment-intent request body
+      amount: 500, // Spoofed amount in payment-intent request body
+      currency: 'IDR'
     });
 
     // The backend must NOT accept 500 as authoritative payment amount.

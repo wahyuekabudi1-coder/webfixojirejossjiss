@@ -72,12 +72,25 @@ async function runFinalVerification() {
   // ---------------------------------------------------------------------------
   // Check 3: Pastikan server tidak memiliki fallback password
   // ---------------------------------------------------------------------------
-  const hasServerPasswordFallback = /process\.env\.ADMIN_PASSWORD\s*\|\|\s*['"`]sawahjaya2026/i.test(serverSource) ||
-                                    /process\.env\.ADMIN_PASSWORD\s*\|\|\s*['"`]smartjourney2026/i.test(serverSource) ||
+  const hasServerPasswordFallback = /process\.env\.ADMIN_PASSWORD\s*\|\|\s*['"`][^'"`]+['"`]/i.test(serverSource) ||
                                     /password\s*===\s*['"`]smartjourney2026/i.test(serverSource);
   assert(!hasServerPasswordFallback, 3, 'Source check: Server fallback passwords eliminated', 'No fallback password in server.ts authentication logic');
 
   const secret = (process.env.WEBHOOK_SECRET || process.env.ARTOPAY_SECRET_KEY || '').trim();
+  if (!secret) {
+    console.error('\n❌ ERROR: Required test environment variable WEBHOOK_SECRET or ARTOPAY_SECRET_KEY is not configured. Test cannot run safely.\n');
+    process.exit(1);
+  }
+  const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || '').trim();
+  if (!ADMIN_PASSWORD) {
+    console.error('\n❌ ERROR: Required test environment variable ADMIN_PASSWORD is not configured. Test cannot run safely.\n');
+    process.exit(1);
+  }
+  const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').trim();
+  if (!ADMIN_EMAIL) {
+    console.error('\n❌ ERROR: Required test environment variable ADMIN_EMAIL is not configured. Test cannot run safely.\n');
+    process.exit(1);
+  }
 
   // ---------------------------------------------------------------------------
   // Check 4: Test webhook secret kosong → 503
@@ -236,8 +249,8 @@ async function runFinalVerification() {
   });
   const tempLoginServer = isolatedAppLogin.listen(3003);
   const res11 = await makeReq(3003, '/api/auth/login', { method: 'POST' }, {
-    email: 'sawahjayagroup@gmail.com',
-    password: 'sawahjaya2026'
+    email: ADMIN_EMAIL,
+    password: ADMIN_PASSWORD
   });
   tempLoginServer.close();
   assert(res11.status === 401, 11, 'Test ADMIN_PASSWORD kosong → 401 (Fail Closed)', `HTTP Status: ${res11.status} | Error: ${res11.body.error}`);
@@ -246,8 +259,8 @@ async function runFinalVerification() {
   // Check 12: Test password benar → 200
   // ---------------------------------------------------------------------------
   const res12 = await makeReq(3000, '/api/auth/login', { method: 'POST' }, {
-    email: 'sawahjayagroup@gmail.com',
-    password: 'sawahjaya2026'
+    email: ADMIN_EMAIL,
+    password: ADMIN_PASSWORD
   });
   assert(res12.status === 200 && res12.body.token, 12, 'Test password benar → 200', `HTTP Status: ${res12.status} | Session Token: ${res12.body.token?.substring(0, 16)}...`);
 
@@ -255,7 +268,7 @@ async function runFinalVerification() {
   // Check 13: Test smartjourney2026 → 401
   // ---------------------------------------------------------------------------
   const res13 = await makeReq(3000, '/api/auth/login', { method: 'POST' }, {
-    email: 'sawahjayagroup@gmail.com',
+    email: ADMIN_EMAIL,
     password: 'smartjourney2026'
   });
   assert(res13.status === 401, 13, 'Test smartjourney2026 → 401 (Ditolak)', `HTTP Status: ${res13.status} | Error: ${res13.body.error}`);

@@ -13,6 +13,17 @@ async function runPrivateTour16Tests() {
   let passed = 0;
   let failed = 0;
 
+  const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || '').trim();
+  if (!ADMIN_PASSWORD) {
+    console.error('\n❌ ERROR: Required test environment variable ADMIN_PASSWORD is not configured. Test cannot run safely.\n');
+    process.exit(1);
+  }
+  const WEBHOOK_SECRET = (process.env.WEBHOOK_SECRET || process.env.ARTOPAY_SECRET_KEY || '').trim();
+  if (!WEBHOOK_SECRET) {
+    console.error('\n❌ ERROR: Required test environment variable WEBHOOK_SECRET or ARTOPAY_SECRET_KEY is not configured. Test cannot run safely.\n');
+    process.exit(1);
+  }
+
   function assert(condition, testNumber, description, detail = '') {
     if (condition) {
       console.log(`✅ [PASS] Test ${testNumber}: ${description}`);
@@ -176,7 +187,7 @@ async function runPrivateTour16Tests() {
     );
 
     // =========================================================================
-    // TEST 4: Admin Confirm: Payment = Paid, Booking = Confirmed (Enforcing sawahjaya2026 ONLY)
+    // TEST 4: Admin Confirm: Payment = Paid, Booking = Confirmed
     // =========================================================================
     console.log('\n--- EXECUTING TEST 4: Admin Confirm: Payment = Paid, Booking = Confirmed ---');
     // Part 1: Verify rejected password smartjourney2026
@@ -185,10 +196,10 @@ async function runPrivateTour16Tests() {
       password: 'smartjourney2026'
     });
 
-    // Part 2: Verify valid single password sawahjaya2026
+    // Part 2: Verify valid single password ADMIN_PASSWORD
     const loginRes = await makeRequest('/api/auth/login', { method: 'POST' }, {
       email: 'admin@smartjourney.com',
-      password: 'sawahjaya2026'
+      password: ADMIN_PASSWORD
     });
     const adminToken = loginRes.body.token;
     const adminHeaders = {
@@ -208,8 +219,8 @@ async function runPrivateTour16Tests() {
       confirmRes.body.booking && 
       confirmRes.body.booking.status === 'Confirmed',
       4,
-      'Admin Confirm: Payment = Paid, Booking = Confirmed (Enforcing sawahjaya2026 ONLY & rejecting smartjourney2026)',
-      `smartjourney2026 rejected (401: ${rejectOldLogin.status === 401}) | sawahjaya2026 accepted (200: ${loginRes.status === 200}) | Status: ${confirmRes.body?.booking?.status}`
+      'Admin Confirm: Payment = Paid, Booking = Confirmed (Enforcing configured ADMIN_PASSWORD ONLY & rejecting smartjourney2026)',
+      `smartjourney2026 rejected (401: ${rejectOldLogin.status === 401}) | valid password accepted (200: ${loginRes.status === 200}) | Status: ${confirmRes.body?.booking?.status}`
     );
 
     // =========================================================================

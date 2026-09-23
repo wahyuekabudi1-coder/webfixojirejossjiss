@@ -11,7 +11,15 @@ require('dotenv').config();
 const PORT = 3000;
 const HOST = '127.0.0.1';
 const WEBHOOK_SECRET = (process.env.WEBHOOK_SECRET || process.env.ARTOPAY_SECRET_KEY || '').trim();
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'sawahjaya2026';
+if (!WEBHOOK_SECRET) {
+  console.error('\n❌ ERROR: Required test environment variable WEBHOOK_SECRET or ARTOPAY_SECRET_KEY is not configured. Test cannot run safely.\n');
+  process.exit(1);
+}
+const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || '').trim();
+if (!ADMIN_PASSWORD) {
+  console.error('\n❌ ERROR: Required test environment variable ADMIN_PASSWORD is not configured. Test cannot run safely.\n');
+  process.exit(1);
+}
 
 function makeRequest(path, options = {}, body = null) {
   return new Promise((resolve, reject) => {
@@ -204,7 +212,7 @@ async function runTests() {
     );
 
     // -------------------------------------------------------------------------
-    // TEST D: Admin login (sawahjaya2026 ONLY) & Admin Confirm Booking
+    // TEST D: Admin login & Admin Confirm Booking
     // -------------------------------------------------------------------------
     console.log('\n--- EXECUTING TEST D: Admin login & Confirm Booking ---');
     const rejectOld = await makeRequest('/api/auth/login', { method: 'POST' }, {
@@ -229,7 +237,7 @@ async function runTests() {
       confirmRes.status === 200 &&
       confirmRes.body?.booking?.status === 'Confirmed',
       'D',
-      'Admin login enforces sawahjaya2026 ONLY & Admin Confirm changes bookingStatus to "Confirmed"',
+      'Admin login enforces configured ADMIN_PASSWORD ONLY & Admin Confirm changes bookingStatus to "Confirmed"',
       `Legacy pwd rejected: ${rejectOld.status === 401} | Login: 200 | Confirmed Status: ${confirmRes.body?.booking?.status}`
     );
 

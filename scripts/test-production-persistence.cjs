@@ -2,8 +2,21 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
+try { require('dotenv').config(); } catch (_) {}
+
 const PORT = 3000;
 const DB_PATH = path.join(process.cwd(), 'data', 'db.json');
+
+const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || '').trim();
+if (!ADMIN_PASSWORD) {
+  console.error('\n❌ ERROR: Required test environment variable ADMIN_PASSWORD is not configured. Test cannot run safely.\n');
+  process.exit(1);
+}
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').trim();
+if (!ADMIN_EMAIL) {
+  console.error('\n❌ ERROR: Required test environment variable ADMIN_EMAIL is not configured. Test cannot run safely.\n');
+  process.exit(1);
+}
 
 function request(options, postData) {
   return new Promise((resolve, reject) => {
@@ -90,8 +103,8 @@ async function run10PointTestSuite() {
       headers: { 'Content-Type': 'application/json' }
     },
     {
-      email: process.env.ADMIN_EMAIL || 'sawahjayagroup@gmail.com',
-      password: process.env.ADMIN_PASSWORD || 'sawahjaya2026'
+      email: ADMIN_EMAIL,
+      password: ADMIN_PASSWORD
     }
   );
 

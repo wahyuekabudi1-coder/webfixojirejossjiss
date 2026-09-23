@@ -177,7 +177,7 @@ export default function TaxiAirportBuilders({
   // Load Seed Databases from Server (Authoritative Source of Truth)
   useEffect(() => {
     // 1. Fetch Taxi Routes from server
-    fetch('/api/builder/taxi-routes')
+    fetch('/api/builder/taxi-routes', { headers: getAdminAuthHeaders() })
       .then(res => res.ok ? res.json() : null)
       .then(serverRoutes => {
         if (Array.isArray(serverRoutes)) {
@@ -191,7 +191,7 @@ export default function TaxiAirportBuilders({
       });
 
     // 2. Fetch Airport Transfers from server
-    fetch('/api/builder/airport-transfers')
+    fetch('/api/builder/airport-transfers', { headers: getAdminAuthHeaders() })
       .then(res => res.ok ? res.json() : null)
       .then(serverTransfers => {
         if (Array.isArray(serverTransfers)) {

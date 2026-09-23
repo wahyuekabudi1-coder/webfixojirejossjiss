@@ -4,9 +4,21 @@ const http = require('http');
 try { require('dotenv').config(); } catch (e) {}
 
 const PORT = 3000;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'sawahjaya2026';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'sawahjayagroup@gmail.com';
-const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || 'sawahjaya_secret_2026';
+const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || '').trim();
+if (!ADMIN_PASSWORD) {
+  console.error('\n❌ ERROR: Required test environment variable ADMIN_PASSWORD is not configured. Test cannot run safely.\n');
+  process.exit(1);
+}
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').trim();
+if (!ADMIN_EMAIL) {
+  console.error('\n❌ ERROR: Required test environment variable ADMIN_EMAIL is not configured. Test cannot run safely.\n');
+  process.exit(1);
+}
+const ADMIN_SECRET_KEY = (process.env.ADMIN_SECRET_KEY || '').trim();
+if (!ADMIN_SECRET_KEY) {
+  console.error('\n❌ ERROR: Required test environment variable ADMIN_SECRET_KEY is not configured. Test cannot run safely.\n');
+  process.exit(1);
+}
 
 function httpRequest(options, body) {
   return new Promise((resolve, reject) => {

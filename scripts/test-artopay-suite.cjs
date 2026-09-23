@@ -8,6 +8,22 @@ async function runTests() {
   console.log('    ARTOPAY PAYMENT GATEWAY SUITE (TESTS A - L)    ');
   console.log('====================================================\n');
 
+  const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || '').trim();
+  if (!ADMIN_PASSWORD) {
+    console.error('\n❌ ERROR: Required test environment variable ADMIN_PASSWORD is not configured. Test cannot run safely.\n');
+    process.exit(1);
+  }
+  const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').trim();
+  if (!ADMIN_EMAIL) {
+    console.error('\n❌ ERROR: Required test environment variable ADMIN_EMAIL is not configured. Test cannot run safely.\n');
+    process.exit(1);
+  }
+  const WEBHOOK_SECRET = (process.env.WEBHOOK_SECRET || process.env.ARTOPAY_SECRET_KEY || '').trim();
+  if (!WEBHOOK_SECRET) {
+    console.error('\n❌ ERROR: Required test environment variable WEBHOOK_SECRET or ARTOPAY_SECRET_KEY is not configured. Test cannot run safely.\n');
+    process.exit(1);
+  }
+
   let passed = 0;
   let failed = 0;
 
@@ -24,7 +40,7 @@ async function runTests() {
   function makeRequest(path, options = {}, body = null) {
     return new Promise((resolve, reject) => {
       const headers = Object.assign({ 'Content-Type': 'application/json' }, options.headers || {});
-      const secret = (process.env.WEBHOOK_SECRET || process.env.ARTOPAY_SECRET_KEY || '').trim();
+      const secret = WEBHOOK_SECRET;
       if (path.includes('/webhook') && body && !headers['x-artopay-signature'] && !headers['webhook-signature'] && !options.noSign) {
         const payloadStr = typeof body === 'string' ? body : JSON.stringify(body);
         headers['x-artopay-signature'] = crypto.createHmac('sha256', secret).update(payloadStr).digest('hex');
@@ -85,19 +101,22 @@ async function runTests() {
     console.log('\n--- TEST C: Intent Creation - Amount Boundary Validation ---');
     const resC1 = await makeRequest('/api/artopay/payment-intent', { method: 'POST' }, {
       orderId: 'TEST-ORDER-INVALID-1',
-      amount: 0
+      amount: 0,
+      currency: 'IDR'
     });
     assert(resC1.status === 400, 'Rejected amount = 0 (HTTP 400)');
 
     const resC2 = await makeRequest('/api/artopay/payment-intent', { method: 'POST' }, {
       orderId: 'TEST-ORDER-INVALID-2',
-      amount: -50000
+      amount: -50000,
+      currency: 'IDR'
     });
     assert(resC2.status === 400, 'Rejected negative amount (HTTP 400)');
 
     const resC3 = await makeRequest('/api/artopay/payment-intent', { method: 'POST' }, {
       orderId: 'TEST-ORDER-INVALID-3',
-      amount: 'abc'
+      amount: 'abc',
+      currency: 'IDR'
     });
     assert(resC3.status === 400, 'Rejected non-numeric string amount (HTTP 400)');
 
@@ -216,8 +235,8 @@ async function runTests() {
 
     // Log in as admin via /api/auth/login
     const resLogin = await makeRequest('/api/auth/login', { method: 'POST' }, {
-      email: 'sawahjayagroup@gmail.com',
-      password: process.env.ADMIN_PASSWORD || 'sawahjaya2026'
+      email: ADMIN_EMAIL,
+      password: ADMIN_PASSWORD
     });
     assert(resLogin.status === 200 && resLogin.body.token, 'Admin login succeeded and returned valid session token');
 

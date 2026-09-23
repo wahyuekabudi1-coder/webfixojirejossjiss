@@ -18076,9 +18076,1197 @@
       },
       "discount": 0,
       "adminNotes": ""
+    },
+    {
+      "id": "SJ-VER-226188",
+      "bookingCode": "SJ-VER-226188",
+      "serviceType": "tour",
+      "serviceId": "tour-custom",
+      "type": "tour",
+      "tripId": "tour-custom",
+      "tripTitle": "Private Tour",
+      "serviceName": "Private Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-23",
+      "fullName": "Verification Traveler",
+      "customerName": "Verification Traveler",
+      "email": "verify@example.com",
+      "customerEmail": "verify@example.com",
+      "phone": "N/A",
+      "customerPhone": "N/A",
+      "participantsCount": 1,
+      "participantsNames": [
+        "Verification Traveler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Pending Confirmation",
+      "paymentStatus": "Paid",
+      "totalPrice": 100000,
+      "totalPriceIDR": 100000,
+      "baseAmount": 100000,
+      "uniqueCode": 32,
+      "paymentAmount": 100032,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:47:06.204Z",
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-custom",
+        "tourName": "Private Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 100000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": "",
+      "paidAt": "2026-09-23T03:47:06.241Z"
+    },
+    {
+      "id": "SJ-AMT-226254",
+      "bookingCode": "SJ-AMT-226254",
+      "serviceType": "tour",
+      "serviceId": "tour-custom",
+      "type": "tour",
+      "tripId": "tour-custom",
+      "tripTitle": "Private Tour",
+      "serviceName": "Private Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-23",
+      "fullName": "Amount Traveler",
+      "customerName": "Amount Traveler",
+      "email": "amount@example.com",
+      "customerEmail": "amount@example.com",
+      "phone": "N/A",
+      "customerPhone": "N/A",
+      "participantsCount": 1,
+      "participantsNames": [
+        "Amount Traveler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Pending Confirmation",
+      "paymentStatus": "Paid",
+      "totalPrice": 100000,
+      "totalPriceIDR": 100000,
+      "baseAmount": 100000,
+      "uniqueCode": 36,
+      "paymentAmount": 100036,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:47:06.270Z",
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-custom",
+        "tourName": "Private Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 100000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": "",
+      "paidAt": "2026-09-23T03:47:06.389Z"
+    },
+    {
+      "id": "SJ-VER-243605",
+      "bookingCode": "SJ-VER-243605",
+      "serviceType": "tour",
+      "serviceId": "tour-custom",
+      "type": "tour",
+      "tripId": "tour-custom",
+      "tripTitle": "Private Tour",
+      "serviceName": "Private Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-23",
+      "fullName": "Verification Traveler",
+      "customerName": "Verification Traveler",
+      "email": "verify@example.com",
+      "customerEmail": "verify@example.com",
+      "phone": "N/A",
+      "customerPhone": "N/A",
+      "participantsCount": 1,
+      "participantsNames": [
+        "Verification Traveler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Pending Confirmation",
+      "paymentStatus": "Paid",
+      "totalPrice": 100000,
+      "totalPriceIDR": 100000,
+      "baseAmount": 100000,
+      "uniqueCode": 74,
+      "paymentAmount": 100074,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:47:23.626Z",
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-custom",
+        "tourName": "Private Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 100000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": "",
+      "paidAt": "2026-09-23T03:47:23.663Z"
+    },
+    {
+      "id": "SJ-AMT-243676",
+      "bookingCode": "SJ-AMT-243676",
+      "serviceType": "tour",
+      "serviceId": "tour-custom",
+      "type": "tour",
+      "tripId": "tour-custom",
+      "tripTitle": "Private Tour",
+      "serviceName": "Private Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-23",
+      "fullName": "Amount Traveler",
+      "customerName": "Amount Traveler",
+      "email": "amount@example.com",
+      "customerEmail": "amount@example.com",
+      "phone": "N/A",
+      "customerPhone": "N/A",
+      "participantsCount": 1,
+      "participantsNames": [
+        "Amount Traveler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Pending Confirmation",
+      "paymentStatus": "Paid",
+      "totalPrice": 100000,
+      "totalPriceIDR": 100000,
+      "baseAmount": 100000,
+      "uniqueCode": 95,
+      "paymentAmount": 100095,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:47:23.709Z",
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-custom",
+        "tourName": "Private Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 100000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": "",
+      "paidAt": "2026-09-23T03:47:23.839Z"
+    },
+    {
+      "id": "SJ-SEC-247842",
+      "bookingCode": "SJ-SEC-247842",
+      "serviceType": "tour",
+      "serviceId": "tour-custom",
+      "type": "tour",
+      "tripId": "tour-custom",
+      "tripTitle": "Private Tour",
+      "serviceName": "Private Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-23",
+      "fullName": "Security Audit Traveler",
+      "customerName": "Security Audit Traveler",
+      "email": "audit@example.com",
+      "customerEmail": "audit@example.com",
+      "phone": "N/A",
+      "customerPhone": "N/A",
+      "participantsCount": 1,
+      "participantsNames": [
+        "Security Audit Traveler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Pending Confirmation",
+      "paymentStatus": "Paid",
+      "totalPrice": 100000,
+      "totalPriceIDR": 100000,
+      "baseAmount": 100000,
+      "uniqueCode": 25,
+      "paymentAmount": 100025,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:47:27.857Z",
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-custom",
+        "tourName": "Private Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 100000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": "",
+      "paidAt": "2026-09-23T03:47:27.892Z"
+    },
+    {
+      "id": "SJ-AMT-247919",
+      "bookingCode": "SJ-AMT-247919",
+      "serviceType": "tour",
+      "serviceId": "tour-custom",
+      "type": "tour",
+      "tripId": "tour-custom",
+      "tripTitle": "Private Tour",
+      "serviceName": "Private Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-23",
+      "fullName": "Amount Test Traveler",
+      "customerName": "Amount Test Traveler",
+      "email": "amount@example.com",
+      "customerEmail": "amount@example.com",
+      "phone": "N/A",
+      "customerPhone": "N/A",
+      "participantsCount": 1,
+      "participantsNames": [
+        "Amount Test Traveler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Pending Confirmation",
+      "paymentStatus": "Paid",
+      "totalPrice": 100000,
+      "totalPriceIDR": 100000,
+      "baseAmount": 100000,
+      "uniqueCode": 84,
+      "paymentAmount": 100084,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:47:27.935Z",
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-custom",
+        "tourName": "Private Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 100000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": "",
+      "paidAt": "2026-09-23T03:47:28.045Z"
+    },
+    {
+      "id": "SJ-TEST-251691",
+      "bookingCode": "SJ-TEST-251691",
+      "serviceType": "tour",
+      "serviceId": "tour-custom",
+      "type": "tour",
+      "tripId": "tour-custom",
+      "tripTitle": "Bromo Sunrise Tour",
+      "serviceName": "Bromo Sunrise Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-23",
+      "fullName": "Audit Test Traveler",
+      "customerName": "Audit Test Traveler",
+      "email": "audit@example.com",
+      "customerEmail": "audit@example.com",
+      "phone": "+628123456789",
+      "customerPhone": "+628123456789",
+      "participantsCount": 2,
+      "participantsNames": [
+        "Audit Test Traveler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Confirmed",
+      "paymentStatus": "Paid",
+      "totalPrice": 500000,
+      "totalPriceIDR": 500000,
+      "baseAmount": 500000,
+      "uniqueCode": 48,
+      "paymentAmount": 500048,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:47:31.712Z",
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-custom",
+        "tourName": "Bromo Sunrise Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 500000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": "",
+      "paidAt": "2026-09-23T03:47:31.766Z",
+      "paymentId": "PAY-1790135251748",
+      "rejectReason": ""
+    },
+    {
+      "id": "SJ-FAIL-251917",
+      "bookingCode": "SJ-FAIL-251917",
+      "serviceType": "tour",
+      "serviceId": "tour-custom",
+      "type": "tour",
+      "tripId": "tour-custom",
+      "tripTitle": "Private Tour",
+      "serviceName": "Private Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-23",
+      "fullName": "Fail Test Traveler",
+      "customerName": "Fail Test Traveler",
+      "email": "fail@example.com",
+      "customerEmail": "fail@example.com",
+      "phone": "N/A",
+      "customerPhone": "N/A",
+      "participantsCount": 1,
+      "participantsNames": [
+        "Fail Test Traveler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Cancelled",
+      "paymentStatus": "Expired",
+      "totalPrice": 750000,
+      "totalPriceIDR": 750000,
+      "baseAmount": 750000,
+      "uniqueCode": 73,
+      "paymentAmount": 750073,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:47:31.933Z",
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-custom",
+        "tourName": "Private Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 750000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": ""
+    },
+    {
+      "id": "book-1790135256564-8ee29023e9d3",
+      "bookingCode": "SJ-NFSZEN",
+      "serviceType": "tour",
+      "serviceId": "tour-bromo-sunrise-safari",
+      "type": "tour",
+      "tripId": "tour-bromo-sunrise-safari",
+      "tripTitle": "Bromo Sunrise & Crater Safari",
+      "serviceName": "Bromo Sunrise & Crater Safari",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-10-25",
+      "fullName": "Alexander Hamilton",
+      "customerName": "Alexander Hamilton",
+      "email": "alexander@hamilton.test",
+      "customerEmail": "alexander@hamilton.test",
+      "phone": "+6281198765432",
+      "customerPhone": "+6281198765432",
+      "participantsCount": 3,
+      "participantsNames": [
+        "Alexander Hamilton",
+        "Elizabeth Schuyler",
+        "Angelica Schuyler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Confirmed",
+      "paymentStatus": "Paid",
+      "totalPrice": 2850000,
+      "totalPriceIDR": 2850000,
+      "baseAmount": 2850000,
+      "uniqueCode": 39,
+      "paymentAmount": 2850039,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:47:36.564Z",
+      "participantData": {
+        "pickupLocation": "Hotel Tugu Malang",
+        "dropoffLocation": "Stasiun Kota Baru Malang",
+        "paymentMethod": "artopay",
+        "members": [
+          {
+            "name": "Alexander Hamilton",
+            "nationality": "Indonesia"
+          },
+          {
+            "name": "Elizabeth Schuyler",
+            "nationality": "Indonesia"
+          },
+          {
+            "name": "Angelica Schuyler",
+            "nationality": "Indonesia"
+          }
+        ]
+      },
+      "details": {
+        "date": "2026-10-25",
+        "package": "Private Exclusive VIP",
+        "duration": "2 Hari 1 Malam",
+        "vehicleName": "Toyota HiAce Premio Luxury",
+        "pickupLocation": "Hotel Tugu Malang",
+        "itinerary": [
+          "Day 1 - Malang → Bromo | 10:00 | Penjemputan | Hotel Tugu Malang",
+          "Day 1 - Malang → Bromo | 13:00 | Makan Siang | Resto Rawon Nguling",
+          "Day 2 - Bromo → Malang | 03:00 | Sunrise Tour | Puncak Penanjakan Bromo"
+        ]
+      },
+      "tourSnapshot": {
+        "tourId": "tour-bromo-sunrise-safari",
+        "tourName": "Bromo Sunrise & Crater Safari",
+        "duration": "2 Hari 1 Malam",
+        "vehicleName": "Toyota HiAce Premio Luxury",
+        "startingPriceIDR": 2850000,
+        "highlights": [
+          "Sunrise Penanjakan 1 Tanpa Antre",
+          "Private 4x4 Jeep Safari",
+          "Stay at Caldera Viewpoint Lodge",
+          "Trekking Kawah Bromo & Savana Hijau"
+        ],
+        "itinerary": [
+          "Day 1 - Malang → Bromo | 10:00 | Penjemputan | Hotel Tugu Malang",
+          "Day 1 - Malang → Bromo | 13:00 | Makan Siang | Resto Rawon Nguling",
+          "Day 2 - Bromo → Malang | 03:00 | Sunrise Tour | Puncak Penanjakan Bromo"
+        ]
+      },
+      "discount": 0,
+      "adminNotes": "Confirmed by Operations Lead.",
+      "paidAt": "2026-09-23T03:47:36.638Z",
+      "paymentId": "PAY-ARTOPAY-256526",
+      "confirmedAt": "2026-09-23T03:47:36.789Z",
+      "verificationHash": "SJ-VERIFIED-SJNFSZEN-4736789Z"
+    },
+    {
+      "id": "book-1790135259179-ff17a7ffd197",
+      "bookingCode": "SJ-GW98CP",
+      "serviceType": "tour",
+      "serviceId": "tour-bromo-sunrise-safari",
+      "type": "tour",
+      "tripId": "tour-bromo-sunrise-safari",
+      "tripTitle": "Bromo Sunrise & Crater Safari",
+      "serviceName": "Bromo Sunrise & Crater Safari",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-23",
+      "fullName": "Regression Tester",
+      "customerName": "Regression Tester",
+      "email": "customer@example.com",
+      "customerEmail": "customer@example.com",
+      "phone": "N/A",
+      "customerPhone": "N/A",
+      "participantsCount": 1,
+      "participantsNames": [
+        "Regression Tester"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Pending",
+      "paymentStatus": "Pending",
+      "totalPrice": 2850000,
+      "totalPriceIDR": 2850000,
+      "baseAmount": 2850000,
+      "uniqueCode": 75,
+      "paymentAmount": 2850075,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:47:39.179Z",
+      "details": {
+        "duration": "2 Hari 1 Malam",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-bromo-sunrise-safari",
+        "tourName": "Bromo Sunrise & Crater Safari",
+        "duration": "2 Hari 1 Malam",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 2850000,
+        "highlights": [
+          "Sunrise Penanjakan 1 Tanpa Antre",
+          "Private 4x4 Jeep Safari",
+          "Stay at Caldera Viewpoint Lodge",
+          "Trekking Kawah Bromo & Savana Hijau"
+        ],
+        "itinerary": [
+          "Day 1 - Malang → Bromo | 10:00 | Penjemputan | Hotel / Stasiun / Bandara",
+          "Day 1 - Malang → Bromo | 13:00 | Makan Siang | Resto Lokal Khas Tengger",
+          "Day 1 - Bromo | 15:30 | Check-in Lodge | Istirahat menikmati kabut pegunungan",
+          "Day 2 - Bromo → Malang | 03:00 | Sunrise Tour | Puncak Penanjakan Bromo",
+          "Day 2 - Bromo | 06:00 | Crater Hike | Kawah Aktif Bromo & Pasir Berbisik",
+          "Day 2 - Bromo → Malang | 11:00 | Check-out & Drop | Pengantaran kembali ke Malang/Surabaya"
+        ]
+      },
+      "discount": 0,
+      "adminNotes": ""
+    },
+    {
+      "id": "book-1790135262761-a14bd02b3673",
+      "bookingCode": "SJ-MXS87B",
+      "serviceType": "tour",
+      "serviceId": "bromo",
+      "type": "tour",
+      "tripId": "bromo",
+      "tripTitle": "Bromo Sunrise & Crater Safari",
+      "serviceName": "Bromo Sunrise & Crater Safari",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-10-15",
+      "fullName": "Ahmad Syahrul 262721",
+      "customerName": "Ahmad Syahrul 262721",
+      "email": "ahmad.262721@example.com",
+      "customerEmail": "ahmad.262721@example.com",
+      "phone": "+6281234567890",
+      "customerPhone": "+6281234567890",
+      "participantsCount": 3,
+      "participantsNames": [
+        "Ahmad Syahrul",
+        "Dewi Lestari",
+        "Rian Hidayat"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Confirmed",
+      "paymentStatus": "Paid",
+      "totalPrice": 2500000,
+      "totalPriceIDR": 2500000,
+      "baseAmount": 2500000,
+      "uniqueCode": 51,
+      "paymentAmount": 2500051,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:47:42.761Z",
+      "participantData": {
+        "pickupLocation": "Hotel Tugu Malang",
+        "dropoffLocation": "Stasiun Kota Baru Malang",
+        "paymentMethod": "artopay",
+        "members": [
+          {
+            "name": "Ahmad Syahrul",
+            "nationality": "Indonesia"
+          },
+          {
+            "name": "Dewi Lestari",
+            "nationality": "Indonesia"
+          },
+          {
+            "name": "Rian Hidayat",
+            "nationality": "Indonesia"
+          }
+        ]
+      },
+      "details": {
+        "date": "2026-10-15",
+        "package": "Bromo Exclusive VIP",
+        "guests": 3,
+        "vehicleName": "Toyota HiAce Premio Luxury",
+        "pickupLocation": "Hotel Tugu Malang",
+        "dropoffLocation": "Stasiun Kota Baru Malang",
+        "itinerary": [
+          {
+            "day": "Hari 1",
+            "title": "Penjemputan & Sunrise Penanjakan",
+            "desc": "Penjemputan dini hari menuju Spot Sunrise Penanjakan 1 Bromo"
+          },
+          {
+            "day": "Hari 1 Siang",
+            "title": "Kawah Bromo & Pasir Berbisik",
+            "desc": "Eksplorasi Kaldera, Kawah Aktif, Pasir Berbisik, dan Bukit Teletubbies"
+          }
+        ],
+        "duration": "1 Hari"
+      },
+      "tourSnapshot": {
+        "tourId": "bromo",
+        "tourName": "Bromo Sunrise & Crater Safari",
+        "duration": "1 Hari",
+        "vehicleName": "Toyota HiAce Premio Luxury",
+        "startingPriceIDR": 2500000,
+        "highlights": [],
+        "itinerary": [
+          {
+            "day": "Hari 1",
+            "title": "Penjemputan & Sunrise Penanjakan",
+            "desc": "Penjemputan dini hari menuju Spot Sunrise Penanjakan 1 Bromo"
+          },
+          {
+            "day": "Hari 1 Siang",
+            "title": "Kawah Bromo & Pasir Berbisik",
+            "desc": "Eksplorasi Kaldera, Kawah Aktif, Pasir Berbisik, dan Bukit Teletubbies"
+          }
+        ]
+      },
+      "discount": 0,
+      "adminNotes": "Verified and confirmed by Operations Lead. Driver assigned.",
+      "paidAt": "2026-09-23T03:47:42.853Z",
+      "paymentId": "PAY-ARTOPAY-262721",
+      "confirmedAt": "2026-09-23T03:47:42.994Z",
+      "verificationHash": "SJ-VERIFIED-SJMXS87B-4742994Z"
+    },
+    {
+      "id": "SJ-TEST-265243",
+      "bookingCode": "SJ-TEST-265243",
+      "serviceType": "tour",
+      "serviceId": "tour-custom",
+      "type": "tour",
+      "tripId": "tour-custom",
+      "tripTitle": "Bromo Sunrise Tour",
+      "serviceName": "Bromo Sunrise Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-23",
+      "fullName": "Audit Test Traveler",
+      "customerName": "Audit Test Traveler",
+      "email": "audit@example.com",
+      "customerEmail": "audit@example.com",
+      "phone": "+628123456789",
+      "customerPhone": "+628123456789",
+      "participantsCount": 2,
+      "participantsNames": [
+        "Audit Test Traveler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Confirmed",
+      "paymentStatus": "Paid",
+      "totalPrice": 500000,
+      "totalPriceIDR": 500000,
+      "baseAmount": 500000,
+      "uniqueCode": 24,
+      "paymentAmount": 500024,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:47:45.259Z",
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-custom",
+        "tourName": "Bromo Sunrise Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 500000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": "",
+      "paidAt": "2026-09-23T03:47:45.306Z",
+      "paymentId": "PAY-1790135265289",
+      "rejectReason": ""
+    },
+    {
+      "id": "SJ-FAIL-265464",
+      "bookingCode": "SJ-FAIL-265464",
+      "serviceType": "tour",
+      "serviceId": "tour-custom",
+      "type": "tour",
+      "tripId": "tour-custom",
+      "tripTitle": "Private Tour",
+      "serviceName": "Private Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-23",
+      "fullName": "Fail Test Traveler",
+      "customerName": "Fail Test Traveler",
+      "email": "fail@example.com",
+      "customerEmail": "fail@example.com",
+      "phone": "N/A",
+      "customerPhone": "N/A",
+      "participantsCount": 1,
+      "participantsNames": [
+        "Fail Test Traveler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Cancelled",
+      "paymentStatus": "Expired",
+      "totalPrice": 750000,
+      "totalPriceIDR": 750000,
+      "baseAmount": 750000,
+      "uniqueCode": 82,
+      "paymentAmount": 750082,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:47:45.482Z",
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-custom",
+        "tourName": "Private Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 750000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": ""
+    },
+    {
+      "id": "book-1790135274458-a34b9da46f84",
+      "bookingCode": "SJ-6D8L9J",
+      "serviceType": "tour",
+      "serviceId": "tour-bromo-private",
+      "type": "tour",
+      "tripId": "tour-bromo-private",
+      "tripTitle": "Bromo Sunrise Exclusive Tour",
+      "serviceName": "Bromo Sunrise Exclusive Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-10-15",
+      "fullName": "David Miller",
+      "customerName": "David Miller",
+      "email": "david.miller.274418@example.com",
+      "customerEmail": "david.miller.274418@example.com",
+      "phone": "+6281234567890",
+      "customerPhone": "+6281234567890",
+      "participantsCount": 3,
+      "participantsNames": [
+        "David Miller",
+        "Sarah Miller",
+        "Leo Miller"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Confirmed",
+      "paymentStatus": "Paid",
+      "totalPrice": 3600000,
+      "totalPriceIDR": 3600000,
+      "baseAmount": 3600000,
+      "uniqueCode": 19,
+      "paymentAmount": 3600019,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:47:54.458Z",
+      "details": {
+        "pickupLocation": "Hotel Tugu Malang Lobby",
+        "pickupTime": "00:30 WIB",
+        "vehicleName": "Toyota HiAce Premio Luxury",
+        "package": "Private VIP Platinum",
+        "duration": "1 Hari"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-bromo-private",
+        "tourName": "Bromo Sunrise Exclusive Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Toyota HiAce Premio Luxury",
+        "startingPriceIDR": 3600000,
+        "highlights": [
+          "Layanan VIP Eksklusif",
+          "Armada Eksekutif Terbaru",
+          "Jeep Bromo Khusus Rombongan Anda",
+          "Dokumentasi Foto Kualitas Tinggi"
+        ],
+        "itinerary": [
+          "Day 1 | 00:00 | VIP Pickup | Penjemputan di Surabaya/Malang dengan armada VIP",
+          "Day 1 | 03:00 | Jeep Eksklusif | Naik Jeep Bromo privat menuju Seruni Point / Penanjakan",
+          "Day 1 | 05:00 | Sunrise & Snack | Menikmati sunrise hangat ditemani kopi/teh dan snack",
+          "Day 1 | 07:00 | Kawah & Pura | Eksplorasi Kawah Bromo, Pasir Berbisik, & Bukit Teletubbies",
+          "Day 1 | 11:00 | Kuliner Lokal | Santap siang menu khas Jawa Timur",
+          "Day 1 | 14:00 | VIP Drop-off | Pengantaran kembali ke Surabaya/Malang"
+        ]
+      },
+      "nationalityType": "WNA_EUROPE",
+      "discount": 0,
+      "adminNotes": "Confirmed by Lead Dispatcher.",
+      "paidAt": "2026-09-23T03:47:54.496Z",
+      "paymentId": "PAY-INV-274418-1",
+      "confirmedAt": "2026-09-23T03:47:54.578Z",
+      "verificationHash": "SJ-VERIFIED-SJ6D8L9J-4754578Z"
+    },
+    {
+      "id": "book-1790135277195-ce65327d9cfc",
+      "bookingCode": "SJ-J8EHSB",
+      "serviceType": "tour",
+      "serviceId": "tour-komodo-private",
+      "type": "tour",
+      "tripId": "tour-komodo-private",
+      "tripTitle": "Komodo Island Overland & Boat Tour",
+      "serviceName": "Komodo Island Overland & Boat Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-11-20",
+      "fullName": "Chen Wei",
+      "customerName": "Chen Wei",
+      "email": "chen.wei.277164b@example.com",
+      "customerEmail": "chen.wei.277164b@example.com",
+      "phone": "+6281987654321",
+      "customerPhone": "+6281987654321",
+      "participantsCount": 2,
+      "participantsNames": [
+        "Chen Wei"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Confirmed",
+      "paymentStatus": "Paid",
+      "totalPrice": 5000000,
+      "totalPriceIDR": 5000000,
+      "baseAmount": 5000000,
+      "uniqueCode": 55,
+      "paymentAmount": 5000055,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:47:57.195Z",
+      "details": {
+        "pickupLocation": "Komodo Airport Labuan Bajo",
+        "package": "VIP Island Hopper",
+        "duration": "3 Hari 2 Malam",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-komodo-private",
+        "tourName": "Komodo Island Overland & Boat Tour",
+        "duration": "3 Hari 2 Malam",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 5000000,
+        "highlights": [
+          "Trekking Pulau Padar View 3 Warna Pantai",
+          "Melihat Komodo Dragon bersama Ranger",
+          "Snorkeling di Pink Beach & Manta Point",
+          "Speedboat Phinisi Eksklusif"
+        ],
+        "itinerary": [
+          "Day 1 | 09:00 | Penjemputan Labuan Bajo | Bandara Komodo (LBJ) ke Pelabuhan Labuan Bajo",
+          "Day 1 | 11:00 | Pulau Kelor & Manjarite | Snorkeling terumbu karang dan pantai pasir putih",
+          "Day 1 | 17:30 | Sunset Pulau Kalong | Menyaksikan ribuan kelelawar terbang saat senja",
+          "Day 2 | 05:30 | Sunrise Pulau Padar | Trekking puncak Pulau Padar untuk panorama legendaris",
+          "Day 2 | 09:00 | Pink Beach & Komodo | Relaksasi di Pink Beach dan jelajah Pulau Komodo",
+          "Day 2 | 14:00 | Manta Point | Berenang dan snorkeling bersama Pari Manta liar",
+          "Day 3 | 08:00 | Gua Rangko | Berenang di gua air asin kristal sebelum transfer bandara"
+        ]
+      },
+      "nationalityType": "WNA_CHINA",
+      "items": [
+        {
+          "no": 1,
+          "description": "Komodo Island Speedboat Charter (Private)",
+          "qty": "1 Boat",
+          "unitPrice": 3500000,
+          "amount": 3500000
+        },
+        {
+          "no": 2,
+          "description": "Komodo National Park Ranger & Guide Service",
+          "qty": "2 Pax",
+          "unitPrice": 500000,
+          "amount": 1000000
+        },
+        {
+          "no": 3,
+          "description": "Snorkeling Gear & Safety Equipment Rental",
+          "qty": "2 Set",
+          "unitPrice": 250000,
+          "amount": 500000
+        }
+      ],
+      "discount": 0,
+      "adminNotes": "Confirmed VIP Komodo Tour",
+      "paidAt": "2026-09-23T03:47:57.226Z",
+      "paymentId": "PAY-INV-277164b-2",
+      "confirmedAt": "2026-09-23T03:47:57.272Z",
+      "verificationHash": "SJ-VERIFIED-SJJ8EHSB-4757272Z"
+    },
+    {
+      "id": "book-1790135285025-7e95a885ee43",
+      "bookingCode": "SJ-DPQ6UT",
+      "serviceType": "tour",
+      "serviceId": "tour-lock-1790135284824",
+      "type": "tour",
+      "tripId": "tour-lock-1790135284824",
+      "tripTitle": "Exclusive Ijen Blue Fire Lock Tour",
+      "serviceName": "Exclusive Ijen Blue Fire Lock Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-10-20",
+      "fullName": "Jane Doe",
+      "customerName": "Jane Doe",
+      "email": "jane.doe@example.com",
+      "customerEmail": "jane.doe@example.com",
+      "phone": "+62812999888",
+      "customerPhone": "+62812999888",
+      "participantsCount": 2,
+      "participantsNames": [
+        "Jane Doe"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Pending",
+      "paymentStatus": "Pending",
+      "totalPrice": 2500000,
+      "totalPriceIDR": 2500000,
+      "baseAmount": 2500000,
+      "uniqueCode": 93,
+      "paymentAmount": 2500093,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:48:05.025Z",
+      "details": {
+        "pickupLocation": "Banyuwangi Hotel",
+        "package": "VIP 2D1N",
+        "duration": "2D1N",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-lock-1790135284824",
+        "tourName": "Exclusive Ijen Blue Fire Lock Tour",
+        "duration": "2D1N",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 2500000,
+        "highlights": [
+          "Blue fire expedition",
+          "Sunrise over acid lake"
+        ],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": ""
+    },
+    {
+      "id": "book-1790135292240-b4d698103405",
+      "bookingCode": "SJ-53KJ35",
+      "serviceType": "tour",
+      "serviceId": "bromo",
+      "type": "tour",
+      "tripId": "bromo",
+      "tripTitle": "Bromo Sunrise & Crater Safari",
+      "serviceName": "Bromo Sunrise & Crater Safari",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-23",
+      "fullName": "Matrix Traveler 292211",
+      "customerName": "Matrix Traveler 292211",
+      "email": "matrix.292211@example.com",
+      "customerEmail": "matrix.292211@example.com",
+      "phone": "+6281234567890",
+      "customerPhone": "+6281234567890",
+      "participantsCount": 2,
+      "participantsNames": [
+        "Matrix Traveler 292211"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Pending",
+      "paymentStatus": "Pending",
+      "totalPrice": 1000,
+      "totalPriceIDR": 1000,
+      "baseAmount": 1000,
+      "uniqueCode": 64,
+      "paymentAmount": 1064,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:48:12.240Z",
+      "participantData": {
+        "pickupLocation": "Hotel Tugu Malang",
+        "paymentMethod": "artopay",
+        "members": [
+          {
+            "name": "Matrix Traveler",
+            "nationality": "Indonesia"
+          },
+          {
+            "name": "Companion",
+            "nationality": "Indonesia"
+          }
+        ]
+      },
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "bromo",
+        "tourName": "Bromo Sunrise & Crater Safari",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 1000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": ""
+    },
+    {
+      "id": "book-1790135297166-0bd7f3def33b",
+      "bookingCode": "SJ-7G3LMX",
+      "serviceType": "tour",
+      "serviceId": "tour-1790040870848",
+      "type": "tour",
+      "tripId": "tour-1790040870848",
+      "tripTitle": "sdfsdfsdfsd",
+      "serviceName": "sdfsdfsdfsd",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-12-01",
+      "fullName": "Mr. Attacker",
+      "customerName": "Mr. Attacker",
+      "email": "attacker@example.com",
+      "customerEmail": "attacker@example.com",
+      "phone": "081299998888",
+      "customerPhone": "081299998888",
+      "participantsCount": 1,
+      "participantsNames": [
+        "Mr. Attacker"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Pending",
+      "paymentStatus": "Pending",
+      "totalPrice": 1500000,
+      "totalPriceIDR": 1500000,
+      "baseAmount": 1500000,
+      "uniqueCode": 63,
+      "paymentAmount": 1500063,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:48:17.166Z",
+      "details": {
+        "duration": "2 Days / 1 Night",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-1790040870848",
+        "tourName": "sdfsdfsdfsd",
+        "duration": "2 Days / 1 Night",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 1500000,
+        "highlights": [
+          "sdfsdfsd"
+        ],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": ""
+    },
+    {
+      "id": "book-1790135297218-8dbbea955a91",
+      "bookingCode": "SJ-ELYERP",
+      "serviceType": "tour",
+      "serviceId": "tour-1790040870848",
+      "type": "tour",
+      "tripId": "tour-1790040870848",
+      "tripTitle": "sdfsdfsdfsd",
+      "serviceName": "sdfsdfsdfsd",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-12-02",
+      "fullName": "Ms. Forger",
+      "customerName": "Ms. Forger",
+      "email": "forger@example.com",
+      "customerEmail": "forger@example.com",
+      "phone": "081277776666",
+      "customerPhone": "081277776666",
+      "participantsCount": 1,
+      "participantsNames": [
+        "Ms. Forger"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Pending",
+      "paymentStatus": "Pending",
+      "totalPrice": 1500000,
+      "totalPriceIDR": 1500000,
+      "baseAmount": 1500000,
+      "uniqueCode": 69,
+      "paymentAmount": 1500069,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:48:17.218Z",
+      "details": {
+        "duration": "2 Days / 1 Night",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-1790040870848",
+        "tourName": "sdfsdfsdfsd",
+        "duration": "2 Days / 1 Night",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 1500000,
+        "highlights": [
+          "sdfsdfsd"
+        ],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": ""
+    },
+    {
+      "id": "book-1790135297378-0658bbbb7062",
+      "bookingCode": "SJ-RKQEMB",
+      "serviceType": "tour",
+      "serviceId": "tour-1790040870848",
+      "type": "tour",
+      "tripId": "tour-1790040870848",
+      "tripTitle": "sdfsdfsdfsd",
+      "serviceName": "sdfsdfsdfsd",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-12-10",
+      "fullName": "Fake Price Tester",
+      "customerName": "Fake Price Tester",
+      "email": "fakeprice@example.com",
+      "customerEmail": "fakeprice@example.com",
+      "phone": "081255551111",
+      "customerPhone": "081255551111",
+      "participantsCount": 1,
+      "participantsNames": [
+        "Fake Price Tester"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Pending Confirmation",
+      "paymentStatus": "Paid",
+      "totalPrice": 1500000,
+      "totalPriceIDR": 1500000,
+      "baseAmount": 1500000,
+      "uniqueCode": 52,
+      "paymentAmount": 1500052,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:48:17.378Z",
+      "details": {
+        "duration": "2 Days / 1 Night",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-1790040870848",
+        "tourName": "sdfsdfsdfsd",
+        "duration": "2 Days / 1 Night",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 1500000,
+        "highlights": [
+          "sdfsdfsd"
+        ],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": ""
     }
   ],
   "mainTours": [
+    {
+      "id": "tour-lock-1790135284824",
+      "name": "Exclusive Ijen Blue Fire Lock Tour",
+      "category": "Private Tour",
+      "location": "Banyuwangi",
+      "duration": "2D1N",
+      "price": 2500000,
+      "startingPriceIDR": 2500000,
+      "status": "archived",
+      "highlights": [
+        "Blue fire expedition",
+        "Sunrise over acid lake"
+      ],
+      "description": "A private luxury excursion to Mount Ijen crater.",
+      "createdAt": "2026-09-23T03:48:04.858Z",
+      "updatedAt": "2026-09-23T03:48:05.092Z",
+      "isDeleted": true,
+      "isArchived": true
+    },
     {
       "id": "tour-lock-1790134406262",
       "name": "Exclusive Ijen Blue Fire Lock Tour",
@@ -18755,6 +19943,19 @@
       },
       "savedAt": "2026-09-23T03:33:26.117Z",
       "savedAtTimestamp": 1790134406117
+    },
+    "sj_draft_tour_test_lock_1790135284688": {
+      "key": "sj_draft_tour_test_lock_1790135284688",
+      "type": "tour",
+      "subType": "default",
+      "targetId": "lock-test-id",
+      "title": "Lock Test Tour Draft",
+      "data": {
+        "name": "Bromo Sunrise Lock Test",
+        "price": 1750000
+      },
+      "savedAt": "2026-09-23T03:48:04.688Z",
+      "savedAtTimestamp": 1790135284688
     }
   },
   "contactInfo": {

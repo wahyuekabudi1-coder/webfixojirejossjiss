@@ -1297,7 +1297,7 @@ app.delete('/api/admin/drafts/:key', requireAdminAuth, (req, res) => {
 // Builder Custom Taxi Routes & Airport Transfers API
 // -------------------------------------------------------------
 
-app.get('/api/builder/taxi-routes', (req, res) => {
+app.get('/api/builder/taxi-routes', requireAdminAuth, (req, res) => {
   try {
     const db = readDB();
     const routes = Array.isArray((db as any).builderTaxiRoutes) ? (db as any).builderTaxiRoutes : [];
@@ -1320,7 +1320,7 @@ app.post('/api/builder/taxi-routes/sync', requireAdminAuth, (req, res) => {
   }
 });
 
-app.get('/api/builder/airport-transfers', (req, res) => {
+app.get('/api/builder/airport-transfers', requireAdminAuth, (req, res) => {
   try {
     const db = readDB();
     const transfers = Array.isArray((db as any).builderAirportTransfers) ? (db as any).builderAirportTransfers : [];
@@ -3998,10 +3998,18 @@ app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/paymen
       }
     }
 
-    let { orderId, amount, currency = 'IDR', description, customerId, metadata, customerName, customerEmail, customerPhone } = bodyData || {};
+    const { orderId, amount, currency, description, customerId, metadata, customerName, customerEmail, customerPhone } = bodyData || {};
 
     if (!orderId) {
       return res.status(400).json({ error: 'orderId parameter is required' });
+    }
+
+    if (currency === undefined || currency === null || typeof currency !== 'string' || currency.trim() === '') {
+      return res.status(400).json({ error: 'Mata uang (currency) wajib diisi dan harus IDR.' });
+    }
+
+    if (currency.trim().toUpperCase() !== 'IDR') {
+      return res.status(400).json({ error: 'Mata uang (currency) harus IDR.' });
     }
 
     if (amount !== undefined) {

@@ -54,6 +54,20 @@ async function run11MandatoryTests() {
   }
 
   const secret = (process.env.WEBHOOK_SECRET || process.env.ARTOPAY_SECRET_KEY || '').trim();
+  if (!secret) {
+    console.error('\n❌ ERROR: Required test environment variable WEBHOOK_SECRET or ARTOPAY_SECRET_KEY is not configured. Test cannot run safely.\n');
+    process.exit(1);
+  }
+  const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || '').trim();
+  if (!ADMIN_PASSWORD) {
+    console.error('\n❌ ERROR: Required test environment variable ADMIN_PASSWORD is not configured. Test cannot run safely.\n');
+    process.exit(1);
+  }
+  const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').trim();
+  if (!ADMIN_EMAIL) {
+    console.error('\n❌ ERROR: Required test environment variable ADMIN_EMAIL is not configured. Test cannot run safely.\n');
+    process.exit(1);
+  }
 
   // ---------------------------------------------------------------------------
   // TEST 1: WEBHOOK_SECRET kosong → reject (Fail Closed)
@@ -212,8 +226,8 @@ async function run11MandatoryTests() {
   });
   const tempLoginServer = isolatedAppLogin.listen(3003);
   const res9 = await makeReq(3003, '/api/auth/login', { method: 'POST' }, {
-    email: 'sawahjayagroup@gmail.com',
-    password: 'sawahjaya2026'
+    email: ADMIN_EMAIL,
+    password: ADMIN_PASSWORD
   });
   tempLoginServer.close();
   assert(res9.status === 401, 9, 'ADMIN_PASSWORD kosong → login reject (Fail Closed)', `Status: ${res9.status} | Error: ${res9.body.error}`);
@@ -222,8 +236,8 @@ async function run11MandatoryTests() {
   // TEST 10: ADMIN_PASSWORD benar → login berhasil
   // ---------------------------------------------------------------------------
   const res10 = await makeReq(3000, '/api/auth/login', { method: 'POST' }, {
-    email: 'sawahjayagroup@gmail.com',
-    password: 'sawahjaya2026'
+    email: ADMIN_EMAIL,
+    password: ADMIN_PASSWORD
   });
   assert(res10.status === 200 && res10.body.token, 10, 'ADMIN_PASSWORD benar → login berhasil', `Status: ${res10.status} | Token length: ${res10.body?.token?.length} chars`);
 
@@ -231,7 +245,7 @@ async function run11MandatoryTests() {
   // TEST 11: Password alternatif smartjourney2026 → reject
   // ---------------------------------------------------------------------------
   const res11 = await makeReq(3000, '/api/auth/login', { method: 'POST' }, {
-    email: 'sawahjayagroup@gmail.com',
+    email: ADMIN_EMAIL,
     password: 'smartjourney2026'
   });
   assert(res11.status === 401, 11, 'Password alternatif smartjourney2026 → reject', `Status: ${res11.status} | Error: ${res11.body.error}`);

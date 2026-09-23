@@ -222,7 +222,8 @@ async function runSecuritySuite() {
 
   const doublePaymentIntentRes = await request('POST', '/api/artopay/payment-intent', {
     orderId: fakePriceBookingRes.body.bookingCode,
-    amount: fakePriceBookingRes.body.paymentAmount
+    amount: fakePriceBookingRes.body.paymentAmount,
+    currency: 'IDR'
   });
   assert(doublePaymentIntentRes.status === 400, `Creating payment intent for Paid booking returns HTTP 400 (got ${doublePaymentIntentRes.status})`);
   assert(doublePaymentIntentRes.body.error && doublePaymentIntentRes.body.error.includes('sudah lunas'), `Rejection message indicates order already paid`);
