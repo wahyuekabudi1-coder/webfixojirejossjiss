@@ -172,7 +172,8 @@ async function runTests() {
       paymentId: `PAY-ARTOPAY-${uniqueSuffix}`,
       status: 'success',
       amount: paymentAmount,
-      grossAmount: paymentAmount
+      grossAmount: paymentAmount,
+      currency: 'IDR'
     });
 
     const checkB = await makeRequest(`/api/private-tour/check-booking/${encodeURIComponent(bookingCode)}`);
@@ -370,7 +371,8 @@ async function runTests() {
     }, {
       orderId: pendingOrderId,
       status: 'PAID',
-      amount: pendingExpectedAmount + 1
+      amount: pendingExpectedAmount + 1,
+      currency: 'IDR'
     });
 
     assert(

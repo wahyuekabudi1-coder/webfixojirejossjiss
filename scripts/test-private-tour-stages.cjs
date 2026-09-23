@@ -148,7 +148,8 @@ async function runPrivateTour16Tests() {
       paymentId: `PAY-ARTOPAY-${uniqueSuffix}`,
       status: 'success',
       amount: testTotalPaid,
-      grossAmount: testTotalPaid
+      grossAmount: testTotalPaid,
+      currency: 'IDR'
     });
 
     const check2 = await makeRequest(`/api/private-tour/check-booking/${encodeURIComponent(testBookingCode)}`);

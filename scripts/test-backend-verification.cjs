@@ -124,7 +124,7 @@ async function runFinalVerification() {
   // ---------------------------------------------------------------------------
   // Check 6: Test signature salah → 401
   // ---------------------------------------------------------------------------
-  const rawBody6 = JSON.stringify({ orderId: testOrderId, status: 'PAID', amount: expectedAmount });
+  const rawBody6 = JSON.stringify({ orderId: testOrderId, status: 'PAID', amount: expectedAmount, currency: 'IDR' });
   const res6 = await makeReq(3000, '/api/artopay/webhook', {
     method: 'POST',
     headers: {
@@ -137,7 +137,7 @@ async function runFinalVerification() {
   // ---------------------------------------------------------------------------
   // Check 7: Test signature benar → 200
   // ---------------------------------------------------------------------------
-  const rawBody7 = JSON.stringify({ orderId: testOrderId, status: 'PAID', amount: expectedAmount });
+  const rawBody7 = JSON.stringify({ orderId: testOrderId, status: 'PAID', amount: expectedAmount, currency: 'IDR' });
   const validSig7 = crypto.createHmac('sha256', secret).update(rawBody7).digest('hex');
   const res7 = await makeReq(3000, '/api/artopay/webhook', {
     method: 'POST',
@@ -171,7 +171,7 @@ async function runFinalVerification() {
   // Check 8: Test amount tepat → 200 (tested later after mismatch tests to preserve Pending state)
   // Check 9: Test amount berbeda Rp1 → 400 + database tidak berubah
   // ---------------------------------------------------------------------------
-  const rawBody9 = JSON.stringify({ orderId: testOrderId2, status: 'PAID', amount: expectedAmount2 + 1 });
+  const rawBody9 = JSON.stringify({ orderId: testOrderId2, status: 'PAID', amount: expectedAmount2 + 1, currency: 'IDR' });
   const validSig9 = crypto.createHmac('sha256', secret).update(rawBody9).digest('hex');
   const res9 = await makeReq(3000, '/api/artopay/webhook', {
     method: 'POST',
@@ -191,7 +191,7 @@ async function runFinalVerification() {
   // ---------------------------------------------------------------------------
   // Check 10: Test amount berbeda lebih besar → 400 + database tidak berubah
   // ---------------------------------------------------------------------------
-  const rawBody10 = JSON.stringify({ orderId: testOrderId2, status: 'PAID', amount: expectedAmount2 + 50000 });
+  const rawBody10 = JSON.stringify({ orderId: testOrderId2, status: 'PAID', amount: expectedAmount2 + 50000, currency: 'IDR' });
   const validSig10 = crypto.createHmac('sha256', secret).update(rawBody10).digest('hex');
   const res10 = await makeReq(3000, '/api/artopay/webhook', {
     method: 'POST',
@@ -211,7 +211,7 @@ async function runFinalVerification() {
   // ---------------------------------------------------------------------------
   // Check 8: Test amount tepat → 200
   // ---------------------------------------------------------------------------
-  const rawBody8 = JSON.stringify({ orderId: testOrderId2, status: 'PAID', amount: expectedAmount2 });
+  const rawBody8 = JSON.stringify({ orderId: testOrderId2, status: 'PAID', amount: expectedAmount2, currency: 'IDR' });
   const validSig8 = crypto.createHmac('sha256', secret).update(rawBody8).digest('hex');
   const res8 = await makeReq(3000, '/api/artopay/webhook', {
     method: 'POST',

@@ -92,7 +92,7 @@ async function run11MandatoryTests() {
   // ---------------------------------------------------------------------------
   // TEST 2: Signature kosong → reject
   // ---------------------------------------------------------------------------
-  const rawBody2 = JSON.stringify({ orderId: testOrderId, status: 'PAID', amount: expectedAmount });
+  const rawBody2 = JSON.stringify({ orderId: testOrderId, status: 'PAID', amount: expectedAmount, currency: 'IDR' });
   const res2 = await makeReq(3000, '/api/artopay/webhook', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' }
@@ -102,7 +102,7 @@ async function run11MandatoryTests() {
   // ---------------------------------------------------------------------------
   // TEST 3: Signature salah → reject
   // ---------------------------------------------------------------------------
-  const rawBody3 = JSON.stringify({ orderId: testOrderId, status: 'PAID', amount: expectedAmount });
+  const rawBody3 = JSON.stringify({ orderId: testOrderId, status: 'PAID', amount: expectedAmount, currency: 'IDR' });
   const res3 = await makeReq(3000, '/api/artopay/webhook', {
     method: 'POST',
     headers: {
@@ -115,7 +115,7 @@ async function run11MandatoryTests() {
   // ---------------------------------------------------------------------------
   // TEST 4: Signature benar → accepted
   // ---------------------------------------------------------------------------
-  const rawBody4 = JSON.stringify({ orderId: testOrderId, status: 'PAID', amount: expectedAmount });
+  const rawBody4 = JSON.stringify({ orderId: testOrderId, status: 'PAID', amount: expectedAmount, currency: 'IDR' });
   const validSig4 = crypto.createHmac('sha256', secret).update(rawBody4).digest('hex');
   const res4 = await makeReq(3000, '/api/artopay/webhook', {
     method: 'POST',
@@ -150,7 +150,7 @@ async function run11MandatoryTests() {
   // ---------------------------------------------------------------------------
   // TEST 6: Amount berbeda Rp1 → rejected (expected = expectedAmount2, received = expectedAmount2 + 1)
   // ---------------------------------------------------------------------------
-  const rawBody6 = JSON.stringify({ orderId: testOrderId2, status: 'PAID', amount: expectedAmount2 + 1 });
+  const rawBody6 = JSON.stringify({ orderId: testOrderId2, status: 'PAID', amount: expectedAmount2 + 1, currency: 'IDR' });
   const validSig6 = crypto.createHmac('sha256', secret).update(rawBody6).digest('hex');
   const res6 = await makeReq(3000, '/api/artopay/webhook', {
     method: 'POST',
@@ -164,7 +164,7 @@ async function run11MandatoryTests() {
   // ---------------------------------------------------------------------------
   // TEST 7: Amount berbeda lebih besar → rejected (expected = expectedAmount2, received = expectedAmount2 + 50000)
   // ---------------------------------------------------------------------------
-  const rawBody7 = JSON.stringify({ orderId: testOrderId2, status: 'PAID', amount: expectedAmount2 + 50000 });
+  const rawBody7 = JSON.stringify({ orderId: testOrderId2, status: 'PAID', amount: expectedAmount2 + 50000, currency: 'IDR' });
   const validSig7 = crypto.createHmac('sha256', secret).update(rawBody7).digest('hex');
   const res7 = await makeReq(3000, '/api/artopay/webhook', {
     method: 'POST',
@@ -187,7 +187,7 @@ async function run11MandatoryTests() {
   // ---------------------------------------------------------------------------
   // TEST 5: Amount tepat → accepted (expected = expectedAmount2, received = expectedAmount2)
   // ---------------------------------------------------------------------------
-  const rawBody5 = JSON.stringify({ orderId: testOrderId2, status: 'PAID', amount: expectedAmount2 });
+  const rawBody5 = JSON.stringify({ orderId: testOrderId2, status: 'PAID', amount: expectedAmount2, currency: 'IDR' });
   const validSig5 = crypto.createHmac('sha256', secret).update(rawBody5).digest('hex');
   const res5 = await makeReq(3000, '/api/artopay/webhook', {
     method: 'POST',

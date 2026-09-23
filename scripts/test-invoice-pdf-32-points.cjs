@@ -147,6 +147,7 @@ async function runInvoiceChecklist() {
     status: 'success',
     amount: paymentAmount1,
     grossAmount: paymentAmount1,
+    currency: 'IDR',
     paymentMethod: 'QRIS',
     issuer: 'BCA QRIS'
   });
@@ -238,7 +239,8 @@ async function runInvoiceChecklist() {
     paymentId: `PAY-INV-${uniqueSuffix2}-2`,
     status: 'success',
     amount: paymentAmount2,
-    grossAmount: paymentAmount2
+    grossAmount: paymentAmount2,
+    currency: 'IDR'
   });
 
   await makeRequest(`/api/private-tour/bookings/${encodeURIComponent(b2.id)}/confirm`, {

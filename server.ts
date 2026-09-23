@@ -81,6 +81,61 @@ class AsyncMutex {
 
 const bookingMutex = new AsyncMutex();
 const bulkImportMutex = new AsyncMutex();
+const catalogMutex = new AsyncMutex();
+
+// -------------------------------------------------------------
+// Safe Public Data Projections for Public API Endpoints
+// Strips sensitive/internal fields (margins, operational notes, costs)
+// -------------------------------------------------------------
+function projectPublicTrip(trip: any) {
+  if (!trip || typeof trip !== 'object') return trip;
+  const {
+    adminNotes,
+    internalNotes,
+    profitMargin,
+    markupFormula,
+    costBreakdown,
+    supplierPrice,
+    supplierCost,
+    privatePricingRules,
+    providerSecrets,
+    credentials,
+    ...publicTrip
+  } = trip;
+  return publicTrip;
+}
+
+function projectPublicBatch(batch: any) {
+  if (!batch || typeof batch !== 'object') return batch;
+  const {
+    adminNotes,
+    internalNotes,
+    costBreakdown,
+    supplierCost,
+    supplierPrice,
+    profitMargin,
+    ...publicBatch
+  } = batch;
+  return publicBatch;
+}
+
+function projectPublicMainTour(tour: any) {
+  if (!tour || typeof tour !== 'object') return tour;
+  const {
+    adminNotes,
+    internalNotes,
+    profitMargin,
+    markupFormula,
+    costBreakdown,
+    supplierPrice,
+    supplierCost,
+    privatePricingRules,
+    providerSecrets,
+    credentials,
+    ...publicTour
+  } = tour;
+  return publicTour;
+}
 
 // Helper to generate a unique booking code: SJ-[6 RANDOM ALPHANUMERIC CHARACTERS]
 function generateUniqueBookingCode(existingCodes: string[]): string {
@@ -517,13 +572,19 @@ function requireAdminAuth(req: express.Request, res: express.Response, next: exp
 // -------------------------------------------------------------
 
 function generateUniquePaymentCode(bookings: Booking[] = []): number {
+  const now = Date.now();
+  const PAYMENT_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours active window for pending payment unique code reservation
   const activePendingUniqueCodes = new Set<number>();
+
   for (const b of bookings) {
     const pStatus = (b.paymentStatus || '').trim().toLowerCase();
     const bStatus = (b.status || '').trim().toLowerCase();
     const isPending = pStatus === 'pending' || pStatus === 'pending payment' || pStatus === 'unpaid';
     const isNotTerminated = !['cancelled', 'canceled', 'rejected', 'failed', 'expired'].includes(bStatus);
-    if (b.uniqueCode && isPending && isNotTerminated) {
+    const createdAtMs = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    const isExpiredByTime = createdAtMs > 0 && (now - createdAtMs > PAYMENT_WINDOW_MS);
+
+    if (b.uniqueCode && isPending && isNotTerminated && !isExpiredByTime) {
       activePendingUniqueCodes.add(Number(b.uniqueCode));
     }
   }
@@ -618,7 +679,7 @@ app.get('/api/main-tours', (req, res) => {
       const isArchived = Boolean((t as any).isArchived || s === 'archived');
       return s === 'published' && !isDeleted && !isArchived;
     });
-    res.json(published);
+    res.json(isAdmin ? published : published.map(projectPublicMainTour));
   } catch (error) {
     console.error('Error fetching main tours:', error);
     res.status(500).json({ error: 'Gagal mengambil data paket tour utama dari database server.' });
@@ -647,7 +708,7 @@ app.get('/api/main-tours/:id', (req, res) => {
       }
     }
     
-    res.json(tour);
+    res.json(isAdmin ? tour : projectPublicMainTour(tour));
   } catch (error) {
     console.error('Error fetching single main tour:', error);
     res.status(500).json({ error: 'Gagal mengambil detail paket tour.' });
@@ -1302,10 +1363,10 @@ app.get('/api/db', (req, res) => {
         participantsCount: b.participantsCount
       }));
       return res.json({
-        trips: db.trips || [],
-        batches: db.batches || [],
+        trips: (db.trips || []).map(projectPublicTrip),
+        batches: (db.batches || []).map(projectPublicBatch),
         bookings: safeBookings,
-        mainTours: db.mainTours || [],
+        mainTours: (db.mainTours || []).map(projectPublicMainTour),
         vehicles: (db as any).vehicles || []
       });
     }
@@ -1318,7 +1379,9 @@ app.get('/api/db', (req, res) => {
 app.get('/api/trips', (req, res) => {
   try {
     const db = readDB();
-    res.json(Array.isArray(db.trips) ? db.trips : []);
+    const trips = Array.isArray(db.trips) ? db.trips : [];
+    const isAdmin = checkIsAdmin(req);
+    res.json(isAdmin ? trips : trips.map(projectPublicTrip));
   } catch {
     res.status(500).json({ error: 'Failed to fetch trips' });
   }
@@ -1331,7 +1394,8 @@ app.get('/api/trips/:id', (req, res) => {
     if (!trip) {
       return res.status(404).json({ error: 'Trip not found' });
     }
-    res.json(trip);
+    const isAdmin = checkIsAdmin(req);
+    res.json(isAdmin ? trip : projectPublicTrip(trip));
   } catch {
     res.status(500).json({ error: 'Failed to fetch trip' });
   }
@@ -1339,109 +1403,117 @@ app.get('/api/trips/:id', (req, res) => {
 
 app.post('/api/import-bulk', requireAdminAuth, async (req, res) => {
   return await bulkImportMutex.runExclusive(async () => {
-    try {
-      const { trips: newTrips, batches: newBatches, mode, expectedRevision, version } = req.body;
-      const db = readDB();
+    return await catalogMutex.runExclusive(async () => {
+      try {
+        const { trips: newTrips, batches: newBatches, mode, expectedRevision, version } = req.body;
+        const db = readDB();
 
-      const currentRevision = Number((db as any).tripsRevision || 1);
-      const clientExpected = expectedRevision !== undefined ? Number(expectedRevision) : (version !== undefined ? Number(version) : undefined);
+        const currentRevision = Number((db as any).tripsRevision || 1);
+        const clientExpected = expectedRevision !== undefined ? Number(expectedRevision) : (version !== undefined ? Number(version) : undefined);
 
-      if (clientExpected !== undefined && !isNaN(clientExpected) && clientExpected !== currentRevision) {
-        return res.status(409).json({
-          error: `Konflik data: Database telah diperbarui oleh administrator lain (revisi saat ini: ${currentRevision}, revisi Anda: ${clientExpected}). Silakan muat ulang halaman.`,
-          currentRevision
-        });
-      }
-
-      if (mode === 'overwrite') {
-        if (!Array.isArray(newTrips) || newTrips.length === 0) {
-          return res.status(400).json({ error: 'Operasi overwrite dibatalkan: payload trips kosong atau tidak valid.' });
+        if (clientExpected !== undefined && !isNaN(clientExpected) && clientExpected !== currentRevision) {
+          return res.status(409).json({
+            error: `Konflik data: Database telah diperbarui oleh administrator lain (revisi saat ini: ${currentRevision}, revisi Anda: ${clientExpected}). Silakan muat ulang halaman.`,
+            currentRevision
+          });
         }
-        if (newBatches !== undefined && !Array.isArray(newBatches)) {
-          return res.status(400).json({ error: 'Payload batches tidak valid.' });
-        }
-        for (const t of newTrips) {
-          if (!t || typeof t !== 'object' || !t.id || !t.title) {
-            return res.status(400).json({ error: 'Item trip tidak valid: setiap trip wajib memiliki id dan title.' });
+
+        if (mode === 'overwrite') {
+          if (!Array.isArray(newTrips) || newTrips.length === 0) {
+            return res.status(400).json({ error: 'Operasi overwrite dibatalkan: payload trips kosong atau tidak valid.' });
+          }
+          if (newBatches !== undefined && !Array.isArray(newBatches)) {
+            return res.status(400).json({ error: 'Payload batches tidak valid.' });
+          }
+          for (const t of newTrips) {
+            if (!t || typeof t !== 'object' || !t.id || !t.title) {
+              return res.status(400).json({ error: 'Item trip tidak valid: setiap trip wajib memiliki id dan title.' });
+            }
+          }
+          db.trips = newTrips;
+          if (Array.isArray(newBatches)) {
+            db.batches = newBatches;
+          }
+        } else {
+          if (newTrips && newTrips.length > 0) {
+            db.trips = [...db.trips, ...newTrips];
+          }
+
+          if (newBatches && newBatches.length > 0) {
+            db.batches = [...db.batches, ...newBatches];
           }
         }
-        db.trips = newTrips;
-        if (Array.isArray(newBatches)) {
-          db.batches = newBatches;
-        }
-      } else {
-        if (newTrips && newTrips.length > 0) {
-          db.trips = [...db.trips, ...newTrips];
-        }
 
-        if (newBatches && newBatches.length > 0) {
-          db.batches = [...db.batches, ...newBatches];
-        }
+        (db as any).tripsRevision = currentRevision + 1;
+        (db as any).tripsUpdatedAt = new Date().toISOString();
+
+        writeDB(db);
+        res.json({
+          success: true,
+          tripsCount: db.trips.length,
+          batchesCount: db.batches.length,
+          revision: (db as any).tripsRevision
+        });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to process bulk import of trips and batches' });
       }
+    });
+  });
+});
 
-      (db as any).tripsRevision = currentRevision + 1;
-      (db as any).tripsUpdatedAt = new Date().toISOString();
+app.post('/api/trips', requireAdminAuth, async (req, res) => {
+  return await catalogMutex.runExclusive(async () => {
+    try {
+      const db = readDB();
 
+      const newTrip: Trip = {
+        ...req.body,
+        id: req.body.id || generateEntityId('trip')
+      };
+
+      db.trips.push(newTrip);
       writeDB(db);
-      res.json({
-        success: true,
-        tripsCount: db.trips.length,
-        batchesCount: db.batches.length,
-        revision: (db as any).tripsRevision
-      });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: 'Failed to process bulk import of trips and batches' });
+      res.status(201).json(newTrip);
+    } catch {
+      res.status(500).json({ error: 'Failed to save trip' });
     }
   });
 });
 
-app.post('/api/trips', requireAdminAuth, (req, res) => {
-  try {
-    const db = readDB();
+app.put('/api/trips/:id', requireAdminAuth, async (req, res) => {
+  return await catalogMutex.runExclusive(async () => {
+    try {
+      const db = readDB();
+      const index = db.trips.findIndex((t) => t.id === req.params.id);
 
-    const newTrip: Trip = {
-      ...req.body,
-      id: req.body.id || generateEntityId('trip')
-    };
+      if (index === -1) {
+        return res.status(404).json({ error: 'Trip not found' });
+      }
 
-    db.trips.push(newTrip);
-    writeDB(db);
-    res.status(201).json(newTrip);
-  } catch {
-    res.status(500).json({ error: 'Failed to save trip' });
-  }
-});
-
-app.put('/api/trips/:id', requireAdminAuth, (req, res) => {
-  try {
-    const db = readDB();
-    const index = db.trips.findIndex((t) => t.id === req.params.id);
-
-    if (index === -1) {
-      return res.status(404).json({ error: 'Trip not found' });
+      db.trips[index] = { ...db.trips[index], ...req.body };
+      writeDB(db);
+      res.json(db.trips[index]);
+    } catch {
+      res.status(500).json({ error: 'Failed to update trip' });
     }
-
-    db.trips[index] = { ...db.trips[index], ...req.body };
-    writeDB(db);
-    res.json(db.trips[index]);
-  } catch {
-    res.status(500).json({ error: 'Failed to update trip' });
-  }
+  });
 });
 
-app.delete('/api/trips/:id', requireAdminAuth, (req, res) => {
-  try {
-    const db = readDB();
+app.delete('/api/trips/:id', requireAdminAuth, async (req, res) => {
+  return await catalogMutex.runExclusive(async () => {
+    try {
+      const db = readDB();
 
-    db.trips = db.trips.filter((t) => t.id !== req.params.id);
-    db.batches = db.batches.filter((b) => b.tripId !== req.params.id);
+      db.trips = db.trips.filter((t) => t.id !== req.params.id);
+      db.batches = db.batches.filter((b) => b.tripId !== req.params.id);
 
-    writeDB(db);
-    res.json({ success: true });
-  } catch {
-    res.status(500).json({ error: 'Failed to delete trip' });
-  }
+      writeDB(db);
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: 'Failed to delete trip' });
+    }
+  });
 });
 
 app.get('/api/batches', (req, res) => {
@@ -1452,7 +1524,8 @@ app.get('/api/batches', (req, res) => {
     if (tripId) {
       batches = batches.filter((b) => b.tripId === tripId);
     }
-    res.json(batches);
+    const isAdmin = checkIsAdmin(req);
+    res.json(isAdmin ? batches : batches.map(projectPublicBatch));
   } catch {
     res.status(500).json({ error: 'Failed to fetch batches' });
   }
@@ -1465,56 +1538,63 @@ app.get('/api/batches/:id', (req, res) => {
     if (!batch) {
       return res.status(404).json({ error: 'Batch not found' });
     }
-    res.json(batch);
+    const isAdmin = checkIsAdmin(req);
+    res.json(isAdmin ? batch : projectPublicBatch(batch));
   } catch {
     res.status(500).json({ error: 'Failed to fetch batch' });
   }
 });
 
-app.post('/api/batches', requireAdminAuth, (req, res) => {
-  try {
-    const db = readDB();
+app.post('/api/batches', requireAdminAuth, async (req, res) => {
+  return await catalogMutex.runExclusive(async () => {
+    try {
+      const db = readDB();
 
-    const newBatch: Batch = {
-      ...req.body,
-      id: req.body.id || generateEntityId('batch')
-    };
+      const newBatch: Batch = {
+        ...req.body,
+        id: req.body.id || generateEntityId('batch')
+      };
 
-    db.batches.push(newBatch);
-    writeDB(db);
-    res.status(201).json(newBatch);
-  } catch {
-    res.status(500).json({ error: 'Failed to create batch' });
-  }
-});
-
-app.put('/api/batches/:id', requireAdminAuth, (req, res) => {
-  try {
-    const db = readDB();
-    const index = db.batches.findIndex((b) => b.id === req.params.id);
-
-    if (index === -1) {
-      return res.status(404).json({ error: 'Batch not found' });
+      db.batches.push(newBatch);
+      writeDB(db);
+      res.status(201).json(newBatch);
+    } catch {
+      res.status(500).json({ error: 'Failed to create batch' });
     }
-
-    db.batches[index] = { ...db.batches[index], ...req.body };
-    writeDB(db);
-    res.json(db.batches[index]);
-  } catch {
-    res.status(500).json({ error: 'Failed to update batch' });
-  }
+  });
 });
 
-app.delete('/api/batches/:id', requireAdminAuth, (req, res) => {
-  try {
-    const db = readDB();
+app.put('/api/batches/:id', requireAdminAuth, async (req, res) => {
+  return await catalogMutex.runExclusive(async () => {
+    try {
+      const db = readDB();
+      const index = db.batches.findIndex((b) => b.id === req.params.id);
 
-    db.batches = db.batches.filter((b) => b.id !== req.params.id);
-    writeDB(db);
-    res.json({ success: true });
-  } catch {
-    res.status(500).json({ error: 'Failed to delete batch' });
-  }
+      if (index === -1) {
+        return res.status(404).json({ error: 'Batch not found' });
+      }
+
+      db.batches[index] = { ...db.batches[index], ...req.body };
+      writeDB(db);
+      res.json(db.batches[index]);
+    } catch {
+      res.status(500).json({ error: 'Failed to update batch' });
+    }
+  });
+});
+
+app.delete('/api/batches/:id', requireAdminAuth, async (req, res) => {
+  return await catalogMutex.runExclusive(async () => {
+    try {
+      const db = readDB();
+
+      db.batches = db.batches.filter((b) => b.id !== req.params.id);
+      writeDB(db);
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: 'Failed to delete batch' });
+    }
+  });
 });
 
 app.post('/api/bookings', async (req, res) => {
@@ -4227,17 +4307,6 @@ function verifyPayment(booking: any, paymentData: any): PaymentVerificationResul
     ''
   ).toUpperCase().trim();
 
-  // Currency Validation: Strictly IDR enforced (Issue 6)
-  const rawCurrency = String(paymentData.currency || rawData.currency || 'IDR').toUpperCase().trim();
-  if (rawCurrency && rawCurrency !== 'IDR') {
-    return {
-      valid: false,
-      status: 'INVALID',
-      error: `Mata uang transaksi ditolak: ${rawCurrency}. Smart Journey hanya menerima transaksi IDR.`,
-      expectedAmount
-    };
-  }
-
   const successStatuses = ['SUCCESS', 'PAID', 'SETTLEMENT', 'COMPLETED', 'CAPTURE', '00', '200', 'SUCCESSFUL', 'APPROVED'];
   const expireStatuses = ['EXPIRED', 'EXPIRE'];
   const failureStatuses = ['FAILED', 'FAILURE', 'CANCELLED', 'CANCELED', 'REJECTED', 'DENIED', 'CANCEL'];
@@ -4271,50 +4340,140 @@ function verifyPayment(booking: any, paymentData: any): PaymentVerificationResul
     };
   }
 
-  // Amount Validation: Ensure amount matches authoritative expected amount exactly (Issue 4)
-  const receivedAmountRaw = paymentData.amount ?? rawData.amount ?? paymentData.gross_amount ?? rawData.gross_amount;
-  if (receivedAmountRaw !== undefined && receivedAmountRaw !== null && receivedAmountRaw !== '') {
-    const receivedAmount = Math.round(Number(receivedAmountRaw));
-    if (!isNaN(receivedAmount) && expectedAmount > 0 && receivedAmount !== expectedAmount) {
-      return {
-        valid: false,
-        status: 'INVALID',
-        error: `Nominal pembayaran tidak sesuai. Diharapkan: Rp ${expectedAmount.toLocaleString('id-ID')}, Diterima: Rp ${receivedAmount.toLocaleString('id-ID')}`,
-        expectedAmount,
-        receivedAmount
-      };
-    }
+  // 1. Currency Validation: Strictly IDR and MANDATORY (Reject if missing or not IDR)
+  const rawCurrencyValue = paymentData.currency ?? rawData.currency ?? paymentData.currencyCode ?? rawData.currencyCode;
+  if (rawCurrencyValue === undefined || rawCurrencyValue === null || String(rawCurrencyValue).trim() === '') {
+    return {
+      valid: false,
+      status: 'INVALID',
+      error: 'Mata uang (currency) wajib dicantumkan oleh payment provider.',
+      expectedAmount
+    };
+  }
+  const rawCurrency = String(rawCurrencyValue).toUpperCase().trim();
+  if (rawCurrency !== 'IDR') {
+    return {
+      valid: false,
+      status: 'INVALID',
+      error: `Mata uang transaksi ditolak: ${rawCurrency}. Smart Journey hanya menerima transaksi IDR.`,
+      expectedAmount
+    };
   }
 
-  // Order ID Validation if provided
+  // 2. Amount Validation: MANDATORY, PARSED, EXACT MATCH
+  const receivedAmountRaw = paymentData.amount ?? rawData.amount ?? paymentData.gross_amount ?? rawData.gross_amount ?? paymentData.grossAmount ?? rawData.grossAmount;
+  if (receivedAmountRaw === undefined || receivedAmountRaw === null || String(receivedAmountRaw).trim() === '') {
+    return {
+      valid: false,
+      status: 'INVALID',
+      error: 'Nominal pembayaran (amount) wajib disertakan oleh payment provider.',
+      expectedAmount
+    };
+  }
+  const receivedAmount = Math.round(Number(receivedAmountRaw));
+  if (isNaN(receivedAmount) || typeof receivedAmount !== 'number' || receivedAmount <= 0) {
+    return {
+      valid: false,
+      status: 'INVALID',
+      error: 'Nominal pembayaran (amount) bukan angka yang valid.',
+      expectedAmount
+    };
+  }
+  if (expectedAmount <= 0 || receivedAmount !== expectedAmount) {
+    return {
+      valid: false,
+      status: 'INVALID',
+      error: `Nominal pembayaran tidak sesuai. Diharapkan: Rp ${expectedAmount.toLocaleString('id-ID')}, Diterima: Rp ${receivedAmount.toLocaleString('id-ID')}`,
+      expectedAmount,
+      receivedAmount
+    };
+  }
+
+  // 3. Transaction Identity Validation: MANDATORY AT LEAST ONE MATCHING IDENTIFIER
   const receivedOrderId = String(
     paymentData.orderId || 
     paymentData.order_id || 
+    paymentData.orderID ||
     rawData.orderId || 
     rawData.order_id || 
+    paymentData.metadata?.orderId ||
+    rawData.metadata?.orderId ||
     ''
   ).trim();
 
+  const receivedPaymentId = String(
+    paymentData.paymentId || 
+    paymentData.payment_id || 
+    paymentData.id || 
+    rawData.paymentId || 
+    rawData.payment_id || 
+    rawData.id || 
+    paymentData.transaction_id || 
+    paymentData.transactionId || 
+    rawData.transaction_id || 
+    rawData.transactionId || 
+    ''
+  ).trim();
+
+  const receivedPaymentIntentId = String(
+    paymentData.paymentIntentId || 
+    paymentData.payment_intent_id || 
+    rawData.paymentIntentId || 
+    rawData.payment_intent_id || 
+    ''
+  ).trim();
+
+  if (!receivedOrderId && !receivedPaymentId && !receivedPaymentIntentId) {
+    return {
+      valid: false,
+      status: 'INVALID',
+      error: 'Identifier transaksi (orderId/paymentId/paymentIntentId) wajib disertakan oleh payment provider.',
+      expectedAmount
+    };
+  }
+
+  const bCode = String(booking.bookingCode || '').trim().toLowerCase();
+  const bId = String(booking.id || '').trim().toLowerCase();
+  const bPaymentIntentId = String(booking.paymentIntentId || '').trim().toLowerCase();
+  const bPaymentId = String(booking.paymentId || '').trim().toLowerCase();
+
+  let identityMatched = false;
+
   if (receivedOrderId) {
-    const expectedOrderId = String(booking.bookingCode || booking.id || '').trim();
-    if (
-      receivedOrderId.toLowerCase() !== expectedOrderId.toLowerCase() && 
-      receivedOrderId.toLowerCase() !== String(booking.id || '').toLowerCase() &&
-      receivedOrderId.toLowerCase() !== String(booking.bookingCode || '').toLowerCase()
-    ) {
-      return {
-        valid: false,
-        status: 'INVALID',
-        error: `Order ID tidak sesuai. Diharapkan: ${expectedOrderId}, Diterima: ${receivedOrderId}`,
-        expectedAmount
-      };
+    const oLower = receivedOrderId.toLowerCase();
+    if (oLower === bCode || oLower === bId) {
+      identityMatched = true;
     }
+  }
+
+  if (!identityMatched && receivedPaymentIntentId) {
+    const piLower = receivedPaymentIntentId.toLowerCase();
+    if (piLower === bPaymentIntentId || piLower === bId) {
+      identityMatched = true;
+    }
+  }
+
+  if (!identityMatched && receivedPaymentId) {
+    const pLower = receivedPaymentId.toLowerCase();
+    if (pLower === bPaymentId || pLower === bPaymentIntentId || pLower === bId) {
+      identityMatched = true;
+    }
+  }
+
+  if (!identityMatched) {
+    return {
+      valid: false,
+      status: 'INVALID',
+      error: `Identifier transaksi tidak cocok dengan pemesanan. Diterima: orderId=${receivedOrderId || '-'}, paymentId=${receivedPaymentId || '-'}, paymentIntentId=${receivedPaymentIntentId || '-'}`,
+      expectedAmount
+    };
   }
 
   return {
     valid: true,
     status: 'PAID',
-    expectedAmount
+    expectedAmount,
+    receivedAmount
   };
 }
 
@@ -4322,7 +4481,10 @@ function verifyPayment(booking: any, paymentData: any): PaymentVerificationResul
 app.post(['/api/artopay/webhook', '/artopay/webhook'], (req, res) => {
   try {
     const body = req.body || {};
-    console.log('[ArtoPay Webhook Callback Received]:', JSON.stringify(body));
+    const logOrderId = body.orderId || body.order_id || body.orderID || body.data?.orderId || body.data?.order_id || '-';
+    const logPaymentId = body.id || body.paymentId || body.payment_id || body.data?.id || body.data?.paymentId || '-';
+    const logStatus = body.status || body.transaction_status || body.payment_status || '-';
+    console.log(`[ArtoPay Webhook Callback Received] orderId=${logOrderId}, paymentId=${logPaymentId}, status=${logStatus}`);
 
     // Webhook Signature verification if signature header or signature parameter is supplied
     const incomingSignature = 
@@ -4356,7 +4518,10 @@ app.post(['/api/artopay/webhook', '/artopay/webhook'], (req, res) => {
         .update(rawPayload)
         .digest('hex');
 
-      if (incomingSignature.toLowerCase() !== expectedSignature.toLowerCase()) {
+      const incomingBuf = Buffer.from(incomingSignature.toLowerCase(), 'utf8');
+      const expectedBuf = Buffer.from(expectedSignature.toLowerCase(), 'utf8');
+
+      if (incomingBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(incomingBuf, expectedBuf)) {
         console.error('[ArtoPay Webhook Security] FAIL-CLOSED: Invalid webhook signature received.');
         return res.status(401).json({ error: 'Invalid webhook signature' });
       }

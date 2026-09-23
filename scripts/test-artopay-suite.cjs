@@ -163,6 +163,7 @@ async function runTests() {
     const resG = await makeRequest('/api/artopay/webhook', { method: 'POST' }, {
       orderId: testOrderId,
       amount: createdBooking.paymentAmount,
+      currency: 'IDR',
       paymentId: `PAY-${Date.now()}`,
       transaction_status: 'settlement'
     });
@@ -186,6 +187,8 @@ async function runTests() {
     const resH = await makeRequest('/api/artopay/webhook', { method: 'POST' }, {
       orderId: testOrderId,
       amount: createdBooking.paymentAmount,
+      currency: 'IDR',
+      paymentId: `PAY-${Date.now()}`,
       transaction_status: 'settlement'
     });
     assert(resH.status === 200, 'Second webhook call for same Paid order returns 200 OK');
@@ -259,7 +262,12 @@ async function runTests() {
     // ----------------------------------------------------
     console.log('\n--- TEST K: Webhook Signature Header Handling ---');
     const secret = (process.env.WEBHOOK_SECRET || process.env.ARTOPAY_SECRET_KEY || '').trim();
-    const sigPayload = JSON.stringify({ orderId: testOrderId, status: 'PAID' });
+    const sigPayload = JSON.stringify({
+      orderId: testOrderId,
+      status: 'PAID',
+      amount: createdBooking.paymentAmount,
+      currency: 'IDR'
+    });
     const signature = crypto.createHmac('sha256', secret).update(sigPayload).digest('hex');
 
     const resK = await makeRequest('/api/artopay/webhook', {
