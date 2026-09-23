@@ -17005,9 +17005,1099 @@
       },
       "discount": 0,
       "adminNotes": ""
+    },
+    {
+      "id": "SJ-TEST-374972",
+      "bookingCode": "SJ-TEST-374972",
+      "serviceType": "tour",
+      "serviceId": "tour-custom",
+      "type": "tour",
+      "tripId": "tour-custom",
+      "tripTitle": "Bromo Sunrise Tour",
+      "serviceName": "Bromo Sunrise Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-23",
+      "fullName": "Audit Test Traveler",
+      "customerName": "Audit Test Traveler",
+      "email": "audit@example.com",
+      "customerEmail": "audit@example.com",
+      "phone": "+628123456789",
+      "customerPhone": "+628123456789",
+      "participantsCount": 2,
+      "participantsNames": [
+        "Audit Test Traveler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Confirmed",
+      "paymentStatus": "Paid",
+      "totalPrice": 500000,
+      "totalPriceIDR": 500000,
+      "baseAmount": 500000,
+      "uniqueCode": 48,
+      "paymentAmount": 500048,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:32:54.993Z",
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-custom",
+        "tourName": "Bromo Sunrise Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 500000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": "",
+      "paidAt": "2026-09-23T03:32:55.052Z",
+      "paymentId": "PAY-1790134375031",
+      "rejectReason": ""
+    },
+    {
+      "id": "SJ-FAIL-375227",
+      "bookingCode": "SJ-FAIL-375227",
+      "serviceType": "tour",
+      "serviceId": "tour-custom",
+      "type": "tour",
+      "tripId": "tour-custom",
+      "tripTitle": "Private Tour",
+      "serviceName": "Private Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-23",
+      "fullName": "Fail Test Traveler",
+      "customerName": "Fail Test Traveler",
+      "email": "fail@example.com",
+      "customerEmail": "fail@example.com",
+      "phone": "N/A",
+      "customerPhone": "N/A",
+      "participantsCount": 1,
+      "participantsNames": [
+        "Fail Test Traveler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Cancelled",
+      "paymentStatus": "Expired",
+      "totalPrice": 750000,
+      "totalPriceIDR": 750000,
+      "baseAmount": 750000,
+      "uniqueCode": 57,
+      "paymentAmount": 750057,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:32:55.244Z",
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-custom",
+        "tourName": "Private Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 750000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": ""
+    },
+    {
+      "id": "book-1790134375466-7edf7f0aa482",
+      "bookingCode": "SJ-WJY64T",
+      "serviceType": "tour",
+      "serviceId": "bromo",
+      "type": "tour",
+      "tripId": "bromo",
+      "tripTitle": "Bromo Sunrise & Crater Safari",
+      "serviceName": "Bromo Sunrise & Crater Safari",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-23",
+      "fullName": "Matrix Traveler 375435",
+      "customerName": "Matrix Traveler 375435",
+      "email": "matrix.375435@example.com",
+      "customerEmail": "matrix.375435@example.com",
+      "phone": "+6281234567890",
+      "customerPhone": "+6281234567890",
+      "participantsCount": 2,
+      "participantsNames": [
+        "Matrix Traveler 375435"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Pending",
+      "paymentStatus": "Pending",
+      "totalPrice": 1000,
+      "totalPriceIDR": 1000,
+      "baseAmount": 1000,
+      "uniqueCode": 99,
+      "paymentAmount": 1099,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:32:55.466Z",
+      "participantData": {
+        "pickupLocation": "Hotel Tugu Malang",
+        "paymentMethod": "artopay",
+        "members": [
+          {
+            "name": "Matrix Traveler",
+            "nationality": "Indonesia"
+          },
+          {
+            "name": "Companion",
+            "nationality": "Indonesia"
+          }
+        ]
+      },
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "bromo",
+        "tourName": "Bromo Sunrise & Crater Safari",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 1000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": ""
+    },
+    {
+      "id": "SJ-SEC-379803",
+      "bookingCode": "SJ-SEC-379803",
+      "serviceType": "tour",
+      "serviceId": "tour-custom",
+      "type": "tour",
+      "tripId": "tour-custom",
+      "tripTitle": "Private Tour",
+      "serviceName": "Private Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-23",
+      "fullName": "Security Audit Traveler",
+      "customerName": "Security Audit Traveler",
+      "email": "audit@example.com",
+      "customerEmail": "audit@example.com",
+      "phone": "N/A",
+      "customerPhone": "N/A",
+      "participantsCount": 1,
+      "participantsNames": [
+        "Security Audit Traveler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Pending Confirmation",
+      "paymentStatus": "Paid",
+      "totalPrice": 100000,
+      "totalPriceIDR": 100000,
+      "baseAmount": 100000,
+      "uniqueCode": 3,
+      "paymentAmount": 100003,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:32:59.823Z",
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-custom",
+        "tourName": "Private Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 100000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": "",
+      "paidAt": "2026-09-23T03:32:59.862Z"
+    },
+    {
+      "id": "SJ-AMT-379883",
+      "bookingCode": "SJ-AMT-379883",
+      "serviceType": "tour",
+      "serviceId": "tour-custom",
+      "type": "tour",
+      "tripId": "tour-custom",
+      "tripTitle": "Private Tour",
+      "serviceName": "Private Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-23",
+      "fullName": "Amount Test Traveler",
+      "customerName": "Amount Test Traveler",
+      "email": "amount@example.com",
+      "customerEmail": "amount@example.com",
+      "phone": "N/A",
+      "customerPhone": "N/A",
+      "participantsCount": 1,
+      "participantsNames": [
+        "Amount Test Traveler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Pending Confirmation",
+      "paymentStatus": "Paid",
+      "totalPrice": 100000,
+      "totalPriceIDR": 100000,
+      "baseAmount": 100000,
+      "uniqueCode": 51,
+      "paymentAmount": 100051,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:32:59.901Z",
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-custom",
+        "tourName": "Private Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 100000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": "",
+      "paidAt": "2026-09-23T03:33:00.005Z"
+    },
+    {
+      "id": "SJ-VER-380290",
+      "bookingCode": "SJ-VER-380290",
+      "serviceType": "tour",
+      "serviceId": "tour-custom",
+      "type": "tour",
+      "tripId": "tour-custom",
+      "tripTitle": "Private Tour",
+      "serviceName": "Private Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-23",
+      "fullName": "Verification Traveler",
+      "customerName": "Verification Traveler",
+      "email": "verify@example.com",
+      "customerEmail": "verify@example.com",
+      "phone": "N/A",
+      "customerPhone": "N/A",
+      "participantsCount": 1,
+      "participantsNames": [
+        "Verification Traveler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Pending Confirmation",
+      "paymentStatus": "Paid",
+      "totalPrice": 100000,
+      "totalPriceIDR": 100000,
+      "baseAmount": 100000,
+      "uniqueCode": 9,
+      "paymentAmount": 100009,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:33:00.306Z",
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-custom",
+        "tourName": "Private Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 100000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": "",
+      "paidAt": "2026-09-23T03:33:00.342Z"
+    },
+    {
+      "id": "SJ-AMT-380360",
+      "bookingCode": "SJ-AMT-380360",
+      "serviceType": "tour",
+      "serviceId": "tour-custom",
+      "type": "tour",
+      "tripId": "tour-custom",
+      "tripTitle": "Private Tour",
+      "serviceName": "Private Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-23",
+      "fullName": "Amount Traveler",
+      "customerName": "Amount Traveler",
+      "email": "amount@example.com",
+      "customerEmail": "amount@example.com",
+      "phone": "N/A",
+      "customerPhone": "N/A",
+      "participantsCount": 1,
+      "participantsNames": [
+        "Amount Traveler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Pending Confirmation",
+      "paymentStatus": "Paid",
+      "totalPrice": 100000,
+      "totalPriceIDR": 100000,
+      "baseAmount": 100000,
+      "uniqueCode": 21,
+      "paymentAmount": 100021,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:33:00.378Z",
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-custom",
+        "tourName": "Private Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 100000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": "",
+      "paidAt": "2026-09-23T03:33:00.495Z"
+    },
+    {
+      "id": "book-1790134385032-0554532d607e",
+      "bookingCode": "SJ-SGUAXN",
+      "serviceType": "tour",
+      "serviceId": "tour-1790040870848",
+      "type": "tour",
+      "tripId": "tour-1790040870848",
+      "tripTitle": "sdfsdfsdfsd",
+      "serviceName": "sdfsdfsdfsd",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-12-01",
+      "fullName": "Mr. Attacker",
+      "customerName": "Mr. Attacker",
+      "email": "attacker@example.com",
+      "customerEmail": "attacker@example.com",
+      "phone": "081299998888",
+      "customerPhone": "081299998888",
+      "participantsCount": 1,
+      "participantsNames": [
+        "Mr. Attacker"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Pending",
+      "paymentStatus": "Pending",
+      "totalPrice": 1500000,
+      "totalPriceIDR": 1500000,
+      "baseAmount": 1500000,
+      "uniqueCode": 71,
+      "paymentAmount": 1500071,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:33:05.032Z",
+      "details": {
+        "duration": "2 Days / 1 Night",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-1790040870848",
+        "tourName": "sdfsdfsdfsd",
+        "duration": "2 Days / 1 Night",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 1500000,
+        "highlights": [
+          "sdfsdfsd"
+        ],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": ""
+    },
+    {
+      "id": "book-1790134385080-81129f671126",
+      "bookingCode": "SJ-C26PXX",
+      "serviceType": "tour",
+      "serviceId": "tour-1790040870848",
+      "type": "tour",
+      "tripId": "tour-1790040870848",
+      "tripTitle": "sdfsdfsdfsd",
+      "serviceName": "sdfsdfsdfsd",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-12-02",
+      "fullName": "Ms. Forger",
+      "customerName": "Ms. Forger",
+      "email": "forger@example.com",
+      "customerEmail": "forger@example.com",
+      "phone": "081277776666",
+      "customerPhone": "081277776666",
+      "participantsCount": 1,
+      "participantsNames": [
+        "Ms. Forger"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Pending",
+      "paymentStatus": "Pending",
+      "totalPrice": 1500000,
+      "totalPriceIDR": 1500000,
+      "baseAmount": 1500000,
+      "uniqueCode": 57,
+      "paymentAmount": 1500057,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:33:05.080Z",
+      "details": {
+        "duration": "2 Days / 1 Night",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-1790040870848",
+        "tourName": "sdfsdfsdfsd",
+        "duration": "2 Days / 1 Night",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 1500000,
+        "highlights": [
+          "sdfsdfsd"
+        ],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": ""
+    },
+    {
+      "id": "book-1790134385224-dad3603551a2",
+      "bookingCode": "SJ-M8FVKD",
+      "serviceType": "tour",
+      "serviceId": "tour-1790040870848",
+      "type": "tour",
+      "tripId": "tour-1790040870848",
+      "tripTitle": "sdfsdfsdfsd",
+      "serviceName": "sdfsdfsdfsd",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-12-10",
+      "fullName": "Fake Price Tester",
+      "customerName": "Fake Price Tester",
+      "email": "fakeprice@example.com",
+      "customerEmail": "fakeprice@example.com",
+      "phone": "081255551111",
+      "customerPhone": "081255551111",
+      "participantsCount": 1,
+      "participantsNames": [
+        "Fake Price Tester"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Pending Confirmation",
+      "paymentStatus": "Paid",
+      "totalPrice": 1500000,
+      "totalPriceIDR": 1500000,
+      "baseAmount": 1500000,
+      "uniqueCode": 29,
+      "paymentAmount": 1500029,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:33:05.224Z",
+      "details": {
+        "duration": "2 Days / 1 Night",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-1790040870848",
+        "tourName": "sdfsdfsdfsd",
+        "duration": "2 Days / 1 Night",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 1500000,
+        "highlights": [
+          "sdfsdfsd"
+        ],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": ""
+    },
+    {
+      "id": "book-1790134385411-1872368db7c1",
+      "bookingCode": "SJ-AQ3UDV",
+      "serviceType": "tour",
+      "serviceId": "tour-bromo-sunrise-safari",
+      "type": "tour",
+      "tripId": "tour-bromo-sunrise-safari",
+      "tripTitle": "Bromo Sunrise & Crater Safari",
+      "serviceName": "Bromo Sunrise & Crater Safari",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-10-25",
+      "fullName": "Alexander Hamilton",
+      "customerName": "Alexander Hamilton",
+      "email": "alexander@hamilton.test",
+      "customerEmail": "alexander@hamilton.test",
+      "phone": "+6281198765432",
+      "customerPhone": "+6281198765432",
+      "participantsCount": 3,
+      "participantsNames": [
+        "Alexander Hamilton",
+        "Elizabeth Schuyler",
+        "Angelica Schuyler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Confirmed",
+      "paymentStatus": "Paid",
+      "totalPrice": 2850000,
+      "totalPriceIDR": 2850000,
+      "baseAmount": 2850000,
+      "uniqueCode": 19,
+      "paymentAmount": 2850019,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:33:05.411Z",
+      "participantData": {
+        "pickupLocation": "Hotel Tugu Malang",
+        "dropoffLocation": "Stasiun Kota Baru Malang",
+        "paymentMethod": "artopay",
+        "members": [
+          {
+            "name": "Alexander Hamilton",
+            "nationality": "Indonesia"
+          },
+          {
+            "name": "Elizabeth Schuyler",
+            "nationality": "Indonesia"
+          },
+          {
+            "name": "Angelica Schuyler",
+            "nationality": "Indonesia"
+          }
+        ]
+      },
+      "details": {
+        "date": "2026-10-25",
+        "package": "Private Exclusive VIP",
+        "duration": "2 Hari 1 Malam",
+        "vehicleName": "Toyota HiAce Premio Luxury",
+        "pickupLocation": "Hotel Tugu Malang",
+        "itinerary": [
+          "Day 1 - Malang → Bromo | 10:00 | Penjemputan | Hotel Tugu Malang",
+          "Day 1 - Malang → Bromo | 13:00 | Makan Siang | Resto Rawon Nguling",
+          "Day 2 - Bromo → Malang | 03:00 | Sunrise Tour | Puncak Penanjakan Bromo"
+        ]
+      },
+      "tourSnapshot": {
+        "tourId": "tour-bromo-sunrise-safari",
+        "tourName": "Bromo Sunrise & Crater Safari",
+        "duration": "2 Hari 1 Malam",
+        "vehicleName": "Toyota HiAce Premio Luxury",
+        "startingPriceIDR": 2850000,
+        "highlights": [
+          "Sunrise Penanjakan 1 Tanpa Antre",
+          "Private 4x4 Jeep Safari",
+          "Stay at Caldera Viewpoint Lodge",
+          "Trekking Kawah Bromo & Savana Hijau"
+        ],
+        "itinerary": [
+          "Day 1 - Malang → Bromo | 10:00 | Penjemputan | Hotel Tugu Malang",
+          "Day 1 - Malang → Bromo | 13:00 | Makan Siang | Resto Rawon Nguling",
+          "Day 2 - Bromo → Malang | 03:00 | Sunrise Tour | Puncak Penanjakan Bromo"
+        ]
+      },
+      "discount": 0,
+      "adminNotes": "Confirmed by Operations Lead.",
+      "paidAt": "2026-09-23T03:33:05.487Z",
+      "paymentId": "PAY-ARTOPAY-385370",
+      "confirmedAt": "2026-09-23T03:33:05.617Z",
+      "verificationHash": "SJ-VERIFIED-SJAQ3UDV-3305617Z"
+    },
+    {
+      "id": "book-1790134388003-ff435b2ccd18",
+      "bookingCode": "SJ-M4FMTQ",
+      "serviceType": "tour",
+      "serviceId": "tour-bromo-sunrise-safari",
+      "type": "tour",
+      "tripId": "tour-bromo-sunrise-safari",
+      "tripTitle": "Bromo Sunrise & Crater Safari",
+      "serviceName": "Bromo Sunrise & Crater Safari",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-23",
+      "fullName": "Regression Tester",
+      "customerName": "Regression Tester",
+      "email": "customer@example.com",
+      "customerEmail": "customer@example.com",
+      "phone": "N/A",
+      "customerPhone": "N/A",
+      "participantsCount": 1,
+      "participantsNames": [
+        "Regression Tester"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Pending",
+      "paymentStatus": "Pending",
+      "totalPrice": 2850000,
+      "totalPriceIDR": 2850000,
+      "baseAmount": 2850000,
+      "uniqueCode": 86,
+      "paymentAmount": 2850086,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:33:08.003Z",
+      "details": {
+        "duration": "2 Hari 1 Malam",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-bromo-sunrise-safari",
+        "tourName": "Bromo Sunrise & Crater Safari",
+        "duration": "2 Hari 1 Malam",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 2850000,
+        "highlights": [
+          "Sunrise Penanjakan 1 Tanpa Antre",
+          "Private 4x4 Jeep Safari",
+          "Stay at Caldera Viewpoint Lodge",
+          "Trekking Kawah Bromo & Savana Hijau"
+        ],
+        "itinerary": [
+          "Day 1 - Malang → Bromo | 10:00 | Penjemputan | Hotel / Stasiun / Bandara",
+          "Day 1 - Malang → Bromo | 13:00 | Makan Siang | Resto Lokal Khas Tengger",
+          "Day 1 - Bromo | 15:30 | Check-in Lodge | Istirahat menikmati kabut pegunungan",
+          "Day 2 - Bromo → Malang | 03:00 | Sunrise Tour | Puncak Penanjakan Bromo",
+          "Day 2 - Bromo | 06:00 | Crater Hike | Kawah Aktif Bromo & Pasir Berbisik",
+          "Day 2 - Bromo → Malang | 11:00 | Check-out & Drop | Pengantaran kembali ke Malang/Surabaya"
+        ]
+      },
+      "discount": 0,
+      "adminNotes": ""
+    },
+    {
+      "id": "book-1790134392602-22976dadea64",
+      "bookingCode": "SJ-56L5JV",
+      "serviceType": "tour",
+      "serviceId": "tour-bromo-private",
+      "type": "tour",
+      "tripId": "tour-bromo-private",
+      "tripTitle": "Bromo Sunrise Exclusive Tour",
+      "serviceName": "Bromo Sunrise Exclusive Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-10-15",
+      "fullName": "David Miller",
+      "customerName": "David Miller",
+      "email": "david.miller.392565@example.com",
+      "customerEmail": "david.miller.392565@example.com",
+      "phone": "+6281234567890",
+      "customerPhone": "+6281234567890",
+      "participantsCount": 3,
+      "participantsNames": [
+        "David Miller",
+        "Sarah Miller",
+        "Leo Miller"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Confirmed",
+      "paymentStatus": "Paid",
+      "totalPrice": 3600000,
+      "totalPriceIDR": 3600000,
+      "baseAmount": 3600000,
+      "uniqueCode": 12,
+      "paymentAmount": 3600012,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:33:12.602Z",
+      "details": {
+        "pickupLocation": "Hotel Tugu Malang Lobby",
+        "pickupTime": "00:30 WIB",
+        "vehicleName": "Toyota HiAce Premio Luxury",
+        "package": "Private VIP Platinum",
+        "duration": "1 Hari"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-bromo-private",
+        "tourName": "Bromo Sunrise Exclusive Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Toyota HiAce Premio Luxury",
+        "startingPriceIDR": 3600000,
+        "highlights": [
+          "Layanan VIP Eksklusif",
+          "Armada Eksekutif Terbaru",
+          "Jeep Bromo Khusus Rombongan Anda",
+          "Dokumentasi Foto Kualitas Tinggi"
+        ],
+        "itinerary": [
+          "Day 1 | 00:00 | VIP Pickup | Penjemputan di Surabaya/Malang dengan armada VIP",
+          "Day 1 | 03:00 | Jeep Eksklusif | Naik Jeep Bromo privat menuju Seruni Point / Penanjakan",
+          "Day 1 | 05:00 | Sunrise & Snack | Menikmati sunrise hangat ditemani kopi/teh dan snack",
+          "Day 1 | 07:00 | Kawah & Pura | Eksplorasi Kawah Bromo, Pasir Berbisik, & Bukit Teletubbies",
+          "Day 1 | 11:00 | Kuliner Lokal | Santap siang menu khas Jawa Timur",
+          "Day 1 | 14:00 | VIP Drop-off | Pengantaran kembali ke Surabaya/Malang"
+        ]
+      },
+      "nationalityType": "WNA_EUROPE",
+      "discount": 0,
+      "adminNotes": "Confirmed by Lead Dispatcher.",
+      "paidAt": "2026-09-23T03:33:12.642Z",
+      "paymentId": "PAY-INV-392565-1",
+      "confirmedAt": "2026-09-23T03:33:12.719Z",
+      "verificationHash": "SJ-VERIFIED-SJ56L5JV-3312719Z"
+    },
+    {
+      "id": "book-1790134395543-c54c333a531c",
+      "bookingCode": "SJ-J6KM2Z",
+      "serviceType": "tour",
+      "serviceId": "tour-komodo-private",
+      "type": "tour",
+      "tripId": "tour-komodo-private",
+      "tripTitle": "Komodo Island Overland & Boat Tour",
+      "serviceName": "Komodo Island Overland & Boat Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-11-20",
+      "fullName": "Chen Wei",
+      "customerName": "Chen Wei",
+      "email": "chen.wei.395515b@example.com",
+      "customerEmail": "chen.wei.395515b@example.com",
+      "phone": "+6281987654321",
+      "customerPhone": "+6281987654321",
+      "participantsCount": 2,
+      "participantsNames": [
+        "Chen Wei"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Confirmed",
+      "paymentStatus": "Paid",
+      "totalPrice": 5000000,
+      "totalPriceIDR": 5000000,
+      "baseAmount": 5000000,
+      "uniqueCode": 31,
+      "paymentAmount": 5000031,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:33:15.543Z",
+      "details": {
+        "pickupLocation": "Komodo Airport Labuan Bajo",
+        "package": "VIP Island Hopper",
+        "duration": "3 Hari 2 Malam",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-komodo-private",
+        "tourName": "Komodo Island Overland & Boat Tour",
+        "duration": "3 Hari 2 Malam",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 5000000,
+        "highlights": [
+          "Trekking Pulau Padar View 3 Warna Pantai",
+          "Melihat Komodo Dragon bersama Ranger",
+          "Snorkeling di Pink Beach & Manta Point",
+          "Speedboat Phinisi Eksklusif"
+        ],
+        "itinerary": [
+          "Day 1 | 09:00 | Penjemputan Labuan Bajo | Bandara Komodo (LBJ) ke Pelabuhan Labuan Bajo",
+          "Day 1 | 11:00 | Pulau Kelor & Manjarite | Snorkeling terumbu karang dan pantai pasir putih",
+          "Day 1 | 17:30 | Sunset Pulau Kalong | Menyaksikan ribuan kelelawar terbang saat senja",
+          "Day 2 | 05:30 | Sunrise Pulau Padar | Trekking puncak Pulau Padar untuk panorama legendaris",
+          "Day 2 | 09:00 | Pink Beach & Komodo | Relaksasi di Pink Beach dan jelajah Pulau Komodo",
+          "Day 2 | 14:00 | Manta Point | Berenang dan snorkeling bersama Pari Manta liar",
+          "Day 3 | 08:00 | Gua Rangko | Berenang di gua air asin kristal sebelum transfer bandara"
+        ]
+      },
+      "nationalityType": "WNA_CHINA",
+      "items": [
+        {
+          "no": 1,
+          "description": "Komodo Island Speedboat Charter (Private)",
+          "qty": "1 Boat",
+          "unitPrice": 3500000,
+          "amount": 3500000
+        },
+        {
+          "no": 2,
+          "description": "Komodo National Park Ranger & Guide Service",
+          "qty": "2 Pax",
+          "unitPrice": 500000,
+          "amount": 1000000
+        },
+        {
+          "no": 3,
+          "description": "Snorkeling Gear & Safety Equipment Rental",
+          "qty": "2 Set",
+          "unitPrice": 250000,
+          "amount": 500000
+        }
+      ],
+      "discount": 0,
+      "adminNotes": "Confirmed VIP Komodo Tour",
+      "paidAt": "2026-09-23T03:33:15.575Z",
+      "paymentId": "PAY-INV-395515b-2",
+      "confirmedAt": "2026-09-23T03:33:15.622Z",
+      "verificationHash": "SJ-VERIFIED-SJJ6KM2Z-3315622Z"
+    },
+    {
+      "id": "book-1790134398942-61dcae6a5e5b",
+      "bookingCode": "SJ-9TGUBP",
+      "serviceType": "tour",
+      "serviceId": "bromo",
+      "type": "tour",
+      "tripId": "bromo",
+      "tripTitle": "Bromo Sunrise & Crater Safari",
+      "serviceName": "Bromo Sunrise & Crater Safari",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-10-15",
+      "fullName": "Ahmad Syahrul 398415",
+      "customerName": "Ahmad Syahrul 398415",
+      "email": "ahmad.398415@example.com",
+      "customerEmail": "ahmad.398415@example.com",
+      "phone": "+6281234567890",
+      "customerPhone": "+6281234567890",
+      "participantsCount": 3,
+      "participantsNames": [
+        "Ahmad Syahrul",
+        "Dewi Lestari",
+        "Rian Hidayat"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Confirmed",
+      "paymentStatus": "Paid",
+      "totalPrice": 2500000,
+      "totalPriceIDR": 2500000,
+      "baseAmount": 2500000,
+      "uniqueCode": 69,
+      "paymentAmount": 2500069,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:33:18.942Z",
+      "participantData": {
+        "pickupLocation": "Hotel Tugu Malang",
+        "dropoffLocation": "Stasiun Kota Baru Malang",
+        "paymentMethod": "artopay",
+        "members": [
+          {
+            "name": "Ahmad Syahrul",
+            "nationality": "Indonesia"
+          },
+          {
+            "name": "Dewi Lestari",
+            "nationality": "Indonesia"
+          },
+          {
+            "name": "Rian Hidayat",
+            "nationality": "Indonesia"
+          }
+        ]
+      },
+      "details": {
+        "date": "2026-10-15",
+        "package": "Bromo Exclusive VIP",
+        "guests": 3,
+        "vehicleName": "Toyota HiAce Premio Luxury",
+        "pickupLocation": "Hotel Tugu Malang",
+        "dropoffLocation": "Stasiun Kota Baru Malang",
+        "itinerary": [
+          {
+            "day": "Hari 1",
+            "title": "Penjemputan & Sunrise Penanjakan",
+            "desc": "Penjemputan dini hari menuju Spot Sunrise Penanjakan 1 Bromo"
+          },
+          {
+            "day": "Hari 1 Siang",
+            "title": "Kawah Bromo & Pasir Berbisik",
+            "desc": "Eksplorasi Kaldera, Kawah Aktif, Pasir Berbisik, dan Bukit Teletubbies"
+          }
+        ],
+        "duration": "1 Hari"
+      },
+      "tourSnapshot": {
+        "tourId": "bromo",
+        "tourName": "Bromo Sunrise & Crater Safari",
+        "duration": "1 Hari",
+        "vehicleName": "Toyota HiAce Premio Luxury",
+        "startingPriceIDR": 2500000,
+        "highlights": [],
+        "itinerary": [
+          {
+            "day": "Hari 1",
+            "title": "Penjemputan & Sunrise Penanjakan",
+            "desc": "Penjemputan dini hari menuju Spot Sunrise Penanjakan 1 Bromo"
+          },
+          {
+            "day": "Hari 1 Siang",
+            "title": "Kawah Bromo & Pasir Berbisik",
+            "desc": "Eksplorasi Kaldera, Kawah Aktif, Pasir Berbisik, dan Bukit Teletubbies"
+          }
+        ]
+      },
+      "discount": 0,
+      "adminNotes": "Verified and confirmed by Operations Lead. Driver assigned.",
+      "paidAt": "2026-09-23T03:33:19.099Z",
+      "paymentId": "PAY-ARTOPAY-398415",
+      "confirmedAt": "2026-09-23T03:33:19.266Z",
+      "verificationHash": "SJ-VERIFIED-SJ9TGUBP-3319266Z"
+    },
+    {
+      "id": "SJ-TEST-401486",
+      "bookingCode": "SJ-TEST-401486",
+      "serviceType": "tour",
+      "serviceId": "tour-custom",
+      "type": "tour",
+      "tripId": "tour-custom",
+      "tripTitle": "Bromo Sunrise Tour",
+      "serviceName": "Bromo Sunrise Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-23",
+      "fullName": "Audit Test Traveler",
+      "customerName": "Audit Test Traveler",
+      "email": "audit@example.com",
+      "customerEmail": "audit@example.com",
+      "phone": "+628123456789",
+      "customerPhone": "+628123456789",
+      "participantsCount": 2,
+      "participantsNames": [
+        "Audit Test Traveler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Confirmed",
+      "paymentStatus": "Paid",
+      "totalPrice": 500000,
+      "totalPriceIDR": 500000,
+      "baseAmount": 500000,
+      "uniqueCode": 45,
+      "paymentAmount": 500045,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:33:21.503Z",
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-custom",
+        "tourName": "Bromo Sunrise Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 500000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": "",
+      "paidAt": "2026-09-23T03:33:21.552Z",
+      "paymentId": "PAY-1790134401537",
+      "rejectReason": ""
+    },
+    {
+      "id": "SJ-FAIL-401693",
+      "bookingCode": "SJ-FAIL-401693",
+      "serviceType": "tour",
+      "serviceId": "tour-custom",
+      "type": "tour",
+      "tripId": "tour-custom",
+      "tripTitle": "Private Tour",
+      "serviceName": "Private Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-23",
+      "fullName": "Fail Test Traveler",
+      "customerName": "Fail Test Traveler",
+      "email": "fail@example.com",
+      "customerEmail": "fail@example.com",
+      "phone": "N/A",
+      "customerPhone": "N/A",
+      "participantsCount": 1,
+      "participantsNames": [
+        "Fail Test Traveler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Cancelled",
+      "paymentStatus": "Expired",
+      "totalPrice": 750000,
+      "totalPriceIDR": 750000,
+      "baseAmount": 750000,
+      "uniqueCode": 63,
+      "paymentAmount": 750063,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:33:21.709Z",
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-custom",
+        "tourName": "Private Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 750000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": ""
+    },
+    {
+      "id": "book-1790134406468-5e2cabd1be52",
+      "bookingCode": "SJ-CUYA87",
+      "serviceType": "tour",
+      "serviceId": "tour-lock-1790134406262",
+      "type": "tour",
+      "tripId": "tour-lock-1790134406262",
+      "tripTitle": "Exclusive Ijen Blue Fire Lock Tour",
+      "serviceName": "Exclusive Ijen Blue Fire Lock Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-10-20",
+      "fullName": "Jane Doe",
+      "customerName": "Jane Doe",
+      "email": "jane.doe@example.com",
+      "customerEmail": "jane.doe@example.com",
+      "phone": "+62812999888",
+      "customerPhone": "+62812999888",
+      "participantsCount": 2,
+      "participantsNames": [
+        "Jane Doe"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Pending",
+      "paymentStatus": "Pending",
+      "totalPrice": 2500000,
+      "totalPriceIDR": 2500000,
+      "baseAmount": 2500000,
+      "uniqueCode": 67,
+      "paymentAmount": 2500067,
+      "currency": "IDR",
+      "createdAt": "2026-09-23T03:33:26.468Z",
+      "details": {
+        "pickupLocation": "Banyuwangi Hotel",
+        "package": "VIP 2D1N",
+        "duration": "2D1N",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-lock-1790134406262",
+        "tourName": "Exclusive Ijen Blue Fire Lock Tour",
+        "duration": "2D1N",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 2500000,
+        "highlights": [
+          "Blue fire expedition",
+          "Sunrise over acid lake"
+        ],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": ""
     }
   ],
   "mainTours": [
+    {
+      "id": "tour-lock-1790134406262",
+      "name": "Exclusive Ijen Blue Fire Lock Tour",
+      "category": "Private Tour",
+      "location": "Banyuwangi",
+      "duration": "2D1N",
+      "price": 2500000,
+      "startingPriceIDR": 2500000,
+      "status": "archived",
+      "highlights": [
+        "Blue fire expedition",
+        "Sunrise over acid lake"
+      ],
+      "description": "A private luxury excursion to Mount Ijen crater.",
+      "createdAt": "2026-09-23T03:33:26.290Z",
+      "updatedAt": "2026-09-23T03:33:26.529Z",
+      "isDeleted": true,
+      "isArchived": true
+    },
     {
       "id": "tour-lock-1790131080033",
       "name": "Exclusive Ijen Blue Fire Lock Tour",
@@ -17652,6 +18742,19 @@
       },
       "savedAt": "2026-09-23T02:37:59.918Z",
       "savedAtTimestamp": 1790131079918
+    },
+    "sj_draft_tour_test_lock_1790134406117": {
+      "key": "sj_draft_tour_test_lock_1790134406117",
+      "type": "tour",
+      "subType": "default",
+      "targetId": "lock-test-id",
+      "title": "Lock Test Tour Draft",
+      "data": {
+        "name": "Bromo Sunrise Lock Test",
+        "price": 1750000
+      },
+      "savedAt": "2026-09-23T03:33:26.117Z",
+      "savedAtTimestamp": 1790134406117
     }
   },
   "contactInfo": {
@@ -17661,351 +18764,5 @@
     "whatsapp": "+62 852-1234-7289",
     "email": "sawahjayagroup@gmail.com"
   },
-  "adminSessions": [
-    {
-      "token": "054462bbb5e813511b4f6416d3658b90c4f3dfade59f873caf6651210e64dc6c",
-      "createdAt": "2026-09-22T08:10:01.533Z",
-      "expiresAt": 1790151001533
-    },
-    {
-      "token": "f2abee1dd037553fa87df0659f3f7e135dea14d4f766c904ff3c371562dcf06b",
-      "createdAt": "2026-09-22T08:10:28.776Z",
-      "expiresAt": 1790151028776
-    },
-    {
-      "token": "66bf6ec1a9e2d489c09c21a21a264628ab9bdc2e57f5d8099c8db664634757ad",
-      "createdAt": "2026-09-22T08:11:08.400Z",
-      "expiresAt": 1790151068400
-    },
-    {
-      "token": "8fdb7233dcfd1eb150321d5979620ff10000cce59a123b032ffd1904fef92a1f",
-      "createdAt": "2026-09-22T08:11:19.370Z",
-      "expiresAt": 1790151079370
-    },
-    {
-      "token": "d80317d8272886691592033973c74d965f59978fb41511e3c8c4414d05e238c2",
-      "createdAt": "2026-09-22T08:36:19.253Z",
-      "expiresAt": 1790152579253
-    },
-    {
-      "token": "b2fd3c4bd6f18749152ebe242dfa0f629a39b8e32c568efbfc100225c5893ff0",
-      "createdAt": "2026-09-22T08:36:23.835Z",
-      "expiresAt": 1790152583835
-    },
-    {
-      "token": "909b08547317a028803f483e418b047e85f773b0784c6c370de7d99ead6f6d75",
-      "createdAt": "2026-09-22T08:36:45.657Z",
-      "expiresAt": 1790152605657
-    },
-    {
-      "token": "6031bf225a0f61e580512f46c09f781c8e960f3b4e7b6ff962859fc0a0e8b854",
-      "createdAt": "2026-09-22T08:36:56.771Z",
-      "expiresAt": 1790152616771
-    },
-    {
-      "token": "6f05530f9cbce1221de628147497d6efc43bc9a5a4e5c7cade1477ae1b40aa35",
-      "createdAt": "2026-09-22T08:37:05.367Z",
-      "expiresAt": 1790152625367
-    },
-    {
-      "token": "75cbbde3f44b2bb925f0f27283e0916e9b25a2988518bd6fbd1465f397444ebe",
-      "createdAt": "2026-09-22T08:37:24.594Z",
-      "expiresAt": 1790152644594
-    },
-    {
-      "token": "d85e50795507cfa9e353799c28b81f7f935f640deedf4de8c13aa6d96330d020",
-      "createdAt": "2026-09-22T08:37:33.314Z",
-      "expiresAt": 1790152653314
-    },
-    {
-      "token": "e2e937990f799aaa0b6499a9a17e1a9b3906f98fe048ab96919934967114e25a",
-      "createdAt": "2026-09-22T08:37:37.907Z",
-      "expiresAt": 1790152657907
-    },
-    {
-      "token": "3b096f2491e6f1a2ccc8201731054b3ca37d759933f51fc276fa57912bc2bc5d",
-      "createdAt": "2026-09-22T08:37:50.391Z",
-      "expiresAt": 1790152670391
-    },
-    {
-      "token": "efc7ca7f62c55e4239a397b3032da76773ed303479d5569a2f58c0aeaa72018a",
-      "createdAt": "2026-09-22T08:38:24.864Z",
-      "expiresAt": 1790152704864
-    },
-    {
-      "token": "696b7ae7e314080768e7dd2408558bb31952f25ec01e2460db36fea63b379834",
-      "createdAt": "2026-09-22T08:38:39.725Z",
-      "expiresAt": 1790152719725
-    },
-    {
-      "token": "3ebe679143bf9661157dd6dc236af5b1e9564574aab527f133e28b829a1e8140",
-      "createdAt": "2026-09-22T08:38:42.164Z",
-      "expiresAt": 1790152722164
-    },
-    {
-      "token": "31c8da9e8369873ae6271f844db786646cef5cd5802f7a178aaee54a394ab5cb",
-      "createdAt": "2026-09-22T08:38:57.487Z",
-      "expiresAt": 1790152737487
-    },
-    {
-      "token": "282c9e4d022554bf8cff9571f05d563ed819fcae017721ce242d7cba23a14ffb",
-      "createdAt": "2026-09-22T08:39:39.867Z",
-      "expiresAt": 1790152779867
-    },
-    {
-      "token": "30f16880a45a4921c8b9b46e4862b2caac6f231a6b16adf782ebfb0b00d6b158",
-      "createdAt": "2026-09-22T08:39:40.447Z",
-      "expiresAt": 1790152780447
-    },
-    {
-      "token": "c90bcdcc42631300ade4d667d47593ed9b2ca9ce32fa1cb708fd570d09876bfb",
-      "createdAt": "2026-09-22T08:39:41.087Z",
-      "expiresAt": 1790152781087
-    },
-    {
-      "token": "6a13430b53dd07d5ee8f7bf035099e1b3ba29623b72e6f80a5f1a0790fbd35c0",
-      "createdAt": "2026-09-22T08:40:00.363Z",
-      "expiresAt": 1790152800363
-    },
-    {
-      "token": "9613d3c52cce5468dd5ad55010ec648d8912ae2b6ad38911c449a468fc810fe4",
-      "createdAt": "2026-09-22T08:40:44.594Z",
-      "expiresAt": 1790152844594
-    },
-    {
-      "token": "dd0037401e0ef41b522f8f262c1bb68d59b1e0562f5a2cf8a365f05d5cade71e",
-      "createdAt": "2026-09-22T08:40:45.158Z",
-      "expiresAt": 1790152845158
-    },
-    {
-      "token": "48ee602b1562ff5aed3a9b5cd9b619278da622a722a09467f8c6f7a041c461a4",
-      "createdAt": "2026-09-22T08:40:45.587Z",
-      "expiresAt": 1790152845587
-    },
-    {
-      "token": "658775e01c3efe38675b415b8fce36ae3120c85baa8be87f80bc77599730384a",
-      "createdAt": "2026-09-22T08:40:46.450Z",
-      "expiresAt": 1790152846450
-    },
-    {
-      "token": "8309887de649f67f15c6de17989f193ccd3e63e4a1796accbb31320b81c8b31e",
-      "createdAt": "2026-09-22T08:40:49.395Z",
-      "expiresAt": 1790152849395
-    },
-    {
-      "token": "3e982704748f775ba2726276fc09cc890a2abfe2017d81013ae97da9a2350f8c",
-      "createdAt": "2026-09-22T08:40:55.404Z",
-      "expiresAt": 1790152855404
-    },
-    {
-      "token": "a2b960c54ed842bcd7999c1b1c24336dc90dd90aac91dbf6c4062e91088a4589",
-      "createdAt": "2026-09-22T08:40:56.047Z",
-      "expiresAt": 1790152856046
-    },
-    {
-      "token": "bb9952240e6fd130ed7c9e66f5e601c8456742c60155425d6b3c59acc3aaa577",
-      "createdAt": "2026-09-22T08:40:56.921Z",
-      "expiresAt": 1790152856921
-    },
-    {
-      "token": "4f67c984a25cbae8c687c1138e6285608a2f12e72e7fd23fb559e63662f3f121",
-      "createdAt": "2026-09-22T08:40:59.363Z",
-      "expiresAt": 1790152859363
-    },
-    {
-      "token": "2ce1b11ca3b58b98cffe858d3d63cc108a4201ccc214c6e53c74dd98dad5d1fc",
-      "createdAt": "2026-09-22T09:02:22.701Z",
-      "expiresAt": 1790154142700
-    },
-    {
-      "token": "253de88e675752074339e7bbffab37a32e8e4826773c015f9c1d8c54cf492279",
-      "createdAt": "2026-09-22T09:03:32.187Z",
-      "expiresAt": 1790154212187
-    },
-    {
-      "token": "14fad40461bd051e62f248c5dd59b719bd42c01a789059996aff2649f15ab508",
-      "createdAt": "2026-09-22T09:03:32.737Z",
-      "expiresAt": 1790154212737
-    },
-    {
-      "token": "ed78e5eabb23beeaec00d75e1b1b5d923da501c20375423e566fd895340ee76d",
-      "createdAt": "2026-09-22T09:03:33.178Z",
-      "expiresAt": 1790154213178
-    },
-    {
-      "token": "1ed89528d3b08ad7bc990b63e577cc22108ade859b3e8c8302c469d45e772256",
-      "createdAt": "2026-09-22T09:03:34.071Z",
-      "expiresAt": 1790154214071
-    },
-    {
-      "token": "c239032bbf09bd178bd0868aa4d0dd709660aef2eba879746bd8159f6149d70c",
-      "createdAt": "2026-09-22T09:03:37.232Z",
-      "expiresAt": 1790154217232
-    },
-    {
-      "token": "2a2977bfc62f86957f222f8531a57c701a1a2ed4a754a82e1383ef14ae19c77d",
-      "createdAt": "2026-09-22T09:03:43.060Z",
-      "expiresAt": 1790154223060
-    },
-    {
-      "token": "1fa1506bb391777f8b72404cc310a2f0e3863532705d68c7db4f101ac5feabcb",
-      "createdAt": "2026-09-22T09:03:43.672Z",
-      "expiresAt": 1790154223672
-    },
-    {
-      "token": "7b70e7b44b538095e68b9226d936e3905a0302c2aab242ee90e22805a358f852",
-      "createdAt": "2026-09-22T09:03:44.447Z",
-      "expiresAt": 1790154224447
-    },
-    {
-      "token": "fddfa1c8c4c5e3fc868c1703b8a4bd75a1fd7c9c7aededa016ec0e94afec33a7",
-      "createdAt": "2026-09-22T09:03:46.677Z",
-      "expiresAt": 1790154226677
-    },
-    {
-      "token": "f98cccd9a8fb960014fcd9c74537bb5e0be332801810da1861f6f1f90256d02b",
-      "createdAt": "2026-09-22T09:40:10.706Z",
-      "expiresAt": 1790156410706
-    },
-    {
-      "token": "dffd2269925db9ef592d3a07aa8975edfb642c851f89fffa512293f65a11ba2f",
-      "createdAt": "2026-09-22T09:40:34.106Z",
-      "expiresAt": 1790156434106
-    },
-    {
-      "token": "9ecbdec98129d8b469ea292a19ea06872fa106d175d02054a2b4d9916ccd0388",
-      "createdAt": "2026-09-22T09:41:24.061Z",
-      "expiresAt": 1790156484061
-    },
-    {
-      "token": "41de9d6e234ba9ad2040a88cd95a1a50b765e37324f42d7ee918e283475b1ea2",
-      "createdAt": "2026-09-22T09:41:27.428Z",
-      "expiresAt": 1790156487428
-    },
-    {
-      "token": "07870572146b7442cc073d071667dc63e260ceb5650e38218cb88c3665b176ba",
-      "createdAt": "2026-09-23T02:30:46.896Z",
-      "expiresAt": 1790217046896
-    },
-    {
-      "token": "2a75d045b81239d8f34eb5af29dd9fe233d6138406eb5bfac5e35e8e7abb4c12",
-      "createdAt": "2026-09-23T02:32:06.156Z",
-      "expiresAt": 1790217126156
-    },
-    {
-      "token": "1a944bdd17f81b0fcfaf238ae173b93ef7d1c4d7c9044b1f17458dcc60de2d71",
-      "createdAt": "2026-09-23T02:32:13.736Z",
-      "expiresAt": 1790217133736
-    },
-    {
-      "token": "1dca053324941497a4fd0a08ef1181d6c099b59c185a050aeb36b11dc426679b",
-      "createdAt": "2026-09-23T02:32:28.031Z",
-      "expiresAt": 1790217148031
-    },
-    {
-      "token": "security-test-admin-token-1790130784484",
-      "createdAt": "2026-09-23T02:33:04.484Z",
-      "expiresAt": 1790134384485
-    },
-    {
-      "token": "90b80331be301be265d84e459a29889113d51cda9c0bd25871c4b2836908565d",
-      "createdAt": "2026-09-23T02:33:09.213Z",
-      "expiresAt": 1790217189213
-    },
-    {
-      "token": "3c19b415109a47341c8c27ccfe038d132e9187f7b8a91f30be9d65d420c0fbbf",
-      "createdAt": "2026-09-23T02:33:45.137Z",
-      "expiresAt": 1790217225137
-    },
-    {
-      "token": "f5cedffdaff630656bf74a2d0681ff95324893fb6028ebe163fa7e89d3f679f7",
-      "createdAt": "2026-09-23T02:36:07.371Z",
-      "expiresAt": 1790217367371
-    },
-    {
-      "token": "a0622693e44d0a9bcf1386a095c700a5f4caaf3d45d80ff2abd13569f56164d4",
-      "createdAt": "2026-09-23T02:36:10.734Z",
-      "expiresAt": 1790217370734
-    },
-    {
-      "token": "e7804b3fb6bce7bb22f8be78923ae654a0037bd3c5701959a92b053ba4953ae0",
-      "createdAt": "2026-09-23T02:36:35.377Z",
-      "expiresAt": 1790217395377
-    },
-    {
-      "token": "2a614e02e0c0532a355778c69cb12558576ddd48013c96455024b37458248b6c",
-      "createdAt": "2026-09-23T02:36:46.434Z",
-      "expiresAt": 1790217406434
-    },
-    {
-      "token": "cfedbcea0d6b1232b750c28b573daad8f92984471993287f2a994fef65aea7f6",
-      "createdAt": "2026-09-23T02:36:50.040Z",
-      "expiresAt": 1790217410040
-    },
-    {
-      "token": "549d36050b19e21a2eda75aec14642478dd19d92dfdda8c8a2294d5d4788a7ee",
-      "createdAt": "2026-09-23T02:36:56.750Z",
-      "expiresAt": 1790217416750
-    },
-    {
-      "token": "68f959016746c02bab7b25fe0250f67361dd66838ec33dcd0593e39d9ac23e7c",
-      "createdAt": "2026-09-23T02:37:12.010Z",
-      "expiresAt": 1790217432010
-    },
-    {
-      "token": "32c360551d2cea4037f6dfa115e3de80e48ad72b1cca5f80df84b9b4673dba7d",
-      "createdAt": "2026-09-23T02:37:14.399Z",
-      "expiresAt": 1790217434399
-    },
-    {
-      "token": "3a9c64e95cd598e3ef74ad27c47971ad6807b6458b94faa08b5dbbf91e351407",
-      "createdAt": "2026-09-23T02:37:48.939Z",
-      "expiresAt": 1790217468939
-    },
-    {
-      "token": "dd73ae9d2bae03cab861528e605cf023ac7fcb21df3dd1aaf39873c9bb1f4d3b",
-      "createdAt": "2026-09-23T02:37:49.480Z",
-      "expiresAt": 1790217469480
-    },
-    {
-      "token": "66370e8a5b3679e4e9e783b9985418391a71e55494577c3a14122c72f60c7801",
-      "createdAt": "2026-09-23T02:37:49.754Z",
-      "expiresAt": 1790217469754
-    },
-    {
-      "token": "security-test-admin-token-1790131070304",
-      "createdAt": "2026-09-23T02:37:50.304Z",
-      "expiresAt": 1790134670304
-    },
-    {
-      "token": "0c5392401367c0d9b1f611c68f864ae70542a841305cd07cf6a9ce29155d1b5b",
-      "createdAt": "2026-09-23T02:37:50.942Z",
-      "expiresAt": 1790217470942
-    },
-    {
-      "token": "82d0475d601744741207cc9a464fd11ec2e39fe582dce69325f2a2e45daea603",
-      "createdAt": "2026-09-23T02:37:54.248Z",
-      "expiresAt": 1790217474248
-    },
-    {
-      "token": "9cfec15a237870fa80c5a1a4e37039435e3f4e61045291065e24773f7336ac4c",
-      "createdAt": "2026-09-23T02:37:59.901Z",
-      "expiresAt": 1790217479901
-    },
-    {
-      "token": "b838a18e881664bb3015235a73d8467b3a47bc8f99da1f93226c31687899b4d1",
-      "createdAt": "2026-09-23T02:38:00.579Z",
-      "expiresAt": 1790217480579
-    },
-    {
-      "token": "fb0d17164c63c182aa32b6ace5f45c5f0690ec84846716a65c56b1eaccf6b620",
-      "createdAt": "2026-09-23T02:38:01.454Z",
-      "expiresAt": 1790217481454
-    },
-    {
-      "token": "f44657530c28dab1ba197490f8fa9fe4b4fa67d301567e815ec293ba4e6730fb",
-      "createdAt": "2026-09-23T02:38:03.922Z",
-      "expiresAt": 1790217483922
-    }
-  ]
+  "adminSessions": []
 }

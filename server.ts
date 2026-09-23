@@ -1130,7 +1130,7 @@ app.get('/api/reviews', (req, res) => {
     // Public/Customer only sees approved or published reviews
     const publicReviews = allReviews.filter((r: any) => {
       const status = (r.status || '').trim().toLowerCase();
-      return status === 'approved' || status === 'published' || (status === '' && status !== 'pending' && status !== 'rejected');
+      return status === 'approved' || status === 'published';
     });
     return res.json(publicReviews);
   } catch (err) {
@@ -1367,7 +1367,7 @@ app.get('/api/db', (req, res) => {
         batches: (db.batches || []).map(projectPublicBatch),
         bookings: safeBookings,
         mainTours: (db.mainTours || []).map(projectPublicMainTour),
-        vehicles: (db as any).vehicles || []
+        vehicles: []
       });
     }
     res.json(db);
@@ -2887,7 +2887,7 @@ app.get('/api/private-tour/invoice-html/:bookingCode', (req, res) => {
     const vehicleEscaped = sanitizeHtml(booking.details?.vehicleName || tourSnapshot.vehicleName || 'Standard Private Tourism Vehicle');
     const paymentMethodEscaped = sanitizeHtml(booking.participantData?.paymentMethod ? booking.participantData.paymentMethod.toUpperCase() : 'ARTOPAY GATEWAY');
     const paymentIdEscaped = sanitizeHtml(booking.paymentId || booking.paymentIntentId || 'TX-VERIFIED-ARTOPAY');
-    const specialRequestsEscaped = sanitizeHtml(booking.details?.specialRequests || booking.notes || booking.specialRequests || '');
+    const specialRequestsEscaped = sanitizeHtml(booking.details?.specialRequests || booking.notes || booking.specialRequests || booking.adminNotes || '');
 
     const html = `
 <!DOCTYPE html>
@@ -4087,7 +4087,11 @@ app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/paymen
       });
     }
 
-    const formattedAmount = Math.round(Number(numericAmount));
+    const numAmt = Number(numericAmount);
+    if (!Number.isFinite(numAmt) || !Number.isInteger(numAmt) || numAmt <= 0) {
+      return res.status(400).json({ error: 'Nominal pembayaran (amount) harus berupa bilangan bulat positif yang valid.' });
+    }
+    const formattedAmount = numAmt;
 
     const customerDisplayName = String(
       existingOrder.fullName || existingOrder.customerName || customerName || 'Customer'
@@ -4360,7 +4364,7 @@ function verifyPayment(booking: any, paymentData: any): PaymentVerificationResul
     };
   }
 
-  // 2. Amount Validation: MANDATORY, PARSED, EXACT MATCH
+  // 2. Amount Validation: MANDATORY, PARSED, EXACT INTEGER MATCH (NO Math.round)
   const receivedAmountRaw = paymentData.amount ?? rawData.amount ?? paymentData.gross_amount ?? rawData.gross_amount ?? paymentData.grossAmount ?? rawData.grossAmount;
   if (receivedAmountRaw === undefined || receivedAmountRaw === null || String(receivedAmountRaw).trim() === '') {
     return {
@@ -4370,15 +4374,16 @@ function verifyPayment(booking: any, paymentData: any): PaymentVerificationResul
       expectedAmount
     };
   }
-  const receivedAmount = Math.round(Number(receivedAmountRaw));
-  if (isNaN(receivedAmount) || typeof receivedAmount !== 'number' || receivedAmount <= 0) {
+  const numAmount = Number(receivedAmountRaw);
+  if (!Number.isFinite(numAmount) || !Number.isInteger(numAmount) || numAmount <= 0) {
     return {
       valid: false,
       status: 'INVALID',
-      error: 'Nominal pembayaran (amount) bukan angka yang valid.',
+      error: 'Nominal pembayaran (amount) harus berupa bilangan bulat positif yang valid.',
       expectedAmount
     };
   }
+  const receivedAmount = numAmount;
   if (expectedAmount <= 0 || receivedAmount !== expectedAmount) {
     return {
       valid: false,
