@@ -22,7 +22,7 @@ if (fs.existsSync('/app/.dev.env.json')) {
   } catch (e) {}
 }
 
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 // Helper to determine the actual project root directory safely across environments (AI Studio, PM2, Passenger, Hostinger)
 function resolveProjectRoot(): string {
@@ -4216,7 +4216,7 @@ app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/paymen
     if (!Number.isFinite(numAmt) || !Number.isInteger(numAmt) || numAmt <= 0) {
       return res.status(400).json({ error: 'Nominal pembayaran (amount) harus berupa bilangan bulat positif yang valid.' });
     }
-    const formattedAmount = numAmt;
+    const formattedAmount = String(numAmt);
 
     const customerDisplayName = String(
       existingOrder.fullName || existingOrder.customerName || customerName || 'Customer'
