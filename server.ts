@@ -248,65 +248,56 @@ function recalculateBatchSeats(db: DatabaseState): void {
     batch.availableSeats = Math.max(0, quota - totalBooked);
 
     if (batch.availableSeats <= 0) {
-      batch.status = 'Closed';
-    } else if (batch.status === 'Closed' && batch.availableSeats > 0) {
+      if ((batch.status as string) !== 'archived') {
+        batch.status = 'Closed';
+      }
+    } else if (batch.status === 'Closed' && batch.availableSeats > 0 && !(batch as any).isArchived) {
       batch.status = 'Open';
     }
   });
 }
 
-let memoryDB: DatabaseState | null = null;
-let lastDbMtime: number = 0;
-
 function readDB(): DatabaseState {
-  // Sole authoritative persistent database file (data/db.json ONLY)
+  // Authoritative persistent database file (data/db.json ONLY)
+  // Reads directly from storage to return an isolated snapshot without shared memory mutation
   if (fs.existsSync(DB_PATH)) {
     try {
       const raw = fs.readFileSync(DB_PATH, 'utf8');
       const parsed = JSON.parse(raw) as DatabaseState;
       if (parsed && typeof parsed === 'object') {
-        memoryDB = parsed;
-        try {
-          const stat = fs.statSync(DB_PATH);
-          lastDbMtime = stat.mtimeMs;
-        } catch (_) {}
+        if (!parsed.trips) parsed.trips = [];
+        if (!parsed.batches) parsed.batches = [];
+        if (!parsed.bookings) parsed.bookings = [];
+        if (!parsed.mainTours) parsed.mainTours = [];
+        if (!(parsed as any).adminSessions) (parsed as any).adminSessions = [];
+        if (!(parsed as any).adminDrafts) (parsed as any).adminDrafts = {};
+
+        if (!(parsed as any).contactInfo) {
+          (parsed as any).contactInfo = {
+            name: 'Smart Journey Indonesia',
+            address: 'Jl. Puntadewa No. 192, Tumpang, Malang, Jawa Timur 65156, Indonesia',
+            phone: '+62 852-1234-7289',
+            whatsapp: '+62 852-1234-7289',
+            email: 'sawahjayagroup@gmail.com'
+          };
+        }
+
+        return parsed;
       }
     } catch (err) {
-      if (!memoryDB) {
-        console.error('CRITICAL: Error reading authoritative persistent data/db.json:', err);
-        throw err;
-      }
+      console.error('CRITICAL: Error reading authoritative persistent data/db.json:', err);
+      throw err;
     }
   }
 
-  if (!memoryDB) {
-    memoryDB = JSON.parse(JSON.stringify(defaultDB));
-    try {
-      atomicWriteFileSync(DB_PATH, JSON.stringify(memoryDB, null, 2));
-    } catch (writeErr) {
-      console.warn('Could not initialize empty db.json on disk:', writeErr);
-    }
+  // Fallback initial state only if file does not exist on disk
+  const fallback = JSON.parse(JSON.stringify(defaultDB));
+  try {
+    atomicWriteFileSync(DB_PATH, JSON.stringify(fallback, null, 2));
+  } catch (writeErr) {
+    console.warn('Could not initialize empty db.json on disk:', writeErr);
   }
-
-  if (!memoryDB.trips) memoryDB.trips = [];
-  if (!memoryDB.batches) memoryDB.batches = [];
-  if (!memoryDB.bookings) memoryDB.bookings = [];
-  if (!memoryDB.mainTours) memoryDB.mainTours = [];
-  if (!(memoryDB as any).adminSessions) (memoryDB as any).adminSessions = [];
-  if (!(memoryDB as any).adminDrafts) (memoryDB as any).adminDrafts = {};
-
-  if (!(memoryDB as any).contactInfo) {
-    (memoryDB as any).contactInfo = {
-      name: 'Smart Journey Indonesia',
-      address: 'Jl. Puntadewa No. 192, Tumpang, Malang, Jawa Timur 65156, Indonesia',
-      phone: '+62 852-1234-7289',
-      whatsapp: '+62 852-1234-7289',
-      email: 'sawahjayagroup@gmail.com'
-    };
-  }
-
-  recalculateBatchSeats(memoryDB);
-  return memoryDB;
+  return fallback;
 }
 
 // -------------------------------------------------------------
@@ -416,13 +407,10 @@ function writeDB(data: DatabaseState) {
       email: 'sawahjayagroup@gmail.com'
     };
   }
-  memoryDB = data;
 
   // Persist exclusively to single authoritative database file (data/db.json) with atomic write
   try {
     atomicWriteFileSync(DB_PATH, JSON.stringify(data, null, 2));
-    const stat = fs.statSync(DB_PATH);
-    lastDbMtime = stat.mtimeMs;
   } catch (err) {
     console.error('CRITICAL: Failed to write to authoritative persistent database (data/db.json):', err);
     throw new Error('Database write failure: cannot persist data to authoritative storage.');
@@ -439,7 +427,6 @@ function readMainTours(): Tour[] {
       const raw = fs.readFileSync(DB_PATH, 'utf8');
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object' && Array.isArray(parsed.mainTours)) {
-        if (memoryDB) memoryDB.mainTours = parsed.mainTours;
         return parsed.mainTours;
       }
     }
@@ -639,19 +626,35 @@ app.get('/sitemap.xml', (req, res) => {
   const baseUrl = 'https://smartjourney.id';
   const currentDate = new Date().toISOString().split('T')[0];
 
-  const sitemapContent = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
-<url>
-<loc>${baseUrl}/</loc>
-<lastmod>${currentDate}</lastmod>
-<changefreq>daily</changefreq>
-<priority>1.0</priority>
-</url>
-</urlset>`;
+  const publicRoutes = [
+    { path: '/', changefreq: 'daily', priority: '1.0' },
+    { path: '/tours', changefreq: 'daily', priority: '0.9' },
+    { path: '/share-tour', changefreq: 'daily', priority: '0.9' },
+    { path: '/airport', changefreq: 'weekly', priority: '0.8' },
+    { path: '/taxi', changefreq: 'weekly', priority: '0.8' },
+    { path: '/rental', changefreq: 'weekly', priority: '0.8' },
+    { path: '/car-rental', changefreq: 'weekly', priority: '0.8' },
+    { path: '/bookings', changefreq: 'weekly', priority: '0.7' },
+    { path: '/about', changefreq: 'monthly', priority: '0.6' },
+    { path: '/partnerships', changefreq: 'monthly', priority: '0.6' }
+  ];
 
-  res.send(sitemapContent);
+  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+  xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n`;
+  xml += `  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\n`;
+  xml += `  xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">\n`;
+
+  for (const r of publicRoutes) {
+    xml += `  <url>\n`;
+    xml += `    <loc>${baseUrl}${r.path}</loc>\n`;
+    xml += `    <lastmod>${currentDate}</lastmod>\n`;
+    xml += `    <changefreq>${r.changefreq}</changefreq>\n`;
+    xml += `    <priority>${r.priority}</priority>\n`;
+    xml += `  </url>\n`;
+  }
+
+  xml += `</urlset>`;
+  res.send(xml);
 });
 
 // -------------------------------------------------------------
@@ -1352,21 +1355,17 @@ app.get('/api/db', (req, res) => {
     const db = readDB();
     const isAdmin = checkIsAdmin(req);
     if (!isAdmin) {
-      const safeBookings = (db.bookings || []).map((b: any) => ({
-        id: b.id,
-        bookingCode: b.bookingCode,
-        tripId: b.tripId,
-        batchId: b.batchId,
-        status: b.status,
-        paymentStatus: b.paymentStatus,
-        departureDate: b.departureDate,
-        participantsCount: b.participantsCount
-      }));
       return res.json({
-        trips: (db.trips || []).map(projectPublicTrip),
-        batches: (db.batches || []).map(projectPublicBatch),
-        bookings: safeBookings,
-        mainTours: (db.mainTours || []).map(projectPublicMainTour),
+        trips: (db.trips || [])
+          .filter((t: any) => t.status !== 'archived' && !t.isArchived && !t.isDeleted)
+          .map(projectPublicTrip),
+        batches: (db.batches || [])
+          .filter((b: any) => !b.isArchived && !b.isDeleted)
+          .map(projectPublicBatch),
+        bookings: [],
+        mainTours: (db.mainTours || [])
+          .filter((t: any) => t.status !== 'archived' && !t.isArchived && !t.isDeleted)
+          .map(projectPublicMainTour),
         vehicles: []
       });
     }
@@ -1381,7 +1380,13 @@ app.get('/api/trips', (req, res) => {
     const db = readDB();
     const trips = Array.isArray(db.trips) ? db.trips : [];
     const isAdmin = checkIsAdmin(req);
-    res.json(isAdmin ? trips : trips.map(projectPublicTrip));
+    if (isAdmin) {
+      return res.json(trips);
+    }
+    const publicTrips = trips
+      .filter((t: any) => t.status !== 'archived' && !t.isArchived && !t.isDeleted)
+      .map(projectPublicTrip);
+    res.json(publicTrips);
   } catch {
     res.status(500).json({ error: 'Failed to fetch trips' });
   }
@@ -1395,6 +1400,9 @@ app.get('/api/trips/:id', (req, res) => {
       return res.status(404).json({ error: 'Trip not found' });
     }
     const isAdmin = checkIsAdmin(req);
+    if (!isAdmin && (trip.status === 'archived' || (trip as any).isArchived || (trip as any).isDeleted)) {
+      return res.status(404).json({ error: 'Trip not found' });
+    }
     res.json(isAdmin ? trip : projectPublicTrip(trip));
   } catch {
     res.status(500).json({ error: 'Failed to fetch trip' });
@@ -1504,12 +1512,68 @@ app.delete('/api/trips/:id', requireAdminAuth, async (req, res) => {
   return await catalogMutex.runExclusive(async () => {
     try {
       const db = readDB();
+      const tripId = req.params.id;
+      const trip = (db.trips || []).find((t) => t.id === tripId);
 
-      db.trips = db.trips.filter((t) => t.id !== req.params.id);
-      db.batches = db.batches.filter((b) => b.tripId !== req.params.id);
+      if (!trip) {
+        return res.status(404).json({ error: 'Trip tidak ditemukan.' });
+      }
+
+      // Check if this trip is referenced in any bookings
+      const isReferencedInBookings = (db.bookings || []).some(
+        (b: any) =>
+          b.tripId === tripId ||
+          b.tourId === tripId ||
+          b.tourSnapshot?.tourId === tripId ||
+          b.tourSnapshot?.id === tripId ||
+          b.details?.tourId === tripId ||
+          b.details?.tripId === tripId ||
+          (b.batchId && (db.batches || []).some((bt: any) => bt.id === b.batchId && bt.tripId === tripId))
+      );
+
+      if (!isReferencedInBookings) {
+        // CASE A: No historical bookings -> Hard delete trip and associated unused batches
+        db.trips = db.trips.filter((t) => t.id !== tripId);
+        db.batches = (db.batches || []).filter((b) => b.tripId !== tripId);
+
+        writeDB(db);
+        return res.json({ success: true, id: tripId, mode: 'deleted' });
+      }
+
+      // CASE B: Has historical bookings -> Soft delete / Archive to preserve historical integrity
+      trip.status = 'archived';
+      (trip as any).isArchived = true;
+      (trip as any).isDeleted = true;
+      (trip as any).updatedAt = new Date().toISOString();
+
+      // For associated batches:
+      // If batch has bookings -> archive / protect
+      // If batch has NO bookings -> delete
+      if (Array.isArray(db.batches)) {
+        const remainingBatches: Batch[] = [];
+        for (const batch of db.batches) {
+          if (batch.tripId === tripId) {
+            const batchHasBookings = (db.bookings || []).some(b => b.batchId === batch.id);
+            if (batchHasBookings) {
+              batch.status = 'Closed';
+              (batch as any).isArchived = true;
+              (batch as any).isDeleted = true;
+              remainingBatches.push(batch);
+            }
+          } else {
+            remainingBatches.push(batch);
+          }
+        }
+        db.batches = remainingBatches;
+      }
 
       writeDB(db);
-      res.json({ success: true });
+      return res.json({
+        success: true,
+        id: tripId,
+        mode: 'archived',
+        message: 'Trip berhasil diarsipkan (soft delete) untuk menjaga integritas riwayat booking.'
+      });
     } catch {
       res.status(500).json({ error: 'Failed to delete trip' });
     }
@@ -1525,7 +1589,13 @@ app.get('/api/batches', (req, res) => {
       batches = batches.filter((b) => b.tripId === tripId);
     }
     const isAdmin = checkIsAdmin(req);
-    res.json(isAdmin ? batches : batches.map(projectPublicBatch));
+    if (isAdmin) {
+      return res.json(batches);
+    }
+    const publicBatches = batches
+      .filter((b: any) => !b.isArchived && !b.isDeleted && b.status !== 'archived')
+      .map(projectPublicBatch);
+    res.json(publicBatches);
   } catch {
     res.status(500).json({ error: 'Failed to fetch batches' });
   }
@@ -1539,6 +1609,9 @@ app.get('/api/batches/:id', (req, res) => {
       return res.status(404).json({ error: 'Batch not found' });
     }
     const isAdmin = checkIsAdmin(req);
+    if (!isAdmin && ((batch as any).isArchived || (batch as any).isDeleted || batch.status === 'archived')) {
+      return res.status(404).json({ error: 'Batch not found' });
+    }
     res.json(isAdmin ? batch : projectPublicBatch(batch));
   } catch {
     res.status(500).json({ error: 'Failed to fetch batch' });
@@ -1587,10 +1660,33 @@ app.delete('/api/batches/:id', requireAdminAuth, async (req, res) => {
   return await catalogMutex.runExclusive(async () => {
     try {
       const db = readDB();
+      const batchId = req.params.id;
+      const batch = (db.batches || []).find((b) => b.id === batchId);
 
-      db.batches = db.batches.filter((b) => b.id !== req.params.id);
+      if (!batch) {
+        return res.status(404).json({ error: 'Batch tidak ditemukan.' });
+      }
+
+      const batchHasBookings = (db.bookings || []).some((b) => b.batchId === batchId);
+
+      if (!batchHasBookings) {
+        // Hard delete allowed when not referenced in bookings
+        db.batches = db.batches.filter((b) => b.id !== batchId);
+        writeDB(db);
+        return res.json({ success: true, id: batchId, mode: 'deleted' });
+      }
+
+      // Soft delete / archive to protect historical booking records
+      batch.status = 'Closed';
+      (batch as any).isArchived = true;
+      (batch as any).isDeleted = true;
       writeDB(db);
-      res.json({ success: true });
+      return res.json({
+        success: true,
+        id: batchId,
+        mode: 'archived',
+        message: 'Batch berhasil diarsipkan untuk menjaga integritas riwayat booking.'
+      });
     } catch {
       res.status(500).json({ error: 'Failed to delete batch' });
     }
@@ -1640,6 +1736,10 @@ app.post('/api/bookings', async (req, res) => {
 
       const batch = db.batches[batchIndex];
 
+      if ((batch as any).isArchived || (batch as any).isDeleted || batch.status === 'archived') {
+        return res.status(404).json({ error: 'Batch keberangkatan ini telah diarsipkan dan tidak dapat dipesan.' });
+      }
+
       if (payload.tripId && batch.tripId !== payload.tripId) {
         return res.status(400).json({ error: 'Batch keberangkatan tidak sesuai dengan trip yang dipilih.' });
       }
@@ -1648,13 +1748,17 @@ app.post('/api/bookings', async (req, res) => {
         return res.status(409).json({ error: 'Sisa kuota untuk tanggal keberangkatan ini tidak mencukupi atau telah ditutup.' });
       }
 
+      const trip = db.trips.find((t) => t.id === payload.tripId || t.id === batch.tripId);
+      if (trip && (trip.status === 'archived' || (trip as any).isArchived || (trip as any).isDeleted)) {
+        return res.status(404).json({ error: 'Trip ini telah diarsipkan dan tidak lagi menerima pemesanan baru.' });
+      }
+
       // Decrement seats atomically
       batch.availableSeats -= count;
       if (batch.availableSeats <= 0) {
         batch.status = 'Closed';
       }
 
-      const trip = db.trips.find((t) => t.id === payload.tripId || t.id === batch.tripId);
       const bookingCode = payload.bookingCode || generateUniqueBookingCode(db.bookings.map(b => b.bookingCode));
       // BACKEND AUTHORITATIVE PRICING: NEVER trust payload.totalPrice / totalPriceIDR / baseAmount / paymentAmount
       const batchPrice = Number(batch.price ?? trip?.price ?? 0);
@@ -3949,6 +4053,19 @@ function logArtoPayStartupConfig() {
 
 app.get('/api/artopay/config', (req, res) => {
   const config = getArtoPayConfig();
+  const isAdmin = checkIsAdmin(req);
+
+  if (!isAdmin) {
+    return res.json({
+      isConfigured: config.isConfigured,
+      env: config.envMode,
+      apiBaseUrl: config.apiBaseUrl,
+      message: config.isConfigured
+        ? "ArtoPay Server Secret Key is configured."
+        : "ARTOPAY_SECRET_KEY is missing. Please add ARTOPAY_SECRET_KEY in Server Environment Variables."
+    });
+  }
+
   const publicKey = normalizeEnvVar(process.env.VITE_ARTOPAY_PUBLIC_KEY || process.env.ARTOPAY_PUBLIC_KEY);
 
   res.json({
@@ -3987,7 +4104,7 @@ function parseCustomerPhone(rawPhone?: string): { countryCode: string; number: s
   return { countryCode: '+62', number: clean };
 }
 
-app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/payment/create-intent'], async (req, res) => {
+app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/payment/create-intent'], paymentLimiter, async (req, res) => {
   try {
     let bodyData = req.body;
     if (typeof bodyData === 'string') {

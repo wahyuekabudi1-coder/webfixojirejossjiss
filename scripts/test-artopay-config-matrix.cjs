@@ -76,15 +76,19 @@ async function runMatrix() {
     // ----------------------------------------------------
     // TEST D: Secret Isolation Check
     // ----------------------------------------------------
-    console.log('--- TEST D: Secret Isolation (/api/artopay/config) ---');
+    console.log('--- TEST D: Secret Isolation & Zero Fingerprint (/api/artopay/config) ---');
     const configRes = await makeRequest('/api/artopay/config');
     assert(configRes.status === 200, 'Config endpoint responds with HTTP 200');
-    assert(configRes.body.secretKeyInfo !== undefined, 'secretKeyInfo object exists in response');
+    assert(typeof configRes.body.isConfigured === 'boolean', 'isConfigured boolean flag present');
+    assert(typeof configRes.body.env === 'string', 'env string present');
+    assert(configRes.body.secretKeyInfo === undefined, 'secretKeyInfo is completely absent from public response');
+    assert(configRes.body.publicKeyInfo === undefined, 'publicKeyInfo is completely absent from public response');
+    assert(configRes.body.businessUnitInfo === undefined, 'businessUnitInfo is completely absent from public response');
+    assert(configRes.body.prefix === undefined, 'prefix is absent');
+    assert(configRes.body.suffix === undefined, 'suffix is absent');
+    assert(configRes.body.length === undefined, 'length is absent');
     assert(configRes.body.ARTOPAY_SECRET_KEY === undefined, 'Raw ARTOPAY_SECRET_KEY is NOT exposed in response');
     assert(configRes.body.secret === undefined, 'Raw secret is NOT exposed');
-    assert(typeof configRes.body.secretKeyInfo.length === 'number', 'secretKeyInfo.length is a number');
-    assert(typeof configRes.body.secretKeyInfo.prefix === 'string', 'secretKeyInfo.prefix is a masked string');
-    assert(typeof configRes.body.secretKeyInfo.suffix === 'string', 'secretKeyInfo.suffix is a masked string');
 
     // ----------------------------------------------------
     // TEST E: Payment Amount Authority

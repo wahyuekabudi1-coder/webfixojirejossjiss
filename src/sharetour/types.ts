@@ -56,7 +56,10 @@ export interface Trip {
   faq?: FAQItem[];
   gallery?: string[];
   whatsToBring?: string[];
-  status?: "draft" | "published";
+  status?: "draft" | "published" | "archived";
+  isArchived?: boolean;
+  isDeleted?: boolean;
+  updatedAt?: string;
   price?: number;
   wnaPrice?: number;
   wniPrice?: number;
@@ -70,7 +73,9 @@ export interface Batch {
   availableSeats: number;
   price: number;
   wnaPrice?: number;
-  status: 'Open' | 'Closed';
+  status: 'Open' | 'Closed' | 'archived';
+  isArchived?: boolean;
+  isDeleted?: boolean;
 }
 
 export type BookingStatus = 'Pending' | 'Pending Confirmation' | 'Confirmed' | 'Completed' | 'Rejected' | 'Cancelled' | string;
@@ -130,6 +135,7 @@ export interface Booking {
   customerPhone?: string;
   serviceName?: string;
   type?: string;
+  tourId?: string;
   details?: any;
   rejectReason?: string;
   totalPrice: number;
