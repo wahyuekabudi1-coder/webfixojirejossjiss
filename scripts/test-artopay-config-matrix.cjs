@@ -173,9 +173,9 @@ async function runMatrix() {
     console.log('\n--- TEST F: Real Integration Verification Status ---');
     console.log('CODE CONFIGURATION: PASS');
 
-    const realSecretConfigured = configRes.body.isConfigured && configRes.body.secretKeyInfo.length > 0;
+    const realSecretConfigured = Boolean(configRes.body.isConfigured && configRes.body.secretKeyInfo && configRes.body.secretKeyInfo.length > 0);
     if (realSecretConfigured) {
-      console.log(`Secret key is configured in environment (length: ${configRes.body.secretKeyInfo.length}).`);
+      console.log(`Secret key is configured in environment (length: ${configRes.body.secretKeyInfo?.length}).`);
       if (spoofAmountRes.status === 401) {
         assert(spoofAmountRes.body.category === 'ARTOPAY_UNAUTHORIZED_401', 'ArtoPay 401 returns standard category ARTOPAY_UNAUTHORIZED_401');
         assert(spoofAmountRes.body.diagnostic !== undefined, 'ArtoPay 401 returns safe diagnostic payload');

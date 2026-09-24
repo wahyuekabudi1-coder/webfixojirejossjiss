@@ -1,4 +1,5 @@
 import { DatabaseState, Trip, Batch, Booking } from "./types";
+import { getAdminHeaders, handleAdminResponse } from "../utils/adminAuth";
 
 const API_BASE = "/api";
 
@@ -36,16 +37,7 @@ export function recalculateBatchSeats(db: DatabaseState): DatabaseState {
 }
 
 function getAuthHeaders(): Record<string, string> {
-  const token = typeof window !== "undefined"
-    ? (localStorage.getItem("smart_journey_admin_token") || localStorage.getItem("smartjourney_admin_token") || "")
-    : "";
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json"
-  };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-  return headers;
+  return getAdminHeaders();
 }
 
 export async function fetchDB(retries = 2, initialDelayMs = 800, signal?: AbortSignal): Promise<DatabaseState> {
@@ -225,12 +217,7 @@ export async function createTrip(trip: Omit<Trip, "id">): Promise<Trip> {
     headers: getAuthHeaders(),
     body: JSON.stringify(trip),
   });
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({ error: `Server error ${res.status}` }));
-    throw new Error(errData.error || `Failed to create trip on server database (Status ${res.status})`);
-  }
-  const serverTrip: Trip = await res.json();
-  return serverTrip;
+  return await handleAdminResponse<Trip>(res, "Failed to create trip on server database");
 }
 
 export async function updateTrip(id: string, trip: Partial<Trip>): Promise<Trip> {
@@ -239,12 +226,7 @@ export async function updateTrip(id: string, trip: Partial<Trip>): Promise<Trip>
     headers: getAuthHeaders(),
     body: JSON.stringify(trip),
   });
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({ error: `Server error ${res.status}` }));
-    throw new Error(errData.error || `Failed to update trip on server database (Status ${res.status})`);
-  }
-  const updated: Trip = await res.json();
-  return updated;
+  return await handleAdminResponse<Trip>(res, "Failed to update trip on server database");
 }
 
 export async function deleteTrip(id: string): Promise<void> {
@@ -252,10 +234,7 @@ export async function deleteTrip(id: string): Promise<void> {
     method: "DELETE",
     headers: getAuthHeaders()
   });
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({ error: `Server error ${res.status}` }));
-    throw new Error(errData.error || `Failed to delete trip from server database (Status ${res.status})`);
-  }
+  await handleAdminResponse(res, "Failed to delete trip from server database");
 }
 
 export async function createBatch(batch: Omit<Batch, "id">): Promise<Batch> {
@@ -264,12 +243,7 @@ export async function createBatch(batch: Omit<Batch, "id">): Promise<Batch> {
     headers: getAuthHeaders(),
     body: JSON.stringify(batch),
   });
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({ error: `Server error ${res.status}` }));
-    throw new Error(errData.error || `Failed to create batch on server database (Status ${res.status})`);
-  }
-  const serverBatch: Batch = await res.json();
-  return serverBatch;
+  return await handleAdminResponse<Batch>(res, "Failed to create batch on server database");
 }
 
 export async function updateBatch(id: string, batch: Partial<Batch>): Promise<Batch> {
@@ -278,12 +252,7 @@ export async function updateBatch(id: string, batch: Partial<Batch>): Promise<Ba
     headers: getAuthHeaders(),
     body: JSON.stringify(batch),
   });
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({ error: `Server error ${res.status}` }));
-    throw new Error(errData.error || `Failed to update batch on server database (Status ${res.status})`);
-  }
-  const updated: Batch = await res.json();
-  return updated;
+  return await handleAdminResponse<Batch>(res, "Failed to update batch on server database");
 }
 
 export async function deleteBatch(id: string): Promise<void> {
@@ -291,10 +260,7 @@ export async function deleteBatch(id: string): Promise<void> {
     method: "DELETE",
     headers: getAuthHeaders()
   });
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({ error: `Server error ${res.status}` }));
-    throw new Error(errData.error || `Failed to delete batch from server database (Status ${res.status})`);
-  }
+  await handleAdminResponse(res, "Failed to delete batch from server database");
 }
 
 export async function createBooking(
@@ -319,12 +285,7 @@ export async function updateBooking(id: string, updates: Partial<Booking>): Prom
     headers: getAuthHeaders(),
     body: JSON.stringify(updates),
   });
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({ error: `Server error ${res.status}` }));
-    throw new Error(errData.error || `Failed to update booking on server database (Status ${res.status})`);
-  }
-  const updated: Booking = await res.json();
-  return updated;
+  return await handleAdminResponse<Booking>(res, "Failed to update booking on server database");
 }
 
 export async function adminLogin(email: string, password: string): Promise<{ token: string; success: boolean }> {
@@ -345,10 +306,7 @@ export async function purgeAllBookings(): Promise<void> {
     method: "POST",
     headers: getAuthHeaders()
   });
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({ error: `Server error ${res.status}` }));
-    throw new Error(errData.error || `Failed to purge bookings database (Status ${res.status})`);
-  }
+  await handleAdminResponse(res, "Failed to purge bookings database");
 }
 
 export async function importBulk(data: { trips: Trip[]; batches: Batch[]; mode: "append" | "overwrite" }): Promise<{ success: boolean; tripsCount: number; batchesCount: number }> {
@@ -357,10 +315,5 @@ export async function importBulk(data: { trips: Trip[]; batches: Batch[]; mode: 
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
   });
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({ error: `Server error ${res.status}` }));
-    throw new Error(errData.error || "Failed to bulk import data into server database.");
-  }
-  const result = await res.json();
-  return result;
+  return await handleAdminResponse<{ success: boolean; tripsCount: number; batchesCount: number }>(res, "Failed to bulk import data into server database.");
 }

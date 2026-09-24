@@ -28,6 +28,12 @@ import {
   DraftRecoveryBanner 
 } from '../components/admin/AutoSaveDraftComponents';
 import { clearDraft } from '../utils/adminDraftStorage';
+import { 
+  verifyAdminSession, 
+  clearAdminSession, 
+  saveAdminSessionToken, 
+  ADMIN_AUTH_EXPIRED_EVENT 
+} from '../utils/adminAuth';
 
 interface ItineraryFormItem {
   id: string;
@@ -105,13 +111,41 @@ export default function AdminView() {
     localStorage.setItem('sj_admin_theme', isDark ? 'dark' : 'light');
   }, [isDark]);
 
-  // Authorization wall (consistent with original lock system)
-  const [isAdminUnlocked, setIsAdminUnlocked] = useState(() => {
-    return localStorage.getItem('smartjourney_admin_unlocked') === 'true';
-  });
-  const [rolePasswordInput, setRolePasswordInput] = useState('');
+  // Authorization wall: Authoritative server session verification
+  const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(false);
+  const [isVerifyingSession, setIsVerifyingSession] = useState<boolean>(true);
+  const [roleEmailInput, setRoleEmailInput] = useState<string>('');
+  const [rolePasswordInput, setRolePasswordInput] = useState<string>('');
   const [passwordError, setPasswordError] = useState(false);
+  const [passwordErrorMessage, setPasswordErrorMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  // Authoritative session verification on component mount
+  useEffect(() => {
+    let isMounted = true;
+    const checkAuth = async () => {
+      const isValid = await verifyAdminSession();
+      if (isMounted) {
+        setIsAdminUnlocked(isValid);
+        setIsVerifyingSession(false);
+      }
+    };
+    checkAuth();
+
+    const handleAuthExpired = () => {
+      if (isMounted) {
+        setIsAdminUnlocked(false);
+        triggerToast('Session admin telah berakhir. Silakan login kembali.');
+      }
+    };
+    window.addEventListener(ADMIN_AUTH_EXPIRED_EVENT, handleAuthExpired);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener(ADMIN_AUTH_EXPIRED_EVENT, handleAuthExpired);
+    };
+  }, []);
 
   // Navigation States
   const [activeModule, setActiveModule] = useState<'dashboard' | 'analytics' | 'tours' | 'sharetour' | 'bookings' | 'reports' | 'airport' | 'taxi' | 'rental' | 'cms' | 'account'>('dashboard');
@@ -646,38 +680,67 @@ export default function AdminView() {
 
   const handleAdminPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!rolePasswordInput.trim()) return;
+    setIsLoggingIn(true);
+    setPasswordError(false);
+    setPasswordErrorMessage('');
+
     try {
+      const payload: Record<string, string> = {
+        password: rolePasswordInput.trim(),
+        secretKey: rolePasswordInput.trim()
+      };
+      if (roleEmailInput.trim()) {
+        payload.email = roleEmailInput.trim();
+      }
+
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: 'sawahjayagroup@gmail.com',
-          password: rolePasswordInput
-        })
+        body: JSON.stringify(payload)
       });
+
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.token) {
+          saveAdminSessionToken(data.token);
           setIsAdminUnlocked(true);
-          localStorage.setItem('smartjourney_admin_unlocked', 'true');
-          localStorage.setItem('smart_journey_admin_token', data.token);
-          localStorage.setItem('smartjourney_admin_token', data.token);
           setPasswordError(false);
+          setPasswordErrorMessage('');
+          setRolePasswordInput('');
           triggerToast('Akses Admin Berhasil Dibuka');
           return;
         }
       }
+
+      const errData = await res.json().catch(() => null);
       setPasswordError(true);
+      setPasswordErrorMessage(errData?.error || 'Sandi atau kredensial admin tidak valid.');
     } catch {
       setPasswordError(true);
+      setPasswordErrorMessage('Gagal menghubungi server autentikasi.');
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const token = localStorage.getItem('smart_journey_admin_token') || localStorage.getItem('smartjourney_admin_token');
+    if (token) {
+      try {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+      } catch (err) {
+        console.error('Logout error:', err);
+      }
+    }
+    clearAdminSession();
     setIsAdminUnlocked(false);
-    localStorage.removeItem('smartjourney_admin_unlocked');
-    localStorage.removeItem('smart_journey_admin_token');
-    localStorage.removeItem('smartjourney_admin_token');
     triggerToast('Anda telah keluar dari Portal Admin');
   };
 
@@ -733,6 +796,24 @@ export default function AdminView() {
     label: isDark ? 'text-neutral-300 font-bold' : 'text-slate-800 font-bold'
   };
 
+  // Session Verification Splash
+  if (isVerifyingSession) {
+    return (
+      <div 
+        data-admin-portal="true" 
+        className={`min-h-screen ${theme.bg} transition-colors duration-300 relative flex items-center justify-center font-sans admin-portal ${isDark ? 'admin-dark' : 'admin-light'}`}
+      >
+        <div className="text-center space-y-4 max-w-sm px-6">
+          <div className="w-10 h-10 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="space-y-1">
+            <p className="text-xs font-bold font-mono tracking-widest text-amber-500 uppercase">Verifikasi Sesi Admin</p>
+            <p className={`text-[11px] ${theme.textSecondary}`}>Memeriksa keabsahan kredensial dengan database server...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Lockscreen View (Stage 1)
   if (!isAdminUnlocked) {
     return (
@@ -775,9 +856,23 @@ export default function AdminView() {
             </div>
 
             <form onSubmit={handleAdminPasswordSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-neutral-500 tracking-wider">EMAIL ADMIN (OPSIONAL)</label>
+                <input 
+                  type="email"
+                  value={roleEmailInput}
+                  onChange={(e) => {
+                    setRoleEmailInput(e.target.value);
+                    setPasswordError(false);
+                  }}
+                  placeholder="admin@smartjourney.id"
+                  className={`w-full ${theme.input} rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-amber-500 text-center border`}
+                />
+              </div>
+
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <label className="text-[10px] font-black text-neutral-500 tracking-wider">SANDI OPERASIONAL</label>
+                  <label className="text-[10px] font-black text-neutral-500 tracking-wider">SANDI OPERASIONAL / KUNCI RAHASIA</label>
                 </div>
                 
                 <div className="relative">
@@ -790,7 +885,7 @@ export default function AdminView() {
                       setRolePasswordInput(e.target.value);
                       setPasswordError(false);
                     }}
-                    placeholder="Masukkan sandi..."
+                    placeholder="Masukkan sandi atau kunci..."
                     className={`w-full ${theme.input} rounded-xl px-4 py-3 text-xs focus:outline-none focus:border-amber-500 font-mono tracking-widest text-center border`}
                   />
                   <button
@@ -804,16 +899,24 @@ export default function AdminView() {
 
                 {passwordError && (
                   <p className="text-[11px] font-extrabold text-rose-500 text-center">
-                    Sandi yang Anda masukkan tidak valid.
+                    {passwordErrorMessage || 'Sandi atau kredensial yang Anda masukkan tidak valid.'}
                   </p>
                 )}
               </div>
 
               <button
                 type="submit"
-                className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-neutral-950 font-black text-xs transition-all tracking-wider text-center cursor-pointer shadow-md uppercase font-mono"
+                disabled={isLoggingIn}
+                className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-neutral-950 font-black text-xs transition-all tracking-wider text-center cursor-pointer shadow-md uppercase font-mono flex items-center justify-center gap-2"
               >
-                MASUK KE ARCHITECTURE PREVIEW
+                {isLoggingIn ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>MEMVERIFIKASI...</span>
+                  </>
+                ) : (
+                  <span>MASUK KE ARCHITECTURE PREVIEW</span>
+                )}
               </button>
             </form>
           </div>
@@ -1146,9 +1249,15 @@ export default function AdminView() {
                     clearTourDraft();
                     setIsTourFormOpen(false);
                     setEditingTour(null);
-                  } catch (err) {
+                  } catch (err: any) {
                     console.error('Save tour error:', err);
-                    triggerToast('Gagal menyimpan paket tour ke server database.');
+                    const errorMsg = err?.message || 'Gagal menyimpan paket tour ke server database.';
+                    if (errorMsg.includes('Session admin') || errorMsg.includes('401') || errorMsg.includes('403')) {
+                      setIsAdminUnlocked(false);
+                      triggerToast('Session admin telah berakhir. Silakan login kembali.');
+                    } else {
+                      triggerToast(errorMsg);
+                    }
                   } finally {
                     setIsPublishingTour(false);
                   }
@@ -2214,8 +2323,16 @@ export default function AdminView() {
                             {(tour.status === 'draft' || tour.status === 'unpublished') ? (
                               <button 
                                 onClick={async () => {
-                                  await updateTour({ ...tour, status: 'published' });
-                                  triggerToast(`Paket "${tour.name}" berhasil dipublikasikan ke katalog pelanggan!`);
+                                  try {
+                                    await updateTour({ ...tour, status: 'published' });
+                                    triggerToast(`Paket "${tour.name}" berhasil dipublikasikan ke katalog pelanggan!`);
+                                  } catch (err: any) {
+                                    const msg = err?.message || 'Gagal mempublikasikan paket tour.';
+                                    if (msg.includes('Session admin') || msg.includes('401') || msg.includes('403')) {
+                                      setIsAdminUnlocked(false);
+                                    }
+                                    triggerToast(msg);
+                                  }
                                 }}
                                 className="p-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-all cursor-pointer" 
                                 title="Publikasikan ke Website"
@@ -2225,8 +2342,16 @@ export default function AdminView() {
                             ) : (
                               <button 
                                 onClick={async () => {
-                                  await updateTour({ ...tour, status: 'draft' });
-                                  triggerToast(`Paket "${tour.name}" dialihkan menjadi Draft (disembunyikan dari publik)`);
+                                  try {
+                                    await updateTour({ ...tour, status: 'draft' });
+                                    triggerToast(`Paket "${tour.name}" dialihkan menjadi Draft (disembunyikan dari publik)`);
+                                  } catch (err: any) {
+                                    const msg = err?.message || 'Gagal mengubah status paket tour.';
+                                    if (msg.includes('Session admin') || msg.includes('401') || msg.includes('403')) {
+                                      setIsAdminUnlocked(false);
+                                    }
+                                    triggerToast(msg);
+                                  }
                                 }}
                                 className="p-2 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 transition-all cursor-pointer" 
                                 title="Jadikan Draft / Sembunyikan dari Publik"
@@ -2264,8 +2389,12 @@ export default function AdminView() {
                                 try {
                                   await addTour(duplicatedTour);
                                   triggerToast(`Berhasil menduplikasi paket "${tour.name}"`);
-                                } catch (err) {
-                                  triggerToast('Gagal menduplikasi paket tour ke database server.');
+                                } catch (err: any) {
+                                  const msg = err?.message || 'Gagal menduplikasi paket tour ke database server.';
+                                  if (msg.includes('Session admin') || msg.includes('401') || msg.includes('403')) {
+                                    setIsAdminUnlocked(false);
+                                  }
+                                  triggerToast(msg);
                                 }
                               }}
                               className={`p-2 rounded-xl border ${theme.border} ${theme.hover} text-emerald-400 hover:text-emerald-300 transition-all cursor-pointer`} 
@@ -2313,10 +2442,18 @@ export default function AdminView() {
 
                             {/* 4. Delete item */}
                             <button 
-                              onClick={() => {
+                              onClick={async () => {
                                 if (confirm(`Apakah Anda yakin ingin menghapus paket tour "${tour.name}"?`)) {
-                                  deleteTour(tour.id);
-                                  triggerToast('Paket tour berhasil dihapus');
+                                  try {
+                                    await deleteTour(tour.id);
+                                    triggerToast('Paket tour berhasil dihapus');
+                                  } catch (err: any) {
+                                    const msg = err?.message || 'Gagal menghapus paket tour.';
+                                    if (msg.includes('Session admin') || msg.includes('401') || msg.includes('403')) {
+                                      setIsAdminUnlocked(false);
+                                    }
+                                    triggerToast(msg);
+                                  }
                                 }
                               }} 
                               className={`p-2 rounded-xl border border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/15 text-rose-500 transition-all cursor-pointer`} 

@@ -719,157 +719,174 @@ app.get('/api/main-tours/:id', (req, res) => {
 });
 
 // 3. Create new main tour
-app.post('/api/main-tours', requireAdminAuth, (req, res) => {
-  try {
-    const payload = req.body;
+app.post('/api/main-tours', requireAdminAuth, async (req, res) => {
+  return await catalogMutex.runExclusive(async () => {
+    try {
+      const payload = req.body;
 
-    if (!payload || !payload.name || !payload.name.trim()) {
-      return res.status(400).json({ error: 'Nama paket tour wajib diisi.' });
+      if (!payload || !payload.name || !payload.name.trim()) {
+        return res.status(400).json({ error: 'Nama paket tour wajib diisi.' });
+      }
+
+      const db = readDB();
+      const tours: Tour[] = Array.isArray(db.mainTours) ? db.mainTours : [];
+      const tourId = payload.id && payload.id.trim() !== '' 
+        ? payload.id.trim() 
+        : generateEntityId('tour');
+
+      const newTour: Tour = {
+        ...payload,
+        id: tourId,
+        name: payload.name.trim(),
+        status: payload.status || 'published',
+        createdAt: payload.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      // Check if ID already exists
+      const existingIndex = tours.findIndex(t => t.id === newTour.id);
+      if (existingIndex !== -1) {
+        tours[existingIndex] = { ...tours[existingIndex], ...newTour };
+      } else {
+        tours.unshift(newTour);
+      }
+
+      db.mainTours = tours;
+      // Step 1: Write to data/db.json
+      writeDB(db);
+
+      // Step 2: Read back from data/db.json on physical disk to verify persistence
+      const verifyRaw = fs.readFileSync(DB_PATH, 'utf8');
+      const verifyDB = JSON.parse(verifyRaw);
+      const verifiedTour = (verifyDB.mainTours || []).find((t: any) => t.id === newTour.id);
+
+      if (!verifiedTour) {
+        console.error(`[CRITICAL] Tour ${newTour.id} missing from data/db.json after write!`);
+        return res.status(500).json({ error: 'Verifikasi persistence gagal: paket tour tidak ditemukan di data/db.json setelah penulisan.' });
+      }
+
+      console.log(`[Persistence Verified] Tour successfully saved & verified in data/db.json: ${verifiedTour.name} (${verifiedTour.id}), total: ${verifyDB.mainTours.length}`);
+      return res.status(201).json(verifiedTour);
+    } catch (error: any) {
+      console.error('Error creating main tour:', error);
+      res.status(500).json({ error: error?.message || 'Gagal menyimpan paket tour baru ke database server.' });
     }
-
-    const tours = readMainTours();
-    const tourId = payload.id && payload.id.trim() !== '' 
-      ? payload.id.trim() 
-      : generateEntityId('tour');
-
-    const newTour: Tour = {
-      ...payload,
-      id: tourId,
-      name: payload.name.trim(),
-      status: payload.status || 'published',
-      createdAt: payload.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    // Check if ID already exists
-    const existingIndex = tours.findIndex(t => t.id === newTour.id);
-    if (existingIndex !== -1) {
-      tours[existingIndex] = { ...tours[existingIndex], ...newTour };
-    } else {
-      tours.unshift(newTour);
-    }
-
-    // Step 1: Write to data/db.json
-    writeMainTours(tours);
-
-    // Step 2: Read back from data/db.json on disk to verify persistence
-    const verifyRaw = fs.readFileSync(DB_PATH, 'utf8');
-    const verifyDB = JSON.parse(verifyRaw);
-    const verifiedTour = (verifyDB.mainTours || []).find((t: any) => t.id === newTour.id);
-
-    if (!verifiedTour) {
-      console.error(`[CRITICAL] Tour ${newTour.id} missing from data/db.json after write!`);
-      return res.status(500).json({ error: 'Verifikasi persistence gagal: paket tour tidak ditemukan di data/db.json setelah penulisan.' });
-    }
-
-    console.log(`[Persistence Verified] Tour successfully saved & verified in data/db.json: ${verifiedTour.name} (${verifiedTour.id}), total: ${verifyDB.mainTours.length}`);
-    return res.status(201).json(verifiedTour);
-  } catch (error) {
-    console.error('Error creating main tour:', error);
-    res.status(500).json({ error: 'Gagal menyimpan paket tour baru ke database server.' });
-  }
+  });
 });
 
 // 4. Update existing main tour
-app.put('/api/main-tours/:id', requireAdminAuth, (req, res) => {
-  try {
-    const tours = readMainTours();
-    const tourId = req.params.id;
-    const index = tours.findIndex(t => t.id === tourId);
+app.put('/api/main-tours/:id', requireAdminAuth, async (req, res) => {
+  return await catalogMutex.runExclusive(async () => {
+    try {
+      const db = readDB();
+      const tours: Tour[] = Array.isArray(db.mainTours) ? db.mainTours : [];
+      const tourId = req.params.id;
+      const index = tours.findIndex(t => t.id === tourId);
 
-    if (index === -1) {
-      return res.status(404).json({ error: 'Paket tour tidak ditemukan untuk diperbarui.' });
+      if (index === -1) {
+        return res.status(404).json({ error: 'Paket tour tidak ditemukan untuk diperbarui.' });
+      }
+
+      const updatedTour: Tour = {
+        ...tours[index],
+        ...req.body,
+        id: tourId,
+        updatedAt: new Date().toISOString()
+      };
+
+      tours[index] = updatedTour;
+      db.mainTours = tours;
+      writeDB(db);
+
+      // Verify persistence from physical disk
+      const verifyRaw = fs.readFileSync(DB_PATH, 'utf8');
+      const verifyDB = JSON.parse(verifyRaw);
+      const verifiedTour = (verifyDB.mainTours || []).find((t: any) => t.id === tourId);
+
+      if (!verifiedTour) {
+        console.error(`[CRITICAL] Updated tour ${tourId} missing from data/db.json after write!`);
+        return res.status(500).json({ error: 'Verifikasi persistence gagal: paket tour yang diperbarui tidak ditemukan di database server.' });
+      }
+
+      console.log(`[Persistence Verified] Tour updated & verified in data/db.json: ${verifiedTour.name} (${tourId})`);
+      return res.json(verifiedTour);
+    } catch (error: any) {
+      console.error('Error updating main tour:', error);
+      res.status(500).json({ error: error?.message || 'Gagal memperbarui paket tour di database server.' });
     }
-
-    const updatedTour: Tour = {
-      ...tours[index],
-      ...req.body,
-      id: tourId,
-      updatedAt: new Date().toISOString()
-    };
-
-    tours[index] = updatedTour;
-    writeMainTours(tours);
-
-    // Verify persistence from disk
-    const verifyRaw = fs.readFileSync(DB_PATH, 'utf8');
-    const verifyDB = JSON.parse(verifyRaw);
-    const verifiedTour = (verifyDB.mainTours || []).find((t: any) => t.id === tourId);
-
-    if (!verifiedTour) {
-      console.error(`[CRITICAL] Updated tour ${tourId} missing from data/db.json after write!`);
-      return res.status(500).json({ error: 'Verifikasi persistence gagal: paket tour yang diperbarui tidak ditemukan di database server.' });
-    }
-
-    console.log(`[Persistence Verified] Tour updated & verified in data/db.json: ${verifiedTour.name} (${tourId})`);
-    res.json(verifiedTour);
-  } catch (error) {
-    console.error('Error updating main tour:', error);
-    res.status(500).json({ error: 'Gagal memperbarui paket tour di database server.' });
-  }
+  });
 });
 
 // 5. Delete main tour with Soft Delete protection for historical bookings
-app.delete('/api/main-tours/:id', requireAdminAuth, (req, res) => {
-  try {
-    const tours = readMainTours();
-    const tourId = req.params.id;
-    const tour = tours.find(t => t.id === tourId);
+app.delete('/api/main-tours/:id', requireAdminAuth, async (req, res) => {
+  return await catalogMutex.runExclusive(async () => {
+    try {
+      const db = readDB();
+      const tours: Tour[] = Array.isArray(db.mainTours) ? db.mainTours : [];
+      const tourId = req.params.id;
+      const tour = tours.find(t => t.id === tourId);
 
-    if (!tour) {
-      return res.status(404).json({ error: 'Paket tour tidak ditemukan.' });
-    }
-
-    const db = readDB();
-    const isReferencedInBookings = (db.bookings || []).some(
-      b => b.tripId === tourId || b.tourSnapshot?.tourId === tourId || b.details?.tourId === tourId
-    );
-
-    if (!isReferencedInBookings) {
-      // Hard delete allowed when no historical bookings reference this tour
-      const filtered = tours.filter(t => t.id !== tourId);
-      writeMainTours(filtered);
-
-      // Verify deletion on disk
-      const verifyRaw = fs.readFileSync(DB_PATH, 'utf8');
-      const verifyDB = JSON.parse(verifyRaw);
-      const stillExists = (verifyDB.mainTours || []).some((t: any) => t.id === tourId);
-      if (stillExists) {
-        console.error(`[CRITICAL] Tour ${tourId} still present in data/db.json after deletion!`);
-        return res.status(500).json({ error: 'Verifikasi penghapusan gagal: data masih ada di database server.' });
+      if (!tour) {
+        return res.status(404).json({ error: 'Paket tour tidak ditemukan.' });
       }
 
-      console.log(`[Persistence Verified] Tour deleted from catalog: ${tourId}`);
-      return res.json({ success: true, id: tourId, mode: 'deleted' });
+      const isReferencedInBookings = (db.bookings || []).some(
+        (b: any) =>
+          b.tripId === tourId ||
+          b.tourId === tourId ||
+          b.tourSnapshot?.tourId === tourId ||
+          b.tourSnapshot?.id === tourId ||
+          b.details?.tourId === tourId ||
+          b.details?.tripId === tourId
+      );
+
+      if (!isReferencedInBookings) {
+        // Hard delete allowed when no historical bookings reference this tour
+        db.mainTours = tours.filter(t => t.id !== tourId);
+        writeDB(db);
+
+        // Verify deletion on disk
+        const verifyRaw = fs.readFileSync(DB_PATH, 'utf8');
+        const verifyDB = JSON.parse(verifyRaw);
+        const stillExists = (verifyDB.mainTours || []).some((t: any) => t.id === tourId);
+        if (stillExists) {
+          console.error(`[CRITICAL] Tour ${tourId} still present in data/db.json after deletion!`);
+          return res.status(500).json({ error: 'Verifikasi penghapusan gagal: data masih ada di database server.' });
+        }
+
+        console.log(`[Persistence Verified] Tour deleted from catalog: ${tourId}`);
+        return res.json({ success: true, id: tourId, mode: 'deleted' });
+      }
+
+      // Default & Safe: Soft Delete (Archive) to preserve booking history integrity
+      tour.status = 'archived';
+      (tour as any).isDeleted = true;
+      (tour as any).isArchived = true;
+      tour.updatedAt = new Date().toISOString();
+      db.mainTours = tours;
+      writeDB(db);
+
+      // Verify archived on disk
+      const verifyRaw = fs.readFileSync(DB_PATH, 'utf8');
+      const verifyDB = JSON.parse(verifyRaw);
+      const verifiedTour = (verifyDB.mainTours || []).find((t: any) => t.id === tourId);
+      if (!verifiedTour || verifiedTour.status !== 'archived') {
+        console.error(`[CRITICAL] Tour ${tourId} archive status not verified in data/db.json!`);
+        return res.status(500).json({ error: 'Verifikasi pengarsipan gagal: status tour tidak terarsip di database server.' });
+      }
+
+      console.log(`[Persistence Verified] Tour soft-deleted/archived to preserve booking integrity: ${tourId}`);
+      return res.json({ 
+        success: true, 
+        id: tourId, 
+        mode: 'archived', 
+        message: 'Paket tour berhasil diarsipkan (soft delete) untuk menjaga integritas riwayat booking.' 
+      });
+    } catch (error: any) {
+      console.error('Error deleting main tour:', error);
+      return res.status(500).json({ error: error?.message || 'Gagal memproses penghapusan paket tour.' });
     }
-
-    // Default & Safe: Soft Delete (Archive) to preserve booking history integrity
-    tour.status = 'archived';
-    (tour as any).isDeleted = true;
-    (tour as any).isArchived = true;
-    tour.updatedAt = new Date().toISOString();
-    writeMainTours(tours);
-
-    // Verify archived on disk
-    const verifyRaw = fs.readFileSync(DB_PATH, 'utf8');
-    const verifyDB = JSON.parse(verifyRaw);
-    const verifiedTour = (verifyDB.mainTours || []).find((t: any) => t.id === tourId);
-    if (!verifiedTour || verifiedTour.status !== 'archived') {
-      console.error(`[CRITICAL] Tour ${tourId} archive status not verified in data/db.json!`);
-      return res.status(500).json({ error: 'Verifikasi pengarsipan gagal: status tour tidak terarsip di database server.' });
-    }
-
-    console.log(`[Persistence Verified] Tour soft-deleted/archived to preserve booking integrity: ${tourId}`);
-    return res.json({ 
-      success: true, 
-      id: tourId, 
-      mode: 'archived', 
-      message: 'Paket tour berhasil diarsipkan (soft delete) untuk menjaga integritas riwayat booking.' 
-    });
-  } catch (error) {
-    console.error('Error deleting main tour:', error);
-    res.status(500).json({ error: 'Gagal memproses penghapusan paket tour.' });
-  }
+  });
 });
 
 // -------------------------------------------------------------
@@ -3468,18 +3485,36 @@ const handleAdminLogin = (req: express.Request, res: express.Response) => {
   const configuredPassword = (process.env.ADMIN_PASSWORD || '').trim();
   const configuredSecret = (process.env.ADMIN_SECRET_KEY || '').trim();
 
-  // Validate secretKey against configured secret
-  const isSecretValid = Boolean(configuredSecret.length > 0 && secretKey && String(secretKey).trim() === configuredSecret);
-  
-  // Validate email and password against environment configuration
+  const inputPassword = String(password || '').trim();
+  const inputSecret = String(secretKey || '').trim();
   const cleanInputEmail = email ? String(email).trim().toLowerCase() : '';
-  const isEmailValid = Boolean(
-    (configuredEmail.length > 0 && cleanInputEmail === configuredEmail) ||
-    cleanInputEmail === 'admin@smartjourney.com'
-  );
-  const isPasswordValid = Boolean(configuredPassword.length > 0 && password && String(password).trim() === configuredPassword);
 
-  if (isSecretValid || (isEmailValid && isPasswordValid)) {
+  // If email is explicitly provided and ADMIN_EMAIL is configured, it must match
+  if (configuredEmail.length > 0 && cleanInputEmail && cleanInputEmail !== configuredEmail) {
+    return res.status(401).json({ error: 'Kredensial login tidak valid. Silakan coba lagi.' });
+  }
+
+  // 1. Direct Secret Key validation (via secretKey or password field)
+  const isSecretValid = Boolean(
+    configuredSecret.length > 0 &&
+    (inputSecret === configuredSecret || inputPassword === configuredSecret)
+  );
+
+  // 2. Configured Password validation
+  const isPasswordMatch = Boolean(
+    configuredPassword.length > 0 &&
+    inputPassword === configuredPassword
+  );
+
+  // Email validation: if ADMIN_EMAIL is configured in environment, check it.
+  // If not configured, allow matching against common admin conventions or password-only unlock.
+  const isEmailMatch = configuredEmail.length > 0
+    ? (cleanInputEmail === configuredEmail || !cleanInputEmail)
+    : Boolean(!cleanInputEmail || cleanInputEmail.includes('admin'));
+
+  const isCredentialValid = isSecretValid || (isPasswordMatch && isEmailMatch);
+
+  if (isCredentialValid) {
     // Generate secure random session token
     const sessionToken = crypto.randomBytes(32).toString('hex');
     saveAdminSession(sessionToken);
@@ -3507,6 +3542,10 @@ const handleAdminLogout = (req: express.Request, res: express.Response) => {
   }
   return res.json({ success: true, message: 'Admin session terminated' });
 };
+
+app.get(['/api/auth/verify', '/api/admin/verify'], requireAdminAuth, (req, res) => {
+  return res.json({ success: true, valid: true, authenticated: true });
+});
 
 app.post('/api/auth/login', loginLimiter, handleAdminLogin);
 app.post('/api/admin/login', loginLimiter, handleAdminLogin);

@@ -7,6 +7,7 @@ import {
 } from './types';
 import { TOURS, REVIEWS } from './data';
 import { EXCHANGE_RATE_USD_TO_IDR, EXCHANGE_RATE_USD_TO_CNY, ENABLE_FOREIGN_CURRENCIES } from './utils/pricingUtils';
+import { getAdminHeaders, handleAdminResponse } from './utils/adminAuth';
 
 interface AppContextProps {
   activePage: ActivePage;
@@ -129,19 +130,6 @@ if (typeof window !== 'undefined' && localStorage.getItem(CLEAN_STATE_KEY) !== '
     try { localStorage.removeItem(k); } catch(e){}
   });
   try { localStorage.setItem(CLEAN_STATE_KEY, 'true'); } catch(e){}
-}
-
-function getAdminHeaders(): Record<string, string> {
-  const token = typeof window !== 'undefined'
-    ? (localStorage.getItem('smart_journey_admin_token') || localStorage.getItem('smartjourney_admin_token') || '')
-    : '';
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json'
-  };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  return headers;
 }
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -718,30 +706,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updatedAt: new Date().toISOString()
     };
 
-    try {
-      const res = await fetch('/api/main-tours', {
-        method: 'POST',
-        headers: getAdminHeaders(),
-        body: JSON.stringify(tourWithStatus)
-      });
-      if (res.ok) {
-        const saved: Tour = await res.json();
-        if (!saved || !saved.id) {
-          throw new Error('Format respon server tidak valid saat menyimpan paket tour.');
-        }
-        // Authoritative server state update only after verified server response
-        setTours(prev => [saved, ...prev.filter(t => t.id !== saved.id)]);
-        addLog(`Paket tour baru berhasil disimpan di database server: ${saved.name} (${saved.id})`);
-        return saved;
-      } else {
-        const errText = await res.text();
-        console.error('Failed to persist tour to server database:', errText);
-        throw new Error(errText || 'Gagal menyimpan tour ke server database.');
-      }
-    } catch (err) {
-      console.error('Network or server error saving tour to database:', err);
-      throw err;
+    const res = await fetch('/api/main-tours', {
+      method: 'POST',
+      headers: getAdminHeaders(),
+      body: JSON.stringify(tourWithStatus)
+    });
+    const saved = await handleAdminResponse<Tour>(res, 'Gagal menyimpan paket tour ke server database.');
+    if (!saved || !saved.id) {
+      throw new Error('Format respon server tidak valid saat menyimpan paket tour.');
     }
+    // Authoritative server state update only after verified server response
+    setTours(prev => [saved, ...prev.filter(t => t.id !== saved.id)]);
+    addLog(`Paket tour baru berhasil disimpan di database server: ${saved.name} (${saved.id})`);
+    return saved;
   };
 
   const updateTour = async (updatedTour: Tour): Promise<Tour> => {
@@ -750,56 +727,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updatedAt: new Date().toISOString()
     };
 
-    try {
-      const res = await fetch(`/api/main-tours/${encodeURIComponent(tourWithTimestamp.id)}`, {
-        method: 'PUT',
-        headers: getAdminHeaders(),
-        body: JSON.stringify(tourWithTimestamp)
-      });
-      if (res.ok) {
-        const saved: Tour = await res.json();
-        if (!saved || !saved.id) {
-          throw new Error('Format respon server tidak valid saat memperbarui paket tour.');
-        }
-        // Authoritative server state update
-        setTours(prev => prev.map(t => t.id === saved.id ? saved : t));
-        addLog(`Paket tour ${saved.id} (${saved.name}) berhasil diperbarui di database server`);
-        return saved;
-      } else {
-        const errText = await res.text();
-        console.error('Failed to update tour on server database:', errText);
-        throw new Error(errText || 'Gagal memperbarui tour pada database server.');
-      }
-    } catch (err) {
-      console.error('Network or server error updating tour on server:', err);
-      throw err;
+    const res = await fetch(`/api/main-tours/${encodeURIComponent(tourWithTimestamp.id)}`, {
+      method: 'PUT',
+      headers: getAdminHeaders(),
+      body: JSON.stringify(tourWithTimestamp)
+    });
+    const saved = await handleAdminResponse<Tour>(res, 'Gagal memperbarui tour pada database server.');
+    if (!saved || !saved.id) {
+      throw new Error('Format respon server tidak valid saat memperbarui paket tour.');
     }
+    // Authoritative server state update
+    setTours(prev => prev.map(t => t.id === saved.id ? saved : t));
+    addLog(`Paket tour ${saved.id} (${saved.name}) berhasil diperbarui di database server`);
+    return saved;
   };
 
   const deleteTour = async (id: string): Promise<void> => {
-    try {
-      const res = await fetch(`/api/main-tours/${encodeURIComponent(id)}`, {
-        method: 'DELETE',
-        headers: getAdminHeaders()
-      });
-      if (res.ok) {
-        const data = await res.json();
-        // If soft-deleted / archived on server to protect bookings, keep state in sync
-        if (data.mode === 'archived') {
-          setTours(prev => prev.map(t => t.id === id ? { ...t, status: 'archived', isDeleted: true } : t));
-        } else {
-          setTours(prev => prev.filter(t => t.id !== id));
-        }
-        addLog(`Paket tour ${id} berhasil dihapus dari database server`);
-      } else {
-        const errText = await res.text();
-        console.error('Failed to delete tour from server database:', errText);
-        throw new Error(errText || 'Gagal menghapus tour pada database server.');
-      }
-    } catch (err) {
-      console.error('Network error deleting tour from server:', err);
-      throw err;
+    const res = await fetch(`/api/main-tours/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: getAdminHeaders()
+    });
+    const data = await handleAdminResponse<{ success: boolean; id: string; mode: string }>(res, 'Gagal menghapus tour pada database server.');
+    // If soft-deleted / archived on server to protect bookings, keep state in sync
+    if (data && data.mode === 'archived') {
+      setTours(prev => prev.map(t => t.id === id ? { ...t, status: 'archived', isDeleted: true } : t));
+    } else {
+      setTours(prev => prev.filter(t => t.id !== id));
     }
+    addLog(`Paket tour ${id} berhasil dihapus dari database server`);
   };
 
   const setTourStatus = async (id: string, status: 'published' | 'draft' | 'unpublished') => {
