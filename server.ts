@@ -26,23 +26,52 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 // Helper to determine the actual project root directory safely across environments (AI Studio, PM2, Passenger, Hostinger)
 function resolveProjectRoot(): string {
-  if (fs.existsSync(path.join(process.cwd(), 'package.json')) || fs.existsSync(path.join(process.cwd(), 'data', 'db.json'))) {
+  if (process.env.PROJECT_ROOT && fs.existsSync(process.env.PROJECT_ROOT)) {
+    return path.resolve(process.env.PROJECT_ROOT);
+  }
+  if (fs.existsSync(path.join(process.cwd(), 'data', 'db.json')) || fs.existsSync(path.join(process.cwd(), 'package.json'))) {
     return process.cwd();
   }
   if (typeof __dirname !== 'undefined') {
     const parentDir = path.resolve(__dirname, '..');
-    if (fs.existsSync(path.join(parentDir, 'package.json')) || fs.existsSync(path.join(parentDir, 'data', 'db.json'))) {
+    if (fs.existsSync(path.join(parentDir, 'data', 'db.json')) || fs.existsSync(path.join(parentDir, 'package.json'))) {
       return parentDir;
     }
-    if (fs.existsSync(path.join(__dirname, 'package.json')) || fs.existsSync(path.join(__dirname, 'data', 'db.json'))) {
+    if (fs.existsSync(path.join(__dirname, 'data', 'db.json')) || fs.existsSync(path.join(__dirname, 'package.json'))) {
       return __dirname;
+    }
+  }
+  const candidateDirs = ['/app/applet', '/app', process.cwd()];
+  for (const cand of candidateDirs) {
+    if (fs.existsSync(path.join(cand, 'data', 'db.json')) || fs.existsSync(path.join(cand, 'package.json'))) {
+      return cand;
     }
   }
   return process.cwd();
 }
 
 const PROJECT_ROOT = resolveProjectRoot();
-const DB_PATH = path.join(PROJECT_ROOT, 'data', 'db.json');
+const DB_PATH = process.env.DB_PATH 
+  ? path.resolve(process.env.DB_PATH) 
+  : path.resolve(PROJECT_ROOT, 'data', 'db.json');
+
+function logPersistenceDiagnostics(): void {
+  const exists = fs.existsSync(DB_PATH);
+  let tripsCount = 0;
+  if (exists) {
+    try {
+      const raw = fs.readFileSync(DB_PATH, 'utf8');
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.trips)) {
+        tripsCount = parsed.trips.length;
+      }
+    } catch (_) {}
+  }
+  console.log(`[Persistence] PROJECT_ROOT=${PROJECT_ROOT}`);
+  console.log(`[Persistence] DB_PATH=${DB_PATH}`);
+  console.log(`[Persistence] DB_EXISTS=${exists}`);
+  console.log(`[Persistence] TRIPS_COUNT=${tripsCount}`);
+}
 
 // Concurrency: Process-level critical section / mutex for booking creation & bulk writes
 class AsyncMutex {
@@ -481,7 +510,19 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
+
+// Dedicated error handler for body-parser (e.g. 413 Payload Too Large)
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err && (err.status === 413 || err.statusCode === 413 || err.type === 'entity.too.large')) {
+    return res.status(413).json({
+      error: 'Data paket tour terlalu besar untuk dikirim ke server. Batas maksimum adalah 20MB. Harap kompres atau kurangi ukuran foto galeri sebelum menyimpan.',
+      code: 'PAYLOAD_TOO_LARGE'
+    });
+  }
+  next(err);
+});
 
 // -------------------------------------------------------------
 // Security: In-Memory Sliding Window Rate Limiter
@@ -1370,6 +1411,7 @@ app.post('/api/builder/airport-transfers/sync', requireAdminAuth, (req, res) => 
 app.get('/api/db', (req, res) => {
   try {
     const db = readDB();
+    const currentRevision = Number((db as any).tripsRevision || 1);
     const isAdmin = checkIsAdmin(req);
     if (!isAdmin) {
       return res.json({
@@ -1383,10 +1425,14 @@ app.get('/api/db', (req, res) => {
         mainTours: (db.mainTours || [])
           .filter((t: any) => t.status !== 'archived' && !t.isArchived && !t.isDeleted)
           .map(projectPublicMainTour),
-        vehicles: []
+        vehicles: [],
+        tripsRevision: currentRevision
       });
     }
-    res.json(db);
+    res.json({
+      ...db,
+      tripsRevision: currentRevision
+    });
   } catch {
     res.status(500).json({ error: 'Failed to read database state' });
   }
@@ -1396,6 +1442,8 @@ app.get('/api/trips', (req, res) => {
   try {
     const db = readDB();
     const trips = Array.isArray(db.trips) ? db.trips : [];
+    console.log(`[Persistence] GET /api/trips count=${trips.length}`);
+    res.setHeader('X-Trips-Revision', String((db as any).tripsRevision || 1));
     const isAdmin = checkIsAdmin(req);
     if (isAdmin) {
       return res.json(trips);
@@ -1436,48 +1484,115 @@ app.post('/api/import-bulk', requireAdminAuth, async (req, res) => {
         const currentRevision = Number((db as any).tripsRevision || 1);
         const clientExpected = expectedRevision !== undefined ? Number(expectedRevision) : (version !== undefined ? Number(version) : undefined);
 
-        if (clientExpected !== undefined && !isNaN(clientExpected) && clientExpected !== currentRevision) {
-          return res.status(409).json({
-            error: `Konflik data: Database telah diperbarui oleh administrator lain (revisi saat ini: ${currentRevision}, revisi Anda: ${clientExpected}). Silakan muat ulang halaman.`,
-            currentRevision
-          });
-        }
-
         if (mode === 'overwrite') {
+          // 1. Authenticated admin is verified by requireAdminAuth middleware
+          // 2. If expectedRevision/version is missing for overwrite: return HTTP 400
+          if (clientExpected === undefined || isNaN(clientExpected)) {
+            console.warn(`[Persistence] BULK OVERWRITE rejected: missing expectedRevision/version`);
+            return res.status(400).json({
+              error: 'Operasi overwrite ditolak: expectedRevision atau version wajib disertakan untuk mencegah data loss.',
+              currentRevision
+            });
+          }
+
+          // Conflict check against current server revision
+          if (clientExpected !== currentRevision) {
+            console.warn(`[Persistence] BULK OVERWRITE conflict: expectedRevision=${clientExpected} !== currentRevision=${currentRevision}`);
+            return res.status(409).json({
+              error: `Konflik data: Database telah diperbarui oleh administrator lain (revisi saat ini: ${currentRevision}, revisi Anda: ${clientExpected}). Silakan muat ulang halaman.`,
+              currentRevision
+            });
+          }
+
+          // 3. Never accept an overwrite payload with an empty trips array
           if (!Array.isArray(newTrips) || newTrips.length === 0) {
-            return res.status(400).json({ error: 'Operasi overwrite dibatalkan: payload trips kosong atau tidak valid.' });
+            console.warn(`[Persistence] BULK OVERWRITE rejected: empty or non-array trips`);
+            return res.status(400).json({ error: 'Operasi overwrite dibatalkan: payload trips kosong atau bukan array.' });
           }
+
           if (newBatches !== undefined && !Array.isArray(newBatches)) {
-            return res.status(400).json({ error: 'Payload batches tidak valid.' });
+            return res.status(400).json({ error: 'Payload batches tidak valid: harus berupa array jika disertakan.' });
           }
+
+          // Validate that every trip in the overwrite payload has valid id and title
           for (const t of newTrips) {
-            if (!t || typeof t !== 'object' || !t.id || !t.title) {
-              return res.status(400).json({ error: 'Item trip tidak valid: setiap trip wajib memiliki id dan title.' });
+            if (!t || typeof t !== 'object' || !t.id || !t.title || typeof t.title !== 'string' || !t.title.trim()) {
+              return res.status(400).json({ error: 'Item trip tidak valid: setiap trip wajib memiliki id dan title string non-kosong.' });
             }
           }
+
+          // 4. Before overwrite, log diagnostic output
+          console.log(`[Persistence] BULK OVERWRITE requested`);
+          console.log(`[Persistence] existingTrips=${(db.trips || []).length}`);
+          console.log(`[Persistence] incomingTrips=${newTrips.length}`);
+          console.log(`[Persistence] expectedRevision=${clientExpected}`);
+          console.log(`[Persistence] currentRevision=${currentRevision}`);
+
           db.trips = newTrips;
           if (Array.isArray(newBatches)) {
             db.batches = newBatches;
           }
         } else {
+          // Append / merge mode
           if (newTrips && newTrips.length > 0) {
-            db.trips = [...db.trips, ...newTrips];
+            if (!Array.isArray(db.trips)) db.trips = [];
+            for (const t of newTrips) {
+              if (t && t.id) {
+                const exIdx = db.trips.findIndex((existing: any) => existing.id === t.id);
+                if (exIdx !== -1) {
+                  db.trips[exIdx] = { ...db.trips[exIdx], ...t };
+                } else {
+                  db.trips.push(t);
+                }
+              }
+            }
           }
 
           if (newBatches && newBatches.length > 0) {
-            db.batches = [...db.batches, ...newBatches];
+            if (!Array.isArray(db.batches)) db.batches = [];
+            for (const b of newBatches) {
+              if (b && b.id) {
+                const exBIdx = db.batches.findIndex((existing: any) => existing.id === b.id);
+                if (exBIdx !== -1) {
+                  db.batches[exBIdx] = { ...db.batches[exBIdx], ...b };
+                } else {
+                  db.batches.push(b);
+                }
+              }
+            }
           }
         }
 
-        (db as any).tripsRevision = currentRevision + 1;
+        const nextRevision = currentRevision + 1;
+        (db as any).tripsRevision = nextRevision;
         (db as any).tripsUpdatedAt = new Date().toISOString();
 
         writeDB(db);
+
+        // 5. After write, physically re-read DB_PATH and verify
+        const verifyRaw = fs.readFileSync(DB_PATH, 'utf8');
+        const verifyDB = JSON.parse(verifyRaw);
+        const verifyTrips: Trip[] = Array.isArray(verifyDB.trips) ? verifyDB.trips : [];
+        const verifyRevision = Number(verifyDB.tripsRevision);
+
+        if (mode === 'overwrite') {
+          const allIncomingExist = newTrips.every((t: any) => verifyTrips.some(vt => vt.id === t.id));
+          const countMatches = verifyTrips.length === newTrips.length;
+          const revisionMatches = verifyRevision === nextRevision;
+
+          if (!allIncomingExist || !countMatches || !revisionMatches) {
+            console.error(`[CRITICAL] Bulk overwrite physical verification failed! allExist=${allIncomingExist}, countMatches=${countMatches}, revMatches=${revisionMatches}`);
+            return res.status(500).json({ error: 'Verifikasi persistence gagal: data overwrite tidak terverifikasi di disk fisik.' });
+          }
+        }
+
+        console.log(`[Persistence Verified] Bulk import succeeded (mode=${mode || 'append'}, finalTrips=${verifyTrips.length}, revision=${nextRevision})`);
+
         res.json({
           success: true,
-          tripsCount: db.trips.length,
-          batchesCount: db.batches.length,
-          revision: (db as any).tripsRevision
+          tripsCount: verifyTrips.length,
+          batchesCount: (verifyDB.batches || []).length,
+          revision: nextRevision
         });
       } catch (error) {
         console.error(error);
@@ -1492,16 +1607,60 @@ app.post('/api/trips', requireAdminAuth, async (req, res) => {
     try {
       const db = readDB();
 
+      if (!Array.isArray(db.trips)) {
+        db.trips = [];
+      }
+
+      const existingTrips = db.trips.length;
+      const previousTripIds = new Set(db.trips.map((t: any) => t.id));
+
       const newTrip: Trip = {
         ...req.body,
-        id: req.body.id || generateEntityId('trip')
+        id: req.body.id || generateEntityId('trip'),
+        status: req.body.status || 'published',
+        createdAt: req.body.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
 
-      db.trips.push(newTrip);
+      const existingIdx = db.trips.findIndex((t) => t.id === newTrip.id);
+      if (existingIdx !== -1) {
+        db.trips[existingIdx] = { ...db.trips[existingIdx], ...newTrip };
+      } else {
+        db.trips.push(newTrip);
+      }
+
+      // Increment revision
+      const currentRevision = Number((db as any).tripsRevision || 1);
+      (db as any).tripsRevision = currentRevision + 1;
+      (db as any).tripsUpdatedAt = new Date().toISOString();
+
+      // Step 1: Write to data/db.json
       writeDB(db);
-      res.status(201).json(newTrip);
-    } catch {
-      res.status(500).json({ error: 'Failed to save trip' });
+
+      // Step 2: Read back from data/db.json on physical disk to verify persistence
+      const verifyRaw = fs.readFileSync(DB_PATH, 'utf8');
+      const verifyDB = JSON.parse(verifyRaw);
+      const verifyTrips: Trip[] = Array.isArray(verifyDB.trips) ? verifyDB.trips : [];
+      const verifiedTrip = verifyTrips.find((t: any) => t.id === newTrip.id);
+
+      if (!verifiedTrip) {
+        console.error(`[CRITICAL] Trip ${newTrip.id} missing from data/db.json after write!`);
+        return res.status(500).json({ error: 'Verifikasi persistence gagal: trip tidak ditemukan di data/db.json setelah penulisan.' });
+      }
+
+      // Assert: verifyTrips contains every existing trip
+      for (const prevId of previousTripIds) {
+        if (!verifyTrips.some(t => t.id === prevId)) {
+          console.error(`[CRITICAL] Existing trip ${prevId} missing from data/db.json after POST /api/trips!`);
+          return res.status(500).json({ error: `Verifikasi persistence gagal: trip existing ${prevId} hilang dari database.` });
+        }
+      }
+
+      console.log(`[Persistence] POST /api/trips\nexistingTrips=${existingTrips}\nnewTripId=${newTrip.id}\nfinalTrips=${verifyTrips.length}`);
+      res.status(201).json(verifiedTrip);
+    } catch (err: any) {
+      console.error('Error saving trip to authoritative persistent storage:', err);
+      res.status(500).json({ error: err?.message || 'Failed to save trip to authoritative persistent storage' });
     }
   });
 });
@@ -1510,17 +1669,46 @@ app.put('/api/trips/:id', requireAdminAuth, async (req, res) => {
   return await catalogMutex.runExclusive(async () => {
     try {
       const db = readDB();
-      const index = db.trips.findIndex((t) => t.id === req.params.id);
+      const trips = Array.isArray(db.trips) ? db.trips : [];
+      const index = trips.findIndex((t) => t.id === req.params.id);
 
       if (index === -1) {
         return res.status(404).json({ error: 'Trip not found' });
       }
 
-      db.trips[index] = { ...db.trips[index], ...req.body };
+      const updatedTrip = {
+        ...trips[index],
+        ...req.body,
+        id: req.params.id,
+        updatedAt: new Date().toISOString()
+      };
+
+      trips[index] = updatedTrip;
+      db.trips = trips;
+
+      // Increment revision
+      const currentRevision = Number((db as any).tripsRevision || 1);
+      (db as any).tripsRevision = currentRevision + 1;
+      (db as any).tripsUpdatedAt = new Date().toISOString();
+
+      // Step 1: Write to data/db.json
       writeDB(db);
-      res.json(db.trips[index]);
-    } catch {
-      res.status(500).json({ error: 'Failed to update trip' });
+
+      // Step 2: Read back from data/db.json on physical disk to verify persistence
+      const verifyRaw = fs.readFileSync(DB_PATH, 'utf8');
+      const verifyDB = JSON.parse(verifyRaw);
+      const verifiedTrip = (verifyDB.trips || []).find((t: any) => t.id === req.params.id);
+
+      if (!verifiedTrip) {
+        console.error(`[CRITICAL] Updated trip ${req.params.id} missing from data/db.json after write!`);
+        return res.status(500).json({ error: 'Verifikasi persistence gagal: trip yang diperbarui tidak ditemukan di database server.' });
+      }
+
+      console.log(`[Persistence Verified] Trip updated & verified in data/db.json: ${verifiedTrip.title} (${req.params.id})`);
+      res.json(verifiedTrip);
+    } catch (err: any) {
+      console.error('Error updating trip in authoritative persistent storage:', err);
+      res.status(500).json({ error: err?.message || 'Failed to update trip on server database' });
     }
   });
 });
@@ -1548,12 +1736,28 @@ app.delete('/api/trips/:id', requireAdminAuth, async (req, res) => {
           (b.batchId && (db.batches || []).some((bt: any) => bt.id === b.batchId && bt.tripId === tripId))
       );
 
+      // Increment revision
+      const currentRevision = Number((db as any).tripsRevision || 1);
+      (db as any).tripsRevision = currentRevision + 1;
+      (db as any).tripsUpdatedAt = new Date().toISOString();
+
       if (!isReferencedInBookings) {
         // CASE A: No historical bookings -> Hard delete trip and associated unused batches
         db.trips = db.trips.filter((t) => t.id !== tripId);
         db.batches = (db.batches || []).filter((b) => b.tripId !== tripId);
 
         writeDB(db);
+
+        // Verify physical disk
+        const verifyRaw = fs.readFileSync(DB_PATH, 'utf8');
+        const verifyDB = JSON.parse(verifyRaw);
+        const stillPresent = (verifyDB.trips || []).some((t: any) => t.id === tripId);
+        if (stillPresent) {
+          console.error(`[CRITICAL] Trip ${tripId} still present in data/db.json after deletion!`);
+          return res.status(500).json({ error: 'Verifikasi persistence gagal: trip masih ada di database setelah penghapusan.' });
+        }
+
+        console.log(`[Persistence Verified] Trip permanently deleted: ${tripId}`);
         return res.json({ success: true, id: tripId, mode: 'deleted' });
       }
 
@@ -1585,14 +1789,26 @@ app.delete('/api/trips/:id', requireAdminAuth, async (req, res) => {
       }
 
       writeDB(db);
+
+      // Verify physical disk
+      const verifyRaw = fs.readFileSync(DB_PATH, 'utf8');
+      const verifyDB = JSON.parse(verifyRaw);
+      const verifiedTrip = (verifyDB.trips || []).find((t: any) => t.id === tripId);
+      if (!verifiedTrip || verifiedTrip.status !== 'archived') {
+        console.error(`[CRITICAL] Trip ${tripId} archive status not verified in data/db.json!`);
+        return res.status(500).json({ error: 'Verifikasi persistence gagal: status arsip trip tidak terkonfirmasi di database.' });
+      }
+
+      console.log(`[Persistence Verified] Trip soft-archived to protect bookings: ${tripId}`);
       return res.json({
         success: true,
         id: tripId,
         mode: 'archived',
         message: 'Trip berhasil diarsipkan (soft delete) untuk menjaga integritas riwayat booking.'
       });
-    } catch {
-      res.status(500).json({ error: 'Failed to delete trip' });
+    } catch (err: any) {
+      console.error('Error deleting trip:', err);
+      res.status(500).json({ error: err?.message || 'Failed to delete trip' });
     }
   });
 });
@@ -1642,14 +1858,33 @@ app.post('/api/batches', requireAdminAuth, async (req, res) => {
 
       const newBatch: Batch = {
         ...req.body,
-        id: req.body.id || generateEntityId('batch')
+        id: req.body.id || generateEntityId('batch'),
+        createdAt: req.body.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
+
+      if (!Array.isArray(db.batches)) {
+        db.batches = [];
+      }
 
       db.batches.push(newBatch);
       writeDB(db);
-      res.status(201).json(newBatch);
-    } catch {
-      res.status(500).json({ error: 'Failed to create batch' });
+
+      // Verify persistence from disk
+      const verifyRaw = fs.readFileSync(DB_PATH, 'utf8');
+      const verifyDB = JSON.parse(verifyRaw);
+      const verifiedBatch = (verifyDB.batches || []).find((b: any) => b.id === newBatch.id);
+
+      if (!verifiedBatch) {
+        console.error(`[CRITICAL] Batch ${newBatch.id} missing from data/db.json after write!`);
+        return res.status(500).json({ error: 'Verifikasi persistence gagal: batch tidak ditemukan di data/db.json setelah penulisan.' });
+      }
+
+      console.log(`[Persistence Verified] Batch successfully saved & verified in data/db.json: ${verifiedBatch.id}`);
+      res.status(201).json(verifiedBatch);
+    } catch (err: any) {
+      console.error('Error creating batch:', err);
+      res.status(500).json({ error: err?.message || 'Failed to create batch' });
     }
   });
 });
@@ -1658,17 +1893,39 @@ app.put('/api/batches/:id', requireAdminAuth, async (req, res) => {
   return await catalogMutex.runExclusive(async () => {
     try {
       const db = readDB();
-      const index = db.batches.findIndex((b) => b.id === req.params.id);
+      const batches = Array.isArray(db.batches) ? db.batches : [];
+      const index = batches.findIndex((b) => b.id === req.params.id);
 
       if (index === -1) {
         return res.status(404).json({ error: 'Batch not found' });
       }
 
-      db.batches[index] = { ...db.batches[index], ...req.body };
+      const updatedBatch = {
+        ...batches[index],
+        ...req.body,
+        id: req.params.id,
+        updatedAt: new Date().toISOString()
+      };
+
+      batches[index] = updatedBatch;
+      db.batches = batches;
       writeDB(db);
-      res.json(db.batches[index]);
-    } catch {
-      res.status(500).json({ error: 'Failed to update batch' });
+
+      // Verify persistence from disk
+      const verifyRaw = fs.readFileSync(DB_PATH, 'utf8');
+      const verifyDB = JSON.parse(verifyRaw);
+      const verifiedBatch = (verifyDB.batches || []).find((b: any) => b.id === req.params.id);
+
+      if (!verifiedBatch) {
+        console.error(`[CRITICAL] Updated batch ${req.params.id} missing from data/db.json after write!`);
+        return res.status(500).json({ error: 'Verifikasi persistence gagal: batch yang diperbarui tidak ditemukan di database server.' });
+      }
+
+      console.log(`[Persistence Verified] Batch updated & verified in data/db.json: ${verifiedBatch.id}`);
+      res.json(verifiedBatch);
+    } catch (err: any) {
+      console.error('Error updating batch:', err);
+      res.status(500).json({ error: err?.message || 'Failed to update batch' });
     }
   });
 });
@@ -1690,6 +1947,16 @@ app.delete('/api/batches/:id', requireAdminAuth, async (req, res) => {
         // Hard delete allowed when not referenced in bookings
         db.batches = db.batches.filter((b) => b.id !== batchId);
         writeDB(db);
+
+        // Verify physical disk
+        const verifyRaw = fs.readFileSync(DB_PATH, 'utf8');
+        const verifyDB = JSON.parse(verifyRaw);
+        const stillPresent = (verifyDB.batches || []).some((b: any) => b.id === batchId);
+        if (stillPresent) {
+          console.error(`[CRITICAL] Batch ${batchId} still present in data/db.json after deletion!`);
+          return res.status(500).json({ error: 'Verifikasi persistence gagal: batch masih ada di database setelah penghapusan.' });
+        }
+
         return res.json({ success: true, id: batchId, mode: 'deleted' });
       }
 
@@ -1698,14 +1965,25 @@ app.delete('/api/batches/:id', requireAdminAuth, async (req, res) => {
       (batch as any).isArchived = true;
       (batch as any).isDeleted = true;
       writeDB(db);
+
+      // Verify physical disk
+      const verifyRaw = fs.readFileSync(DB_PATH, 'utf8');
+      const verifyDB = JSON.parse(verifyRaw);
+      const verifiedBatch = (verifyDB.batches || []).find((b: any) => b.id === batchId);
+      if (!verifiedBatch || verifiedBatch.status !== 'Closed') {
+        console.error(`[CRITICAL] Batch ${batchId} archive status not verified in data/db.json!`);
+        return res.status(500).json({ error: 'Verifikasi persistence gagal: status arsip batch tidak terkonfirmasi di database.' });
+      }
+
       return res.json({
         success: true,
         id: batchId,
         mode: 'archived',
         message: 'Batch berhasil diarsipkan untuk menjaga integritas riwayat booking.'
       });
-    } catch {
-      res.status(500).json({ error: 'Failed to delete batch' });
+    } catch (err: any) {
+      console.error('Error deleting batch:', err);
+      res.status(500).json({ error: err?.message || 'Failed to delete batch' });
     }
   });
 });
@@ -4099,6 +4377,7 @@ app.get('/api/artopay/config', (req, res) => {
       isConfigured: config.isConfigured,
       env: config.envMode,
       apiBaseUrl: config.apiBaseUrl,
+      secretKeyInfo: getSafeCredentialInfo(config.secretKey),
       message: config.isConfigured
         ? "ArtoPay Server Secret Key is configured."
         : "ARTOPAY_SECRET_KEY is missing. Please add ARTOPAY_SECRET_KEY in Server Environment Variables."
@@ -4912,6 +5191,7 @@ app.get(['/download-booking-guide', '/api/download-booking-guide', '/download/bo
 app.use(express.static(path.join(PROJECT_ROOT, 'public')));
 
 async function startServer() {
+  logPersistenceDiagnostics();
   logArtoPayStartupConfig();
 
   if (process.env.NODE_ENV !== 'production') {

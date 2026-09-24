@@ -207,7 +207,7 @@ function InteractiveCalendar({
 
   const isSelected = (day: number) => {
     if (!value) return false;
-    const parts = value.split('-');
+    const parts = (value || '').split('-');
     return (
       parseInt(parts[0], 10) === currentYear &&
       parseInt(parts[1], 10) === currentMonth + 1 &&
@@ -220,7 +220,7 @@ function InteractiveCalendar({
 
   const getDisplayValue = () => {
     if (!value) return placeholder;
-    const parts = value.split('-');
+    const parts = (value || '').split('-');
     const dateObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
     return dateObj.toLocaleDateString('en-US', {
       weekday: 'short',

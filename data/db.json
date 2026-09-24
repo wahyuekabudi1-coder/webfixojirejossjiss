@@ -122,7 +122,305 @@
       "status": "Open"
     }
   ],
-  "bookings": [],
+  "bookings": [
+    {
+      "id": "SJ-TEST-477678",
+      "bookingCode": "SJ-TEST-477678",
+      "serviceType": "tour",
+      "serviceId": "tour-custom",
+      "type": "tour",
+      "tripId": "tour-custom",
+      "tripTitle": "Bromo Sunrise Tour",
+      "serviceName": "Bromo Sunrise Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-24",
+      "fullName": "Audit Test Traveler",
+      "customerName": "Audit Test Traveler",
+      "email": "audit@example.com",
+      "customerEmail": "audit@example.com",
+      "phone": "+628123456789",
+      "customerPhone": "+628123456789",
+      "participantsCount": 2,
+      "participantsNames": [
+        "Audit Test Traveler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Confirmed",
+      "paymentStatus": "Paid",
+      "totalPrice": 500000,
+      "totalPriceIDR": 500000,
+      "baseAmount": 500000,
+      "uniqueCode": 37,
+      "paymentAmount": 500037,
+      "currency": "IDR",
+      "createdAt": "2026-09-24T09:17:57.681Z",
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-custom",
+        "tourName": "Bromo Sunrise Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 500000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": "",
+      "paidAt": "2026-09-24T09:17:57.689Z",
+      "paymentId": "PAY-1790241477686",
+      "rejectReason": ""
+    },
+    {
+      "id": "SJ-FAIL-477706",
+      "bookingCode": "SJ-FAIL-477706",
+      "serviceType": "tour",
+      "serviceId": "tour-custom",
+      "type": "tour",
+      "tripId": "tour-custom",
+      "tripTitle": "Private Tour",
+      "serviceName": "Private Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-24",
+      "fullName": "Fail Test Traveler",
+      "customerName": "Fail Test Traveler",
+      "email": "fail@example.com",
+      "customerEmail": "fail@example.com",
+      "phone": "N/A",
+      "customerPhone": "N/A",
+      "participantsCount": 1,
+      "participantsNames": [
+        "Fail Test Traveler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Cancelled",
+      "paymentStatus": "Expired",
+      "totalPrice": 750000,
+      "totalPriceIDR": 750000,
+      "baseAmount": 750000,
+      "uniqueCode": 99,
+      "paymentAmount": 750099,
+      "currency": "IDR",
+      "createdAt": "2026-09-24T09:17:57.709Z",
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-custom",
+        "tourName": "Private Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 750000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": ""
+    },
+    {
+      "id": "SJ-TEST-523883",
+      "bookingCode": "SJ-TEST-523883",
+      "serviceType": "tour",
+      "serviceId": "tour-custom",
+      "type": "tour",
+      "tripId": "tour-custom",
+      "tripTitle": "Bromo Sunrise Tour",
+      "serviceName": "Bromo Sunrise Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-24",
+      "fullName": "Audit Test Traveler",
+      "customerName": "Audit Test Traveler",
+      "email": "audit@example.com",
+      "customerEmail": "audit@example.com",
+      "phone": "+628123456789",
+      "customerPhone": "+628123456789",
+      "participantsCount": 2,
+      "participantsNames": [
+        "Audit Test Traveler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Confirmed",
+      "paymentStatus": "Paid",
+      "totalPrice": 500000,
+      "totalPriceIDR": 500000,
+      "baseAmount": 500000,
+      "uniqueCode": 95,
+      "paymentAmount": 500095,
+      "currency": "IDR",
+      "createdAt": "2026-09-24T09:18:43.887Z",
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-custom",
+        "tourName": "Bromo Sunrise Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 500000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": "",
+      "paidAt": "2026-09-24T09:18:43.895Z",
+      "paymentId": "PAY-1790241523893",
+      "rejectReason": ""
+    },
+    {
+      "id": "SJ-FAIL-523911",
+      "bookingCode": "SJ-FAIL-523911",
+      "serviceType": "tour",
+      "serviceId": "tour-custom",
+      "type": "tour",
+      "tripId": "tour-custom",
+      "tripTitle": "Private Tour",
+      "serviceName": "Private Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-24",
+      "fullName": "Fail Test Traveler",
+      "customerName": "Fail Test Traveler",
+      "email": "fail@example.com",
+      "customerEmail": "fail@example.com",
+      "phone": "N/A",
+      "customerPhone": "N/A",
+      "participantsCount": 1,
+      "participantsNames": [
+        "Fail Test Traveler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Cancelled",
+      "paymentStatus": "Expired",
+      "totalPrice": 750000,
+      "totalPriceIDR": 750000,
+      "baseAmount": 750000,
+      "uniqueCode": 61,
+      "paymentAmount": 750061,
+      "currency": "IDR",
+      "createdAt": "2026-09-24T09:18:43.913Z",
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-custom",
+        "tourName": "Private Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 750000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": ""
+    },
+    {
+      "id": "SJ-TEST-057324",
+      "bookingCode": "SJ-TEST-057324",
+      "serviceType": "tour",
+      "serviceId": "tour-custom",
+      "type": "tour",
+      "tripId": "tour-custom",
+      "tripTitle": "Bromo Sunrise Tour",
+      "serviceName": "Bromo Sunrise Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-24",
+      "fullName": "Audit Test Traveler",
+      "customerName": "Audit Test Traveler",
+      "email": "audit@example.com",
+      "customerEmail": "audit@example.com",
+      "phone": "+628123456789",
+      "customerPhone": "+628123456789",
+      "participantsCount": 2,
+      "participantsNames": [
+        "Audit Test Traveler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Confirmed",
+      "paymentStatus": "Paid",
+      "totalPrice": 500000,
+      "totalPriceIDR": 500000,
+      "baseAmount": 500000,
+      "uniqueCode": 67,
+      "paymentAmount": 500067,
+      "currency": "IDR",
+      "createdAt": "2026-09-24T10:50:57.327Z",
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-custom",
+        "tourName": "Bromo Sunrise Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 500000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": "",
+      "paidAt": "2026-09-24T10:50:57.334Z",
+      "paymentId": "PAY-1790247057331",
+      "rejectReason": ""
+    },
+    {
+      "id": "SJ-FAIL-057352",
+      "bookingCode": "SJ-FAIL-057352",
+      "serviceType": "tour",
+      "serviceId": "tour-custom",
+      "type": "tour",
+      "tripId": "tour-custom",
+      "tripTitle": "Private Tour",
+      "serviceName": "Private Tour",
+      "bookingType": "private",
+      "tourBookingType": "private",
+      "departureDate": "2026-09-24",
+      "fullName": "Fail Test Traveler",
+      "customerName": "Fail Test Traveler",
+      "email": "fail@example.com",
+      "customerEmail": "fail@example.com",
+      "phone": "N/A",
+      "customerPhone": "N/A",
+      "participantsCount": 1,
+      "participantsNames": [
+        "Fail Test Traveler"
+      ],
+      "proofOfPayment": "NOT_APPLICABLE_SLEEK_THEME",
+      "status": "Cancelled",
+      "paymentStatus": "Expired",
+      "totalPrice": 750000,
+      "totalPriceIDR": 750000,
+      "baseAmount": 750000,
+      "uniqueCode": 32,
+      "paymentAmount": 750032,
+      "currency": "IDR",
+      "createdAt": "2026-09-24T10:50:57.353Z",
+      "details": {
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle"
+      },
+      "tourSnapshot": {
+        "tourId": "tour-custom",
+        "tourName": "Private Tour",
+        "duration": "1 Hari",
+        "vehicleName": "Standard Private Tourism Vehicle",
+        "startingPriceIDR": 750000,
+        "highlights": [],
+        "itinerary": []
+      },
+      "discount": 0,
+      "adminNotes": ""
+    }
+  ],
   "mainTours": [
     {
       "id": "tour-bromo-sunrise-safari",
@@ -300,5 +598,123 @@
     "whatsapp": "+62 852-1234-7289",
     "email": "sawahjayagroup@gmail.com"
   },
-  "adminSessions": []
+  "adminSessions": [
+    {
+      "token": "d00985a226dd19f6274c7f286bc933375289a0d1d0c302eff88c7a3568c2294c",
+      "createdAt": "2026-09-24T07:33:24.287Z",
+      "expiresAt": 1790321604287
+    },
+    {
+      "token": "9e72b626b055b21ad23f380917b8bbffa01166e38f442db7b4c626fc8ba03d76",
+      "createdAt": "2026-09-24T07:33:36.230Z",
+      "expiresAt": 1790321616230
+    },
+    {
+      "token": "538de6dc7a60b345589827e6e060ec88af74d643758b8f631247beedbd3da57c",
+      "createdAt": "2026-09-24T07:34:13.602Z",
+      "expiresAt": 1790321653602
+    },
+    {
+      "token": "d28f55b29dc7643a8397245650ad007e02b712780ceca8a2abf93fdfd14515e6",
+      "createdAt": "2026-09-24T07:34:25.239Z",
+      "expiresAt": 1790321665239
+    },
+    {
+      "token": "83ae87fe675efa8e8c09dc821ad0fedf4a1603f2e203bc624efc9dc56dc27074",
+      "createdAt": "2026-09-24T07:36:01.977Z",
+      "expiresAt": 1790321761977
+    },
+    {
+      "token": "a8e96ca8d0e6fe07681854944e290042df829414aba7729246f166ccbaea8084",
+      "createdAt": "2026-09-24T07:36:13.466Z",
+      "expiresAt": 1790321773466
+    },
+    {
+      "token": "76487d77d7fd748fc94e18c4f0901b32af9f6e7a5898be970b806e16f1ff3f76",
+      "createdAt": "2026-09-24T07:36:53.312Z",
+      "expiresAt": 1790321813312
+    },
+    {
+      "token": "8542b86194cd0125eb0b1ec363cb1a2074d14ba638be9a302c0d4f3cda294c6b",
+      "createdAt": "2026-09-24T07:37:05.084Z",
+      "expiresAt": 1790321825084
+    },
+    {
+      "token": "250ed768f348e734a80dde87cc0d073a451a069a073c33c8344bdc836c84aa82",
+      "createdAt": "2026-09-24T09:14:10.815Z",
+      "expiresAt": 1790327650815
+    },
+    {
+      "token": "9efcb258854f624ed85e1d9adb6407db0648aabd466d03615dde8fc71a7b3600",
+      "createdAt": "2026-09-24T09:14:23.530Z",
+      "expiresAt": 1790327663530
+    },
+    {
+      "token": "f08a9f58833b4a6990bf2658088d65f79109cfb75f4765499ec09e2a2b40d9aa",
+      "createdAt": "2026-09-24T09:14:46.664Z",
+      "expiresAt": 1790327686664
+    },
+    {
+      "token": "787407e7d63f7a66cf1ddc4ca2a2bb075835d6b365b945d8c6a1b1c6b72b9203",
+      "createdAt": "2026-09-24T09:17:02.804Z",
+      "expiresAt": 1790327822804
+    },
+    {
+      "token": "0a1cbdee1cdf6a017bcd4ad641d6bdb5aea18fa6d533c206634fe8c3ce847bac",
+      "createdAt": "2026-09-24T09:17:16.339Z",
+      "expiresAt": 1790327836339
+    },
+    {
+      "token": "8a16048da03533fbe3be055f72316f38347429a023ca9a281d9347794b98d3ae",
+      "createdAt": "2026-09-24T09:17:39.970Z",
+      "expiresAt": 1790327859970
+    },
+    {
+      "token": "30a62e9758aee48494894ebcaa455ac63263c944837e3db6b19621e57a154acb",
+      "createdAt": "2026-09-24T09:17:57.700Z",
+      "expiresAt": 1790327877700
+    },
+    {
+      "token": "6cd9dc7dc421d7d37091e4bab76e96c9d0dae5049328a6a5457d166cd8b44b00",
+      "createdAt": "2026-09-24T09:18:43.907Z",
+      "expiresAt": 1790327923907
+    },
+    {
+      "token": "0571a3c8c7f6a33cf16c9f2cf801009c1307ec28c10387acd0828c5fb687a372",
+      "createdAt": "2026-09-24T09:18:49.870Z",
+      "expiresAt": 1790327929870
+    },
+    {
+      "token": "99880500d8716f66d68d08614c70674be9076febbc730ae7a6d012e54a337138",
+      "createdAt": "2026-09-24T09:19:02.791Z",
+      "expiresAt": 1790327942790
+    },
+    {
+      "token": "53ebcdcddea2f201063f29a29a97d07b060506774c4ecb4b07d69979258fd477",
+      "createdAt": "2026-09-24T09:19:26.311Z",
+      "expiresAt": 1790327966311
+    },
+    {
+      "token": "46b31c852088cb564f86302493b5ca1b0ecf132cac50d7fab4fa5c273b5d2e47",
+      "createdAt": "2026-09-24T10:50:07.656Z",
+      "expiresAt": 1790333407656
+    },
+    {
+      "token": "78d05f5702493fd59d2c88d9ebb7dc93191e36017d556f073703adb058b4d19a",
+      "createdAt": "2026-09-24T10:50:21.086Z",
+      "expiresAt": 1790333421085
+    },
+    {
+      "token": "8bf625f65ae4b2d371c932edbb099c4375334b14dd960f4b2aa5310652ec8a4f",
+      "createdAt": "2026-09-24T10:50:44.787Z",
+      "expiresAt": 1790333444787
+    },
+    {
+      "token": "18c52331dfb4d1261db9e5a4f43c67e5244f4216d68a8b888b8f41f1fd73ed0a",
+      "createdAt": "2026-09-24T10:50:57.345Z",
+      "expiresAt": 1790333457345
+    }
+  ],
+  "tripsRevision": 5,
+  "tripsUpdatedAt": "2026-09-24T10:50:44.797Z"
 }

@@ -546,7 +546,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     const handleHashChange = () => {
-      let hash = window.location.hash.split('?')[0].replace(/^#\/?/, '');
+      let hash = (window.location.hash || '').split('?')[0].replace(/^#\/?/, '');
       if (!hash && typeof window !== 'undefined' && window.location.pathname && window.location.pathname !== '/') {
         hash = window.location.pathname.replace(/^\/+|\/+$/g, '');
       }

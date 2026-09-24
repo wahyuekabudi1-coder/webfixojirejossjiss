@@ -168,6 +168,7 @@ export interface DatabaseState {
   trips: Trip[];
   batches: Batch[];
   bookings: Booking[];
+  tripsRevision?: number;
   mainTours?: Tour[];
   rentals?: {
     cities: OperationalCity[];

@@ -50,10 +50,11 @@ export async function fetchDB(retries = 2, initialDelayMs = 800, signal?: AbortS
     }
 
     try {
-      // 1. Fetch public trips and batches in parallel (no admin authorization required for customers)
+      // 1. Fetch public trips and batches in parallel (includes admin headers if active session)
+      const authHeaders = getAuthHeaders();
       const [resTrips, resBatches] = await Promise.all([
-        fetch(`${API_BASE}/trips`, { signal }),
-        fetch(`${API_BASE}/batches`, { signal })
+        fetch(`${API_BASE}/trips`, { headers: authHeaders, signal }),
+        fetch(`${API_BASE}/batches`, { headers: authHeaders, signal })
       ]);
 
       if (!resTrips.ok) {
@@ -108,10 +109,17 @@ export async function fetchDB(retries = 2, initialDelayMs = 800, signal?: AbortS
         }
       }
 
+      let tripsRevision: number | undefined;
+      const revisionHeader = resTrips.headers.get("x-trips-revision");
+      if (revisionHeader) {
+        tripsRevision = parseInt(revisionHeader, 10);
+      }
+
       const dbState: DatabaseState = {
         trips: tripsData,
         batches: batchesData,
-        bookings
+        bookings,
+        tripsRevision
       };
 
       return recalculateBatchSeats(dbState);
@@ -151,7 +159,7 @@ export async function fetchTrips(retries = 2, signal?: AbortSignal): Promise<Tri
   while (attempt <= retries) {
     if (signal?.aborted) throw new Error("Aborted");
     try {
-      const res = await fetch(`${API_BASE}/trips`, { signal });
+      const res = await fetch(`${API_BASE}/trips`, { headers: getAuthHeaders(), signal });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -179,7 +187,7 @@ export async function fetchBatches(tripId?: string, retries = 2, signal?: AbortS
   while (attempt <= retries) {
     if (signal?.aborted) throw new Error("Aborted");
     try {
-      const res = await fetch(url, { signal });
+      const res = await fetch(url, { headers: getAuthHeaders(), signal });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -202,13 +210,16 @@ export async function fetchBatches(tripId?: string, retries = 2, signal?: AbortS
 
 export async function saveDB(db: Partial<DatabaseState>): Promise<void> {
   // Never call POST /api/db. Instead, use the authoritative /api/import-bulk endpoint if bulk saving is needed.
-  if (db.trips || db.batches) {
-    await importBulk({
-      trips: db.trips || [],
-      batches: db.batches || [],
-      mode: "overwrite"
-    });
+  if (!db.trips || db.trips.length === 0) {
+    console.warn("[saveDB] Skipped destructive bulk overwrite with empty trips");
+    return;
   }
+  await importBulk({
+    trips: db.trips,
+    batches: db.batches || [],
+    mode: "overwrite",
+    expectedRevision: db.tripsRevision || 1
+  });
 }
 
 export async function createTrip(trip: Omit<Trip, "id">): Promise<Trip> {
@@ -309,11 +320,17 @@ export async function purgeAllBookings(): Promise<void> {
   await handleAdminResponse(res, "Failed to purge bookings database");
 }
 
-export async function importBulk(data: { trips: Trip[]; batches: Batch[]; mode: "append" | "overwrite" }): Promise<{ success: boolean; tripsCount: number; batchesCount: number }> {
+export async function importBulk(data: {
+  trips: Trip[];
+  batches: Batch[];
+  mode: "append" | "overwrite";
+  expectedRevision?: number;
+  version?: number;
+}): Promise<{ success: boolean; tripsCount: number; batchesCount: number; revision?: number }> {
   const res = await fetch(`${API_BASE}/import-bulk`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
   });
-  return await handleAdminResponse<{ success: boolean; tripsCount: number; batchesCount: number }>(res, "Failed to bulk import data into server database.");
+  return await handleAdminResponse<{ success: boolean; tripsCount: number; batchesCount: number; revision?: number }>(res, "Failed to bulk import data into server database.");
 }

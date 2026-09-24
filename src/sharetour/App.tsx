@@ -47,7 +47,7 @@ export default function App() {
 
   // Admin authentication state
   const [adminToken, setAdminToken] = useState<string>(() => {
-    return localStorage.getItem("smart_journey_admin_token") || "";
+    return localStorage.getItem("smart_journey_admin_token") || localStorage.getItem("smartjourney_admin_token") || "";
   });
 
   // Database Loader State

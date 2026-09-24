@@ -15,14 +15,15 @@ import { clearDraft } from "../../utils/adminDraftStorage";
 import { 
   Users, Calendar, Compass, Check, X, ShieldCheck, 
   Plus, Edit, Trash, Eye, DollarSign, Filter, Search, RotateCcw,
-  BookOpen, Sparkles, Image as ImageIcon, MapPin, Clock, ListOrdered, CheckCircle,
-  TrendingUp, BarChart2, Briefcase, FileCheck, Layers, HelpCircle, Save, Sliders, Globe, AlertTriangle, Plane, ChevronDown, ChevronUp, ChevronRight, Menu, LogOut, Info, AlertCircle
+  BookOpen, Sparkles, Image as ImageIcon, MapPin, Clock, ListOrdered, CheckCircle, CheckCircle2,
+  TrendingUp, BarChart2, Briefcase, FileCheck, Layers, HelpCircle, Save, Sliders, Globe, AlertTriangle, Plane, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, Menu, LogOut, Info, AlertCircle
 } from "lucide-react";
 
 interface AdminDashboardProps {
   trips: Trip[];
   batches: Batch[];
   bookings: Booking[];
+  tripsRevision?: number;
   onRefreshDB: () => void;
   onLogout: () => void;
   embedded?: boolean;
@@ -31,8 +32,22 @@ interface AdminDashboardProps {
 type AdminTab = "analytics" | "verification" | "catalog" | "batches" | "participants" | "excel-import";
 type TripFormTab = "basic" | "facilities" | "itinerary" | "media-faq";
 
-export default function AdminDashboard({ trips, batches, bookings, onRefreshDB, onLogout, embedded = false }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<AdminTab>("analytics");
+export default function AdminDashboard({ trips, batches, bookings, tripsRevision = 1, onRefreshDB, onLogout, embedded = false }: AdminDashboardProps) {
+  const [activeTab, setActiveTab] = useState<AdminTab>(() => {
+    try {
+      const saved = localStorage.getItem("sj_sharetour_active_tab");
+      if (saved && ["analytics", "verification", "catalog", "batches", "participants", "excel-import"].includes(saved)) {
+        return saved as AdminTab;
+      }
+    } catch (_) {}
+    return "analytics";
+  });
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem("sj_sharetour_active_tab", activeTab);
+    } catch (_) {}
+  }, [activeTab]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Search & Filter States
@@ -81,7 +96,7 @@ export default function AdminDashboard({ trips, batches, bookings, onRefreshDB, 
     coverImage: "",
     highlight: "",
     startingPrice: 150,
-    status: "draft",
+    status: "published",
     included: [],
     excluded: [],
     gallery: [],
@@ -390,7 +405,8 @@ export default function AdminDashboard({ trips, batches, bookings, onRefreshDB, 
       const payload = {
         trips: parsedTrips,
         batches: mappedBatches,
-        mode: importMode
+        mode: importMode,
+        expectedRevision: tripsRevision
       };
 
       const res = await importBulk(payload);
@@ -540,7 +556,7 @@ Sunset Lovina & Dolphin Cruise\t2026-08-01\t10\t195\tOpen`;
       highlight: "",
       startingPrice: 150,
       wniPrice: 1800000,
-      status: "draft",
+      status: "published",
       included: [
         "Sailing boat / Liveaboard usage for selected itinerary",
         "Required conservation tax and harbor clearance gates fee",
@@ -635,13 +651,18 @@ Sunset Lovina & Dolphin Cruise\t2026-08-01\t10\t195\tOpen`;
         category: category as any,
         experienceCategory: category as any,
         startingPrice: Number(tripForm.startingPrice),
-        wniPrice: Number((tripForm as any).wniPrice) || (Number(tripForm.startingPrice) * 16000)
+        wniPrice: Number((tripForm as any).wniPrice) || (Number(tripForm.startingPrice) * 16000),
+        status: tripForm.status || "published"
       };
       if (editingTripId) {
         await updateTrip(editingTripId, payload);
       } else {
         await createTrip(payload);
       }
+      setActiveTab("catalog");
+      try {
+        localStorage.setItem("sj_sharetour_active_tab", "catalog");
+      } catch (_) {}
       clearTripDraft();
       setShowTripModal(false);
       onRefreshDB();
@@ -849,72 +870,117 @@ Sunset Lovina & Dolphin Cruise\t2026-08-01\t10\t195\tOpen`;
   return (
     <div className={embedded ? "w-full space-y-6" : "flex flex-col lg:flex-row min-h-screen bg-[#F8FAFC] text-slate-800"} id="smart-journey-dashboard-wrapper">
       
-      {/* If embedded in main admin shell, render sleek top tab pills */}
+      {/* EMBEDDED MODE: Header module and sleek top tab pills */}
       {embedded ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-2 shadow-sm flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-1.5">
-            {[
-              { id: "analytics", label: "Analytics & KPI", icon: BarChart2 },
-              { id: "verification", label: `Audit Queue (${pendingBookings.length})`, icon: FileCheck, badge: pendingBookings.length > 0 },
-              { id: "catalog", label: "Trip Blueprints", icon: Compass },
-              { id: "batches", label: "Departure Calendar", icon: Calendar },
-              { id: "participants", label: "Grouped Customers", icon: Users },
-              { id: "excel-import", label: "Excel / CSV Importer", icon: Layers }
-            ].map(item => {
-              const IconComponent = item.icon;
-              const isSelected = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => switchTab(item.id as AdminTab)}
-                  className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-display font-bold transition-all cursor-pointer ${
-                    isSelected 
-                      ? "bg-amber-500 text-neutral-950 font-black shadow-sm" 
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                  }`}
-                >
-                  <IconComponent className={`w-3.5 h-3.5 ${isSelected ? "text-neutral-950" : "text-slate-500"}`} />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
+        <div className="space-y-4">
+          {/* Header Module */}
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono font-bold bg-[#315B4F]/10 border border-[#315B4F]/20 text-[#315B4F] px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                  MODUL SHARE TOUR
+                </span>
+                <span className="text-slate-300">•</span>
+                <span className="text-xs font-mono font-bold text-amber-600">OPEN TRIP ADMIN</span>
+              </div>
+              <h2 className="text-xl font-black tracking-tight text-slate-900 flex items-center gap-2">
+                <Compass className="h-5 w-5 text-[#315B4F]" />
+                <span>Share Tour / Open Trip</span>
+              </h2>
+              <p className="text-xs text-slate-500">
+                Kelola paket open trip, itinerary, jadwal keberangkatan, kuota, dan peserta.
+              </p>
+            </div>
+            <div className="flex items-center gap-2.5 shrink-0">
+              <button
+                type="button"
+                onClick={onRefreshDB}
+                className="px-3.5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700 flex items-center gap-2 transition cursor-pointer shadow-sm"
+                title="Sinkronisasi data database terbaru"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                <span>Sync / Refresh</span>
+              </button>
+              <button
+                type="button"
+                onClick={initCreateTrip}
+                className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-neutral-950 text-xs font-black flex items-center gap-2 transition shadow-sm cursor-pointer"
+              >
+                <Plus className="w-4 h-4 text-neutral-950" />
+                <span>Tambah Paket</span>
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center space-x-2">
-            <button 
-              onClick={() => { onRefreshDB(); }}
-              className="p-2 py-1.5 px-3 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-xs font-bold inline-flex items-center space-x-1.5 transition text-slate-700 cursor-pointer"
-              title="Refresh database state"
-            >
-              <RotateCcw className="w-3.5 h-3.5 text-slate-600" />
-              <span className="hidden sm:inline">Sync Cloud</span>
-            </button>
+          {/* Tab Navigation */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-1.5 shadow-sm flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1">
+              {[
+                { id: "analytics", label: "Analytics & KPI", icon: BarChart2 },
+                { id: "verification", label: "Audit Queue", icon: FileCheck, badge: pendingBookings.length },
+                { id: "catalog", label: "Trip Blueprints", icon: Compass, count: trips.length },
+                { id: "batches", label: "Departure Calendar", icon: Calendar, count: batches.length },
+                { id: "participants", label: "Grouped Customers", icon: Users },
+                { id: "excel-import", label: "Excel / CSV Importer", icon: Layers }
+              ].map(item => {
+                const IconComponent = item.icon;
+                const isSelected = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => switchTab(item.id as AdminTab)}
+                    className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-[#315B4F] text-white shadow-sm font-black"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent"
+                    }`}
+                  >
+                    <IconComponent className={`w-3.5 h-3.5 ${isSelected ? "text-amber-400" : "text-slate-400"}`} />
+                    <span>{item.label}</span>
+                    {typeof item.badge === "number" && item.badge > 0 && (
+                      <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono font-black ${
+                        isSelected ? "bg-amber-500 text-neutral-950" : "bg-amber-100 text-amber-800"
+                      }`}>
+                        {item.badge}
+                      </span>
+                    )}
+                    {typeof item.count === "number" && (
+                      <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold ${
+                        isSelected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                      }`}>
+                        {item.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       ) : (
         <>
-          {/* SIDEBAR NAVIGATION (Desktop: Persistent list, Mobile: Slide overlay) */}
-          <aside className={`fixed inset-y-0 left-0 bg-emerald-950 text-slate-100 w-72 p-6 flex flex-col z-40 transition-transform duration-300 lg:translate-x-0 lg:static lg:h-screen lg:flex-1-0 ${
+          {/* STANDALONE MODE: Sidebar Navigation */}
+          <aside className={`fixed inset-y-0 left-0 bg-[#315B4F] text-slate-100 w-72 p-6 flex flex-col z-40 transition-transform duration-300 lg:translate-x-0 lg:static lg:h-screen lg:flex-1-0 ${
             mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
           }`} id="admin-dashboard-sidebar">
-            <div className="flex items-center justify-between pb-8 border-b border-emerald-900">
+            <div className="flex items-center justify-between pb-8 border-b border-[#27483e]">
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-emerald-900 rounded-lg text-[#D6B16D]">
-                  <Sparkles className="w-5 h-5" />
+                <div className="p-2 bg-[#27483e] rounded-xl text-amber-400">
+                  <Compass className="w-5 h-5" />
                 </div>
                 <div>
-                  <h1 className="font-display font-extrabold text-sm tracking-widest text-[#D6B16D] uppercase">Smart Journey</h1>
-                  <p className="text-[10px] font-mono text-emerald-300 tracking-wider">ADMIN DECISION HUB</p>
+                  <h1 className="font-display font-extrabold text-sm tracking-widest text-amber-400 uppercase">Smart Journey</h1>
+                  <p className="text-[10px] font-mono text-emerald-200 tracking-wider">OPEN TRIP ADMIN</p>
                 </div>
               </div>
-              <button onClick={() => setMobileMenuOpen(false)} className="lg:hidden p-1 bg-emerald-900 rounded-md text-emerald-100 hover:text-white">
+              <button onClick={() => setMobileMenuOpen(false)} className="lg:hidden p-1 bg-[#27483e] rounded-md text-emerald-100 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <nav className="mt-8 space-y-1.5 flex-1">
               {[
-                { id: "analytics", label: "Dashboard Analytics", icon: BarChart2 },
+                { id: "analytics", label: "Analytics & KPI", icon: BarChart2 },
                 { id: "verification", label: `Audit Queue (${pendingBookings.length})`, icon: FileCheck },
                 { id: "catalog", label: "Trip Blueprints", icon: Compass },
                 { id: "batches", label: "Departure Calendar", icon: Calendar },
@@ -927,49 +993,49 @@ Sunset Lovina & Dolphin Cruise\t2026-08-01\t10\t195\tOpen`;
                   <button
                     key={item.id}
                     onClick={() => switchTab(item.id as AdminTab)}
-                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-display font-bold transition-all ${
+                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${
                       isSelected 
-                        ? "bg-[#D6B16D] text-emerald-950 shadow-md font-bold" 
-                        : "text-emerald-150 hover:bg-emerald-900/50 hover:text-white"
+                        ? "bg-amber-500 text-neutral-950 shadow-md font-black" 
+                        : "text-emerald-100 hover:bg-[#27483e] hover:text-white"
                     }`}
                   >
-                    <IconComponent className={`w-4 h-4 ${isSelected ? "text-emerald-950" : "text-emerald-400"}`} />
+                    <IconComponent className={`w-4 h-4 ${isSelected ? "text-neutral-950" : "text-emerald-300"}`} />
                     <span>{item.label}</span>
                   </button>
                 );
               })}
             </nav>
 
-            <div className="pt-6 border-t border-emerald-900 space-y-3 mt-auto">
-              <div className="bg-emerald-900/40 p-3.5 rounded-2xl border border-emerald-900/60 flex items-center space-x-3">
-                <div className="w-7 h-7 bg-emerald-800 text-teal-100 rounded-full flex items-center justify-center font-bold text-xs uppercase shadow-sm">SM</div>
+            <div className="pt-6 border-t border-[#27483e] space-y-3 mt-auto">
+              <div className="bg-[#27483e]/60 p-3.5 rounded-2xl border border-[#27483e] flex items-center space-x-3">
+                <div className="w-7 h-7 bg-[#1e3730] text-amber-300 rounded-full flex items-center justify-center font-bold text-xs uppercase shadow-sm">SM</div>
                 <div className="truncate">
-                  <span className="text-[10px] font-mono text-emerald-400 block uppercase font-bold">Authorized Session</span>
+                  <span className="text-[10px] font-mono text-emerald-300 block uppercase font-bold">Authorized Session</span>
                   <p className="text-xs font-bold text-slate-100 truncate">sawahjayagroup@gmail.com</p>
                 </div>
               </div>
               <button 
                 onClick={onLogout}
-                className="w-full flex items-center justify-center space-x-2 bg-rose-950 hover:bg-rose-900 py-2.5 rounded-xl text-xs font-display font-bold text-rose-300 transition-all cursor-pointer border border-rose-900/30"
+                className="w-full flex items-center justify-center space-x-2 bg-rose-900/60 hover:bg-rose-900 py-2.5 rounded-xl text-xs font-bold text-rose-200 transition-all cursor-pointer border border-rose-800/40"
               >
                 <LogOut className="w-4 h-4" />
-                <span>Terminate Session</span>
+                <span>Keluar / Logout</span>
               </button>
             </div>
           </aside>
 
           {/* MOBILE TRIGGER NAV BAR */}
-          <div className="lg:hidden bg-emerald-950 text-slate-100 p-4 shrink-0 flex items-center justify-between border-b border-emerald-900">
+          <div className="lg:hidden bg-[#315B4F] text-slate-100 p-4 shrink-0 flex items-center justify-between border-b border-[#27483e]">
             <div className="flex items-center space-x-2.5">
-              <div id="logo-icon-mob" className="p-1.5 bg-emerald-900 rounded-lg text-[#D6B16D]"><Sparkles className="w-4 h-4" /></div>
+              <div id="logo-icon-mob" className="p-1.5 bg-[#27483e] rounded-lg text-amber-400"><Compass className="w-4 h-4" /></div>
               <div>
-                <h1 className="font-display font-bold tracking-widest text-[#D6B16D] text-xs uppercase">Smart Journey</h1>
-                <p className="text-[9px] text-emerald-300 font-mono">Mobile Admin Portal</p>
+                <h1 className="font-display font-bold tracking-widest text-amber-400 text-xs uppercase">Smart Journey</h1>
+                <p className="text-[9px] text-emerald-200 font-mono">Mobile Admin Portal</p>
               </div>
             </div>
             <button 
               onClick={() => setMobileMenuOpen(true)}
-              className="p-2 bg-emerald-900 rounded-xl text-emerald-200 hover:text-white transition duration-200"
+              className="p-2 bg-[#27483e] rounded-xl text-emerald-200 hover:text-white transition duration-200"
               id="mob-hamburger-drawer-btn"
             >
               <Menu className="w-5 h-5" />
@@ -981,54 +1047,85 @@ Sunset Lovina & Dolphin Cruise\t2026-08-01\t10\t195\tOpen`;
       {/* CONTENT RUNTIME AREA */}
       <main className={embedded ? "w-full space-y-6" : "flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10 max-h-screen"}>
         
-        {/* SUBHEADER INDICATORS BAR */}
-        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-5 mb-8 gap-4">
-          <div>
-            <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400 font-extrabold">Smart Journey Open Trips v1.2</span>
-            <div className="flex items-center space-x-2">
-              <h2 className="text-xl font-display font-black tracking-tight text-slate-900">
-                {activeTab === "analytics" && "Analytical Performance Metrics"}
-                {activeTab === "verification" && "Verification & Audit Desk"}
-                {activeTab === "catalog" && "Interactive Blueprints catalog"}
-                {activeTab === "batches" && "Departure Seating Schedule"}
-                {activeTab === "participants" && "Batch Grouped Attendees"}
-                {activeTab === "excel-import" && "Bulk Excel / CSV Spreadsheets Importer"}
-              </h2>
+        {/* SUBHEADER INDICATORS BAR (Only in standalone mode) */}
+        {!embedded && (
+          <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-5 mb-8 gap-4">
+            <div>
+              <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400 font-extrabold">Smart Journey Open Trips v1.2</span>
+              <div className="flex items-center space-x-2">
+                <h2 className="text-xl font-display font-black tracking-tight text-slate-900">
+                  {activeTab === "analytics" && "Analytical Performance Metrics"}
+                  {activeTab === "verification" && "Verification & Audit Desk"}
+                  {activeTab === "catalog" && "Interactive Blueprints catalog"}
+                  {activeTab === "batches" && "Departure Seating Schedule"}
+                  {activeTab === "participants" && "Batch Grouped Attendees"}
+                  {activeTab === "excel-import" && "Bulk Excel / CSV Spreadsheets Importer"}
+                </h2>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <button 
-              onClick={() => { onRefreshDB(); }}
-              className="p-2 py-2 px-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold inline-flex items-center space-x-2 transition duration-200 text-slate-700 cursor-pointer shadow-sm"
-              title="Refresh database state"
-            >
-              <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
-              <span>Sync Cloud</span>
-            </button>
-          </div>
-        </header>
+            <div className="flex items-center space-x-3">
+              <button 
+                onClick={() => { onRefreshDB(); }}
+                className="p-2 py-2 px-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold inline-flex items-center space-x-2 transition duration-200 text-slate-700 cursor-pointer shadow-sm"
+                title="Refresh database state"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                <span>Sync Cloud</span>
+              </button>
+            </div>
+          </header>
+        )}
 
         {/* ----------------- TAB A: ANALYTICS CORE DASHBOARD ----------------- */}
         {activeTab === "analytics" && (
-          <div className="space-y-8 animate-fade-in" id="analytics-tab">
+          <div className="space-y-6 animate-fade-in" id="analytics-tab">
             
+            {/* Division Banner */}
+            <div className="bg-[#315B4F] text-white p-6 rounded-2xl border border-[#27483e] shadow-sm relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1 z-10">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono font-bold bg-amber-400 text-neutral-950 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                    DIVISI: SJT_OPEN_TRIP
+                  </span>
+                  <span className="text-emerald-200 text-xs font-mono">• METRIK PERFORMA REALTIME</span>
+                </div>
+                <h3 className="text-xl font-black tracking-tight text-white">
+                  ANALITIK SHARE TOUR / OPEN TRIP
+                </h3>
+                <p className="text-xs text-emerald-100 max-w-2xl">
+                  Tinjauan metrik reservasi open trip, kuota keberangkatan aktif, dan verifikasi tiket pembayaran peserta.
+                </p>
+              </div>
+              <div className="z-10 flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 text-emerald-100 text-xs font-mono font-bold border border-white/10">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  Sistem Aktif
+                </span>
+              </div>
+            </div>
+
             {/* KPI MATRIX */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { label: "Gross Net Bookings", value: formatUSD(totalRevenue), desc: "Guaranteed & Confirmed revenue", icon: DollarSign, color: "text-emerald-600 bg-emerald-50 border-emerald-100" },
-                { label: "Approved Travelers", value: `${confirmedPaxCount} Pax`, desc: "Total seats checked out & secure", icon: Users, color: "text-blue-600 bg-blue-50 border-blue-100" },
-                { label: "Attention Needed", value: `${pendingBookings.length} Audits`, desc: "Vouchers awaiting validation", icon: AlertCircle, color: pendingBookings.length > 0 ? "text-amber-600 bg-amber-50 border-amber-100 animate-pulse" : "text-slate-400 bg-slate-50 border-slate-100" },
-                { label: "Tours Listed", value: `${trips.length} Blueprints`, desc: "Total active packages registered", icon: Compass, color: "text-indigo-600 bg-indigo-50 border-indigo-100" }
+                { label: "Total Penjualan Open Trip", value: formatUSD(totalRevenue), desc: "Guaranteed & Confirmed revenue", icon: DollarSign, badge: "+100% Terkonfirmasi", iconColor: "text-emerald-700 bg-emerald-50 border-emerald-100" },
+                { label: "Peserta Terkonfirmasi", value: `${confirmedPaxCount} Pax`, desc: "Total kuota terkunci & lunas", icon: Users, badge: "Seat Guaranteed", iconColor: "text-blue-700 bg-blue-50 border-blue-100" },
+                { label: "Antrean Audit Pembayaran", value: `${pendingBookings.length} Tiket`, desc: pendingBookings.length > 0 ? "Perlu ditinjau segera" : "Semua tiket terverifikasi", icon: AlertCircle, badge: pendingBookings.length > 0 ? "Perlu Validasi" : "Semua Bersih", iconColor: pendingBookings.length > 0 ? "text-amber-700 bg-amber-50 border-amber-100" : "text-slate-600 bg-slate-50 border-slate-100" },
+                { label: "Paket Open Trip Aktif", value: `${trips.length} Blueprint`, desc: `${trips.filter(t => t.status === "published").length} paket tayang di katalog live`, icon: Compass, badge: "Katalog Aktif", iconColor: "text-[#315B4F] bg-emerald-50 border-emerald-100" }
               ].map((card, i) => {
                 const Icon = card.icon;
                 return (
-                  <div key={i} className={`p-5 bg-white border rounded-3xl flex items-center justify-between shadow-sm transition hover:-translate-y-1 ${card.color}`}>
-                    <div className="space-y-1 max-w-[70%]">
+                  <div key={i} className="p-5 bg-white border border-slate-200/80 rounded-2xl flex items-start justify-between shadow-sm transition hover:shadow-md hover:border-slate-300">
+                    <div className="space-y-1.5 max-w-[70%]">
                       <span className="text-[10px] uppercase font-mono tracking-wider font-extrabold text-slate-400 block">{card.label}</span>
-                      <p className="text-xl font-display font-black text-slate-900">{card.value}</p>
-                      <span className="text-[10px] text-slate-500 block truncate">{card.desc}</span>
+                      <p className="text-2xl font-black tracking-tight text-slate-900">{card.value}</p>
+                      <div className="flex items-center gap-1.5 pt-0.5">
+                        <span className="text-[9px] font-mono font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md">
+                          {card.badge}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-slate-500 block truncate pt-0.5">{card.desc}</span>
                     </div>
-                    <div className="p-3 bg-white/80 rounded-2xl border border-inherit">
+                    <div className={`p-3 rounded-2xl border ${card.iconColor} shrink-0`}>
                       <Icon className="w-5 h-5" />
                     </div>
                   </div>
@@ -1040,36 +1137,36 @@ Sunset Lovina & Dolphin Cruise\t2026-08-01\t10\t195\tOpen`;
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               
               {/* Occupied Seats progress listing bar */}
-              <div className="bg-white border border-slate-150 p-6 rounded-3xl lg:col-span-2 shadow-sm space-y-4">
+              <div className="bg-white border border-slate-200/80 p-6 rounded-2xl lg:col-span-2 shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <div>
-                    <h3 className="font-display font-extrabold text-slate-900 text-sm">Departure Occupancy Progress Monitor</h3>
-                    <p className="text-[10px] text-slate-400">Targeting up to maximum 14 travelers per batch limits</p>
+                    <h3 className="font-extrabold text-slate-900 text-sm">Departure Occupancy Progress Monitor</h3>
+                    <p className="text-xs text-slate-400">Targeting up to maximum 14 travelers per batch limits</p>
                   </div>
-                  <span className="p-1 px-2.5 bg-emerald-50 text-emerald-800 font-mono text-[9px] font-black rounded-lg">LIVE SLOTS</span>
+                  <span className="p-1 px-2.5 bg-emerald-50 text-[#315B4F] font-mono text-[10px] font-black rounded-lg border border-emerald-100">LIVE SLOTS</span>
                 </div>
 
-                <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
+                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
                   {batches.map(b => {
                     const trip = trips.find(t => t.id === b.tripId);
                     const filled = b.quota - b.availableSeats;
                     const fillPercent = Math.min(100, Math.round((filled / b.quota) * 100));
                     return (
-                      <div key={b.id} className="space-y-1.5 p-3 rounded-2xl bg-slate-50/50 border border-slate-100">
+                      <div key={b.id} className="space-y-1.5 p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/70">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="font-display font-bold text-slate-800 truncate max-w-[190px]">{trip?.title || "Special Program"}</span>
-                          <span className="font-mono text-slate-450">{formatDate(b.departureDate)}</span>
+                          <span className="font-bold text-slate-900 truncate max-w-[200px]">{trip?.title || "Special Program"}</span>
+                          <span className="font-mono text-slate-500 font-semibold">{formatDate(b.departureDate)}</span>
                         </div>
                         <div className="flex items-center space-x-3 text-xs">
                           <div className="flex-1 bg-slate-200 h-2.5 rounded-full overflow-hidden flex">
                             <div 
                               className={`h-full rounded-full transition-all duration-500 ${
-                                fillPercent >= 80 ? "bg-rose-500" : fillPercent >= 50 ? "bg-[#D6B16D]" : "bg-emerald-600"
+                                fillPercent >= 80 ? "bg-rose-500" : fillPercent >= 50 ? "bg-amber-500" : "bg-[#315B4F]"
                               }`}
                               style={{ width: `${fillPercent}%` }}
                             />
                           </div>
-                          <span className="font-mono font-bold shrink-0">{filled} / {b.quota} Pax ({fillPercent}%)</span>
+                          <span className="font-mono font-bold shrink-0 text-slate-700">{filled} / {b.quota} Pax ({fillPercent}%)</span>
                         </div>
                       </div>
                     );
@@ -1078,14 +1175,14 @@ Sunset Lovina & Dolphin Cruise\t2026-08-01\t10\t195\tOpen`;
               </div>
 
               {/* Status breakdown visual panel */}
-              <div className="bg-white border border-slate-150 p-6 rounded-3xl shadow-sm flex flex-col justify-between space-y-4">
+              <div className="bg-white border border-slate-200/80 p-6 rounded-2xl shadow-sm flex flex-col justify-between space-y-4">
                 <div>
-                  <h3 className="font-display font-extrabold text-slate-900 text-sm pb-1">Voucher Status Audit Breakdown</h3>
-                  <p className="text-[10px] text-slate-400">Total processed vs pending bookings queue</p>
+                  <h3 className="font-extrabold text-slate-900 text-sm pb-1">Voucher Status Audit Breakdown</h3>
+                  <p className="text-xs text-slate-400">Total processed vs pending bookings queue</p>
                 </div>
                 
                 <div className="flex items-center justify-center py-4 relative">
-                  <div className="w-24 h-24 rounded-full border-8 border-slate-100 flex items-center justify-center">
+                  <div className="w-24 h-24 rounded-full border-8 border-slate-100 flex items-center justify-center shadow-inner">
                     <div className="text-center">
                       <span className="text-2xl font-black text-slate-900">{bookings.length}</span>
                       <p className="text-[8px] text-slate-400 uppercase font-mono tracking-widest font-black">All Bookings</p>
@@ -1095,16 +1192,16 @@ Sunset Lovina & Dolphin Cruise\t2026-08-01\t10\t195\tOpen`;
 
                 <div className="space-y-2 text-xs">
                   {[
-                    { label: "Approved (Seat Guaranteed)", count: approvedBookings.length, pct: bookings.length ? Math.round((approvedBookings.length / bookings.length) * 100) : 0, color: "bg-emerald-600" },
-                    { label: "Awaiting (Pending Verification)", count: pendingBookings.length, pct: bookings.length ? Math.round((pendingBookings.length / bookings.length) * 100) : 0, color: "bg-amber-400" },
+                    { label: "Approved (Seat Guaranteed)", count: approvedBookings.length, pct: bookings.length ? Math.round((approvedBookings.length / bookings.length) * 100) : 0, color: "bg-[#315B4F]" },
+                    { label: "Awaiting (Pending Verification)", count: pendingBookings.length, pct: bookings.length ? Math.round((pendingBookings.length / bookings.length) * 100) : 0, color: "bg-amber-500" },
                     { label: "Rejected (Audit Failures)", count: bookings.filter(b => b.status === "Rejected").length, pct: bookings.length ? Math.round((bookings.filter(b => b.status === "Rejected").length / bookings.length) * 100) : 0, color: "bg-rose-500" }
                   ].map((st, i) => (
-                    <div key={i} className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
+                    <div key={i} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200/60">
                       <div className="flex items-center space-x-2 max-w-[70%]">
                         <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${st.color}`} />
-                        <span className="text-slate-650 truncate font-medium text-[11px]">{st.label}</span>
+                        <span className="text-slate-700 truncate font-semibold text-[11px]">{st.label}</span>
                       </div>
-                      <span className="font-mono font-bold font-black text-slate-900 text-[11px]">{st.count} ({st.pct}%)</span>
+                      <span className="font-mono font-bold text-slate-900 text-[11px]">{st.count} ({st.pct}%)</span>
                     </div>
                   ))}
                 </div>
@@ -1113,37 +1210,40 @@ Sunset Lovina & Dolphin Cruise\t2026-08-01\t10\t195\tOpen`;
             </div>
 
             {/* DIRECT BOOKING INGRESS STATS */}
-            <div className="bg-white border border-slate-150 rounded-3xl p-6 shadow-sm space-y-4">
-              <div>
-                <h3 className="font-display font-extrabold text-slate-900 text-sm">Recent Activity Stream</h3>
-                <p className="text-[10px] text-slate-400">Real-time incoming traveler registrations and auditing actions</p>
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-sm">Recent Activity Stream</h3>
+                  <p className="text-xs text-slate-400">Real-time incoming traveler registrations and auditing actions</p>
+                </div>
+                <span className="text-xs font-mono font-bold text-slate-400">5 Transaksi Terakhir</span>
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="border-b border-slate-100 text-slate-400">
-                      <th className="py-2 pb-3 uppercase font-mono tracking-wider font-extrabold text-[10px]">Reference</th>
-                      <th className="py-2 pb-3 uppercase font-mono tracking-wider font-extrabold text-[10px]">Buyer Profile</th>
-                      <th className="py-2 pb-3 uppercase font-mono tracking-wider font-extrabold text-[10px]">Travel Destination</th>
-                      <th className="py-2 pb-3 uppercase font-mono tracking-wider font-extrabold text-[10px]">Subtotal Transacted</th>
-                      <th className="py-2 pb-3 uppercase font-mono tracking-wider font-extrabold text-[10px]">Status Check</th>
+                    <tr className="border-b border-slate-200 text-slate-500 bg-slate-50/50">
+                      <th className="py-2.5 px-3 uppercase font-mono tracking-wider font-bold text-[10px]">Reference</th>
+                      <th className="py-2.5 px-3 uppercase font-mono tracking-wider font-bold text-[10px]">Buyer Profile</th>
+                      <th className="py-2.5 px-3 uppercase font-mono tracking-wider font-bold text-[10px]">Travel Destination</th>
+                      <th className="py-2.5 px-3 uppercase font-mono tracking-wider font-bold text-[10px]">Subtotal Transacted</th>
+                      <th className="py-2.5 px-3 uppercase font-mono tracking-wider font-bold text-[10px]">Status Check</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-50">
+                  <tbody className="divide-y divide-slate-100">
                     {bookings.slice(0, 5).map(b => (
-                      <tr key={b.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="py-3 font-mono font-extrabold text-emerald-800">{b.bookingCode}</td>
-                        <td className="py-3">
+                      <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3 px-3 font-mono font-bold text-[#315B4F]">{b.bookingCode}</td>
+                        <td className="py-3 px-3">
                           <span className="font-bold text-slate-900 block">{b.fullName}</span>
                           <span className="text-[10px] text-slate-400 block font-mono">{b.email}</span>
                         </td>
-                        <td className="py-3 font-semibold text-slate-700">{b.tripTitle || "Open Loop Package"}</td>
-                        <td className="py-3 font-mono font-bold text-slate-900">{formatUSD(b.totalPrice)}</td>
-                        <td className="py-3">
-                          {b.status === "Pending" && <span className="p-1 px-2.5 bg-amber-50 text-amber-700 font-bold border border-amber-250/20 rounded-full text-[9px]">Awaiting</span>}
-                          {b.status === "Confirmed" && <span className="p-1 px-2.5 bg-emerald-50 text-emerald-700 font-bold border border-emerald-250/20 rounded-full text-[9px]">Confirmed</span>}
-                          {b.status === "Rejected" && <span className="p-1 px-2.5 bg-rose-50 text-rose-700 font-bold border border-rose-250/20 rounded-full text-[9px]">Declined</span>}
+                        <td className="py-3 px-3 font-medium text-slate-700">{b.tripTitle || "Open Loop Package"}</td>
+                        <td className="py-3 px-3 font-mono font-bold text-slate-900">{formatUSD(b.totalPrice)}</td>
+                        <td className="py-3 px-3">
+                          {b.status === "Pending" && <span className="p-1 px-2.5 bg-amber-50 text-amber-800 font-bold border border-amber-200 rounded-full text-[10px]">Awaiting</span>}
+                          {b.status === "Confirmed" && <span className="p-1 px-2.5 bg-emerald-50 text-[#315B4F] font-bold border border-emerald-200 rounded-full text-[10px]">Confirmed</span>}
+                          {b.status === "Rejected" && <span className="p-1 px-2.5 bg-rose-50 text-rose-700 font-bold border border-rose-200 rounded-full text-[10px]">Declined</span>}
                         </td>
                       </tr>
                     ))}
@@ -1300,101 +1400,149 @@ Sunset Lovina & Dolphin Cruise\t2026-08-01\t10\t195\tOpen`;
           </div>
         )}
 
-        {/* ----------------- TAB C: TRIP BLUEPRINTS (TEXT-ROW STREAMLINED CATALOG) ----------------- */}
+        {/* ----------------- TAB C: TRIP BLUEPRINTS (STREAMLINED CATALOG) ----------------- */}
         {activeTab === "catalog" && (
           <div className="space-y-6 animate-fade-in" id="trip-catalog-tab">
             
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-3xl border border-slate-150 shadow-sm">
+            {/* Header Card */}
+            <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h3 className="font-display font-extrabold text-slate-900 text-sm">Trip Package Blueprints</h3>
-                <p className="text-[10px] text-slate-450">List, preview, update itinerary, inclusion/exclusion, status drafting, and starting values</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono font-bold bg-[#315B4F]/10 text-[#315B4F] px-2 py-0.5 rounded-full uppercase">
+                    KATALOG BLUEPRINT
+                  </span>
+                  <span className="text-xs font-mono text-slate-400">Total: {trips.length} Paket</span>
+                </div>
+                <h3 className="text-lg font-black tracking-tight text-slate-900 mt-1">
+                  Paket Open Trip & Blueprint
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Kelola daftar paket open trip, rute perjalanan, fasilitas, harga dasar, dan status tayang di website publik.
+                </p>
               </div>
 
               <button
+                type="button"
                 onClick={initCreateTrip}
-                className="bg-[#315B4F] hover:bg-emerald-900 text-white text-xs font-bold px-4 py-2.5 rounded-2xl cursor-pointer shadow inline-flex items-center space-x-1.5 transition duration-200"
+                className="bg-amber-500 hover:bg-amber-600 text-neutral-950 text-xs font-black px-4 py-2.5 rounded-xl cursor-pointer shadow-sm inline-flex items-center space-x-2 transition shrink-0"
               >
-                <Plus className="w-4 h-4 text-[#D6B16D]" />
-                <span>Create New Blueprint</span>
+                <Plus className="w-4 h-4 text-neutral-950" />
+                <span>Tambah Paket Baru</span>
               </button>
             </div>
 
             {/* TEXT-ROW LIST COMPACT LAYOUT */}
-            <div className="bg-white rounded-3xl border border-slate-150 overflow-hidden shadow-sm">
+            <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
-                  <thead className="bg-[#315B4F] text-slate-100 uppercase font-mono tracking-wider text-[10px]">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 text-xs font-bold">
                     <tr>
-                      <th className="p-4">Package Name / Area</th>
-                      <th className="p-4">URL Slug Path</th>
-                      <th className="p-4 font-mono">Duration Tag</th>
-                      <th className="p-4 text-center">Starting Price (USD)</th>
-                      <th className="p-4">State</th>
-                      <th className="p-4 text-center font-bold">Action Suite</th>
+                      <th className="py-3 px-4 uppercase font-mono tracking-wider text-[11px]">Paket & Destinasi</th>
+                      <th className="py-3 px-4 uppercase font-mono tracking-wider text-[11px]">Slug & URL</th>
+                      <th className="py-3 px-4 uppercase font-mono tracking-wider text-[11px]">Durasi</th>
+                      <th className="py-3 px-4 uppercase font-mono tracking-wider text-[11px] text-right">Harga Mulai</th>
+                      <th className="py-3 px-4 uppercase font-mono tracking-wider text-[11px] text-center">Jadwal Aktif</th>
+                      <th className="py-3 px-4 uppercase font-mono tracking-wider text-[11px] text-center">Status</th>
+                      <th className="py-3 px-4 uppercase font-mono tracking-wider text-[11px] text-center">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {trips.length > 0 ? (
-                      trips.map(trip => (
-                        <tr key={trip.id} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="p-4 flex items-center space-x-3">
-                            <img 
-                              src={trip.coverImage} 
-                              alt={trip.title}
-                              referrerPolicy="no-referrer"
-                              className="w-12 h-10 object-cover rounded-xl border border-slate-200 flex-shrink-0"
-                            />
-                            <div>
-                              <span className="font-display font-black text-slate-900 text-[13px] block">{trip.title}</span>
-                              <span className="text-[10px] text-slate-400 block font-sans font-medium flex items-center space-x-1">
-                                <MapPin className="w-3 h-3 text-slate-350" />
-                                <span>{trip.location}</span>
+                      trips.map(trip => {
+                        const tripBatches = batches.filter(b => b.tripId === trip.id);
+                        return (
+                          <tr key={trip.id} className="hover:bg-slate-50/70 transition-colors">
+                            <td className="py-3 px-4">
+                              <div className="flex items-center space-x-3">
+                                <img 
+                                  src={trip.coverImage} 
+                                  alt={trip.title}
+                                  referrerPolicy="no-referrer"
+                                  className="w-14 h-11 object-cover rounded-xl border border-slate-200 flex-shrink-0 bg-slate-100"
+                                />
+                                <div>
+                                  <span className="font-bold text-slate-900 text-xs block hover:text-[#315B4F] transition">
+                                    {trip.title}
+                                  </span>
+                                  <span className="text-[11px] text-slate-400 font-medium flex items-center space-x-1 mt-0.5">
+                                    <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                                    <span>{trip.location}</span>
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 font-mono text-[11px] text-slate-500">
+                              <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200">
+                                /{trip.slug}
                               </span>
-                            </div>
-                          </td>
-                          <td className="p-4 font-mono font-medium text-slate-550">{trip.slug}</td>
-                          <td className="p-4 font-mono font-bold text-slate-700">{trip.duration}</td>
-                          <td className="p-4 font-black font-mono text-emerald-900 text-center text-[13px]">
-                            {formatUSD(trip.startingPrice || 150)}
-                          </td>
-                          <td className="p-4">
-                            {trip.status === "draft" ? (
-                              <span className="bg-amber-100 text-amber-800 border border-amber-250/20 font-bold px-2 py-0.5 rounded text-[9px]">Draft</span>
-                            ) : (
-                              <span className="bg-emerald-600 text-white font-bold px-2 py-0.5 rounded text-[9px]">Live Catalog</span>
-                            )}
-                          </td>
-                          <td className="p-4 text-center">
-                            <div className="flex items-center justify-center space-x-1.5">
-                              <button
-                                onClick={() => setPreviewTrip(trip)}
-                                className="p-2 bg-slate-50 hover:bg-slate-200 border border-slate-200 text-slate-550 rounded-xl transition duration-200 cursor-pointer"
-                                title="Customer-facing Live Preview"
-                              >
-                                <Eye className="w-4 h-4 text-[#315B4F]" />
-                              </button>
-                              <button
-                                onClick={() => initEditTrip(trip)}
-                                className="p-2 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-100 text-[#315B4F] rounded-xl transition duration-200 cursor-pointer"
-                                title="Edit Blueprint parameters"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteTrip(trip.id)}
-                                className="p-2 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 text-rose-700 rounded-xl transition duration-200 cursor-pointer"
-                                title="Delete Trip Blueprint"
-                              >
-                                <Trash className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
+                            </td>
+                            <td className="py-3 px-4 font-mono font-semibold text-slate-700">
+                              {trip.duration}
+                            </td>
+                            <td className="py-3 px-4 font-black font-mono text-[#315B4F] text-right text-xs">
+                              {formatUSD(trip.startingPrice || 150)}
+                            </td>
+                            <td className="py-3 px-4 text-center font-mono font-bold text-slate-600">
+                              <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px]">
+                                {tripBatches.length} Batch
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              {trip.status === "published" ? (
+                                <span className="inline-flex items-center gap-1 bg-emerald-50 text-[#315B4F] border border-emerald-200 font-bold px-2.5 py-1 rounded-full text-[10px]">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-[#315B4F]"></span>
+                                  Live Catalog
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200 font-bold px-2.5 py-1 rounded-full text-[10px]">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                  Draft
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <div className="flex items-center justify-center space-x-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewTrip(trip)}
+                                  className="p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-slate-900 rounded-lg transition cursor-pointer"
+                                  title="Customer-facing Live Preview"
+                                >
+                                  <Eye className="w-3.5 h-3.5 text-[#315B4F]" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => initEditTrip(trip)}
+                                  className="p-1.5 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 text-[#315B4F] rounded-lg transition cursor-pointer"
+                                  title="Edit Blueprint parameters"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteTrip(trip.id)}
+                                  className="p-1.5 bg-slate-50 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 text-rose-600 rounded-lg transition cursor-pointer"
+                                  title="Delete Trip Blueprint"
+                                >
+                                  <Trash className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
                     ) : (
                       <tr>
-                        <td colSpan={6} className="text-center p-12 text-slate-400 font-medium">
-                          No trip blueprints found. Click "Create New Blueprint" above to add a tour.
+                        <td colSpan={7} className="text-center p-12 text-slate-400 font-medium">
+                          <div className="flex flex-col items-center justify-center space-y-2">
+                            <Compass className="w-8 h-8 text-slate-300" />
+                            <p className="text-sm font-semibold text-slate-600">
+                              Belum ada blueprint paket open trip
+                            </p>
+                            <p className="text-xs text-slate-400">
+                              Klik tombol 'Tambah Paket Baru' di atas untuk membuat paket open trip.
+                            </p>
+                          </div>
                         </td>
                       </tr>
                     )}
@@ -1410,67 +1558,113 @@ Sunset Lovina & Dolphin Cruise\t2026-08-01\t10\t195\tOpen`;
         {activeTab === "batches" && (
           <div className="space-y-6 animate-fade-in" id="batches-schedule-tab">
             
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-3xl border border-slate-150 shadow-sm">
+            <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h3 className="font-display font-extrabold text-slate-900 text-sm">Departure Seating Quota Batch Management</h3>
-                <p className="text-[10px] text-slate-450">Map slots, set pricing USD rate structure, and set seating limits up to a maximum of 14 travelers</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono font-bold bg-[#315B4F]/10 text-[#315B4F] px-2 py-0.5 rounded-full uppercase">
+                    JADWAL KEBERANGKATAN
+                  </span>
+                  <span className="text-xs font-mono text-slate-400">Total: {batches.length} Batch</span>
+                </div>
+                <h3 className="text-lg font-black tracking-tight text-slate-900 mt-1">
+                  Jadwal & Kuota Keberangkatan (Batches)
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Kelola jadwal tanggal open trip, kuota kursi (maks. 14 pax), harga flat USD, dan status buka/tutup.
+                </p>
               </div>
 
               <button
+                type="button"
                 onClick={initCreateBatch}
-                className="bg-[#315B4F] hover:bg-emerald-900 text-white text-xs font-bold px-4 py-2.5 rounded-2xl cursor-pointer shadow inline-flex items-center space-x-1.5 transition duration-200"
+                className="bg-amber-500 hover:bg-amber-600 text-neutral-950 text-xs font-black px-4 py-2.5 rounded-xl cursor-pointer shadow-sm inline-flex items-center space-x-2 transition shrink-0"
               >
-                <Plus className="w-4 h-4 text-[#D6B16D]" />
-                <span>Schedule New Batch</span>
+                <Plus className="w-4 h-4 text-neutral-950" />
+                <span>Jadwalkan Batch Baru</span>
               </button>
             </div>
 
             {/* BATCHES TABLE LIST */}
-            <div className="bg-white rounded-3xl border border-slate-150 overflow-hidden shadow-sm">
+            <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
-                  <thead className="bg-[#315B4F] text-slate-100 uppercase font-mono tracking-wider text-[10px]">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 text-xs font-bold">
                     <tr>
-                      <th className="p-4">Scheduled Trip Destination</th>
-                      <th className="p-4">Departure Date</th>
-                      <th className="p-4">USD Flat Cost Rate</th>
-                      <th className="p-4">Avail / Max Spots Quota</th>
-                      <th className="p-4">State</th>
-                      <th className="p-4 text-center">Action</th>
+                      <th className="py-3 px-4 uppercase font-mono tracking-wider text-[11px]">Destinasi & Paket Tour</th>
+                      <th className="py-3 px-4 uppercase font-mono tracking-wider text-[11px]">Tanggal Berangkat</th>
+                      <th className="py-3 px-4 uppercase font-mono tracking-wider text-[11px] text-right">Harga Tiket (USD)</th>
+                      <th className="py-3 px-4 uppercase font-mono tracking-wider text-[11px] text-center">Sisa / Total Kuota</th>
+                      <th className="py-3 px-4 uppercase font-mono tracking-wider text-[11px] text-center">Status</th>
+                      <th className="py-3 px-4 uppercase font-mono tracking-wider text-[11px] text-center">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {batches.length > 0 ? (
                       batches.map(batch => {
                         const tripObj = trips.find(t => t.id === batch.tripId);
+                        const filled = batch.quota - batch.availableSeats;
+                        const fillPercent = Math.min(100, Math.round((filled / batch.quota) * 100));
                         return (
-                          <tr key={batch.id} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="p-4 font-bold text-slate-800 text-[13px]">{tripObj ? tripObj.title : "Unknown Package Reference"}</td>
-                            <td className="p-4 font-mono font-extrabold text-emerald-800 text-[13px]">{formatDate(batch.departureDate)}</td>
-                            <td className="p-4 font-extrabold font-mono text-emerald-950 text-[13px]">{formatUSD(batch.price)}</td>
-                            <td className="p-4">
-                              <span className="font-bold text-slate-900">{batch.availableSeats}</span>
-                              <span className="text-slate-400 font-medium"> / {batch.quota} spots maximum</span>
-                            </td>
-                            <td className="p-4">
-                              {batch.status === "Open" ? (
-                                <span className="bg-emerald-100 text-emerald-800 border border-emerald-250/20 font-bold px-2 py-0.5 rounded text-[9px]">Open</span>
-                              ) : (
-                                <span className="bg-rose-100 text-rose-800 border border-rose-250/20 font-bold px-2 py-0.5 rounded text-[9px]">Closed</span>
+                          <tr key={batch.id} className="hover:bg-slate-50/70 transition-colors">
+                            <td className="py-3 px-4">
+                              <span className="font-bold text-slate-900 text-xs block">
+                                {tripObj ? tripObj.title : "Unknown Package Reference"}
+                              </span>
+                              {tripObj?.location && (
+                                <span className="text-[10px] text-slate-400 font-medium flex items-center space-x-1 mt-0.5">
+                                  <MapPin className="w-3 h-3 text-slate-400" />
+                                  <span>{tripObj.location}</span>
+                                </span>
                               )}
                             </td>
-                            <td className="p-4 text-center">
+                            <td className="py-3 px-4 font-mono font-bold text-[#315B4F] text-xs">
+                              {formatDate(batch.departureDate)}
+                            </td>
+                            <td className="py-3 px-4 font-black font-mono text-slate-900 text-right text-xs">
+                              {formatUSD(batch.price)}
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <div className="inline-flex flex-col items-center">
+                                <span className="font-bold text-slate-900 font-mono text-xs">
+                                  {batch.availableSeats} <span className="text-slate-400 font-normal">/ {batch.quota} kursi</span>
+                                </span>
+                                <div className="w-20 bg-slate-200 h-1.5 rounded-full overflow-hidden mt-1">
+                                  <div
+                                    className={`h-full rounded-full ${
+                                      fillPercent >= 80 ? "bg-rose-500" : fillPercent >= 50 ? "bg-amber-500" : "bg-[#315B4F]"
+                                    }`}
+                                    style={{ width: `${fillPercent}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              {batch.status === "Open" ? (
+                                <span className="inline-flex items-center gap-1 bg-emerald-50 text-[#315B4F] border border-emerald-200 font-bold px-2.5 py-0.5 rounded-full text-[10px]">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-[#315B4F]"></span>
+                                  Open
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-700 border border-rose-200 font-bold px-2.5 py-0.5 rounded-full text-[10px]">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                  Closed
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 text-center">
                               <div className="flex items-center justify-center space-x-1.5">
                                 <button
+                                  type="button"
                                   onClick={() => initEditBatch(batch)}
-                                  className="px-3 py-1.5 bg-slate-100 text-slate-700 hover:bg-[#315B4F] hover:text-white rounded-xl transition duration-200 font-bold cursor-pointer"
+                                  className="px-3 py-1.5 bg-slate-50 hover:bg-[#315B4F] hover:text-white text-slate-700 border border-slate-200 rounded-lg transition duration-200 font-bold text-xs cursor-pointer"
                                 >
-                                  Edit batch
+                                  Edit Jadwal
                                 </button>
                                 <button
+                                  type="button"
                                   onClick={() => handleDeleteBatch(batch.id)}
-                                  className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-xl transition duration-200 border border-rose-220 cursor-pointer"
-                                  title="Delete batch"
+                                  className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition duration-200 border border-rose-200 cursor-pointer"
+                                  title="Hapus batch keberangkatan"
                                 >
                                   <Trash className="w-3.5 h-3.5" />
                                 </button>
@@ -1482,7 +1676,11 @@ Sunset Lovina & Dolphin Cruise\t2026-08-01\t10\t195\tOpen`;
                     ) : (
                       <tr>
                         <td colSpan={6} className="text-center p-12 text-slate-400 font-medium">
-                          No scheduled batches found. Click "Schedule New Batch" above to populate!
+                          <div className="flex flex-col items-center justify-center space-y-2">
+                            <Calendar className="w-8 h-8 text-slate-300" />
+                            <p className="text-sm font-semibold text-slate-600">Belum ada jadwal batch keberangkatan</p>
+                            <p className="text-xs text-slate-400">Klik 'Jadwalkan Batch Baru' di atas untuk membuka kuota open trip.</p>
+                          </div>
                         </td>
                       </tr>
                     )}
@@ -1498,9 +1696,19 @@ Sunset Lovina & Dolphin Cruise\t2026-08-01\t10\t195\tOpen`;
         {activeTab === "participants" && (
           <div className="space-y-6 animate-fade-in" id="participants-accordion-tab">
             
-            <div className="bg-white p-5 rounded-3xl border border-slate-150 shadow-sm">
-              <h3 className="font-display font-extrabold text-slate-900 text-sm">Participant Database Grouped by Departure Dates</h3>
-              <p className="text-[10px] text-slate-450">Displays attendees sorted neatly per departure batch slot to make client airport logistics effortless.</p>
+            <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono font-bold bg-[#315B4F]/10 text-[#315B4F] px-2 py-0.5 rounded-full uppercase">
+                  MANAJEMEN PESERTA
+                </span>
+                <span className="text-xs font-mono text-slate-400">Terkelompok per Jadwal</span>
+              </div>
+              <h3 className="text-lg font-black tracking-tight text-slate-900 mt-1">
+                Database Peserta per Jadwal Keberangkatan
+              </h3>
+              <p className="text-xs text-slate-500">
+                Menampilkan data peserta yang terkelompok per jadwal keberangkatan untuk koordinasi logistik penjemputan bandara dan tour leader.
+              </p>
             </div>
 
             {/* BATCH ACCORDIONS STREAM */}
@@ -1512,34 +1720,35 @@ Sunset Lovina & Dolphin Cruise\t2026-08-01\t10\t195\tOpen`;
                 const isExpanded = !!expandedBatches[batch.id];
 
                 return (
-                  <div key={batch.id} className="bg-white rounded-3xl border border-slate-150 shadow-sm overflow-hidden">
+                  <div key={batch.id} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden transition">
                     
                     {/* ACCORDION BAR TRIGGER */}
                     <button
+                      type="button"
                       onClick={() => setExpandedBatches(prev => ({ ...prev, [batch.id]: !isExpanded }))}
-                      className="w-full p-5 flex flex-col sm:flex-row sm:items-center justify-between text-left hover:bg-slate-50/60 transition duration-200 select-none cursor-pointer"
+                      className="w-full p-5 flex flex-col sm:flex-row sm:items-center justify-between text-left hover:bg-slate-50/70 transition duration-200 select-none cursor-pointer"
                     >
                       <div className="space-y-1 max-w-[80%]">
-                        <span className="text-[10px] font-mono text-emerald-800 font-extrabold uppercase bg-emerald-50 px-2 py-0.5 rounded">
-                          {formatDate(batch.departureDate)}
+                        <span className="text-[10px] font-mono text-[#315B4F] font-bold uppercase bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md">
+                          Keberangkatan: {formatDate(batch.departureDate)}
                         </span>
-                        <h4 className="font-display font-bold text-slate-900 text-sm">
+                        <h4 className="font-bold text-slate-900 text-sm">
                           {tripObj ? tripObj.title : `Unmapped Trip Reference ID #${batch.tripId}`}
                         </h4>
-                        <p className="text-[10px] text-slate-450 flex items-center space-x-1.5 font-medium">
-                          <Users className="w-3 h-3 text-slate-400" />
-                          <span>{totalAttendeesCount} registered travelers total on this departures slot ({batch.availableSeats} available spots left)</span>
+                        <p className="text-[11px] text-slate-400 flex items-center space-x-1.5 font-medium">
+                          <Users className="w-3.5 h-3.5 text-slate-400" />
+                          <span>{totalAttendeesCount} peserta terdaftar di slot ini ({batch.availableSeats} sisa kursi tersedia)</span>
                         </p>
                       </div>
 
                       <div className="flex items-center space-x-3 mt-3 sm:mt-0 shrink-0">
-                        <span className={`text-[10px] uppercase font-mono font-black tracking-wider px-2 py-1 rounded-lg ${
-                          totalAttendeesCount > 0 ? "bg-emerald-100 text-emerald-800 font-extrabold" : "bg-slate-100 text-slate-400"
+                        <span className={`text-[11px] uppercase font-mono font-bold tracking-wider px-2.5 py-1 rounded-lg border ${
+                          totalAttendeesCount > 0 ? "bg-emerald-50 text-[#315B4F] border-emerald-200" : "bg-slate-100 text-slate-500 border-slate-200"
                         }`}>
                           {totalAttendeesCount} Active Pax
                         </span>
                         {isExpanded ? (
-                          <ChevronDown className="w-5 h-5 text-slate-400 animate-slide-up" />
+                          <ChevronDown className="w-5 h-5 text-slate-400" />
                         ) : (
                           <ChevronRight className="w-5 h-5 text-slate-400" />
                         )}
@@ -1548,43 +1757,43 @@ Sunset Lovina & Dolphin Cruise\t2026-08-01\t10\t195\tOpen`;
 
                     {/* TABLE DETAILS EXPANSION */}
                     {isExpanded && (
-                      <div className="border-t border-slate-100 p-5 bg-slate-50/30">
+                      <div className="border-t border-slate-100 p-5 bg-slate-50/40">
                         {batchBookings.length > 0 ? (
-                          <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+                          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
                             <table className="w-full text-left border-collapse text-xs">
-                              <thead className="bg-slate-100 text-slate-500 uppercase font-mono tracking-wider text-[9px] font-bold">
+                              <thead className="bg-slate-50 text-slate-700 uppercase font-mono tracking-wider text-[10px] font-bold border-b border-slate-200">
                                 <tr>
                                   <th className="p-3">Reference Code</th>
                                   <th className="p-3">Kategori</th>
-                                  <th className="p-3">Full Candidate Name</th>
-                                  <th className="p-3">English Passport Name</th>
-                                  <th className="p-3">WeChat Account ID</th>
-                                  <th className="p-3">Red (XiaoHongShu)</th>
-                                  <th className="p-3">Flight Assigned</th>
-                                  <th className="p-3">Contact WhatsApp</th>
-                                  <th className="p-3 text-center">Operation</th>
+                                  <th className="p-3">Nama Lengkap</th>
+                                  <th className="p-3">Passport Name (EN)</th>
+                                  <th className="p-3">WeChat ID</th>
+                                  <th className="p-3">XiaoHongShu</th>
+                                  <th className="p-3">Penerbangan</th>
+                                  <th className="p-3">Kontak WhatsApp</th>
+                                  <th className="p-3 text-center">Aksi</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100">
                                 {batchBookings.map(b => (
-                                  <tr key={b.id} className="hover:bg-slate-50/50 transition duration-200">
+                                  <tr key={b.id} className="hover:bg-slate-50/70 transition duration-200">
                                     <td className="p-3 font-mono font-bold text-[#315B4F]">{b.bookingCode}</td>
                                     <td className="p-3">
                                       <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
                                         (b.nationalityType || b.participantData?.nationalityType) === 'WNA'
-                                          ? "bg-blue-100 text-blue-800 border border-blue-200"
-                                          : "bg-emerald-100 text-[#315B4F] border border-emerald-200"
+                                          ? "bg-blue-50 text-blue-700 border border-blue-200"
+                                          : "bg-emerald-50 text-[#315B4F] border border-emerald-200"
                                       }`}>
                                         {(b.nationalityType || b.participantData?.nationalityType) === 'WNA' ? "🌐 WNA" : "🇮🇩 WNI"}
                                       </span>
                                     </td>
                                     <td className="p-3 font-bold text-slate-800">{b.participantData?.name || b.fullName}</td>
-                                    <td className="p-3 font-bold text-slate-700">{b.participantData?.englishName || "N/A"}</td>
+                                    <td className="p-3 font-medium text-slate-600">{b.participantData?.englishName || "N/A"}</td>
                                     <td className="p-3 font-mono text-slate-600">{b.participantData?.weChatId || "N/A"}</td>
-                                    <td className="p-3 font-mono text-slate-650">{b.participantData?.xiaoHongShuId || "N/A"}</td>
+                                    <td className="p-3 font-mono text-slate-600">{b.participantData?.xiaoHongShuId || "N/A"}</td>
                                     <td className="p-3">
                                       {b.participantData?.flightNumber ? (
-                                        <span className="inline-flex items-center space-x-1.5 bg-emerald-50/50 text-emerald-850 px-2 py-0.5 rounded border border-emerald-100/40 text-[10px] font-bold font-mono uppercase">
+                                        <span className="inline-flex items-center space-x-1.5 bg-emerald-50 text-[#315B4F] px-2 py-0.5 rounded border border-emerald-200 text-[10px] font-bold font-mono uppercase">
                                           <Plane className="w-2.5 h-2.5" />
                                           <span>{b.participantData.flightNumber}</span>
                                         </span>
@@ -1595,10 +1804,11 @@ Sunset Lovina & Dolphin Cruise\t2026-08-01\t10\t195\tOpen`;
                                     <td className="p-3 font-mono text-slate-700">{b.participantData?.whatsapp || b.phone || "N/A"}</td>
                                     <td className="p-3 text-center">
                                       <button
+                                        type="button"
                                         onClick={() => handleEditParticipant(b)}
-                                        className="px-2.5 py-1.5 bg-slate-100 text-slate-700 hover:bg-[#315B4F] hover:text-white rounded-xl transition duration-200 font-bold border border-slate-200 cursor-pointer text-[10px]"
+                                        className="px-2.5 py-1.5 bg-slate-50 text-slate-700 hover:bg-[#315B4F] hover:text-white rounded-lg transition duration-200 font-bold border border-slate-200 cursor-pointer text-[10px]"
                                       >
-                                        Edit Profile
+                                        Edit Profil
                                       </button>
                                     </td>
                                   </tr>
@@ -1608,7 +1818,7 @@ Sunset Lovina & Dolphin Cruise\t2026-08-01\t10\t195\tOpen`;
                           </div>
                         ) : (
                           <div className="p-6 text-center text-slate-400 font-medium">
-                            No passengers registered for this departure batch yet.
+                            Belum ada peserta yang mendaftar pada batch keberangkatan ini.
                           </div>
                         )}
                       </div>
@@ -1624,28 +1834,27 @@ Sunset Lovina & Dolphin Cruise\t2026-08-01\t10\t195\tOpen`;
 
         {/* ----------------- TAB F: EXCEL / CSV IMPORTER ----------------- */}
         {activeTab === "excel-import" && (
-          <div className="space-y-8 animate-fade-in text-slate-800" id="excel-importer-tab">
+          <div className="space-y-6 animate-fade-in text-slate-800" id="excel-importer-tab">
             
             {/* Header / Guide banner */}
-            <div className="bg-emerald-950 text-slate-100 p-6 sm:p-8 rounded-3xl border border-emerald-900 shadow-lg relative overflow-hidden">
-              <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-[#D6B16D]/10 blur-2xl pointer-events-none" />
-              <div className="relative space-y-4 max-w-4xl">
-                <div className="inline-flex items-center space-x-2 bg-[#D6B16D]/15 text-white px-3.5 py-1.5 rounded-full text-xs font-bold border border-[#D6B16D]/20 shadow-md">
-                  <Sparkles className="w-3.5 h-3.5 text-[#D6B16D] animate-bounce" />
-                  <span>Excel / Spreadsheet Connectivity</span>
+            <div className="bg-[#315B4F] text-white p-6 sm:p-7 rounded-2xl border border-[#27483e] shadow-sm relative overflow-hidden">
+              <div className="relative space-y-3 max-w-4xl">
+                <div className="inline-flex items-center space-x-2 bg-amber-400 text-neutral-950 px-3 py-1 rounded-full text-xs font-bold shadow-sm">
+                  <Sparkles className="w-3.5 h-3.5 text-neutral-950" />
+                  <span>KONEKTIVITAS SPREADSHEET / EXCEL</span>
                 </div>
-                <h3 className="text-2xl font-display font-black text-white tracking-tight">
-                  Direct Tourism Data Synchronization
+                <h3 className="text-xl font-black text-white tracking-tight">
+                  Sinkronisasi Data Massal Open Trip
                 </h3>
-                <p className="text-sm font-sans text-emerald-100 leading-relaxed opacity-90">
-                  Have your trip details or schedules designed in **Microsoft Excel, Google Sheets, or Apple Numbers**? 
-                  Copy and paste the cells directly below or drop in a standard `.csv` export. The system will cleanly parse, associate, and render them on your website instantly.
+                <p className="text-xs text-emerald-100 leading-relaxed max-w-3xl">
+                  Mempunyai daftar paket tur atau jadwal keberangkatan di <strong>Microsoft Excel, Google Sheets, atau CSV</strong>? 
+                  Salin dan tempel baris sel langsung di bawah ini atau unggah berkas <code>.csv</code>. Sistem akan memetakan dan menyimpannya secara otomatis ke database.
                 </p>
               </div>
             </div>
 
             {/* Main Importer Workspace */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               
               {/* Left Column: Input and Controls */}
               <div className="bg-white border border-slate-150 p-6 rounded-3xl shadow-sm lg:col-span-7 space-y-6">
@@ -2329,8 +2538,8 @@ Sunset Lovina & Dolphin Cruise\t2026-08-01\t10\t195\tOpen`;
                         onChange={(e) => setTripForm({ ...tripForm, status: e.target.value as "published" | "draft" })}
                         className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium"
                       >
-                        <option value="draft">Draft mode (Invisible on frontend catalog)</option>
                         <option value="published">Published / Open (Sits active in live lists)</option>
+                        <option value="draft">Draft mode (Invisible on frontend catalog)</option>
                       </select>
                     </div>
 

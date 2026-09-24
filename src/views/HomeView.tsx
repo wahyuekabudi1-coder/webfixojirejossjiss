@@ -1173,7 +1173,7 @@ export default function HomeView() {
                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pt-1 text-[11px] text-[#6B7280] font-bold border-t border-neutral-100 mt-2">
                          <span className="flex items-center gap-1">
                            <Clock className="h-3.5 w-3.5 text-[#0F766E]" />
-                           <span>{tour.duration.split('(')[0].trim()}</span>
+                           <span>{(tour.duration ? tour.duration.split('(')[0].trim() : '')}</span>
                          </span>
                          <span className="flex items-center gap-1">
                            <Users className="h-3.5 w-3.5 text-[#0F766E]" />

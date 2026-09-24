@@ -484,7 +484,7 @@ export default function AirportTransferView() {
                           >
                             {airportsToRender.map((code) => (
                               <option key={code} value={code}>
-                                {code} – {airportNames[code] ? airportNames[code].split(' (')[0] : `${code} Airport`}
+                                {code} – {airportNames[code] ? (airportNames[code] || '').split(' (')[0] : `${code} Airport`}
                               </option>
                             ))}
                           </select>
@@ -556,7 +556,7 @@ export default function AirportTransferView() {
                           >
                             {airportsToRender.map((code) => (
                               <option key={code} value={code}>
-                                {code} – {airportNames[code] ? airportNames[code].split(' (')[0] : `${code} Airport`}
+                                {code} – {airportNames[code] ? (airportNames[code] || '').split(' (')[0] : `${code} Airport`}
                               </option>
                             ))}
                           </select>

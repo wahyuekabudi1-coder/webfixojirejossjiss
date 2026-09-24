@@ -103,13 +103,13 @@ export default function TourDetailView({ tourId, onBack }: TourDetailViewProps) 
       }];
     }
 
-    const hasStructuredItems = itineraryArray.some(item => item.startsWith('Day ') && item.includes('|'));
+    const hasStructuredItems = itineraryArray.some(item => typeof item === 'string' && item.startsWith('Day ') && item.includes('|'));
     
     if (hasStructuredItems) {
       // Map to intermediate activity items
       const intermediateItems = itineraryArray.map((item, idx) => {
-        if (item.startsWith('Day ') && item.includes('|')) {
-          const parts = item.split('|').map(p => p.trim());
+        if (typeof item === 'string' && item.startsWith('Day ') && item.includes('|')) {
+          const parts = (item || '').split('|').map(p => p.trim());
           const dayPart = parts[0];
           const time = parts[1] || '08:00';
           const title = parts[2] || '';
@@ -133,14 +133,15 @@ export default function TourDetailView({ tourId, onBack }: TourDetailViewProps) 
           };
         } else {
           // Legacy format: "08:00 - Title, Description"
-          const dividerIdx = item.indexOf('-');
-          const time = dividerIdx !== -1 ? item.substring(0, dividerIdx).trim() : '08:00';
-          const activity = dividerIdx !== -1 ? item.substring(dividerIdx + 1).trim() : item;
+          const strItem = typeof item === 'string' ? item : String(item || '');
+          const dividerIdx = strItem.indexOf('-');
+          const time = dividerIdx !== -1 ? strItem.substring(0, dividerIdx).trim() : '08:00';
+          const activity = dividerIdx !== -1 ? strItem.substring(dividerIdx + 1).trim() : strItem;
           return {
             day: 1,
             dayTitle: 'Full Day Expedition',
             time,
-            title: activity.split(',')[0].trim(),
+            title: ((activity || '').split(',')[0] || '').trim(),
             desc: activity,
             iconType: (idx === 0 ? 'pickup' : idx === itineraryArray.length - 1 ? 'transfer' : 'trek') as any
           };
@@ -170,12 +171,13 @@ export default function TourDetailView({ tourId, onBack }: TourDetailViewProps) 
         dayNum: 1,
         dayTitle: 'Jadwal Perjalanan',
         activities: itineraryArray.map((item, idx) => {
-          const dividerIdx = item.indexOf('-');
-          const time = dividerIdx !== -1 ? item.substring(0, dividerIdx).trim() : '08:00';
-          const activity = dividerIdx !== -1 ? item.substring(dividerIdx + 1).trim() : item;
+          const strItem = typeof item === 'string' ? item : String(item || '');
+          const dividerIdx = strItem.indexOf('-');
+          const time = dividerIdx !== -1 ? strItem.substring(0, dividerIdx).trim() : '08:00';
+          const activity = dividerIdx !== -1 ? strItem.substring(dividerIdx + 1).trim() : strItem;
           return {
             time,
-            title: activity.split(',')[0].trim(),
+            title: ((activity || '').split(',')[0] || '').trim(),
             desc: activity,
             iconType: (idx === 0 ? 'pickup' : idx === itineraryArray.length - 1 ? 'transfer' : 'trek') as any
           };
@@ -665,7 +667,7 @@ export default function TourDetailView({ tourId, onBack }: TourDetailViewProps) 
                   <span>Highlight Perjalanan</span>
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {tour.highlights.map((highlight, idx) => (
+                  {(tour.highlights || []).map((highlight, idx) => (
                     <div key={idx} className="flex items-start gap-2.5">
                       <div className="p-0.5 bg-emerald-500/15 text-emerald-600 rounded mt-0.5">
                         <Check className="h-3.5 w-3.5 stroke-[3]" />

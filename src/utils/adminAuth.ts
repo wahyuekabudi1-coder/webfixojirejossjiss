@@ -115,6 +115,10 @@ export async function handleAdminResponse<T = any>(
     throw new Error(serverMessage || 'Permintaan data tidak valid (HTTP 400).');
   }
 
+  if (res.status === 413) {
+    throw new Error(serverMessage || 'Data paket tour terlalu besar untuk dikirim ke server (maksimal 20MB). Kurangi ukuran atau jumlah foto galeri.');
+  }
+
   if (res.status >= 500) {
     throw new Error(serverMessage || 'Terjadi kesalahan pada database server (HTTP 500).');
   }

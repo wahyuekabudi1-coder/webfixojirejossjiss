@@ -904,7 +904,7 @@ export default function AboutView() {
                               <span>Suggested Timeline &amp; Itinerary</span>
                             </h4>
                             <div className="border-l border-amber-500/30 pl-4 ml-2 space-y-4 text-xs sm:text-sm font-semibold">
-                              {activePost.suggestedItinerary.split('. ').map((item, i) => {
+                              {(activePost.suggestedItinerary || '').split('. ').map((item, i) => {
                                 if (!item.trim()) return null;
                                 return (
                                   <div key={i} className="relative">

@@ -148,7 +148,21 @@ export default function AdminView() {
   }, []);
 
   // Navigation States
-  const [activeModule, setActiveModule] = useState<'dashboard' | 'analytics' | 'tours' | 'sharetour' | 'bookings' | 'reports' | 'airport' | 'taxi' | 'rental' | 'cms' | 'account'>('dashboard');
+  const [activeModule, setActiveModule] = useState<'dashboard' | 'analytics' | 'tours' | 'sharetour' | 'bookings' | 'reports' | 'airport' | 'taxi' | 'rental' | 'cms' | 'account'>(() => {
+    try {
+      const saved = localStorage.getItem('sj_admin_active_module');
+      if (saved && ['dashboard', 'analytics', 'tours', 'sharetour', 'bookings', 'reports', 'airport', 'taxi', 'rental', 'cms', 'account'].includes(saved)) {
+        return saved as any;
+      }
+    } catch (_) {}
+    return 'dashboard';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('sj_admin_active_module', activeModule);
+    } catch (_) {}
+  }, [activeModule]);
   const [activeSubTab, setActiveSubTab] = useState<'dashboard' | 'management' | 'calendar' | 'blackout' | 'schedule' | 'booking' | 'customer' | 'payment' | 'finance' | 'reports' | 'settings' | 'master-data' | 'pricing-engine' | 'excel-import' | 'excel-export' | 'import-history'>('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [reviewsFilter, setReviewsFilter] = useState<'all' | 'pending' | 'approved'>('all');
@@ -157,6 +171,7 @@ export default function AdminView() {
   const [shareTourTrips, setShareTourTrips] = useState<ShareTourTrip[]>([]);
   const [shareTourBatches, setShareTourBatches] = useState<ShareTourBatch[]>([]);
   const [shareTourBookings, setShareTourBookings] = useState<ShareTourBooking[]>([]);
+  const [shareTourTripsRevision, setShareTourTripsRevision] = useState<number>(1);
   const [shareTourLoading, setShareTourLoading] = useState(false);
 
   const loadShareTourData = async () => {
@@ -166,6 +181,9 @@ export default function AdminView() {
       setShareTourTrips(db.trips || []);
       setShareTourBatches(db.batches || []);
       setShareTourBookings(db.bookings || []);
+      if (typeof db.tripsRevision === 'number') {
+        setShareTourTripsRevision(db.tripsRevision);
+      }
     } catch (err) {
       console.error("Error fetching ShareTour database in AdminView:", err);
     } finally {
@@ -177,7 +195,7 @@ export default function AdminView() {
     if (isAdminUnlocked) {
       loadShareTourData();
     }
-  }, [isAdminUnlocked]);
+  }, [isAdminUnlocked, activeModule]);
 
   // Master Unified Bookings State
   const [bookingChannelFilter, setBookingChannelFilter] = useState<'all' | 'tour' | 'sharetour' | 'airport' | 'taxi' | 'car-rental'>('all');
@@ -8238,7 +8256,7 @@ export default function AdminView() {
                 exit={{ opacity: 0 }}
                 className="space-y-6"
               >
-                {shareTourLoading ? (
+                {shareTourLoading && shareTourTrips.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-20 space-y-4">
                     <RefreshCw className="w-8 h-8 text-amber-500 animate-spin" />
                     <p className={`text-xs font-mono ${theme.textSecondary}`}>Memuat Database Share Tour / Open Trip...</p>
@@ -8248,6 +8266,7 @@ export default function AdminView() {
                     trips={shareTourTrips}
                     batches={shareTourBatches}
                     bookings={shareTourBookings}
+                    tripsRevision={shareTourTripsRevision}
                     onRefreshDB={loadShareTourData}
                     onLogout={handleLogout}
                     embedded={true}

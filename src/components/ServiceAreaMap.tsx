@@ -421,7 +421,7 @@ export default function ServiceAreaMap() {
                         fontWeight={isSelected ? '800' : '600'}
                         fontFamily="sans-serif"
                       >
-                        {city.name.split(' ')[0]}
+                        {(city.name || '').split(' ')[0]}
                       </text>
                     </g>
                   </g>

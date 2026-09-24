@@ -35,7 +35,7 @@ function getNestedValue(obj: any, path: string): any {
   if (!obj || !path) return undefined;
   
   // Direct path lookup first
-  const parts = path.split('.');
+  const parts = (path || '').split('.');
   const direct = parts.reduce((acc, part) => (acc && acc[part] !== undefined ? acc[part] : undefined), obj);
   if (direct !== undefined) return direct;
 
