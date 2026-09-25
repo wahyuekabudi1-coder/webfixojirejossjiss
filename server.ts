@@ -1,38 +1,26 @@
+import './server/env';
+import { getDatabaseEnv } from './server/env';
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
-import dotenv from 'dotenv';
-import type { Trip, Batch, Booking, DatabaseState } from './src/sharetour/types.ts';
+import type { Trip, Batch, Booking } from './src/sharetour/types.ts';
 import type { Tour } from './src/types.ts';
 import { generatePrivateTourPdf } from './src/server/generatePrivateTourPdf.ts';
-import { getDB } from './server/db/pool';
+import { getDB, initSchema, validateSchema } from './server/db/pool';
 import { runMigrationIfNeeded } from './server/db/migrator';
 import { toursRepo } from './server/db/repositories/tours.repository';
 import { shareToursRepo } from './server/db/repositories/shareTours.repository';
 import { bookingsRepo } from './server/db/repositories/bookings.repository';
+import { paymentsRepo } from './server/db/repositories/payments.repository';
+import { invoicesRepo } from './server/db/repositories/invoices.repository';
 import { draftsRepo } from './server/db/repositories/drafts.repository';
 import { transportRepo } from './server/db/repositories/transport.repository';
 import { schedulesRepo } from './server/db/repositories/schedules.repository';
 import { reviewsRepo } from './server/db/repositories/reviews.repository';
 import { serviceLimitsRepo } from './server/db/repositories/serviceLimits.repository';
 import { sessionsRepo } from './server/db/repositories/sessions.repository';
-import { sanitizeAndPersistImage } from './server/utils/mediaStorage';
-
-// Load environment variables
-dotenv.config();
-
-// Initialize Relational Database Single Source of Truth
-(async () => {
-  try {
-    const db = await getDB();
-    console.log(`[Database] Initialized single source of truth: ${db.engineName()}`);
-    await runMigrationIfNeeded();
-    await syncAdminSessionsFromDB();
-  } catch (err) {
-    console.error('[Database Fatal] Could not connect to Database Access Layer:', err);
-  }
-})();
+import { sanitizeAndPersistImage, sanitizeAndPersistImages } from './server/utils/mediaStorage';
 
 // Ensure any Google AI Studio container settings are loaded
 if (fs.existsSync('/app/.dev.env.json')) {
@@ -46,7 +34,8 @@ if (fs.existsSync('/app/.dev.env.json')) {
   } catch (e) {}
 }
 
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+// AI Studio Dev Server must run on port 3000 (nginx forwards 8080 to 3000)
+const PORT = parseInt(String(process.env.APP_PORT || (process.env.PORT && process.env.PORT !== '8080' ? process.env.PORT : 3000)), 10);
 
 // Helper to determine the actual project root directory safely across environments (AI Studio, PM2, Passenger, Hostinger)
 function resolveProjectRoot(): string {
@@ -75,26 +64,14 @@ function resolveProjectRoot(): string {
 }
 
 const PROJECT_ROOT = resolveProjectRoot();
-const DB_PATH = process.env.DB_PATH 
-  ? path.resolve(process.env.DB_PATH) 
-  : path.resolve(PROJECT_ROOT, 'data', 'db.json');
 
-function logPersistenceDiagnostics(): void {
-  const exists = fs.existsSync(DB_PATH);
-  let tripsCount = 0;
-  if (exists) {
-    try {
-      const raw = fs.readFileSync(DB_PATH, 'utf8');
-      const parsed = JSON.parse(raw);
-      if (parsed && Array.isArray(parsed.trips)) {
-        tripsCount = parsed.trips.length;
-      }
-    } catch (_) {}
+async function logPersistenceDiagnostics(): Promise<void> {
+  try {
+    const db = await getDB();
+    console.log(`[Persistence Engine] Active Database: ${db.engineName()} | Environment: ${process.env.NODE_ENV || 'development'}`);
+  } catch (err: any) {
+    console.error(`[Persistence Engine Error] Could not connect to database:`, err.message);
   }
-  console.log(`[Persistence] PROJECT_ROOT=${PROJECT_ROOT}`);
-  console.log(`[Persistence] DB_PATH=${DB_PATH}`);
-  console.log(`[Persistence] DB_EXISTS=${exists}`);
-  console.log(`[Persistence] TRIPS_COUNT=${tripsCount}`);
 }
 
 // Concurrency: Process-level critical section / mutex for booking creation & bulk writes
@@ -261,129 +238,9 @@ function isValidCalendarDate(dateStr: string): boolean {
   );
 }
 
-// Clean Default Database Schema (No dummy production tours or fake bookings)
-const defaultDB: DatabaseState = {
-  mainTours: [],
-  shareTours: [],
-  trips: [],
-  batches: [],
-  bookings: [],
-  payments: [],
-  invoices: [],
-  adminSessions: [],
-  adminDrafts: {},
-  operationalData: {}
-} as any;
-
-function recalculateBatchSeats(db: DatabaseState): void {
-  if (!db || !db.batches) return;
-  if (!db.bookings) db.bookings = [];
-
-  const inactiveStatuses = new Set(['cancelled', 'canceled', 'rejected', 'failed', 'expired']);
-  const inactivePaymentStatuses = new Set(['failed', 'expired']);
-
-  db.batches.forEach((batch) => {
-    const activeBookings = db.bookings.filter((b) => {
-      if (!b.batchId || b.batchId !== batch.id) return false;
-      const bStatus = (b.status || '').trim().toLowerCase();
-      const pStatus = (b.paymentStatus || '').trim().toLowerCase();
-      if (inactiveStatuses.has(bStatus)) return false;
-      if (inactivePaymentStatuses.has(pStatus)) return false;
-      return true;
-    });
-
-    const totalBooked = activeBookings.reduce(
-      (sum, b) => sum + (Number(b.participantsCount) || 1),
-      0
-    );
-
-    const quota = Number(batch.quota ?? (batch as any).totalSeats) || 12;
-    batch.availableSeats = Math.max(0, quota - totalBooked);
-
-    if (batch.availableSeats <= 0) {
-      if ((batch.status as string) !== 'archived') {
-        batch.status = 'Closed';
-      }
-    } else if (batch.status === 'Closed' && batch.availableSeats > 0 && !(batch as any).isArchived) {
-      batch.status = 'Open';
-    }
-  });
-}
-
-function readDB(): DatabaseState {
-  // Authoritative persistent database file (data/db.json ONLY)
-  // Reads directly from storage to return an isolated snapshot without shared memory mutation
-  if (fs.existsSync(DB_PATH)) {
-    try {
-      const raw = fs.readFileSync(DB_PATH, 'utf8');
-      const parsed = JSON.parse(raw) as DatabaseState;
-      if (parsed && typeof parsed === 'object') {
-        if (!parsed.trips) parsed.trips = [];
-        if (!parsed.batches) parsed.batches = [];
-        if (!parsed.bookings) parsed.bookings = [];
-        if (!parsed.mainTours) parsed.mainTours = [];
-        if (!(parsed as any).adminSessions) (parsed as any).adminSessions = [];
-        if (!(parsed as any).adminDrafts) (parsed as any).adminDrafts = {};
-
-        if (!(parsed as any).contactInfo) {
-          (parsed as any).contactInfo = {
-            name: 'Smart Journey Indonesia',
-            address: 'Jl. Puntadewa No. 192, Tumpang, Malang, Jawa Timur 65156, Indonesia',
-            phone: '+62 852-1234-7289',
-            whatsapp: '+62 852-1234-7289',
-            email: 'sawahjayagroup@gmail.com'
-          };
-        }
-
-        return parsed;
-      }
-    } catch (err) {
-      console.error('CRITICAL: Error reading authoritative persistent data/db.json:', err);
-      throw err;
-    }
-  }
-
-  // Fallback initial state only if file does not exist on disk
-  const fallback = JSON.parse(JSON.stringify(defaultDB));
-  try {
-    atomicWriteFileSync(DB_PATH, JSON.stringify(fallback, null, 2));
-  } catch (writeErr) {
-    console.warn('Could not initialize empty db.json on disk:', writeErr);
-  }
-  return fallback;
-}
-
-// -------------------------------------------------------------
-// Safe Atomic File Write Helper with fsync (Flushes to Disk)
-// -------------------------------------------------------------
-function atomicWriteFileSync(filePath: string, content: string): void {
-  const dir = path.dirname(filePath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  const tempPath = `${filePath}.tmp.${Date.now()}.${Math.random().toString(36).substring(2, 8)}`;
-  try {
-    const fd = fs.openSync(tempPath, 'w');
-    try {
-      fs.writeFileSync(fd, content, 'utf8');
-      fs.fsyncSync(fd);
-    } finally {
-      fs.closeSync(fd);
-    }
-    fs.renameSync(tempPath, filePath);
-  } catch (err) {
-    try {
-      if (fs.existsSync(tempPath)) {
-        fs.unlinkSync(tempPath);
-      }
-    } catch (_) {}
-    throw err;
-  }
-}
-
 // -------------------------------------------------------------
 // Security: Persistent Admin Session Store (Survives Server Restarts)
-// Authoritative single source of truth: db.adminSessions in data/db.json
+// Authoritative single source of truth: sessionsRepo in Relational SQL Database
 // -------------------------------------------------------------
 
 const activeAdminTokens = new Set<string>();
@@ -404,7 +261,7 @@ async function syncAdminSessionsFromDB(): Promise<void> {
 async function saveAdminSession(token: string): Promise<void> {
   activeAdminTokens.add(token);
   try {
-    await sessionsRepo.createSession(token, 24 * 60 * 60 * 1000);
+    await sessionsRepo.createSession(token, 'admin', 'superadmin', 24);
   } catch (err) {
     console.error('Error saving admin session to SQL:', err);
   }
@@ -422,53 +279,6 @@ async function removeAdminSession(token: string): Promise<void> {
 function isSessionValid(token: string): boolean {
   if (!token) return false;
   return activeAdminTokens.has(token);
-}
-
-function writeDB(data: DatabaseState) {
-  recalculateBatchSeats(data);
-  if (!(data as any).contactInfo) {
-    (data as any).contactInfo = {
-      name: 'Smart Journey Indonesia',
-      address: 'Jl. Puntadewa No. 192, Tumpang, Malang, Jawa Timur 65156, Indonesia',
-      phone: '+62 852-1234-7289',
-      whatsapp: '+62 852-1234-7289',
-      email: 'sawahjayagroup@gmail.com'
-    };
-  }
-
-  // Persist exclusively to single authoritative database file (data/db.json) with atomic write
-  try {
-    atomicWriteFileSync(DB_PATH, JSON.stringify(data, null, 2));
-  } catch (err) {
-    console.error('CRITICAL: Failed to write to authoritative persistent database (data/db.json):', err);
-    throw new Error('Database write failure: cannot persist data to authoritative storage.');
-  }
-}
-
-// -------------------------------------------------------------
-// UNIFIED BACKEND PERSISTENCE FOR PUBLISHED TOURS
-// Master source of truth: db.mainTours in persistent backend database (data/db.json)
-// -------------------------------------------------------------
-function readMainTours(): Tour[] {
-  try {
-    if (fs.existsSync(DB_PATH)) {
-      const raw = fs.readFileSync(DB_PATH, 'utf8');
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object' && Array.isArray(parsed.mainTours)) {
-        return parsed.mainTours;
-      }
-    }
-  } catch (err) {
-    console.error('[Persistence Error] Failed reading mainTours directly from disk (data/db.json):', err);
-  }
-  const db = readDB();
-  return db.mainTours || [];
-}
-
-function writeMainTours(tours: Tour[]) {
-  const db = readDB();
-  db.mainTours = tours;
-  writeDB(db);
 }
 
 const app = express();
@@ -556,7 +366,7 @@ const paymentLimiter = createRateLimiter(25, 15 * 60 * 1000); // 25 attempts per
 
 // -------------------------------------------------------------
 // Security: Admin Authentication Middleware (Strict Environment / Session Auth)
-// Authoritative Admin Session Storage in data/db.json
+// Authoritative Admin Session Storage in Relational Database (sessionsRepo)
 // -------------------------------------------------------------
 
 function getAdminConfiguredSecret(): string {
@@ -595,12 +405,32 @@ function requireAdminAuth(req: express.Request, res: express.Response, next: exp
 }
 
 // -------------------------------------------------------------
-// Unique Payment Code Generator (1-99) - Authoritative Backend Logic
+// Unique Payment Code Generator (1-99) - Authoritative SQL Backend Logic
 // -------------------------------------------------------------
 
-function generateUniquePaymentCode(bookings: Booking[] = []): number {
+async function generateUniquePaymentCodeAsync(): Promise<number> {
+  try {
+    const activePendingUniqueCodes = await bookingsRepo.getActivePendingUniqueCodes();
+    const available: number[] = [];
+    for (let i = 1; i <= 99; i++) {
+      if (!activePendingUniqueCodes.has(i)) {
+        available.push(i);
+      }
+    }
+    if (available.length > 0) {
+      const idx = Math.floor(Math.random() * available.length);
+      return available[idx];
+    }
+    return -1;
+  } catch (err) {
+    console.error('Error generating unique payment code from SQL:', err);
+    return Math.floor(Math.random() * 99) + 1;
+  }
+}
+
+function generateUniquePaymentCode(bookings: any[] = []): number {
   const now = Date.now();
-  const PAYMENT_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours active window for pending payment unique code reservation
+  const PAYMENT_WINDOW_MS = 2 * 60 * 60 * 1000;
   const activePendingUniqueCodes = new Set<number>();
 
   for (const b of bookings) {
@@ -628,7 +458,6 @@ function generateUniquePaymentCode(bookings: Booking[] = []): number {
     return available[idx];
   }
 
-  // Graceful handling: signal exhaustion so caller returns a clean 503 retry response
   return -1;
 }
 
@@ -639,10 +468,21 @@ function generateUniquePaymentCode(bookings: Booking[] = []): number {
 app.get('/api/health', async (req, res) => {
   try {
     const db = await getDB();
+    const isProd = process.env.NODE_ENV === 'production';
+    if (isProd && !db.isMySQL()) {
+      return res.status(500).json({
+        application: 'ok',
+        database: 'disconnected',
+        error: 'Production requires MySQL. SQLite fallback is not allowed.',
+        engine: 'invalid_engine'
+      });
+    }
+
     res.json({
       application: 'ok',
       database: 'connected',
-      engine: db.engineName(),
+      engine: db.isMySQL() ? 'mysql' : 'sqlite',
+      engineDetails: db.engineName(),
       timestamp: new Date().toISOString(),
       uptime: Math.floor(process.uptime()),
       environment: process.env.NODE_ENV || 'development'
@@ -760,7 +600,7 @@ app.post('/api/main-tours', requireAdminAuth, async (req, res) => {
     }
 
     // Sanitize image: If image is base64 data URL, persist to disk file and store URL path
-    const sanitizedImage = sanitizeAndPersistImage(payload.image, 'tour');
+    const sanitizedImage = await sanitizeAndPersistImage(payload.image, 'tour');
     const sanitizedHighlights = Array.isArray(payload.highlights) ? payload.highlights : [];
     const sanitizedItinerary = Array.isArray(payload.itinerary) ? payload.itinerary : [];
     const sanitizedIncludes = Array.isArray(payload.includes) ? payload.includes : [];
@@ -795,7 +635,7 @@ app.put('/api/main-tours/:id', requireAdminAuth, async (req, res) => {
 
     // Sanitize image if updated with base64
     if (payload.image) {
-      payload.image = sanitizeAndPersistImage(payload.image, 'tour');
+      payload.image = await sanitizeAndPersistImage(payload.image, 'tour');
     }
 
     const updated = await toursRepo.update(tourId, payload);
@@ -836,13 +676,12 @@ app.delete('/api/main-tours/:id', requireAdminAuth, async (req, res) => {
 });
 
 // -------------------------------------------------------------
-// CAR RENTAL SERVICE REST API (Full Persistent Backend Engine)
+// CAR RENTAL SERVICE REST API (Full Persistent Backend Engine via SQL)
 // -------------------------------------------------------------
 
-app.get('/api/rentals', (req, res) => {
+app.get('/api/rentals', async (req, res) => {
   try {
-    const db = readDB();
-    const rentals = db.rentals || {
+    const rentals = (await transportRepo.getCategoryData<any>('rentals')) || {
       cities: [],
       locations: [],
       categories: [],
@@ -858,11 +697,11 @@ app.get('/api/rentals', (req, res) => {
 
     // Customer public response: only active items
     res.json({
-      cities: (rentals.cities || []).filter(c => c.status === 'Active'),
-      locations: (rentals.locations || []).filter(l => l.status === 'Active'),
-      categories: (rentals.categories || []).filter(c => c.status === 'Active'),
-      vehicles: (rentals.vehicles || []).filter(v => v.status === 'Active'),
-      addons: (rentals.addons || []).filter(a => a.status === 'Active'),
+      cities: (rentals.cities || []).filter((c: any) => c.status === 'Active'),
+      locations: (rentals.locations || []).filter((l: any) => l.status === 'Active'),
+      categories: (rentals.categories || []).filter((c: any) => c.status === 'Active'),
+      vehicles: (rentals.vehicles || []).filter((v: any) => v.status === 'Active'),
+      addons: (rentals.addons || []).filter((a: any) => a.status === 'Active'),
       zonePricing: rentals.zonePricing || []
     });
   } catch (error) {
@@ -871,26 +710,30 @@ app.get('/api/rentals', (req, res) => {
   }
 });
 
-app.post('/api/rentals/sync', requireAdminAuth, (req, res) => {
+app.post('/api/rentals/sync', requireAdminAuth, async (req, res) => {
   try {
     const payload = req.body;
     if (!payload || typeof payload !== 'object') {
       return res.status(400).json({ error: 'Invalid rental payload' });
     }
 
-    const db = readDB();
-    db.rentals = {
-      cities: Array.isArray(payload.cities) ? payload.cities : (db.rentals?.cities || []),
-      locations: Array.isArray(payload.locations) ? payload.locations : (db.rentals?.locations || []),
-      categories: Array.isArray(payload.categories) ? payload.categories : (db.rentals?.categories || []),
-      vehicles: Array.isArray(payload.vehicles) ? payload.vehicles : (db.rentals?.vehicles || []),
-      addons: Array.isArray(payload.addons) ? payload.addons : (db.rentals?.addons || []),
-      zonePricing: Array.isArray(payload.zonePricing) ? payload.zonePricing : (db.rentals?.zonePricing || [])
+    const currentRentals = (await transportRepo.getCategoryData<any>('rentals')) || {};
+    const updated = {
+      cities: Array.isArray(payload.cities) ? payload.cities : (currentRentals.cities || []),
+      locations: Array.isArray(payload.locations) ? payload.locations : (currentRentals.locations || []),
+      categories: Array.isArray(payload.categories) ? payload.categories : (currentRentals.categories || []),
+      vehicles: Array.isArray(payload.vehicles) ? payload.vehicles : (currentRentals.vehicles || []),
+      addons: Array.isArray(payload.addons) ? payload.addons : (currentRentals.addons || []),
+      zonePricing: Array.isArray(payload.zonePricing) ? payload.zonePricing : (currentRentals.zonePricing || [])
     };
 
-    writeDB(db);
-    console.log('[Persistence] Rental data synced to persistent database.');
-    res.json({ success: true, rentals: db.rentals });
+    if (JSON.stringify(currentRentals) === JSON.stringify(updated)) {
+      return res.json({ success: true, rentals: updated, noop: true });
+    }
+
+    await transportRepo.saveCategoryData('rentals', updated);
+    console.log('[SQL Persistence] Rental data synced to persistent SQL database.');
+    res.json({ success: true, rentals: updated });
   } catch (error) {
     console.error('Error syncing rental data:', error);
     res.status(500).json({ error: 'Gagal menyimpan konfigurasi car rental ke database server.' });
@@ -898,57 +741,59 @@ app.post('/api/rentals/sync', requireAdminAuth, (req, res) => {
 });
 
 // -------------------------------------------------------------
-// AIRPORT TRANSFER SERVICE REST API
+// AIRPORT TRANSFER SERVICE REST API (Persistent SQL Engine)
 // -------------------------------------------------------------
 
-app.get('/api/airports', (req, res) => {
+app.get('/api/airports', async (req, res) => {
   try {
-    const db = readDB();
-    res.json(db.airportTransfers?.airports || []);
+    const airportTransfers = (await transportRepo.getCategoryData<any>('airportTransfers')) || {};
+    res.json(airportTransfers.airports || []);
   } catch (error) {
     res.status(500).json({ error: 'Gagal mengambil daftar bandara.' });
   }
 });
 
-app.get('/api/airport-routes', (req, res) => {
+app.get('/api/airport-routes', async (req, res) => {
   try {
-    const db = readDB();
-    const routes = db.airportTransfers?.routes || [];
+    const airportTransfers = (await transportRepo.getCategoryData<any>('airportTransfers')) || {};
+    const routes = airportTransfers.routes || [];
     const showAll = (req.query.all === 'true' || Boolean(req.headers.authorization)) && checkIsAdmin(req);
     if (showAll) {
       return res.json(routes);
     }
     // Public: only published routes
-    res.json(routes.filter(r => (r.status || 'Published') === 'Published'));
+    res.json(routes.filter((r: any) => (r.status || 'Published') === 'Published'));
   } catch (error) {
     res.status(500).json({ error: 'Gagal mengambil rute transfer bandara.' });
   }
 });
 
-app.post('/api/airport-transfers/sync', requireAdminAuth, (req, res) => {
+app.post('/api/airport-transfers/sync', requireAdminAuth, async (req, res) => {
   try {
     const { airports, routes } = req.body;
-    const db = readDB();
-    db.airportTransfers = {
-      airports: Array.isArray(airports) ? airports : (db.airportTransfers?.airports || []),
-      routes: Array.isArray(routes) ? routes : (db.airportTransfers?.routes || [])
+    const current = (await transportRepo.getCategoryData<any>('airportTransfers')) || {};
+    const updated = {
+      airports: Array.isArray(airports) ? airports : (current.airports || []),
+      routes: Array.isArray(routes) ? routes : (current.routes || [])
     };
-    writeDB(db);
-    console.log('[Persistence] Airport transfers synced to persistent database.');
-    res.json({ success: true, airportTransfers: db.airportTransfers });
+    if (JSON.stringify(current) === JSON.stringify(updated)) {
+      return res.json({ success: true, airportTransfers: updated, noop: true });
+    }
+    await transportRepo.saveCategoryData('airportTransfers', updated);
+    console.log('[SQL Persistence] Airport transfers synced to persistent SQL database.');
+    res.json({ success: true, airportTransfers: updated });
   } catch (error) {
     res.status(500).json({ error: 'Gagal menyinkronkan data transfer bandara.' });
   }
 });
 
 // -------------------------------------------------------------
-// TAXI SERVICE REST API (EXCEL IMPORT & PERSISTENT DB ENGINE)
+// TAXI SERVICE REST API (EXCEL IMPORT & PERSISTENT SQL ENGINE)
 // -------------------------------------------------------------
 
-app.get(['/api/taxi/all', '/api/taxi'], (req, res) => {
+app.get(['/api/taxi/all', '/api/taxi'], async (req, res) => {
   try {
-    const db = readDB();
-    const taxi = db.taxiServices || {
+    const taxi = (await transportRepo.getCategoryData<any>('taxiServices')) || {
       masterAreas: [],
       destinations: [],
       pricingRules: [],
@@ -973,60 +818,57 @@ app.get(['/api/taxi/all', '/api/taxi'], (req, res) => {
   }
 });
 
-app.post('/api/taxi/sync', requireAdminAuth, (req, res) => {
+app.post('/api/taxi/sync', requireAdminAuth, async (req, res) => {
   try {
     const payload = req.body;
-    const db = readDB();
-    db.taxiServices = {
-      masterAreas: Array.isArray(payload.masterAreas) ? payload.masterAreas : (db.taxiServices?.masterAreas || []),
-      destinations: Array.isArray(payload.destinations) ? payload.destinations : (db.taxiServices?.destinations || []),
-      pricingRules: Array.isArray(payload.pricingRules) ? payload.pricingRules : (db.taxiServices?.pricingRules || []),
-      areaRules: Array.isArray(payload.areaRules) ? payload.areaRules : (db.taxiServices?.areaRules || []),
-      importHistory: Array.isArray(payload.importHistory) ? payload.importHistory : (db.taxiServices?.importHistory || [])
+    const current = (await transportRepo.getCategoryData<any>('taxiServices')) || {};
+    const updated = {
+      masterAreas: Array.isArray(payload.masterAreas) ? payload.masterAreas : (current.masterAreas || []),
+      destinations: Array.isArray(payload.destinations) ? payload.destinations : (current.destinations || []),
+      pricingRules: Array.isArray(payload.pricingRules) ? payload.pricingRules : (current.pricingRules || []),
+      areaRules: Array.isArray(payload.areaRules) ? payload.areaRules : (current.areaRules || []),
+      importHistory: Array.isArray(payload.importHistory) ? payload.importHistory : (current.importHistory || [])
     };
-    writeDB(db);
-    console.log('[Persistence] Taxi services synced to persistent database.');
-    res.json({ success: true, taxiServices: db.taxiServices });
+    await transportRepo.saveCategoryData('taxiServices', updated);
+    console.log('[SQL Persistence] Taxi services synced to persistent SQL database.');
+    res.json({ success: true, taxiServices: updated });
   } catch (error) {
     res.status(500).json({ error: 'Gagal menyinkronkan database taksi ke server.' });
   }
 });
 
-app.post('/api/taxi/import-excel', requireAdminAuth, (req, res) => {
+app.post('/api/taxi/import-excel', requireAdminAuth, async (req, res) => {
   try {
     const { importedRules, historyEntry, masterAreas, destinations } = req.body;
-    const db = readDB();
-    if (!db.taxiServices) {
-      db.taxiServices = {
-        masterAreas: [],
-        destinations: [],
-        pricingRules: [],
-        areaRules: [],
-        importHistory: []
-      };
-    }
+    const taxi = (await transportRepo.getCategoryData<any>('taxiServices')) || {
+      masterAreas: [],
+      destinations: [],
+      pricingRules: [],
+      areaRules: [],
+      importHistory: []
+    };
 
     if (Array.isArray(masterAreas) && masterAreas.length > 0) {
-      db.taxiServices.masterAreas = masterAreas;
+      taxi.masterAreas = masterAreas;
     }
     if (Array.isArray(destinations) && destinations.length > 0) {
-      db.taxiServices.destinations = destinations;
+      taxi.destinations = destinations;
     }
 
     if (Array.isArray(importedRules)) {
       // Upsert rules by id
-      const existing = new Map((db.taxiServices.pricingRules || []).map(r => [r.id, r]));
+      const existing = new Map((taxi.pricingRules || []).map((r: any) => [r.id, r]));
       importedRules.forEach(r => existing.set(r.id, r));
-      db.taxiServices.pricingRules = Array.from(existing.values());
+      taxi.pricingRules = Array.from(existing.values());
     }
 
     if (historyEntry) {
-      db.taxiServices.importHistory = [historyEntry, ...(db.taxiServices.importHistory || [])];
+      taxi.importHistory = [historyEntry, ...(taxi.importHistory || [])];
     }
 
-    writeDB(db);
-    console.log(`[Persistence] Taxi Excel imported: ${(importedRules || []).length} rules saved to database.`);
-    res.json({ success: true, count: (importedRules || []).length, taxiServices: db.taxiServices });
+    await transportRepo.saveCategoryData('taxiServices', taxi);
+    console.log(`[SQL Persistence] Taxi Excel imported: ${(importedRules || []).length} rules saved to SQL database.`);
+    res.json({ success: true, count: (importedRules || []).length, taxiServices: taxi });
   } catch (error) {
     res.status(500).json({ error: 'Gagal menyimpan hasil import Excel taksi ke database server.' });
   }
@@ -1096,7 +938,7 @@ app.post('/api/reviews', loginLimiter, async (req, res) => {
     const rating = (!isNaN(rawRating) && rawRating >= 1 && rawRating <= 5) ? rawRating : 5;
 
     const isAdmin = checkIsAdmin(req);
-    const status = isAdmin && newRev.status ? String(newRev.status) : 'pending';
+    const status: 'pending' | 'approved' | 'rejected' = (isAdmin && ['pending', 'approved', 'rejected'].includes(String(newRev.status))) ? (newRev.status as any) : 'pending';
 
     const reviewItem = {
       id: generateEntityId('rev'),
@@ -1152,28 +994,9 @@ app.post('/api/service-limits', requireAdminAuth, async (req, res) => {
 });
 
 // -------------------------------------------------------------
-// Admin Auto-Save Draft Storage API (Isolated from Production Data)
-// Authoritative single source of truth: db.adminDrafts in data/db.json
+// Admin Auto-Save Draft Storage API (Isolated from Production Data, SQL-backed)
+// Authoritative single source of truth: admin_drafts table in SQL
 // -------------------------------------------------------------
-
-function readAdminDrafts(): Record<string, any> {
-  try {
-    const db = readDB();
-    if ((db as any).adminDrafts && typeof (db as any).adminDrafts === 'object') {
-      return (db as any).adminDrafts;
-    }
-    return {};
-  } catch (err) {
-    console.error('Error reading admin drafts from authoritative db.json:', err);
-    return {};
-  }
-}
-
-function writeAdminDrafts(drafts: Record<string, any>): void {
-  const db = readDB();
-  (db as any).adminDrafts = drafts;
-  writeDB(db);
-}
 
 app.get('/api/admin/drafts', requireAdminAuth, async (req, res) => {
   try {
@@ -1402,7 +1225,13 @@ app.post('/api/trips', requireAdminAuth, async (req, res) => {
   try {
     const payload = req.body;
     if (payload.image) {
-      payload.image = sanitizeAndPersistImage(payload.image, 'sharetour');
+      payload.image = await sanitizeAndPersistImage(payload.image, 'sharetour');
+    }
+    if (payload.coverImage) {
+      payload.coverImage = await sanitizeAndPersistImage(payload.coverImage, 'sharetour');
+    }
+    if (Array.isArray(payload.gallery)) {
+      payload.gallery = await sanitizeAndPersistImages(payload.gallery, 'sharetour-gallery');
     }
     const created = await shareToursRepo.createTrip(payload);
     console.log(`[Persistence Verified] Trip saved in SQL database: ${created.title} (${created.id})`);
@@ -1417,7 +1246,13 @@ app.put('/api/trips/:id', requireAdminAuth, async (req, res) => {
   try {
     const payload = req.body;
     if (payload.image) {
-      payload.image = sanitizeAndPersistImage(payload.image, 'sharetour');
+      payload.image = await sanitizeAndPersistImage(payload.image, 'sharetour');
+    }
+    if (payload.coverImage) {
+      payload.coverImage = await sanitizeAndPersistImage(payload.coverImage, 'sharetour');
+    }
+    if (Array.isArray(payload.gallery)) {
+      payload.gallery = await sanitizeAndPersistImages(payload.gallery, 'sharetour-gallery');
     }
     const updated = await shareToursRepo.updateTrip(req.params.id, payload);
     if (!updated) {
@@ -1526,148 +1361,143 @@ app.delete('/api/batches/:id', requireAdminAuth, async (req, res) => {
 app.post('/api/bookings', async (req, res) => {
   return await bookingMutex.runExclusive(async () => {
     try {
-      const db = readDB();
-    const payload = req.body || {};
+      const payload = req.body || {};
 
-    const rawCount = payload.participantsCount ?? payload.details?.guests ?? 1;
-    const count = Math.floor(Number(rawCount));
-    if (isNaN(count) || count < 1 || count > 50) {
-      return res.status(400).json({ error: 'Jumlah peserta harus berupa angka positif antara 1 dan 50.' });
-    }
-
-    const cleanEmail = String(payload.email || payload.customerEmail || payload.participantData?.email || '').trim().toLowerCase();
-    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
-      return res.status(400).json({ error: 'Format alamat email tidak valid.' });
-    }
-
-    const sanitizedName = String(
-      payload.fullName || payload.customerName || payload.participantData?.name || payload.details?.fullName || 'Traveler'
-    ).trim().slice(0, 100);
-
-    const sanitizedPhone = String(
-      payload.phone || payload.customerPhone || payload.participantData?.whatsapp || payload.details?.whatsapp || 'N/A'
-    ).trim().slice(0, 30);
-
-    // Determine booking type explicitly: 'shared' (Open Trip) vs 'private' (Private Tour / Services)
-    const isShared = payload.bookingType === 'shared' || payload.tourBookingType === 'shared' || (Boolean(payload.batchId) && payload.bookingType !== 'private');
-
-    if (isShared) {
-      // -------------------------------------------------------------
-      // SHARE TOUR / OPEN TRIP BOOKING FLOW (Admin-Scheduled Batches)
-      // -------------------------------------------------------------
-      if (!payload.batchId) {
-        return res.status(400).json({ error: 'batchId diperlukan untuk Share Tour / Open Trip.' });
+      const rawCount = payload.participantsCount ?? payload.details?.guests ?? 1;
+      const count = Math.floor(Number(rawCount));
+      if (isNaN(count) || count < 1 || count > 50) {
+        return res.status(400).json({ error: 'Jumlah peserta harus berupa angka positif antara 1 dan 50.' });
       }
 
-      const batchIndex = db.batches.findIndex((b) => b.id === payload.batchId);
-      if (batchIndex === -1) {
-        return res.status(404).json({ error: 'Batch tanggal keberangkatan tidak ditemukan.' });
+      const cleanEmail = String(payload.email || payload.customerEmail || payload.participantData?.email || '').trim().toLowerCase();
+      if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+        return res.status(400).json({ error: 'Format alamat email tidak valid.' });
       }
 
-      const batch = db.batches[batchIndex];
+      const sanitizedName = String(
+        payload.fullName || payload.customerName || payload.participantData?.name || payload.details?.fullName || 'Traveler'
+      ).trim().slice(0, 100);
 
-      if ((batch as any).isArchived || (batch as any).isDeleted || batch.status === 'archived') {
-        return res.status(404).json({ error: 'Batch keberangkatan ini telah diarsipkan dan tidak dapat dipesan.' });
-      }
+      const sanitizedPhone = String(
+        payload.phone || payload.customerPhone || payload.participantData?.whatsapp || payload.details?.whatsapp || 'N/A'
+      ).trim().slice(0, 30);
 
-      if (payload.tripId && batch.tripId !== payload.tripId) {
-        return res.status(400).json({ error: 'Batch keberangkatan tidak sesuai dengan trip yang dipilih.' });
-      }
+      // Determine booking type explicitly: 'shared' (Open Trip) vs 'private' (Private Tour / Services)
+      const isShared = payload.bookingType === 'shared' || payload.tourBookingType === 'shared' || (Boolean(payload.batchId) && payload.bookingType !== 'private');
 
-      if (batch.status === 'Closed' || batch.availableSeats < count) {
-        return res.status(409).json({ error: 'Sisa kuota untuk tanggal keberangkatan ini tidak mencukupi atau telah ditutup.' });
-      }
-
-      const trip = db.trips.find((t) => t.id === payload.tripId || t.id === batch.tripId);
-      if (trip && (trip.status === 'archived' || (trip as any).isArchived || (trip as any).isDeleted)) {
-        return res.status(404).json({ error: 'Trip ini telah diarsipkan dan tidak lagi menerima pemesanan baru.' });
-      }
-
-      // Decrement seats atomically
-      batch.availableSeats -= count;
-      if (batch.availableSeats <= 0) {
-        batch.status = 'Closed';
-      }
-
-      const bookingCode = payload.bookingCode || generateUniqueBookingCode(db.bookings.map(b => b.bookingCode));
-      // BACKEND AUTHORITATIVE PRICING: NEVER trust payload.totalPrice / totalPriceIDR / baseAmount / paymentAmount
-      const batchPrice = Number(batch.price ?? trip?.price ?? 0);
-      if (batchPrice <= 0) {
-        return res.status(400).json({ error: 'Harga batch open trip di database tidak valid.' });
-      }
-      const baseAmount = batchPrice * count;
-      const uniqueCode = generateUniquePaymentCode(db.bookings);
-      if (uniqueCode === -1) {
-        return res.status(503).json({ error: 'Semua kode unik pembayaran (1-99) sedang digunakan oleh transaksi aktif lain. Silakan coba beberapa saat lagi.' });
-      }
-      const paymentAmount = baseAmount + uniqueCode;
-
-      const newBooking: Booking = {
-        id: payload.id || generateEntityId('book'),
-        bookingCode,
-        serviceType: 'shared',
-        serviceId: batch.id,
-        tripId: payload.tripId || batch.tripId,
-        tripTitle: trip ? trip.title : (payload.tripTitle || 'Open Trip'),
-        bookingType: 'shared',
-        tourBookingType: 'shared',
-        batchId: batch.id,
-        departureDate: batch.departureDate,
-        fullName: sanitizedName,
-        customerName: sanitizedName,
-        email: cleanEmail || 'customer@example.com',
-        customerEmail: cleanEmail || 'customer@example.com',
-        phone: sanitizedPhone,
-        customerPhone: sanitizedPhone,
-        participantsCount: count,
-        participantsNames: payload.participantsNames || [sanitizedName],
-        proofOfPayment: 'NOT_APPLICABLE_SLEEK_THEME',
-        status: 'Pending',
-        paymentStatus: 'Pending',
-        totalPrice: baseAmount,
-        totalPriceIDR: baseAmount,
-        baseAmount,
-        uniqueCode,
-        paymentAmount,
-        currency: 'IDR',
-        createdAt: new Date().toISOString(),
-        participantData: payload.participantData,
-        details: payload.details,
-        nationalityType: payload.nationalityType,
-        adminNotes: ''
-      };
-
-      const savedBooking = await bookingsRepo.create(newBooking as any);
-      db.bookings.push(savedBooking as any);
-      writeDB(db);
-      return res.status(201).json(savedBooking);
-    } else {
-      // -------------------------------------------------------------
-      // NON-SHARED BOOKING FLOW: DETECT SERVICE TYPE & VALIDATE
-      // -------------------------------------------------------------
-      let selectedDate = String(payload.departureDate || payload.details?.date || '').trim();
-
-      // Validate date if provided: Must be valid calendar date, not in the past, and not a blackout date
-      if (selectedDate) {
-        const parsedDate = new Date(selectedDate);
-        if (isNaN(parsedDate.getTime())) {
-          return res.status(400).json({ error: 'Format tanggal keberangkatan tidak valid.' });
-        }
-        const yyyy = parsedDate.getFullYear();
-        const mm = String(parsedDate.getMonth() + 1).padStart(2, '0');
-        const dd = String(parsedDate.getDate()).padStart(2, '0');
-        const normalizedDate = `${yyyy}-${mm}-${dd}`;
-
-        const now = new Date();
-        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        if (normalizedDate < todayStr) {
-          return res.status(400).json({ error: 'Tanggal keberangkatan tidak boleh di masa lalu.' });
+      if (isShared) {
+        // -------------------------------------------------------------
+        // SHARE TOUR / OPEN TRIP BOOKING FLOW (Admin-Scheduled Batches)
+        // -------------------------------------------------------------
+        if (!payload.batchId) {
+          return res.status(400).json({ error: 'batchId diperlukan untuk Share Tour / Open Trip.' });
         }
 
-        if (Array.isArray(db.schedules)) {
-          const isBlackedOut = db.schedules.some((s: any) => {
-            const sDate = s.date || s.blackoutDate;
-            const sType = String(s.type || '').toLowerCase();
+        const batch = await shareToursRepo.getBatchById(payload.batchId);
+        if (!batch) {
+          return res.status(404).json({ error: 'Batch tanggal keberangkatan tidak ditemukan.' });
+        }
+
+        if ((batch as any).isArchived || (batch as any).isDeleted || batch.status === 'archived') {
+          return res.status(404).json({ error: 'Batch keberangkatan ini telah diarsipkan dan tidak dapat dipesan.' });
+        }
+
+        if (payload.tripId && batch.tripId !== payload.tripId) {
+          return res.status(400).json({ error: 'Batch keberangkatan tidak sesuai dengan trip yang dipilih.' });
+        }
+
+        if (batch.status === 'Closed' || batch.availableSeats < count) {
+          return res.status(409).json({ error: 'Sisa kuota untuk tanggal keberangkatan ini tidak mencukupi atau telah ditutup.' });
+        }
+
+        const trip = await shareToursRepo.getTripById(payload.tripId || batch.tripId);
+        if (trip && (trip.status === 'archived' || (trip as any).isArchived || (trip as any).isDeleted)) {
+          return res.status(404).json({ error: 'Trip ini telah diarsipkan dan tidak lagi menerima pemesanan baru.' });
+        }
+
+        // Decrement seats atomically in SQL
+        await shareToursRepo.decrementBatchSeats(batch.id, count);
+
+        const allBookings = await bookingsRepo.getAll();
+        const bookingCode = payload.bookingCode || generateUniqueBookingCode(allBookings.map(b => b.bookingCode));
+        const batchPrice = Number(batch.price ?? trip?.price ?? 0);
+        if (batchPrice <= 0) {
+          return res.status(400).json({ error: 'Harga batch open trip di database tidak valid.' });
+        }
+        const baseAmount = batchPrice * count;
+        const uniqueCode = await generateUniquePaymentCodeAsync();
+        if (uniqueCode === -1) {
+          return res.status(503).json({ error: 'Semua kode unik pembayaran (1-99) sedang digunakan oleh transaksi aktif lain. Silakan coba beberapa saat lagi.' });
+        }
+        const paymentAmount = baseAmount + uniqueCode;
+
+        const newBooking = {
+          id: payload.id || generateEntityId('book'),
+          bookingCode,
+          serviceType: 'shared',
+          serviceId: batch.id,
+          tripId: payload.tripId || batch.tripId,
+          tripTitle: trip ? trip.title : (payload.tripTitle || 'Open Trip'),
+          bookingType: 'shared',
+          tourBookingType: 'shared',
+          batchId: batch.id,
+          departureDate: batch.departureDate,
+          fullName: sanitizedName,
+          customerName: sanitizedName,
+          email: cleanEmail || 'customer@example.com',
+          customerEmail: cleanEmail || 'customer@example.com',
+          phone: sanitizedPhone,
+          customerPhone: sanitizedPhone,
+          participantsCount: count,
+          participantsNames: payload.participantsNames || [sanitizedName],
+          proofOfPayment: 'NOT_APPLICABLE_SLEEK_THEME',
+          status: 'Pending Payment' as const,
+          paymentStatus: 'Pending' as const,
+          totalPrice: baseAmount,
+          totalPriceIDR: baseAmount,
+          baseAmount,
+          uniqueCode,
+          paymentAmount,
+          currency: 'IDR',
+          createdAt: new Date().toISOString(),
+          details: {
+            ...(payload.details || {}),
+            batchId: batch.id,
+            tripId: payload.tripId || batch.tripId
+          },
+          nationalityType: payload.nationalityType,
+          adminNotes: ''
+        };
+
+        const savedBooking = await bookingsRepo.create(newBooking as any);
+        return res.status(201).json(savedBooking);
+      } else {
+        // -------------------------------------------------------------
+        // NON-SHARED BOOKING FLOW: DETECT SERVICE TYPE & VALIDATE
+        // -------------------------------------------------------------
+        let selectedDate = String(payload.departureDate || payload.details?.date || '').trim();
+
+        // Validate date if provided: Must be valid calendar date, not in the past, and not a blackout date
+        if (selectedDate) {
+          const parsedDate = new Date(selectedDate);
+          if (isNaN(parsedDate.getTime())) {
+            return res.status(400).json({ error: 'Format tanggal keberangkatan tidak valid.' });
+          }
+          const yyyy = parsedDate.getFullYear();
+          const mm = String(parsedDate.getMonth() + 1).padStart(2, '0');
+          const dd = String(parsedDate.getDate()).padStart(2, '0');
+          const normalizedDate = `${yyyy}-${mm}-${dd}`;
+
+          const now = new Date();
+          const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+          if (normalizedDate < todayStr) {
+            return res.status(400).json({ error: 'Tanggal keberangkatan tidak boleh di masa lalu.' });
+          }
+
+          const schedules = await schedulesRepo.getAll();
+          const isBlackedOut = schedules.some((s: any) => {
+            const sDate = s.startDate || s.date || s.blackoutDate;
+            const sType = String(s.category || s.type || '').toLowerCase();
             const isBlackout = sType.includes('blackout') || sType.includes('libur') || s.isBlackout;
             if (isBlackout && sDate === normalizedDate) return true;
             if (isBlackout && s.startDate && s.endDate && normalizedDate >= s.startDate && normalizedDate <= s.endDate) return true;
@@ -1676,267 +1506,233 @@ app.post('/api/bookings', async (req, res) => {
           if (isBlackedOut) {
             return res.status(400).json({ error: 'Tanggal yang dipilih merupakan tanggal libur operasional / blackout date.' });
           }
-        }
-        selectedDate = normalizedDate;
-      }
-
-      const rawType = String(payload.serviceType || payload.type || '').trim().toLowerCase();
-      const sName = String(payload.serviceName || '').toLowerCase();
-
-      const isRental = rawType === 'rental' || sName.includes('rental') || Boolean(payload.details?.vehicleId && (payload.details?.days || payload.details?.withDriver !== undefined || payload.details?.operationalCity || payload.details?.pickupArea));
-      const isAirport = !isRental && (rawType === 'airport' || sName.includes('airport transfer') || Boolean(payload.details?.flightNumber || payload.details?.airport || (payload.details?.direction && payload.details.direction.toLowerCase().includes('airport'))));
-      const isTaxi = !isRental && !isAirport && (rawType === 'taxi' || sName.includes('taxi'));
-
-      let detectedServiceType: 'rental' | 'airport' | 'taxi' | 'tour' = 'tour';
-      let matchedServiceId = '';
-      let resolvedTitle = '';
-      let baseAmount = 0;
-      let tourSnapshot: any = undefined;
-
-      if (isRental) {
-        detectedServiceType = 'rental';
-        const vehicleId = String(payload.serviceId || payload.vehicleId || payload.details?.vehicleId || '').trim();
-        if (!vehicleId) {
-          return res.status(400).json({ error: 'vehicleId wajib disertakan untuk booking car rental.' });
+          selectedDate = normalizedDate;
         }
 
-        const rentals = db.rentals || { vehicles: [], addons: [], zonePricing: [] };
-        const vehicle = (rentals.vehicles || []).find((v: any) => v.id === vehicleId);
-        if (!vehicle) {
-          return res.status(404).json({ error: 'Kendaraan rental tidak ditemukan di database backend.' });
-        }
+        const rawType = String(payload.serviceType || payload.type || '').trim().toLowerCase();
+        const sName = String(payload.serviceName || '').toLowerCase();
 
-        if (vehicle.status && vehicle.status !== 'Active') {
-          return res.status(400).json({ error: 'Kendaraan rental sedang tidak aktif atau tidak tersedia.' });
-        }
+        const isRental = rawType === 'rental' || sName.includes('rental') || Boolean(payload.details?.vehicleId && (payload.details?.days || payload.details?.withDriver !== undefined || payload.details?.operationalCity || payload.details?.pickupArea));
+        const isAirport = !isRental && (rawType === 'airport' || sName.includes('airport transfer') || Boolean(payload.details?.flightNumber || payload.details?.airport || (payload.details?.direction && payload.details.direction.toLowerCase().includes('airport'))));
+        const isTaxi = !isRental && !isAirport && (rawType === 'taxi' || sName.includes('taxi'));
 
-        const dailyPrice = Number(vehicle.pricePerDayIDR || (vehicle.pricePerDay ? vehicle.pricePerDay * 15000 : 0));
-        if (dailyPrice <= 0) {
-          return res.status(400).json({ error: 'Tarif sewa kendaraan di database backend tidak valid.' });
-        }
+        let detectedServiceType: 'rental' | 'airport' | 'taxi' | 'tour' = 'tour';
+        let matchedServiceId = '';
+        let resolvedTitle = '';
+        let baseAmount = 0;
+        let tourSnapshot: any = undefined;
 
-        const days = Math.max(1, Math.floor(Number(payload.details?.days || payload.duration || payload.days || 1)));
-        let rentalBase = dailyPrice * days;
+        if (isRental) {
+          detectedServiceType = 'rental';
+          const vehicleId = String(payload.serviceId || payload.vehicleId || payload.details?.vehicleId || '').trim();
+          if (!vehicleId) {
+            return res.status(400).json({ error: 'vehicleId wajib disertakan untuk booking car rental.' });
+          }
 
-        // Addons calculation from db.rentals.addons
-        const requestedAddons: string[] = Array.isArray(payload.details?.selectedAddons) 
-          ? payload.details.selectedAddons 
-          : (Array.isArray(payload.details?.addOns) ? payload.details.addOns : (Array.isArray(payload.addons) ? payload.addons : []));
+          const rentals = (await transportRepo.getCategoryData<any>('rentals')) || { vehicles: [], addons: [], zonePricing: [] };
+          const vehicle = (rentals.vehicles || []).find((v: any) => v.id === vehicleId);
+          if (!vehicle) {
+            return res.status(404).json({ error: 'Kendaraan rental tidak ditemukan di database backend.' });
+          }
 
-        let addonsTotal = 0;
-        if (requestedAddons.length > 0 && Array.isArray(rentals.addons)) {
-          for (const item of requestedAddons) {
-            const addon = rentals.addons.find((a: any) => a.id === item || a.name === item);
-            if (addon && (addon.status === 'Active' || !addon.status)) {
-              const addonPrice = Number(addon.priceIDR || (addon.priceUSD ? addon.priceUSD * 15000 : 0));
-              if (addon.pricingType === 'Per Day') {
-                addonsTotal += addonPrice * days;
-              } else {
-                addonsTotal += addonPrice;
+          if (vehicle.status && vehicle.status !== 'Active') {
+            return res.status(400).json({ error: 'Kendaraan rental sedang tidak aktif atau tidak tersedia.' });
+          }
+
+          const dailyPrice = Number(vehicle.pricePerDayIDR || (vehicle.pricePerDay ? vehicle.pricePerDay * 15000 : 0));
+          if (dailyPrice <= 0) {
+            return res.status(400).json({ error: 'Tarif sewa kendaraan di database backend tidak valid.' });
+          }
+
+          const days = Math.max(1, Math.floor(Number(payload.details?.days || payload.duration || payload.days || 1)));
+          let rentalBase = dailyPrice * days;
+
+          // Addons calculation
+          const requestedAddons: string[] = Array.isArray(payload.details?.selectedAddons) 
+            ? payload.details.selectedAddons 
+            : (Array.isArray(payload.details?.addOns) ? payload.details.addOns : (Array.isArray(payload.addons) ? payload.addons : []));
+
+          let addonsTotal = 0;
+          if (requestedAddons.length > 0 && Array.isArray(rentals.addons)) {
+            for (const item of requestedAddons) {
+              const addon = rentals.addons.find((a: any) => a.id === item || a.name === item);
+              if (addon && (addon.status === 'Active' || !addon.status)) {
+                const addonPrice = Number(addon.priceIDR || (addon.priceUSD ? addon.priceUSD * 15000 : 0));
+                if (addon.pricingType === 'Per Day') {
+                  addonsTotal += addonPrice * days;
+                } else {
+                  addonsTotal += addonPrice;
+                }
               }
             }
           }
-        }
-        rentalBase += addonsTotal;
+          rentalBase += addonsTotal;
 
-        // Zone surcharge if configured
-        if (Array.isArray(rentals.zonePricing) && rentals.zonePricing.length > 0) {
-          const pickupZone = payload.details?.pickupZone;
-          const dropoffZone = payload.details?.dropoffZone;
-          const zoneRule = rentals.zonePricing.find((z: any) => 
-            (z.pickupZone === pickupZone && z.dropoffZone === dropoffZone) ||
-            z.zoneId === pickupZone || z.zoneId === dropoffZone
-          );
-          if (zoneRule) {
-            rentalBase += Number(zoneRule.surchargeIDR || 0);
-          }
-        }
-
-        matchedServiceId = vehicle.id;
-        resolvedTitle = `Car Rental: ${vehicle.name}`;
-        baseAmount = rentalBase;
-
-      } else if (isAirport) {
-        detectedServiceType = 'airport';
-        const routeId = String(payload.serviceId || payload.routeId || payload.details?.routeId || '').trim();
-        const airportTransfers = db.airportTransfers || { airports: [], routes: [] };
-        const routes = airportTransfers.routes || [];
-
-        let route: any = routeId ? routes.find((r: any) => r.id === routeId) : null;
-
-        if (!route) {
-          const airportCode = String(payload.airport || payload.details?.airport || '').trim().toUpperCase();
-          const dest = String(payload.destination || payload.details?.destination || payload.details?.cityAddress || '').trim().toLowerCase();
-          if (airportCode || dest) {
-            route = routes.find((r: any) => {
-              const matchAirport = !airportCode || r.airport?.toUpperCase() === airportCode;
-              const matchDest = !dest || r.city?.toLowerCase().includes(dest) || dest.includes(r.city?.toLowerCase());
-              return matchAirport && matchDest;
-            });
-          }
-        }
-
-        if (!route && routeId && Array.isArray((db as any).builderAirportTransfers)) {
-          const bItem = (db as any).builderAirportTransfers.find((b: any) => b.id === routeId);
-          if (bItem) {
-            route = {
-              id: bItem.id,
-              airport: bItem.airportName,
-              city: bItem.destinationArea,
-              priceUSD: bItem.price || Math.round((bItem.priceIDR || 0) / 15000),
-              priceIDR: bItem.priceIDR || (bItem.price * 15000),
-              status: bItem.status || 'Published'
-            };
-          }
-        }
-
-        if (!route) {
-          return res.status(404).json({ error: 'Rute transfer bandara tidak ditemukan di database backend.' });
-        }
-
-        const routeStatus = String(route.status || '');
-        if (routeStatus && routeStatus !== 'Published' && routeStatus !== 'Active') {
-          return res.status(400).json({ error: 'Rute transfer bandara sedang tidak aktif.' });
-        }
-
-        let routePrice = Number(route.priceIDR || (route.priceUSD ? route.priceUSD * 15000 : 0));
-        if (routePrice <= 0) {
-          return res.status(400).json({ error: 'Tarif rute bandara di database backend tidak valid.' });
-        }
-
-        const isRoundTrip = payload.details?.routeType === 'Round Trip' || payload.routeType === 'Round Trip';
-        if (isRoundTrip) {
-          routePrice = routePrice * 2;
-        }
-
-        let surcharge = 0;
-        const airportCode = route.airport || payload.airport || payload.details?.airport;
-        if (airportCode && Array.isArray(airportTransfers.airports)) {
-          const airportObj = airportTransfers.airports.find((a: any) => a.code?.toUpperCase() === String(airportCode).toUpperCase());
-          if (airportObj) {
-            surcharge = Number(airportObj.surchargeIDR || (airportObj.surchargeUSD ? airportObj.surchargeUSD * 15000 : 0));
-          }
-        }
-
-        matchedServiceId = route.id;
-        resolvedTitle = `Airport Transfer: ${route.airport || 'Airport'} ⇄ ${route.city || 'City'}`;
-        baseAmount = routePrice + surcharge;
-
-      } else if (isTaxi) {
-        detectedServiceType = 'taxi';
-        const taxiServices = db.taxiServices || { pricingRules: [], masterAreas: [], destinations: [] };
-        const ruleId = String(payload.serviceId || payload.ruleId || payload.details?.ruleId || '').trim();
-
-        let rule = ruleId ? (taxiServices.pricingRules || []).find((r: any) => r.id === ruleId) : null;
-
-        if (!rule && ruleId && Array.isArray((db as any).builderTaxiRoutes)) {
-          const bRoute = (db as any).builderTaxiRoutes.find((b: any) => b.id === ruleId || b.code === ruleId);
-          if (bRoute) {
-            rule = {
-              id: bRoute.id,
-              price_idr: bRoute.priceIDR || (bRoute.price * 15000),
-              status: bRoute.status || 'Active'
-            };
-          }
-        }
-
-        if (!rule) {
-          const pickup = String(payload.pickup || payload.details?.pickupLocation || payload.pickupLocation || '').trim().toLowerCase();
-          const dest = String(payload.destination || payload.details?.destination || '').trim().toLowerCase();
-          const vehicleType = String(payload.vehicleType || payload.details?.vehicleType || payload.details?.vehicleName || 'Standard').trim().toLowerCase();
-
-          const masterAreas = taxiServices.masterAreas || [];
-          const srcArea = masterAreas.find((a: any) => pickup.includes(a.name?.toLowerCase()) || pickup.includes(a.code?.toLowerCase()));
-          const dstArea = masterAreas.find((a: any) => dest.includes(a.name?.toLowerCase()) || dest.includes(a.code?.toLowerCase()));
-
-          if (srcArea && dstArea) {
-            rule = (taxiServices.pricingRules || []).find((r: any) => 
-              r.source_id === srcArea.id && 
-              r.destination_id === dstArea.id &&
-              (!vehicleType || r.vehicle_type?.toLowerCase() === vehicleType || vehicleType.includes(r.vehicle_type?.toLowerCase()))
+          if (Array.isArray(rentals.zonePricing) && rentals.zonePricing.length > 0) {
+            const pickupZone = payload.details?.pickupZone;
+            const dropoffZone = payload.details?.dropoffZone;
+            const zoneRule = rentals.zonePricing.find((z: any) => 
+              (z.pickupZone === pickupZone && z.dropoffZone === dropoffZone) ||
+              z.zoneId === pickupZone || z.zoneId === dropoffZone
             );
-            if (!rule) {
-              rule = (taxiServices.pricingRules || []).find((r: any) => r.source_id === srcArea.id && r.destination_id === dstArea.id);
+            if (zoneRule) {
+              rentalBase += Number(zoneRule.surchargeIDR || 0);
             }
           }
 
-          if (!rule && Array.isArray((db as any).builderTaxiRoutes)) {
-            const matchedBuilder = (db as any).builderTaxiRoutes.find((b: any) => 
-              (pickup.includes(b.pickupCity?.toLowerCase()) || pickup.includes(b.pickupArea?.toLowerCase())) &&
-              (dest.includes(b.destinationCity?.toLowerCase()) || dest.includes(b.destinationArea?.toLowerCase()))
-            );
-            if (matchedBuilder) {
-              rule = {
-                id: matchedBuilder.id,
-                price_idr: matchedBuilder.priceIDR || (matchedBuilder.price * 15000),
-                status: matchedBuilder.status || 'Active'
+          matchedServiceId = vehicle.id;
+          resolvedTitle = `Car Rental: ${vehicle.name}`;
+          baseAmount = rentalBase;
+
+        } else if (isAirport) {
+          detectedServiceType = 'airport';
+          const routeId = String(payload.serviceId || payload.routeId || payload.details?.routeId || '').trim();
+          const airportTransfers = (await transportRepo.getCategoryData<any>('airportTransfers')) || { airports: [], routes: [] };
+          const routes = airportTransfers.routes || [];
+
+          let route: any = routeId ? routes.find((r: any) => r.id === routeId) : null;
+
+          if (!route) {
+            const airportCode = String(payload.airport || payload.details?.airport || '').trim().toUpperCase();
+            const dest = String(payload.destination || payload.details?.destination || payload.details?.cityAddress || '').trim().toLowerCase();
+            if (airportCode || dest) {
+              route = routes.find((r: any) => {
+                const matchAirport = !airportCode || r.airport?.toUpperCase() === airportCode;
+                const matchDest = !dest || r.city?.toLowerCase().includes(dest) || dest.includes(r.city?.toLowerCase());
+                return matchAirport && matchDest;
+              });
+            }
+          }
+
+          if (!route && routeId) {
+            const builderTransfers = await transportRepo.getAirportTransfers();
+            const bItem = builderTransfers.find((b: any) => b.id === routeId);
+            if (bItem) {
+              route = {
+                id: bItem.id,
+                airport: bItem.airportName,
+                city: bItem.destinationArea,
+                priceUSD: bItem.price || Math.round((bItem.priceIDR || 0) / 15000),
+                priceIDR: bItem.priceIDR || (bItem.price * 15000),
+                status: bItem.status || 'Published'
               };
             }
           }
-        }
 
-        if (!rule) {
-          return res.status(404).json({ error: 'Aturan tarif taksi tidak ditemukan di database backend.' });
-        }
-
-        if (rule.status && rule.status !== 'Active') {
-          return res.status(400).json({ error: 'Layanan tarif taksi sedang tidak aktif.' });
-        }
-
-        const rulePrice = Number(rule.price_idr || rule.priceIDR || (rule.price_usd ? rule.price_usd * 15000 : (rule.price ? rule.price * 15000 : 0)));
-        if (rulePrice <= 0) {
-          return res.status(400).json({ error: 'Tarif taksi di database backend tidak valid.' });
-        }
-
-        matchedServiceId = rule.id;
-        resolvedTitle = `Private Taxi Transfer`;
-        baseAmount = rulePrice;
-
-      } else {
-        // -------------------------------------------------------------
-        // PRIVATE TOUR FLOW (Requirement 2 & 13)
-        // -------------------------------------------------------------
-        detectedServiceType = 'tour';
-        const tourId = String(payload.tripId || payload.details?.tourId || payload.tourId || payload.serviceId || '').trim();
-        if (!tourId) {
-          if (payload.baseAmount || payload.totalPriceIDR || payload.totalPrice) {
-            baseAmount = Number(payload.baseAmount || payload.totalPriceIDR || payload.totalPrice);
-            matchedServiceId = payload.serviceId || payload.serviceType || 'tour-custom';
-            resolvedTitle = payload.tripTitle || payload.serviceName || 'Private Tour';
-            tourSnapshot = {
-              tourId: matchedServiceId,
-              tourName: resolvedTitle,
-              duration: payload.details?.duration || '1 Hari',
-              vehicleName: payload.details?.vehicleName || 'Standard Private Tourism Vehicle',
-              startingPriceIDR: baseAmount,
-              highlights: [],
-              itinerary: []
-            };
-          } else {
-            return res.status(400).json({ error: 'tripId atau tourId wajib disertakan untuk booking tour.' });
+          if (!route) {
+            return res.status(404).json({ error: 'Rute transfer bandara tidak ditemukan di database backend.' });
           }
+
+          const routeStatus = String(route.status || '');
+          if (routeStatus && routeStatus !== 'Published' && routeStatus !== 'Active') {
+            return res.status(400).json({ error: 'Rute transfer bandara sedang tidak aktif.' });
+          }
+
+          let routePrice = Number(route.priceIDR || (route.priceUSD ? route.priceUSD * 15000 : 0));
+          if (routePrice <= 0) {
+            return res.status(400).json({ error: 'Tarif rute bandara di database backend tidak valid.' });
+          }
+
+          const isRoundTrip = payload.details?.routeType === 'Round Trip' || payload.routeType === 'Round Trip';
+          if (isRoundTrip) {
+            routePrice = routePrice * 2;
+          }
+
+          let surcharge = 0;
+          const airportCode = route.airport || payload.airport || payload.details?.airport;
+          if (airportCode && Array.isArray(airportTransfers.airports)) {
+            const airportObj = airportTransfers.airports.find((a: any) => a.code?.toUpperCase() === String(airportCode).toUpperCase());
+            if (airportObj) {
+              surcharge = Number(airportObj.surchargeIDR || (airportObj.surchargeUSD ? airportObj.surchargeUSD * 15000 : 0));
+            }
+          }
+
+          matchedServiceId = route.id;
+          resolvedTitle = `Airport Transfer: ${route.airport || 'Airport'} ⇄ ${route.city || 'City'}`;
+          baseAmount = routePrice + surcharge;
+
+        } else if (isTaxi) {
+          detectedServiceType = 'taxi';
+          const taxiServices = (await transportRepo.getCategoryData<any>('taxiServices')) || { pricingRules: [], masterAreas: [], destinations: [] };
+          const ruleId = String(payload.serviceId || payload.ruleId || payload.details?.ruleId || '').trim();
+
+          let rule = ruleId ? (taxiServices.pricingRules || []).find((r: any) => r.id === ruleId) : null;
+
+          if (!rule && ruleId) {
+            const builderTaxiRoutes = await transportRepo.getTaxiRoutes();
+            const bRoute = builderTaxiRoutes.find((b: any) => b.id === ruleId || b.code === ruleId);
+            if (bRoute) {
+              rule = {
+                id: bRoute.id,
+                price_idr: bRoute.priceIDR || (bRoute.price * 15000),
+                status: bRoute.status || 'Active'
+              };
+            }
+          }
+
+          if (!rule) {
+            const pickup = String(payload.pickup || payload.details?.pickupLocation || payload.pickupLocation || '').trim().toLowerCase();
+            const dest = String(payload.destination || payload.details?.destination || '').trim().toLowerCase();
+            const vehicleType = String(payload.vehicleType || payload.details?.vehicleType || payload.details?.vehicleName || 'Standard').trim().toLowerCase();
+
+            const masterAreas = taxiServices.masterAreas || [];
+            const srcArea = masterAreas.find((a: any) => pickup.includes(a.name?.toLowerCase()) || pickup.includes(a.code?.toLowerCase()));
+            const dstArea = masterAreas.find((a: any) => dest.includes(a.name?.toLowerCase()) || dest.includes(a.code?.toLowerCase()));
+
+            if (srcArea && dstArea) {
+              rule = (taxiServices.pricingRules || []).find((r: any) => 
+                r.source_id === srcArea.id && 
+                r.destination_id === dstArea.id &&
+                (!vehicleType || r.vehicle_type?.toLowerCase() === vehicleType || vehicleType.includes(r.vehicle_type?.toLowerCase()))
+              );
+              if (!rule) {
+                rule = (taxiServices.pricingRules || []).find((r: any) => r.source_id === srcArea.id && r.destination_id === dstArea.id);
+              }
+            }
+
+            if (!rule) {
+              const builderTaxiRoutes = await transportRepo.getTaxiRoutes();
+              const matchedBuilder = builderTaxiRoutes.find((b: any) => 
+                (pickup.includes(b.pickupCity?.toLowerCase()) || pickup.includes(b.pickupArea?.toLowerCase())) &&
+                (dest.includes(b.destinationCity?.toLowerCase()) || dest.includes(b.destinationArea?.toLowerCase()))
+              );
+              if (matchedBuilder) {
+                rule = {
+                  id: matchedBuilder.id,
+                  price_idr: matchedBuilder.priceIDR || (matchedBuilder.price * 15000),
+                  status: matchedBuilder.status || 'Active'
+                };
+              }
+            }
+          }
+
+          if (!rule) {
+            return res.status(404).json({ error: 'Aturan tarif taksi tidak ditemukan di database backend.' });
+          }
+
+          if (rule.status && rule.status !== 'Active') {
+            return res.status(400).json({ error: 'Layanan tarif taksi sedang tidak aktif.' });
+          }
+
+          const rulePrice = Number(rule.price_idr || rule.priceIDR || (rule.price_usd ? rule.price_usd * 15000 : (rule.price ? rule.price * 15000 : 0)));
+          if (rulePrice <= 0) {
+            return res.status(400).json({ error: 'Tarif taksi di database backend tidak valid.' });
+          }
+
+          matchedServiceId = rule.id;
+          resolvedTitle = `Private Taxi Transfer`;
+          baseAmount = rulePrice;
+
         } else {
-          const mainTours = readMainTours();
-          // 1. Prioritize exact ID match
-          let mainTour = mainTours.find(t => t.id === tourId);
-          let trip = (!mainTour) ? (db.trips || []).find((t: any) => t.id === tourId) : null;
-
-          // 2. Slug match
-          if (!mainTour && !trip) {
-            mainTour = mainTours.find(t => t.slug === tourId);
-            trip = (!mainTour) ? (db.trips || []).find((t: any) => t.slug === tourId) : null;
-          }
-
-          // 3. Case-insensitive exact ID match
-          if (!mainTour && !trip) {
-            mainTour = mainTours.find(t => t.id && t.id.toLowerCase() === tourId.toLowerCase());
-            trip = (!mainTour) ? (db.trips || []).find((t: any) => t.id && t.id.toLowerCase() === tourId.toLowerCase()) : null;
-          }
-
-          if (!mainTour && !trip) {
+          // -------------------------------------------------------------
+          // PRIVATE TOUR FLOW (Requirement 2 & 13)
+          // -------------------------------------------------------------
+          detectedServiceType = 'tour';
+          const tourId = String(payload.tripId || payload.details?.tourId || payload.tourId || payload.serviceId || '').trim();
+          if (!tourId) {
             if (payload.baseAmount || payload.totalPriceIDR || payload.totalPrice) {
               baseAmount = Number(payload.baseAmount || payload.totalPriceIDR || payload.totalPrice);
-              matchedServiceId = tourId || payload.serviceId || 'tour-custom';
+              matchedServiceId = payload.serviceId || payload.serviceType || 'tour-custom';
               resolvedTitle = payload.tripTitle || payload.serviceName || 'Private Tour';
               tourSnapshot = {
                 tourId: matchedServiceId,
@@ -1944,113 +1740,148 @@ app.post('/api/bookings', async (req, res) => {
                 duration: payload.details?.duration || '1 Hari',
                 vehicleName: payload.details?.vehicleName || 'Standard Private Tourism Vehicle',
                 startingPriceIDR: baseAmount,
-                highlights: payload.details?.highlights || [],
-                itinerary: payload.details?.itinerary || []
+                highlights: [],
+                itinerary: []
               };
             } else {
-              return res.status(404).json({ error: 'Tour tidak ditemukan di database backend.' });
+              return res.status(400).json({ error: 'tripId atau tourId wajib disertakan untuk booking tour.' });
             }
           } else {
-            const resolvedTour: any = mainTour || trip;
-            const isArchived = Boolean(
-              resolvedTour.isDeleted || 
-              resolvedTour.isArchived || 
-              resolvedTour.status === 'archived' || 
-              resolvedTour.status === 'deleted'
-            );
-            const isPublished = Boolean(
-              resolvedTour.status === 'published' || 
-              resolvedTour.status === 'Active' || 
-              resolvedTour.status === 'active' ||
-              resolvedTour.status === 'Published'
-            );
+            const allTours = await toursRepo.getAll();
+            const allTrips = await shareToursRepo.getAllTrips({ all: true });
 
-            if (isArchived || !isPublished) {
-              return res.status(404).json({ error: 'Tour tidak aktif, diarsipkan, atau telah dihapus.' });
+            // 1. Prioritize exact ID match
+            let mainTour = allTours.find(t => t.id === tourId);
+            let trip = (!mainTour) ? allTrips.find((t: any) => t.id === tourId) : null;
+
+            // 2. Slug match
+            if (!mainTour && !trip) {
+              mainTour = allTours.find(t => t.slug === tourId);
+              trip = (!mainTour) ? allTrips.find((t: any) => t.slug === tourId) : null;
             }
 
-            const serverPrice = Number(resolvedTour.startingPriceIDR ?? resolvedTour.wniPrice ?? resolvedTour.price ?? 0);
-            if (serverPrice <= 0) {
-              return res.status(400).json({ error: 'Harga tour di database backend tidak valid.' });
+            // 3. Case-insensitive exact ID match
+            if (!mainTour && !trip) {
+              mainTour = allTours.find(t => t.id && t.id.toLowerCase() === tourId.toLowerCase());
+              trip = (!mainTour) ? allTrips.find((t: any) => t.id && t.id.toLowerCase() === tourId.toLowerCase()) : null;
             }
 
-            matchedServiceId = resolvedTour.id;
-            resolvedTitle = resolvedTour.name || resolvedTour.title || payload.tripTitle || payload.serviceName || 'Private Tour';
-            baseAmount = serverPrice;
+            if (!mainTour && !trip) {
+              if (payload.baseAmount || payload.totalPriceIDR || payload.totalPrice) {
+                baseAmount = Number(payload.baseAmount || payload.totalPriceIDR || payload.totalPrice);
+                matchedServiceId = tourId || payload.serviceId || 'tour-custom';
+                resolvedTitle = payload.tripTitle || payload.serviceName || 'Private Tour';
+                tourSnapshot = {
+                  tourId: matchedServiceId,
+                  tourName: resolvedTitle,
+                  duration: payload.details?.duration || '1 Hari',
+                  vehicleName: payload.details?.vehicleName || 'Standard Private Tourism Vehicle',
+                  startingPriceIDR: baseAmount,
+                  highlights: payload.details?.highlights || [],
+                  itinerary: payload.details?.itinerary || []
+                };
+              } else {
+                return res.status(404).json({ error: 'Tour tidak ditemukan di database backend.' });
+              }
+            } else {
+              const resolvedTour: any = mainTour || trip;
+              const isArchived = Boolean(
+                resolvedTour.isDeleted || 
+                resolvedTour.isArchived || 
+                resolvedTour.status === 'archived' || 
+                resolvedTour.status === 'deleted'
+              );
+              const isPublished = Boolean(
+                resolvedTour.status === 'published' || 
+                resolvedTour.status === 'Active' || 
+                resolvedTour.status === 'active' ||
+                resolvedTour.status === 'Published'
+              );
 
-            tourSnapshot = {
-              tourId: resolvedTour.id,
-              tourName: resolvedTitle,
-              duration: payload.details?.duration || resolvedTour.duration || '1 Hari',
-              vehicleName: payload.details?.vehicleName || 'Standard Private Tourism Vehicle',
-              startingPriceIDR: baseAmount,
-              highlights: resolvedTour.highlights || [],
-              itinerary: (payload.details?.itinerary && payload.details.itinerary.length > 0) ? payload.details.itinerary : (resolvedTour.itinerary || [])
-            };
+              if (isArchived || !isPublished) {
+                return res.status(404).json({ error: 'Tour tidak aktif, diarsipkan, atau telah dihapus.' });
+              }
+
+              const serverPrice = Number(resolvedTour.startingPriceIDR ?? resolvedTour.wniPrice ?? resolvedTour.price ?? 0);
+              if (serverPrice <= 0) {
+                return res.status(400).json({ error: 'Harga tour di database backend tidak valid.' });
+              }
+
+              matchedServiceId = resolvedTour.id;
+              resolvedTitle = resolvedTour.name || resolvedTour.title || payload.tripTitle || payload.serviceName || 'Private Tour';
+              baseAmount = serverPrice;
+
+              tourSnapshot = {
+                tourId: resolvedTour.id,
+                tourName: resolvedTitle,
+                duration: payload.details?.duration || resolvedTour.duration || '1 Hari',
+                vehicleName: payload.details?.vehicleName || 'Standard Private Tourism Vehicle',
+                startingPriceIDR: baseAmount,
+                highlights: resolvedTour.highlights || [],
+                itinerary: (payload.details?.itinerary && payload.details.itinerary.length > 0) ? payload.details.itinerary : (resolvedTour.itinerary || [])
+              };
+            }
           }
         }
+
+        // Authoritative uniqueCode and paymentAmount from SQL
+        const uniqueCode = await generateUniquePaymentCodeAsync();
+        if (uniqueCode === -1) {
+          return res.status(503).json({ error: 'Semua kode unik pembayaran (1-99) sedang digunakan oleh transaksi aktif lain. Silakan coba beberapa saat lagi.' });
+        }
+        const paymentAmount = baseAmount + uniqueCode;
+
+        const allBookings = await bookingsRepo.getAll();
+        const bookingCode = payload.bookingCode || generateUniqueBookingCode(allBookings.map(b => b.bookingCode));
+
+        const newBooking = {
+          id: payload.id || generateEntityId('book'),
+          bookingCode,
+          serviceType: detectedServiceType,
+          serviceId: matchedServiceId,
+          type: detectedServiceType,
+          tripId: (detectedServiceType === 'tour') ? matchedServiceId : undefined,
+          tripTitle: resolvedTitle,
+          serviceName: payload.serviceName || resolvedTitle,
+          bookingType: 'private',
+          tourBookingType: 'private',
+          batchId: undefined,
+          departureDate: selectedDate || new Date().toISOString().split('T')[0],
+          fullName: sanitizedName,
+          customerName: sanitizedName,
+          email: cleanEmail || 'customer@example.com',
+          customerEmail: cleanEmail || 'customer@example.com',
+          phone: sanitizedPhone,
+          customerPhone: sanitizedPhone,
+          participantsCount: count,
+          participantsNames: payload.participantsNames || [sanitizedName],
+          proofOfPayment: 'NOT_APPLICABLE_SLEEK_THEME',
+          status: 'Pending Payment' as const,
+          paymentStatus: 'Pending' as const,
+          totalPrice: baseAmount,
+          totalPriceIDR: baseAmount,
+          baseAmount,
+          uniqueCode,
+          paymentAmount,
+          currency: 'IDR',
+          createdAt: new Date().toISOString(),
+          details: {
+            ...(payload.details || {}),
+            ...(tourSnapshot ? {
+              duration: payload.details?.duration || tourSnapshot.duration,
+              vehicleName: payload.details?.vehicleName || tourSnapshot.vehicleName
+            } : {})
+          },
+          tourSnapshot,
+          nationalityType: payload.nationalityType,
+          items: payload.items || payload.lineItems || payload.details?.items || undefined,
+          discount: payload.discount || payload.details?.discount || 0,
+          adminNotes: ''
+        };
+
+        const savedBooking = await bookingsRepo.create(newBooking as any);
+        return res.status(201).json(savedBooking);
       }
-
-      // Customer CANNOT forge uniqueCode or paymentAmount
-      const uniqueCode = generateUniquePaymentCode(db.bookings);
-      if (uniqueCode === -1) {
-        return res.status(503).json({ error: 'Semua kode unik pembayaran (1-99) sedang digunakan oleh transaksi aktif lain. Silakan coba beberapa saat lagi.' });
-      }
-      const paymentAmount = baseAmount + uniqueCode;
-
-      const bookingCode = payload.bookingCode || generateUniqueBookingCode(db.bookings.map(b => b.bookingCode));
-
-      const newBooking: Booking = {
-        id: payload.id || generateEntityId('book'),
-        bookingCode,
-        serviceType: detectedServiceType,
-        serviceId: matchedServiceId,
-        type: detectedServiceType as any,
-        tripId: (detectedServiceType === 'tour') ? matchedServiceId : undefined,
-        tripTitle: resolvedTitle,
-        serviceName: payload.serviceName || resolvedTitle,
-        bookingType: 'private',
-        tourBookingType: 'private',
-        batchId: undefined, // Private Tours do NOT have batchId
-        departureDate: selectedDate || new Date().toISOString().split('T')[0],
-        fullName: sanitizedName,
-        customerName: sanitizedName,
-        email: cleanEmail || 'customer@example.com',
-        customerEmail: cleanEmail || 'customer@example.com',
-        phone: sanitizedPhone,
-        customerPhone: sanitizedPhone,
-        participantsCount: count,
-        participantsNames: payload.participantsNames || [sanitizedName],
-        proofOfPayment: 'NOT_APPLICABLE_SLEEK_THEME',
-        status: 'Pending',
-        paymentStatus: 'Pending',
-        totalPrice: baseAmount,
-        totalPriceIDR: baseAmount,
-        baseAmount,
-        uniqueCode,
-        paymentAmount,
-        currency: 'IDR',
-        createdAt: new Date().toISOString(),
-        participantData: payload.participantData,
-        details: {
-          ...(payload.details || {}),
-          ...(tourSnapshot ? {
-            duration: payload.details?.duration || tourSnapshot.duration,
-            vehicleName: payload.details?.vehicleName || tourSnapshot.vehicleName
-          } : {})
-        },
-        tourSnapshot,
-        nationalityType: payload.nationalityType,
-        items: payload.items || payload.lineItems || payload.details?.items || undefined,
-        discount: payload.discount || payload.details?.discount || 0,
-        adminNotes: ''
-      };
-
-      const savedBooking = await bookingsRepo.create(newBooking as any);
-      db.bookings.push(savedBooking as any);
-      writeDB(db);
-      return res.status(201).json(savedBooking);
-    }
     } catch (e: any) {
       console.error('[Error in POST /api/bookings]:', e);
       return res.status(500).json({ error: 'Gagal memproses pendaftaran booking: ' + (e.message || '') });
@@ -2064,12 +1895,7 @@ app.get('/api/bookings', requireAdminAuth, async (req, res) => {
     res.json(list);
   } catch (err: any) {
     console.error('Failed to read bookings from SQL database:', err);
-    try {
-      const db = readDB();
-      res.json(db.bookings || []);
-    } catch {
-      res.status(500).json({ error: 'Failed to read bookings' });
-    }
+    res.status(500).json({ error: 'Failed to read bookings' });
   }
 });
 
@@ -2077,15 +1903,10 @@ app.get('/api/bookings/:id', requireAdminAuth, async (req, res) => {
   try {
     const id = req.params.id;
     const booking = await bookingsRepo.getByCode(id);
-    if (booking) {
-      return res.json(booking);
-    }
-    const db = readDB();
-    const fallbackBooking = (db.bookings || []).find((b) => b.id === id || b.bookingCode === id);
-    if (!fallbackBooking) {
+    if (!booking) {
       return res.status(404).json({ error: 'Booking tidak ditemukan.' });
     }
-    res.json(fallbackBooking);
+    res.json(booking);
   } catch (err) {
     console.error('Failed to read booking:', err);
     res.status(500).json({ error: 'Failed to read booking' });
@@ -2095,59 +1916,37 @@ app.get('/api/bookings/:id', requireAdminAuth, async (req, res) => {
 app.put('/api/bookings/:id', requireAdminAuth, async (req, res) => {
   try {
     const targetId = req.params.id;
-    let originalBooking = await bookingsRepo.getByCode(targetId);
-    const db = readDB();
-    const index = db.bookings.findIndex((b) => b.id === targetId || b.bookingCode === targetId);
+    const originalBooking = await bookingsRepo.getByCode(targetId);
 
-    if (!originalBooking && index === -1) {
+    if (!originalBooking) {
       return res.status(404).json({ error: 'Kode booking tidak ditemukan.' });
     }
 
-    const bookingId = originalBooking ? originalBooking.id : db.bookings[index].id;
+    const bookingId = originalBooking.id;
     const updates = req.body || {};
 
-    if (updates.status === 'Confirmed' && !updates.confirmedAt && !(originalBooking?.confirmedAt || db.bookings[index]?.confirmedAt)) {
+    if (updates.status === 'Confirmed' && !updates.confirmedAt && !originalBooking.confirmedAt) {
       updates.confirmedAt = new Date().toISOString();
     }
 
     const isNowRejected = updates.status === 'Rejected' || updates.status === 'Cancelled';
-    const wasRejected = (originalBooking?.status === 'Rejected' || originalBooking?.status === 'Cancelled') ||
-      (index !== -1 && (db.bookings[index].status === 'Rejected' || db.bookings[index].status === 'Cancelled'));
-    const batchId = originalBooking?.details?.batchId || (index !== -1 ? db.bookings[index].batchId : undefined);
-    const participantsCount = originalBooking?.participantsCount || (index !== -1 ? db.bookings[index].participantsCount : 1) || 1;
+    const wasRejected = (originalBooking.status as string) === 'Rejected' || originalBooking.status === 'Cancelled';
+    const batchId = originalBooking.details?.batchId || (originalBooking as any).batchId;
+    const participantsCount = originalBooking.participantsCount || 1;
 
     if (isNowRejected && !wasRejected && batchId) {
-      const bIdx = db.batches.findIndex((b) => b.id === batchId);
-      if (bIdx !== -1) {
-        db.batches[bIdx].availableSeats += participantsCount;
-        if (db.batches[bIdx].availableSeats > 0) {
-          db.batches[bIdx].status = 'Open';
-        }
-      }
+      await shareToursRepo.incrementBatchSeats(batchId, participantsCount);
     }
 
     if (wasRejected && !isNowRejected && batchId) {
-      const bIdx = db.batches.findIndex((b) => b.id === batchId);
-      if (bIdx !== -1) {
-        db.batches[bIdx].availableSeats -= participantsCount;
-        if (db.batches[bIdx].availableSeats < 0) db.batches[bIdx].availableSeats = 0;
-        if (db.batches[bIdx].availableSeats <= 0) {
-          db.batches[bIdx].status = 'Closed';
-        }
-      }
+      await shareToursRepo.decrementBatchSeats(batchId, participantsCount);
     }
 
     // Persist to SQL
     const updated = await bookingsRepo.update(bookingId, updates);
 
-    // Keep legacy db sync
-    if (index !== -1) {
-      db.bookings[index] = { ...db.bookings[index], ...updates };
-      writeDB(db);
-    }
-
     console.log(`[Admin] Booking ${bookingId} updated: status=${updated?.status || updates.status}, paymentStatus=${updated?.paymentStatus || updates.paymentStatus}`);
-    res.json(updated || (index !== -1 ? db.bookings[index] : updates));
+    res.json(updated);
   } catch (err: any) {
     console.error('Failed to update booking:', err);
     res.status(500).json({ error: 'Failed to update booking', details: err.message });
@@ -2162,45 +1961,30 @@ app.all(['/api/bookings/:id/status'], requireAdminAuth, async (req, res) => {
 
   try {
     const targetId = req.params.id;
-    let originalBooking = await bookingsRepo.getByCode(targetId);
-    const db = readDB();
-    const index = (db.bookings || []).findIndex((b) => b.id === targetId || b.bookingCode === targetId);
+    const originalBooking = await bookingsRepo.getByCode(targetId);
 
-    if (!originalBooking && index === -1) {
+    if (!originalBooking) {
       return res.status(404).json({ error: 'Booking tidak ditemukan.' });
     }
 
-    const bookingId = originalBooking ? originalBooking.id : db.bookings[index].id;
+    const bookingId = originalBooking.id;
     const { status, bookingStatus, paymentStatus, adminNotes, rejectReason } = req.body || {};
-    const currentStatus = originalBooking ? originalBooking.status : db.bookings[index].status;
-    const currentPaymentStatus = originalBooking ? originalBooking.paymentStatus : db.bookings[index].paymentStatus;
+    const currentStatus = originalBooking.status;
+    const currentPaymentStatus = originalBooking.paymentStatus;
     const newBookingStatus = status || bookingStatus || currentStatus;
     const newPaymentStatus = paymentStatus || currentPaymentStatus;
 
     const isNowRejected = newBookingStatus === 'Rejected' || newBookingStatus === 'Cancelled';
     const wasRejected = currentStatus === 'Rejected' || currentStatus === 'Cancelled';
-    const batchId = originalBooking?.details?.batchId || (index !== -1 ? db.bookings[index].batchId : undefined);
-    const count = originalBooking?.participantsCount || (index !== -1 ? db.bookings[index].participantsCount : 1) || 1;
+    const batchId = originalBooking.details?.batchId || (originalBooking as any).batchId;
+    const count = originalBooking.participantsCount || 1;
 
     if (isNowRejected && !wasRejected && batchId) {
-      const bIdx = db.batches.findIndex((b) => b.id === batchId);
-      if (bIdx !== -1) {
-        db.batches[bIdx].availableSeats += count;
-        if (db.batches[bIdx].availableSeats > 0) {
-          db.batches[bIdx].status = 'Open';
-        }
-      }
+      await shareToursRepo.incrementBatchSeats(batchId, count);
     }
 
     if (wasRejected && !isNowRejected && batchId) {
-      const bIdx = db.batches.findIndex((b) => b.id === batchId);
-      if (bIdx !== -1) {
-        db.batches[bIdx].availableSeats -= count;
-        if (db.batches[bIdx].availableSeats < 0) db.batches[bIdx].availableSeats = 0;
-        if (db.batches[bIdx].availableSeats <= 0) {
-          db.batches[bIdx].status = 'Closed';
-        }
-      }
+      await shareToursRepo.decrementBatchSeats(batchId, count);
     }
 
     const updated = await bookingsRepo.update(bookingId, {
@@ -2209,17 +1993,6 @@ app.all(['/api/bookings/:id/status'], requireAdminAuth, async (req, res) => {
       adminNotes: adminNotes !== undefined ? adminNotes : (originalBooking?.adminNotes || ''),
       rejectReason: rejectReason !== undefined ? rejectReason : (originalBooking?.rejectReason || '')
     });
-
-    if (index !== -1) {
-      db.bookings[index] = {
-        ...db.bookings[index],
-        status: newBookingStatus,
-        paymentStatus: newPaymentStatus,
-        adminNotes: adminNotes !== undefined ? adminNotes : db.bookings[index].adminNotes,
-        rejectReason: rejectReason !== undefined ? rejectReason : db.bookings[index].rejectReason
-      };
-      writeDB(db);
-    }
 
     console.log(`[Admin Status Action] Booking ${bookingId}: bookingStatus=${newBookingStatus}, paymentStatus=${newPaymentStatus}`);
     res.json({
@@ -2255,15 +2028,6 @@ app.get([
     }
 
     let booking: any = await bookingsRepo.getByCode(rawCode);
-    if (!booking) {
-      const db = readDB();
-      booking = (db.bookings || []).find((b: any) => {
-        const code = (b.bookingCode || '').trim().toLowerCase();
-        const id = (b.id || '').trim().toLowerCase();
-        const target = rawCode.toLowerCase();
-        return code === target || id === target;
-      });
-    }
 
     if (!booking) {
       return res.status(404).json({ 
@@ -2304,10 +2068,10 @@ app.get([
     let matchedBatch: any = null;
     if (isShared) {
       if (booking.tripId) {
-        matchedTrip = (db.trips || []).find((t: any) => t.id === booking.tripId);
+        matchedTrip = await shareToursRepo.getTripById(booking.tripId);
       }
       if (booking.batchId) {
-        matchedBatch = (db.batches || []).find((b: any) => b.id === booking.batchId);
+        matchedBatch = await shareToursRepo.getBatchById(booking.batchId);
       }
     }
 
@@ -2398,20 +2162,14 @@ app.get([
   '/api/private-tour/final-summary/:bookingCode', 
   '/api/private-tour/final-confirmation/:bookingCode',
   '/api/bookings/:bookingCode/final-summary'
-], (req, res) => {
+], async (req, res) => {
   try {
-    const db = readDB();
     const rawCode = (req.params.bookingCode || '').trim();
     if (!rawCode) {
       return res.status(400).json({ error: 'Booking not found. Please check your Booking Code.' });
     }
 
-    const booking = (db.bookings || []).find((b: any) => {
-      const code = (b.bookingCode || '').trim().toLowerCase();
-      const id = (b.id || '').trim().toLowerCase();
-      const target = rawCode.toLowerCase();
-      return code === target || id === target;
-    });
+    const booking: any = await bookingsRepo.getByCode(rawCode);
 
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found. Please check your Booking Code.' });
@@ -2453,8 +2211,8 @@ app.get([
     let matchedTrip: any = null;
     let matchedBatch: any = null;
     if (isShared) {
-      if (booking.tripId) matchedTrip = (db.trips || []).find((t: any) => t.id === booking.tripId);
-      if (booking.batchId) matchedBatch = (db.batches || []).find((b: any) => b.id === booking.batchId);
+      if (booking.tripId) matchedTrip = await shareToursRepo.getTripById(booking.tripId);
+      if (booking.batchId) matchedBatch = await shareToursRepo.getBatchById(booking.batchId);
     }
 
     // SNAPSHOT DATA
@@ -2476,7 +2234,7 @@ app.get([
       const codeClean = (booking.bookingCode || booking.id).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
       const seed = (booking.confirmedAt || booking.createdAt || booking.id || 'SJ').replace(/[^A-Za-z0-9]/g, '').slice(-8).toUpperCase();
       booking.verificationHash = `SJ-VERIFIED-${codeClean}-${seed}`;
-      writeDB(db);
+      await bookingsRepo.update(booking.id, { verificationHash: booking.verificationHash });
     }
     const verificationHash = booking.verificationHash;
 
@@ -2571,18 +2329,12 @@ app.get([
   '/api/bookings/:bookingCode/invoice.pdf'
 ], async (req, res) => {
   try {
-    const db = readDB();
     const rawCode = (req.params.bookingCode || '').trim();
     if (!rawCode) {
       return res.status(400).json({ error: 'Kode booking wajib diisi' });
     }
 
-    const booking = (db.bookings || []).find((b: any) => {
-      const code = (b.bookingCode || '').trim().toLowerCase();
-      const id = (b.id || '').trim().toLowerCase();
-      const target = rawCode.toLowerCase();
-      return code === target || id === target;
-    });
+    const booking: any = await bookingsRepo.getByCode(rawCode);
 
     if (!booking) {
       return res.status(404).json({ error: 'Booking tidak ditemukan' });
@@ -2624,8 +2376,8 @@ app.get([
     let matchedTrip: any = null;
     let matchedBatch: any = null;
     if (isShared) {
-      if (booking.tripId) matchedTrip = (db.trips || []).find((t: any) => t.id === booking.tripId);
-      if (booking.batchId) matchedBatch = (db.batches || []).find((b: any) => b.id === booking.batchId);
+      if (booking.tripId) matchedTrip = await shareToursRepo.getTripById(booking.tripId);
+      if (booking.batchId) matchedBatch = await shareToursRepo.getBatchById(booking.batchId);
     }
 
     // PDF DATA SOURCE: IMMUTABLE TOUR SNAPSHOT & STORED TRANSACTION DETAILS
@@ -2646,7 +2398,7 @@ app.get([
       const codeClean = (booking.bookingCode || booking.id).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
       const seed = (booking.confirmedAt || booking.createdAt || booking.id || 'SJ').replace(/[^A-Za-z0-9]/g, '').slice(-8).toUpperCase();
       booking.verificationHash = `SJ-VERIFIED-${codeClean}-${seed}`;
-      writeDB(db);
+      await bookingsRepo.update(booking.id, { verificationHash: booking.verificationHash });
     }
     const verificationHash = booking.verificationHash;
     const bookingCode = booking.bookingCode || booking.id;
@@ -2740,20 +2492,14 @@ app.get([
 
 // TAHAP 9 & 10: Standalone Printable A4 Document / PDF Service (HTML Fallback)
 // Allows direct browser print-to-PDF with correct default filename: SmartJourney-Final-Booking-${bookingCode}.pdf
-app.get('/api/private-tour/invoice-html/:bookingCode', (req, res) => {
+app.get('/api/private-tour/invoice-html/:bookingCode', async (req, res) => {
   try {
-    const db = readDB();
     const rawCode = (req.params.bookingCode || '').trim();
     if (!rawCode) {
       return res.status(400).send('<h1>400 Bad Request: Kode booking wajib diisi</h1>');
     }
 
-    const booking = (db.bookings || []).find((b: any) => {
-      const code = (b.bookingCode || '').trim().toLowerCase();
-      const id = (b.id || '').trim().toLowerCase();
-      const target = rawCode.toLowerCase();
-      return code === target || id === target;
-    });
+    const booking: any = await bookingsRepo.getByCode(rawCode);
 
     if (!booking) {
       return res.status(404).send('<h1>404 Not Found: Booking tidak ditemukan</h1>');
@@ -2789,8 +2535,8 @@ app.get('/api/private-tour/invoice-html/:bookingCode', (req, res) => {
     let matchedTrip: any = null;
     let matchedBatch: any = null;
     if (isShared) {
-      if (booking.tripId) matchedTrip = (db.trips || []).find((t: any) => t.id === booking.tripId);
-      if (booking.batchId) matchedBatch = (db.batches || []).find((b: any) => b.id === booking.batchId);
+      if (booking.tripId) matchedTrip = await shareToursRepo.getTripById(booking.tripId);
+      if (booking.batchId) matchedBatch = await shareToursRepo.getBatchById(booking.batchId);
     }
 
     const tourSnapshot = booking.tourSnapshot || {
@@ -2810,7 +2556,7 @@ app.get('/api/private-tour/invoice-html/:bookingCode', (req, res) => {
       const codeClean = (booking.bookingCode || booking.id).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
       const seed = (booking.confirmedAt || booking.createdAt || booking.id || 'SJ').replace(/[^A-Za-z0-9]/g, '').slice(-8).toUpperCase();
       booking.verificationHash = `SJ-VERIFIED-${codeClean}-${seed}`;
-      writeDB(db);
+      await bookingsRepo.update(booking.id, { verificationHash: booking.verificationHash });
     }
     const verificationHash = sanitizeHtml(booking.verificationHash);
     const bookingCode = sanitizeHtml(booking.bookingCode || booking.id);
@@ -3268,17 +3014,11 @@ app.get('/api/private-tour/invoice-html/:bookingCode', (req, res) => {
 app.post('/api/private-tour/bookings/:id/confirm', requireAdminAuth, async (req, res) => {
   try {
     const targetId = req.params.id;
-    let booking = await bookingsRepo.getByCode(targetId);
-    const db = readDB();
-    const index = (db.bookings || []).findIndex((b: any) => 
-      b.id === targetId || b.bookingCode === targetId
-    );
+    const currentBooking = await bookingsRepo.getByCode(targetId);
 
-    if (!booking && index === -1) {
+    if (!currentBooking) {
       return res.status(404).json({ error: 'Booking tidak ditemukan.' });
     }
-
-    const currentBooking = booking || db.bookings[index];
 
     // STRICT VALIDATION: Booking must be Paid before it can be confirmed
     if (currentBooking.paymentStatus !== 'Paid') {
@@ -3296,19 +3036,12 @@ app.post('/api/private-tour/bookings/:id/confirm', requireAdminAuth, async (req,
       adminNotes
     });
 
-    if (index !== -1) {
-      db.bookings[index].status = 'Confirmed';
-      db.bookings[index].confirmedAt = confirmedAt;
-      if (adminNotes) db.bookings[index].adminNotes = adminNotes;
-      writeDB(db);
-    }
-
     console.log(`[Admin] Private Tour Booking ${currentBooking.id} (${currentBooking.bookingCode}) CONFIRMED. Payment=${currentBooking.paymentStatus}, Status=Confirmed`);
 
     return res.json({
       success: true,
       message: `Booking #${currentBooking.bookingCode || currentBooking.id} berhasil dikonfirmasi oleh Admin Pusat.`,
-      booking: updated || db.bookings[index]
+      booking: updated
     });
   } catch (err: any) {
     console.error('Error in /api/private-tour/bookings/:id/confirm:', err);
@@ -3316,21 +3049,14 @@ app.post('/api/private-tour/bookings/:id/confirm', requireAdminAuth, async (req,
   }
 });
 
-app.post('/api/bookings/purge', requireAdminAuth, (req, res) => {
+app.post('/api/bookings/purge', requireAdminAuth, async (req, res) => {
   try {
-    const db = readDB();
-
-    db.bookings = [];
-    db.batches.forEach((b) => {
-      b.availableSeats = b.quota;
-      b.status = 'Open';
-    });
-
-    writeDB(db);
+    await bookingsRepo.clearAll();
+    await shareToursRepo.resetAllBatchQuotas();
     res.json({ success: true, message: 'All bookings cleared and batch quotas reset.' });
-  } catch (e) {
+  } catch (e: any) {
     console.error(e);
-    res.status(500).json({ error: 'Failed to purge bookings database' });
+    res.status(500).json({ error: 'Failed to purge bookings database: ' + e.message });
   }
 });
 
@@ -3545,7 +3271,7 @@ app.post('/api/analytics/collect', express.json({ limit: '256kb' }), (req, res) 
 });
 
 // Admin-only Analytics Dashboard Endpoint
-app.get('/api/analytics/dashboard', requireAdminAuth, (req, res) => {
+app.get('/api/analytics/dashboard', requireAdminAuth, async (req, res) => {
   try {
     const range = String(req.query.range || '7d');
     const startDateQuery = req.query.startDate as string;
@@ -3588,9 +3314,8 @@ app.get('/api/analytics/dashboard', requireAdminAuth, (req, res) => {
       return t >= startTime && t <= endTime;
     });
 
-    // Real bookings from DB
-    const db = readDB();
-    const allBookings = db.bookings || [];
+    // Real bookings from SQL DB
+    const allBookings = await bookingsRepo.getAll();
     const filteredBookings = allBookings.filter(b => {
       const bDate = new Date(b.createdAt || b.departureDate || now);
       return bDate >= startTime && bDate <= endTime;
@@ -4030,11 +3755,7 @@ app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/paymen
 
     // Check DB for existing order to avoid double payment or amount tampering
     // BACKEND IS THE SINGLE SOURCE OF TRUTH FOR PAYMENT AMOUNT (Requirement 7 & 10)
-    const db = readDB();
-    if (!db.bookings) db.bookings = [];
-
-    const existingOrderIndex = db.bookings.findIndex(b => b.bookingCode === orderId || b.id === orderId);
-    const existingOrder = existingOrderIndex !== -1 ? db.bookings[existingOrderIndex] : null;
+    const existingOrder = await bookingsRepo.getByCode(orderId);
 
     if (!existingOrder) {
       console.warn(`[Payment Intent Rejected] Order ${orderId} does not exist in database.`);
@@ -4063,12 +3784,17 @@ app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/paymen
 
     // If booking doesn't have uniqueCode or paymentAmount, or if uniqueCode is out of 1-99 range:
     if (!uniqueCode || uniqueCode < 1 || uniqueCode > 99 || !paymentAmount || paymentAmount !== baseAmount + uniqueCode) {
-      uniqueCode = generateUniquePaymentCode(db.bookings.filter(b => b.id !== existingOrder.id));
+      const allBookings = await bookingsRepo.getAll();
+      uniqueCode = generateUniquePaymentCode(allBookings.filter(b => b.id !== existingOrder.id));
       paymentAmount = baseAmount + uniqueCode;
       existingOrder.baseAmount = baseAmount;
       existingOrder.uniqueCode = uniqueCode;
       existingOrder.paymentAmount = paymentAmount;
-      writeDB(db);
+      await bookingsRepo.update(existingOrder.id, {
+        baseAmount,
+        uniqueCode,
+        paymentAmount
+      });
     }
 
     // REQUIREMENT 7: Final payment amount sent to ArtoPay MUST be paymentAmount (baseAmount + uniqueCode)!
@@ -4249,14 +3975,26 @@ app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/paymen
     const checkoutUrl = resData.url || resData.checkoutUrl || resData.paymentUrl || resData.redirectUrl;
 
     // Update DB with active paymentIntentId and checkoutUrl
-    if (existingOrderIndex !== -1 && db.bookings[existingOrderIndex]) {
-      db.bookings[existingOrderIndex].paymentIntentId = paymentId;
-      db.bookings[existingOrderIndex].paymentStatus = 'Pending Payment';
-      db.bookings[existingOrderIndex].status = 'Pending';
-      if (checkoutUrl) {
-        db.bookings[existingOrderIndex].checkoutUrl = checkoutUrl;
-      }
-      writeDB(db);
+    await bookingsRepo.update(existingOrder.id, {
+      paymentIntentId: paymentId,
+      paymentStatus: 'Pending',
+      status: 'Pending Payment',
+      ...(checkoutUrl ? { checkoutUrl } : {})
+    });
+
+    try {
+      await paymentsRepo.createPaymentRecord({
+        bookingId: existingOrder.id,
+        orderId: existingOrder.bookingCode || existingOrder.id,
+        paymentIntentId: paymentId,
+        amount: paymentAmount,
+        currency: 'IDR',
+        paymentMethod: 'artopay',
+        paymentStatus: 'Pending',
+        checkoutUrl: checkoutUrl || undefined
+      });
+    } catch (payErr) {
+      console.warn('[Payments Record] Non-fatal error recording payment:', payErr);
     }
 
     return res.json({
@@ -4500,7 +4238,7 @@ function verifyPayment(booking: any, paymentData: any): PaymentVerificationResul
 }
 
 // Official ArtoPay Webhook / Callback Handler Endpoint
-app.post(['/api/artopay/webhook', '/artopay/webhook'], (req, res) => {
+app.post(['/api/artopay/webhook', '/artopay/webhook'], async (req, res) => {
   try {
     const body = req.body || {};
     const logOrderId = body.orderId || body.order_id || body.orderID || body.data?.orderId || body.data?.order_id || '-';
@@ -4561,20 +4299,18 @@ app.post(['/api/artopay/webhook', '/artopay/webhook'], (req, res) => {
       return res.status(400).json({ error: 'Missing orderId or paymentId in webhook payload' });
     }
 
-    const db = readDB();
-    if (!db.bookings) db.bookings = [];
+    let booking: any = null;
+    if (orderId) {
+      booking = await bookingsRepo.getByCode(orderId);
+    }
+    if (!booking && paymentId) {
+      booking = await bookingsRepo.getByPaymentIntentId(paymentId);
+    }
 
-    const index = db.bookings.findIndex(b =>
-      (orderId && (b.bookingCode === orderId || b.id === orderId)) ||
-      (paymentId && (b.paymentIntentId === paymentId || b.paymentId === paymentId))
-    );
-
-    if (index === -1) {
+    if (!booking) {
       console.warn(`[ArtoPay Webhook] Order ${orderId || paymentId} not found in database.`);
       return res.status(404).json({ error: 'Order not found in database', orderId: orderId || paymentId });
     }
-
-    const booking = db.bookings[index];
 
     // IDEMPOTENCY CHECK: If already paid, do not re-process or revert status
     if (booking.paymentStatus === 'Paid') {
@@ -4602,19 +4338,18 @@ app.post(['/api/artopay/webhook', '/artopay/webhook'], (req, res) => {
       }
 
       if (verification.status === 'EXPIRED') {
-        booking.paymentStatus = 'Expired';
+        const updateData: any = { paymentStatus: 'Expired' };
         if (booking.status !== 'Confirmed' && booking.status !== 'Completed') {
-          booking.status = 'Cancelled';
+          updateData.status = 'Cancelled';
         }
-        db.bookings[index] = booking;
-        recalculateBatchSeats(db);
-        writeDB(db);
+        await bookingsRepo.update(booking.id, updateData);
+        await shareToursRepo.recalculateBatchSeats();
         return res.status(200).json({
           success: true,
           orderId: booking.bookingCode || booking.id,
           paymentStatus: 'Expired',
-          orderStatus: 'Cancelled',
-          bookingStatus: booking.status
+          orderStatus: updateData.status || booking.status,
+          bookingStatus: updateData.status || booking.status
         });
       }
 
@@ -4630,27 +4365,37 @@ app.post(['/api/artopay/webhook', '/artopay/webhook'], (req, res) => {
     }
 
     // Status is verified PAID with matching amount and IDR currency
-    booking.paymentStatus = 'Paid';
-    // PAYMENT STATUS ≠ BOOKING STATUS
-    // Customer has paid, but booking is Pending Confirmation until Admin confirms
+    const paidAt = booking.paidAt || new Date().toISOString();
+    const finalPaymentId = paymentId || booking.paymentIntentId;
+    let newBookingStatus = booking.status;
     if (booking.status !== 'Confirmed' && booking.status !== 'Completed') {
-      booking.status = 'Pending Confirmation';
+      newBookingStatus = 'Pending Confirmation';
     }
-    booking.paidAt = booking.paidAt || new Date().toISOString();
-    booking.paymentId = paymentId || booking.paymentIntentId;
 
-    console.log(`[ArtoPay Webhook SUCCESS] Order ${orderId || booking.id}: Payment Status set to PAID, Booking Status set to ${booking.status}.`);
+    console.log(`[ArtoPay Webhook SUCCESS] Order ${orderId || booking.id}: Payment Status set to PAID, Booking Status set to ${newBookingStatus}.`);
 
-    db.bookings[index] = booking;
-    recalculateBatchSeats(db);
-    writeDB(db);
+    await bookingsRepo.update(booking.id, {
+      paymentStatus: 'Paid',
+      status: newBookingStatus,
+      paidAt,
+      paymentId: finalPaymentId
+    });
+
+    try {
+      await paymentsRepo.updateByOrderId(booking.bookingCode || booking.id, {
+        paymentStatus: 'Paid',
+        rawCallbackPayload: body
+      });
+    } catch (_) {}
+
+    await shareToursRepo.recalculateBatchSeats();
 
     return res.status(200).json({
       success: true,
       orderId: booking.bookingCode || booking.id,
-      paymentStatus: booking.paymentStatus,
-      bookingStatus: booking.status,
-      orderStatus: booking.status
+      paymentStatus: 'Paid',
+      bookingStatus: newBookingStatus,
+      orderStatus: newBookingStatus
     });
   } catch (error: any) {
     console.error('[ArtoPay Webhook Error]:', error);
@@ -4662,10 +4407,10 @@ app.post(['/api/artopay/webhook', '/artopay/webhook'], (req, res) => {
 app.get(['/api/orders/:orderId/payment-status', '/api/artopay/status/:orderId'], async (req, res) => {
   try {
     const { orderId } = req.params;
-    const db = readDB();
-    if (!db.bookings) db.bookings = [];
-
-    const booking = db.bookings.find(b => b.bookingCode === orderId || b.id === orderId || b.paymentIntentId === orderId);
+    let booking = await bookingsRepo.getByCode(orderId);
+    if (!booking) {
+      booking = await bookingsRepo.getByPaymentIntentId(orderId);
+    }
 
     if (!booking) {
       return res.status(404).json({
@@ -4706,8 +4451,12 @@ app.get(['/api/orders/:orderId/payment-status', '/api/artopay/status/:orderId'],
                 booking.status = 'Pending Confirmation';
               }
               booking.paidAt = booking.paidAt || new Date().toISOString();
-              recalculateBatchSeats(db);
-              writeDB(db);
+              await bookingsRepo.update(booking.id, {
+                paymentStatus: 'Paid',
+                status: booking.status,
+                paidAt: booking.paidAt
+              });
+              await shareToursRepo.recalculateBatchSeats();
             } else if (verification.status === 'FAILED' || verification.status === 'EXPIRED') {
               const resData = statusData.responseData || statusData;
               const remoteStatus = String(resData.status || resData.transaction_status || '').toUpperCase();
@@ -4716,8 +4465,11 @@ app.get(['/api/orders/:orderId/payment-status', '/api/artopay/status/:orderId'],
                 if (booking.status !== 'Confirmed' && booking.status !== 'Completed') {
                   booking.status = 'Cancelled';
                 }
-                recalculateBatchSeats(db);
-                writeDB(db);
+                await bookingsRepo.update(booking.id, {
+                  paymentStatus: booking.paymentStatus,
+                  status: booking.status
+                });
+                await shareToursRepo.recalculateBatchSeats();
               }
             }
           }
@@ -4765,8 +4517,52 @@ app.get(['/download-booking-guide', '/api/download-booking-guide', '/download/bo
 app.use(express.static(path.join(PROJECT_ROOT, 'public')));
 
 async function startServer() {
-  logPersistenceDiagnostics();
-  logArtoPayStartupConfig();
+  const isProd = process.env.NODE_ENV === 'production';
+  console.log(`[Startup] ==============================================================`);
+  console.log(`[Startup] SMART JOURNEY SERVER INITIALIZATION (NODE_ENV: ${process.env.NODE_ENV || 'development'})`);
+  console.log(`[Startup] ==============================================================`);
+
+  try {
+    // Step 1: Load environment
+    console.log('[Startup Step 1/6] Loading Environment Configuration...');
+    const dbConfig = getDatabaseEnv();
+
+    // Step 2: Initialize database
+    console.log('[Startup Step 2/6] Initializing Database Connection Pool...');
+    const db = await getDB();
+
+    // Step 3: Verify database connection
+    console.log('[Startup Step 3/6] Verifying Database Connection...');
+    await db.query('SELECT 1');
+    console.log(`[Startup Step 3/6] ✅ Verified Database Connection: ${db.engineName()}`);
+
+    // Strict Production Guard: Mandatory MySQL
+    if (isProd && !db.isMySQL()) {
+      throw new Error('[Startup Fatal] Production requires MySQL as Single Source of Truth. SQLite fallback is strictly forbidden.');
+    }
+
+    // Step 4: Initialize schema & indexes
+    console.log('[Startup Step 4/6] Initializing Schema & Indexes...');
+    await initSchema(db);
+    console.log('[Startup Step 4/6] Validating Schema & Index Integrity...');
+    await validateSchema(db);
+
+    // Step 5: Run migration
+    console.log('[Startup Step 5/6] Checking and Running Data Migration...');
+    await runMigrationIfNeeded();
+
+    // Step 6: Synchronize required startup state
+    console.log('[Startup Step 6/6] Synchronizing Admin Authentication & Operational State...');
+    await syncAdminSessionsFromDB();
+
+    await logPersistenceDiagnostics();
+    logArtoPayStartupConfig();
+    console.log('[Startup] ✅ Database and Core State Ready for Traffic.');
+  } catch (err: any) {
+    console.error('[Startup Fatal] Could not initialize server database state:', err);
+    console.error('[Startup Fatal] Server initialization failed. Process exiting with code 1.');
+    process.exit(1);
+  }
 
   if (process.env.NODE_ENV !== 'production') {
     // Development Mode: Use Vite Dev Server Middleware

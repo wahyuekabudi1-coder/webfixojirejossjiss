@@ -31,9 +31,6 @@ CREATE TABLE IF NOT EXISTS tours (
   updated_at VARCHAR(64)
 );
 
-CREATE INDEX IF NOT EXISTS idx_tours_status ON tours(status);
-CREATE INDEX IF NOT EXISTS idx_tours_deleted ON tours(is_deleted);
-
 -- 2. Share Tours (Open Trip Blueprints)
 CREATE TABLE IF NOT EXISTS share_tours (
   id VARCHAR(64) PRIMARY KEY,
@@ -59,9 +56,6 @@ CREATE TABLE IF NOT EXISTS share_tours (
   updated_at VARCHAR(64)
 );
 
-CREATE INDEX IF NOT EXISTS idx_share_tours_slug ON share_tours(slug);
-CREATE INDEX IF NOT EXISTS idx_share_tours_status ON share_tours(status);
-
 -- 3. Batches (Departure Schedules for Share Tours)
 CREATE TABLE IF NOT EXISTS batches (
   id VARCHAR(64) PRIMARY KEY,
@@ -74,9 +68,6 @@ CREATE TABLE IF NOT EXISTS batches (
   created_at VARCHAR(64),
   updated_at VARCHAR(64)
 );
-
-CREATE INDEX IF NOT EXISTS idx_batches_trip ON batches(trip_id);
-CREATE INDEX IF NOT EXISTS idx_batches_date ON batches(departure_date);
 
 -- 4. Bookings Table (Unified Ledger for Private Tours, Share Tours, & Transfers)
 CREATE TABLE IF NOT EXISTS bookings (
@@ -97,7 +88,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   participants_count INT DEFAULT 1,
   participants_names TEXT,
   proof_of_payment TEXT,
-  status VARCHAR(64) DEFAULT 'Pending',
+  status VARCHAR(64) DEFAULT 'Pending Payment',
   payment_status VARCHAR(64) DEFAULT 'Pending',
   total_price DECIMAL(14,2) DEFAULT 0,
   total_price_idr DECIMAL(14,2) DEFAULT 0,
@@ -114,14 +105,10 @@ CREATE TABLE IF NOT EXISTS bookings (
   payment_id VARCHAR(128),
   payment_intent_id VARCHAR(128),
   checkout_url TEXT,
-  reject_reason TEXT
+  confirmed_at VARCHAR(64),
+  reject_reason TEXT,
+  verification_hash TEXT
 );
-
-CREATE INDEX IF NOT EXISTS idx_bookings_code ON bookings(booking_code);
-CREATE INDEX IF NOT EXISTS idx_bookings_intent ON bookings(payment_intent_id);
-CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
-CREATE INDEX IF NOT EXISTS idx_bookings_payment_status ON bookings(payment_status);
-CREATE INDEX IF NOT EXISTS idx_bookings_email ON bookings(email);
 
 -- 5. Payments Table (ArtoPay Transactions & Webhooks Audit Trail)
 CREATE TABLE IF NOT EXISTS payments (
@@ -140,9 +127,6 @@ CREATE TABLE IF NOT EXISTS payments (
   created_at VARCHAR(64)
 );
 
-CREATE INDEX IF NOT EXISTS idx_payments_order ON payments(order_id);
-CREATE INDEX IF NOT EXISTS idx_payments_booking ON payments(booking_id);
-
 -- 6. Invoices Table
 CREATE TABLE IF NOT EXISTS invoices (
   id VARCHAR(64) PRIMARY KEY,
@@ -156,8 +140,6 @@ CREATE TABLE IF NOT EXISTS invoices (
   service_summary TEXT,
   created_at VARCHAR(64)
 );
-
-CREATE INDEX IF NOT EXISTS idx_invoices_number ON invoices(invoice_number);
 
 -- 7. Admin Sessions Table
 CREATE TABLE IF NOT EXISTS admin_sessions (
@@ -199,8 +181,6 @@ CREATE TABLE IF NOT EXISTS reviews (
   status VARCHAR(32) DEFAULT 'pending',
   created_at VARCHAR(64)
 );
-
-CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status);
 
 -- 11. Service Limits Table
 CREATE TABLE IF NOT EXISTS service_limits (

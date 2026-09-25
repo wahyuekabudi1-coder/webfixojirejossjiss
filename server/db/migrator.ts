@@ -12,6 +12,10 @@ import { bookingsRepo } from './repositories/bookings.repository';
 import { draftsRepo } from './repositories/drafts.repository';
 import { transportRepo } from './repositories/transport.repository';
 import { serviceLimitsRepo } from './repositories/serviceLimits.repository';
+import { schedulesRepo } from './repositories/schedules.repository';
+import { reviewsRepo } from './repositories/reviews.repository';
+import { paymentsRepo } from './repositories/payments.repository';
+import { invoicesRepo } from './repositories/invoices.repository';
 
 export async function runMigrationIfNeeded(): Promise<void> {
   const client = await getDB();
@@ -134,6 +138,42 @@ export async function runMigrationIfNeeded(): Promise<void> {
     if (legacyDB.serviceLimits) {
       for (const [svc, lim] of Object.entries(legacyDB.serviceLimits)) {
         await serviceLimitsRepo.setLimit(svc, Number(lim));
+      }
+    }
+
+    // H. Migrate Schedules
+    if (Array.isArray(legacyDB.schedules)) {
+      console.log(`[Migration] Migrating ${legacyDB.schedules.length} schedules...`);
+      for (const sch of legacyDB.schedules) {
+        if (!sch.id) continue;
+        await schedulesRepo.save(sch);
+      }
+    }
+
+    // I. Migrate Reviews
+    if (Array.isArray(legacyDB.reviews)) {
+      console.log(`[Migration] Migrating ${legacyDB.reviews.length} reviews...`);
+      for (const rev of legacyDB.reviews) {
+        if (!rev.id) continue;
+        await reviewsRepo.create(rev);
+      }
+    }
+
+    // J. Migrate Payments
+    if (Array.isArray(legacyDB.payments)) {
+      console.log(`[Migration] Migrating ${legacyDB.payments.length} payments...`);
+      for (const p of legacyDB.payments) {
+        if (!p.id && !p.orderId) continue;
+        await paymentsRepo.createPaymentRecord(p);
+      }
+    }
+
+    // K. Migrate Invoices
+    if (Array.isArray(legacyDB.invoices)) {
+      console.log(`[Migration] Migrating ${legacyDB.invoices.length} invoices...`);
+      for (const inv of legacyDB.invoices) {
+        if (!inv.id && !inv.invoiceNumber) continue;
+        await invoicesRepo.createInvoice(inv);
       }
     }
 

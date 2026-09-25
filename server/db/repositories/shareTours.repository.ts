@@ -220,17 +220,24 @@ export class ShareToursRepository {
     return await this.getTripById(id);
   }
 
-  async deleteTrip(id: string): Promise<boolean> {
+  async deleteTrip(id: string): Promise<{ success: boolean; mode: 'archived' | 'deleted' }> {
     const client = await this.db();
     await client.execute('DELETE FROM batches WHERE trip_id = ?', [id]);
     const res = await client.execute('DELETE FROM share_tours WHERE id = ?', [id]);
-    return res.affectedRows > 0;
+    return { success: res.affectedRows > 0, mode: 'deleted' };
   }
 
   // Batches
-  async getAllBatches(): Promise<BatchEntity[]> {
+  async getAllBatches(tripId?: string): Promise<BatchEntity[]> {
     const client = await this.db();
-    const rows = await client.query<BatchRow>('SELECT * FROM batches ORDER BY departure_date ASC');
+    let sql = 'SELECT * FROM batches';
+    const params: any[] = [];
+    if (tripId) {
+      sql += ' WHERE trip_id = ?';
+      params.push(tripId);
+    }
+    sql += ' ORDER BY departure_date ASC';
+    const rows = await client.query<BatchRow>(sql, params);
     return rows.map(rowToBatch);
   }
 
@@ -305,6 +312,76 @@ export class ShareToursRepository {
     const client = await this.db();
     const res = await client.execute('DELETE FROM batches WHERE id = ?', [id]);
     return res.affectedRows > 0;
+  }
+
+  async decrementBatchSeats(batchId: string, count: number): Promise<BatchEntity | null> {
+    const client = await this.db();
+    const batch = await this.getBatchById(batchId);
+    if (!batch) return null;
+    const newSeats = Math.max(0, batch.availableSeats - count);
+    const newStatus = newSeats <= 0 ? 'Closed' : batch.status;
+    await client.execute(
+      'UPDATE batches SET available_seats = ?, status = ?, updated_at = ? WHERE id = ?',
+      [newSeats, newStatus, new Date().toISOString(), batchId]
+    );
+    return await this.getBatchById(batchId);
+  }
+
+  async incrementBatchSeats(batchId: string, count: number): Promise<BatchEntity | null> {
+    const client = await this.db();
+    const batch = await this.getBatchById(batchId);
+    if (!batch) return null;
+    const newSeats = Math.min(batch.quota, batch.availableSeats + count);
+    const newStatus = newSeats > 0 && batch.status === 'Closed' ? 'open' : batch.status;
+    await client.execute(
+      'UPDATE batches SET available_seats = ?, status = ?, updated_at = ? WHERE id = ?',
+      [newSeats, newStatus, new Date().toISOString(), batchId]
+    );
+    return await this.getBatchById(batchId);
+  }
+
+  async recalculateBatchSeats(batchId?: string): Promise<void> {
+    const client = await this.db();
+    let batchQuery = 'SELECT id, quota, status FROM batches';
+    const params: any[] = [];
+    if (batchId) {
+      batchQuery += ' WHERE id = ?';
+      params.push(batchId);
+    }
+    const batches = await client.query<{ id: string; quota: number; status: string }>(batchQuery, params);
+    const inactiveStatuses = "('cancelled', 'canceled', 'rejected', 'failed', 'expired')";
+    const inactivePaymentStatuses = "('failed', 'expired')";
+
+    for (const b of batches) {
+      const bookedRows = await client.query<{ total: number }>(
+        `SELECT SUM(participants_count) AS total FROM bookings 
+         WHERE (service_id = ? OR details LIKE ?)
+         AND LOWER(status) NOT IN ${inactiveStatuses}
+         AND LOWER(payment_status) NOT IN ${inactivePaymentStatuses}`,
+        [b.id, `%"batchId":"${b.id}"%`]
+      );
+      const totalBooked = Number(bookedRows[0]?.total || 0);
+      const quota = Number(b.quota) || 10;
+      const available = Math.max(0, quota - totalBooked);
+      let newStatus = b.status;
+      if (available <= 0 && b.status !== 'archived') {
+        newStatus = 'Closed';
+      } else if (b.status === 'Closed' && available > 0) {
+        newStatus = 'open';
+      }
+      await client.execute(
+        'UPDATE batches SET available_seats = ?, status = ?, updated_at = ? WHERE id = ?',
+        [available, newStatus, new Date().toISOString(), b.id]
+      );
+    }
+  }
+
+  async resetAllBatchQuotas(): Promise<void> {
+    const client = await this.db();
+    await client.execute(
+      "UPDATE batches SET available_seats = quota, status = 'open', updated_at = ?",
+      [new Date().toISOString()]
+    );
   }
 }
 

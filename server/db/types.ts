@@ -117,4 +117,5 @@ export interface BookingRow {
   checkout_url?: string | null;
   confirmed_at?: string | null;
   reject_reason?: string | null;
+  verification_hash?: string | null;
 }

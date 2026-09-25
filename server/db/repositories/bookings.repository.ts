@@ -24,7 +24,7 @@ export interface BookingEntity {
   participantsCount: number;
   participantsNames?: string[];
   proofOfPayment?: string;
-  status: 'Pending' | 'Pending Confirmation' | 'Confirmed' | 'Completed' | 'Cancelled';
+  status: 'Pending Payment' | 'Pending Confirmation' | 'Confirmed' | 'Completed' | 'Cancelled' | 'Rejected';
   paymentStatus: 'Pending' | 'Paid' | 'Expired' | 'Failed';
   totalPrice: number;
   totalPriceIDR: number;
@@ -43,6 +43,11 @@ export interface BookingEntity {
   checkoutUrl?: string;
   confirmedAt?: string;
   rejectReason?: string;
+  verificationHash?: string;
+  tripId?: string;
+  tripTitle?: string;
+  batchId?: string;
+  nationalityType?: string;
 }
 
 function parseJsonObject<T = any>(val: any, fallback: T = {} as T): T {
@@ -56,6 +61,7 @@ function parseJsonObject<T = any>(val: any, fallback: T = {} as T): T {
 }
 
 function rowToBooking(row: BookingRow): BookingEntity {
+  const parsedDetails = parseJsonObject<any>(row.details, {});
   return {
     id: row.id,
     bookingCode: row.booking_code,
@@ -74,8 +80,8 @@ function rowToBooking(row: BookingRow): BookingEntity {
     participantsCount: Number(row.participants_count) || 1,
     participantsNames: parseJsonObject<string[]>(row.participants_names, []),
     proofOfPayment: row.proof_of_payment || undefined,
-    status: (row.status || 'Pending') as any,
-    paymentStatus: (row.payment_status || 'Pending') as any,
+    status: (row.status === 'Pending' ? 'Pending Payment' : (row.status || 'Pending Payment')) as any,
+    paymentStatus: (row.payment_status === 'Pending Payment' || row.payment_status === 'Unpaid' ? 'Pending' : (row.payment_status || 'Pending')) as any,
     totalPrice: Number(row.total_price) || 0,
     totalPriceIDR: Number(row.total_price_idr) || 0,
     baseAmount: Number(row.base_amount) || 0,
@@ -83,7 +89,7 @@ function rowToBooking(row: BookingRow): BookingEntity {
     paymentAmount: Number(row.payment_amount) || 0,
     currency: row.currency || 'IDR',
     createdAt: row.created_at || new Date().toISOString(),
-    details: parseJsonObject<any>(row.details, {}),
+    details: parsedDetails,
     tourSnapshot: parseJsonObject<any>(row.tour_snapshot, {}),
     discount: parseJsonObject<any>(row.discount, {}),
     adminNotes: row.admin_notes || undefined,
@@ -92,7 +98,12 @@ function rowToBooking(row: BookingRow): BookingEntity {
     paymentIntentId: row.payment_intent_id || undefined,
     checkoutUrl: row.checkout_url || undefined,
     confirmedAt: row.confirmed_at || undefined,
-    rejectReason: row.reject_reason || undefined
+    rejectReason: row.reject_reason || undefined,
+    verificationHash: row.verification_hash || undefined,
+    tripId: parsedDetails.tripId || row.service_id || undefined,
+    tripTitle: parsedDetails.tripTitle || row.service_name || undefined,
+    batchId: parsedDetails.batchId || undefined,
+    nationalityType: parsedDetails.nationalityType || row.tour_booking_type || undefined
   };
 }
 
@@ -140,7 +151,7 @@ export class BookingsRepository {
         participants_names, proof_of_payment, status, payment_status,
         total_price, total_price_idr, base_amount, unique_code, payment_amount,
         currency, created_at, details, tour_snapshot, discount, admin_notes,
-        paid_at, payment_id, payment_intent_id, checkout_url, confirmed_at, reject_reason
+        paid_at, payment_id, payment_intent_id, checkout_url, confirmed_at, reject_reason, verification_hash
       ) VALUES (
         ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?,
@@ -148,7 +159,7 @@ export class BookingsRepository {
         ?, ?, ?, ?,
         ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?, ?
+        ?, ?, ?, ?, ?, ?, ?
       )
     `;
 
@@ -170,7 +181,7 @@ export class BookingsRepository {
       Number(booking.participantsCount) || 1,
       JSON.stringify(booking.participantsNames || []),
       booking.proofOfPayment || null,
-      booking.status || 'Pending',
+      booking.status || 'Pending Payment',
       booking.paymentStatus || 'Pending',
       Number(booking.totalPrice) || 0,
       Number(booking.totalPriceIDR || booking.totalPrice) || 0,
@@ -188,7 +199,8 @@ export class BookingsRepository {
       booking.paymentIntentId || null,
       booking.checkoutUrl || null,
       booking.confirmedAt || null,
-      booking.rejectReason || null
+      booking.rejectReason || null,
+      booking.verificationHash || null
     ];
 
     await client.execute(sql, params);
@@ -232,7 +244,8 @@ export class BookingsRepository {
         payment_intent_id = ?,
         checkout_url = ?,
         confirmed_at = ?,
-        reject_reason = ?
+        reject_reason = ?,
+        verification_hash = ?
       WHERE id = ?
     `;
 
@@ -266,6 +279,7 @@ export class BookingsRepository {
       updates.checkoutUrl !== undefined ? updates.checkoutUrl : existing.checkoutUrl || null,
       updates.confirmedAt !== undefined ? updates.confirmedAt : existing.confirmedAt || null,
       updates.rejectReason !== undefined ? updates.rejectReason : existing.rejectReason || null,
+      updates.verificationHash !== undefined ? updates.verificationHash : existing.verificationHash || null,
       id
     ];
 
@@ -289,8 +303,8 @@ export class BookingsRepository {
     if (!existing) return null;
 
     await client.execute(
-      'UPDATE bookings SET payment_intent_id = ?, checkout_url = ?, payment_status = ? WHERE id = ?',
-      [paymentIntentId, checkoutUrl || null, 'Pending Payment', existing.id]
+      'UPDATE bookings SET payment_intent_id = ?, checkout_url = ?, payment_status = ?, status = ? WHERE id = ?',
+      [paymentIntentId, checkoutUrl || null, 'Pending', 'Pending Payment', existing.id]
     );
     return await this.getById(existing.id);
   }
@@ -324,10 +338,30 @@ export class BookingsRepository {
     return await this.getById(id);
   }
 
+  async getActivePendingUniqueCodes(): Promise<Set<number>> {
+    const client = await this.db();
+    const rows = await client.query<{ unique_code: number }>(
+      `SELECT unique_code FROM bookings 
+       WHERE (LOWER(payment_status) = 'pending' OR LOWER(payment_status) = 'pending payment' OR LOWER(payment_status) = 'unpaid')
+       AND LOWER(status) NOT IN ('cancelled', 'canceled', 'rejected', 'failed', 'expired')
+       AND unique_code > 0`
+    );
+    const set = new Set<number>();
+    for (const r of rows) {
+      if (r.unique_code > 0) set.add(Number(r.unique_code));
+    }
+    return set;
+  }
+
   async delete(id: string): Promise<boolean> {
     const client = await this.db();
     const res = await client.execute('DELETE FROM bookings WHERE id = ?', [id]);
     return res.affectedRows > 0;
+  }
+
+  async clearAll(): Promise<void> {
+    const client = await this.db();
+    await client.execute('DELETE FROM bookings');
   }
 }
 

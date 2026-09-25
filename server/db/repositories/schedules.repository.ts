@@ -78,6 +78,10 @@ export class SchedulesRepository {
     };
   }
 
+  async save(schedule: Partial<ScheduleEntity>): Promise<ScheduleEntity> {
+    return this.create(schedule);
+  }
+
   async delete(id: string): Promise<boolean> {
     const client = await this.db();
     const res = await client.execute('DELETE FROM schedules WHERE id = ?', [id]);

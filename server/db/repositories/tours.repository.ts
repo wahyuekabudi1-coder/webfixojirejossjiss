@@ -27,6 +27,7 @@ export interface TourEntity {
   excludes?: string[];
   whatToBring?: string[];
   status: 'published' | 'draft' | 'unpublished' | 'archived';
+  slug?: string;
   isDeleted?: boolean;
   isArchived?: boolean;
   createdAt: string;
@@ -71,6 +72,7 @@ function rowToTour(row: TourRow): TourEntity {
     excludes: parseJsonArray<string>(row.excludes),
     whatToBring: parseJsonArray<string>(row.what_to_bring),
     status: normalizedStatus,
+    slug: (row as any).slug || row.id,
     isDeleted: Boolean(row.is_deleted),
     isArchived: Boolean(row.is_archived || normalizedStatus === 'archived'),
     createdAt: row.created_at || new Date().toISOString(),

@@ -19,14 +19,16 @@ export class SessionsRepository {
     return await getDB();
   }
 
-  async createSession(token: string, email: string = 'admin', role: string = 'superadmin', hoursValid: number = 72): Promise<AdminSessionEntity> {
+  async createSession(token: string, emailOrHours: string | number = 'admin', role: string = 'superadmin', hoursValid: number = 72): Promise<AdminSessionEntity> {
     const client = await this.db();
     const now = new Date();
-    const expires = new Date(now.getTime() + hoursValid * 60 * 60 * 1000);
+    const effectiveHours = typeof emailOrHours === 'number' ? (emailOrHours > 1000 ? emailOrHours / (3600 * 1000) : emailOrHours) : hoursValid;
+    const effectiveEmail = typeof emailOrHours === 'string' ? emailOrHours : 'admin';
+    const expires = new Date(now.getTime() + effectiveHours * 60 * 60 * 1000);
 
     const session: AdminSessionEntity = {
       token,
-      email: typeof email === 'string' ? email : 'admin',
+      email: effectiveEmail,
       role,
       expiresAt: expires.toISOString(),
       createdAt: now.toISOString()

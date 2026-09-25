@@ -36,6 +36,24 @@ export class TransportRepository {
       [category, jsonStr, now]
     );
   }
+
+  async getTaxiRoutes(): Promise<any[]> {
+    const data = await this.getCategoryData<any[]>('taxiServices');
+    return Array.isArray(data) ? data : [];
+  }
+
+  async saveTaxiRoutes(routes: any[]): Promise<void> {
+    await this.saveCategoryData('taxiServices', routes);
+  }
+
+  async getAirportTransfers(): Promise<any[]> {
+    const data = await this.getCategoryData<any[]>('airportTransfers');
+    return Array.isArray(data) ? data : [];
+  }
+
+  async saveAirportTransfers(transfers: any[]): Promise<void> {
+    await this.saveCategoryData('airportTransfers', transfers);
+  }
 }
 
 export const transportRepo = new TransportRepository();
