@@ -22,7 +22,7 @@ import { matchesTourFilter } from "../../utils/tourFilterUtils";
 interface TripListingProps {
   trips: Trip[];
   batches: Batch[];
-  onSelectTrip: (slug: string) => void;
+  onSelectTrip: (tripOrIdOrSlug: any) => void;
   onNavigateToCheckStatus: () => void;
 }
 
@@ -183,14 +183,14 @@ export default function TripListing({ trips, batches, onSelectTrip, onNavigateTo
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredTrips.length > 0 ? (
             filteredTrips.map((trip) => {
-              const tripBatches = batches.filter((b) => b.tripId === trip.id);
+              const tripBatches = batches.filter((b) => b.tripId === trip.id || (trip.slug && b.tripId === trip.slug));
               const openBatchesCount = tripBatches.filter((b) => b.status === "Open").length;
 
               return (
                 <article
                   key={trip.id}
-                  id={`trip-card-${trip.slug}`}
-                  onClick={() => onSelectTrip(trip.slug)}
+                  id={`trip-card-${trip.id}`}
+                  onClick={() => onSelectTrip(trip)}
                   className="group flex flex-col bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-[0_8px_30px_rgba(0,0,0,0.02)] hover:shadow-[0_20px_45px_rgba(49,91,79,0.06)] hover:border-[#315B4F]/30 transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
                 >
                   {/* Visual Cover image frame */}

@@ -180,6 +180,23 @@ export async function fetchTrips(retries = 2, signal?: AbortSignal): Promise<Tri
   throw lastErr || new Error("Failed to fetch trips from server");
 }
 
+export async function fetchTripById(idOrSlug: string, signal?: AbortSignal): Promise<Trip | null> {
+  try {
+    const res = await fetch(`${API_BASE}/trips/${encodeURIComponent(idOrSlug)}`, {
+      headers: getAuthHeaders(),
+      signal
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data && typeof data === 'object' && data.id ? data : null;
+    }
+    return null;
+  } catch (err: any) {
+    if (err.name === 'AbortError') throw err;
+    return null;
+  }
+}
+
 export async function fetchBatches(tripId?: string, retries = 2, signal?: AbortSignal): Promise<Batch[]> {
   let attempt = 0;
   let lastErr: any = null;

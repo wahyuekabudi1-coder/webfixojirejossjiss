@@ -31,7 +31,7 @@ interface TripDetailProps {
   onBook: (batchId: string, nationalityType?: 'WNI' | 'WNA' | 'WNA_CHINA' | 'WNA_EUROPE' | null) => void;
   // Optional, added to implement similar trips and quick navigation
   trips?: Trip[];
-  onSelectTrip?: (slug: string) => void;
+  onSelectTrip?: (tripOrIdOrSlug: any) => void;
 }
 
 export default function TripDetail({ 
@@ -63,8 +63,8 @@ export default function TripDetail({
     }
   }, [trip?.id, trip?.title]);
 
-  // Find batches scheduled for this trip
-  const tripBatches = batches.filter((b) => b.tripId === trip.id);
+  // Find batches scheduled for this trip (matching by id or slug)
+  const tripBatches = batches.filter((b) => b.tripId === trip.id || (trip.slug && b.tripId === trip.slug));
   const selectedBatch = tripBatches.find((b) => b.id === selectedBatchId);
 
   const getEffectiveUnitPrice = (batch?: Batch) => {
@@ -136,10 +136,16 @@ export default function TripDetail({
 
   const hasAdminToken = typeof window !== "undefined" && !!localStorage.getItem("smart_journey_admin_token");
 
-  // Default gallery fallback if trip doesn't have custom media
-  const galleryPhotos = trip.gallery && trip.gallery.length > 0 
-    ? trip.gallery 
-    : [trip.coverImage];
+  // Safe defaults for array fields to prevent runtime errors
+  const itinerary = Array.isArray(trip.itinerary) ? trip.itinerary : [];
+  const included = Array.isArray(trip.included) ? trip.included : [];
+  const excluded = Array.isArray(trip.excluded) ? trip.excluded : [];
+  const galleryList = Array.isArray(trip.gallery) && trip.gallery.length > 0 ? trip.gallery : [];
+  const galleryPhotos = galleryList.length > 0
+    ? galleryList
+    : [trip.coverImage || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format'];
+  const whatsToBring = Array.isArray(trip.whatsToBring) ? trip.whatsToBring : [];
+  const faqList = Array.isArray(trip.faq) ? trip.faq : [];
 
   // Calendar render math helpers
   const getDaysInMonth = (year: number, month: number) => {
@@ -334,7 +340,7 @@ export default function TripDetail({
                     setExpandedDays({});
                   } else {
                     const allDays: Record<number, boolean> = {};
-                    trip.itinerary.forEach(it => { allDays[it.day] = true; });
+                    itinerary.forEach(it => { allDays[it.day] = true; });
                     setExpandedDays(allDays);
                   }
                 }}
@@ -345,67 +351,73 @@ export default function TripDetail({
             </div>
             
             <div className="space-y-3.5 animate-fade-in" id="daily-itinerary-accordion-group">
-              {trip.itinerary.map((it, idx) => {
-                const isOpen = !!expandedDays[it.day];
-                return (
-                  <div 
-                    key={idx} 
-                    className={`border rounded-2xl overflow-hidden transition-all duration-300 bg-white ${
-                      isOpen ? "border-[#315B4F]/30 shadow-md shadow-[#315B4F]/5" : "border-gray-100 hover:border-gray-200"
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => toggleDay(it.day)}
-                      className={`w-full p-4 text-left flex items-center justify-between gap-4 transition-colors select-none ${
-                        isOpen ? "bg-[#315B4F]/5 text-[#315B4F]" : "bg-white"
+              {itinerary.length > 0 ? (
+                itinerary.map((it, idx) => {
+                  const isOpen = !!expandedDays[it.day];
+                  return (
+                    <div 
+                      key={idx} 
+                      className={`border rounded-2xl overflow-hidden transition-all duration-300 bg-white ${
+                        isOpen ? "border-[#315B4F]/30 shadow-md shadow-[#315B4F]/5" : "border-gray-100 hover:border-gray-200"
                       }`}
                     >
-                      <div className="flex items-center space-x-3.5">
-                        <span className={`w-9 h-9 rounded-xl flex items-center justify-center font-mono text-xs font-black transition-all ${
-                          isOpen ? "bg-[#315B4F] text-[#D6B16D] shadow-sm" : "bg-gray-50 text-gray-700"
-                        }`}>
-                          D{it.day}
-                        </span>
-                        <span className="font-display font-extrabold text-[#315B4F] text-xs sm:text-sm">
-                          {t("Day")} {it.day}: {t(it.title)}
-                        </span>
-                      </div>
-                      
-                      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 flex-shrink-0 ${isOpen ? "rotate-180 text-[#315B4F]" : ""}`} />
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleDay(it.day)}
+                        className={`w-full p-4 text-left flex items-center justify-between gap-4 transition-colors select-none ${
+                          isOpen ? "bg-[#315B4F]/5 text-[#315B4F]" : "bg-white"
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3.5">
+                          <span className={`w-9 h-9 rounded-xl flex items-center justify-center font-mono text-xs font-black transition-all ${
+                            isOpen ? "bg-[#315B4F] text-[#D6B16D] shadow-sm" : "bg-gray-50 text-gray-700"
+                          }`}>
+                            D{it.day}
+                          </span>
+                          <span className="font-display font-extrabold text-[#315B4F] text-xs sm:text-sm">
+                            {t("Day")} {it.day}: {t(it.title)}
+                          </span>
+                        </div>
+                        
+                        <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 flex-shrink-0 ${isOpen ? "rotate-180 text-[#315B4F]" : ""}`} />
+                      </button>
 
-                    {isOpen && (
-                      <div className="p-4 sm:p-5 bg-white border-t border-gray-50/80 text-xs sm:text-xs text-gray-650 leading-relaxed font-sans space-y-4 animate-fade-in">
-                        <p className="whitespace-pre-line text-[#334155] leading-relaxed select-text font-light">
-                          {t(it.description || (it as any).activity)}
-                        </p>
+                      {isOpen && (
+                        <div className="p-4 sm:p-5 bg-white border-t border-gray-50/80 text-xs sm:text-xs text-gray-650 leading-relaxed font-sans space-y-4 animate-fade-in">
+                          <p className="whitespace-pre-line text-[#334155] leading-relaxed select-text font-light">
+                            {t(it.description || (it as any).activity)}
+                          </p>
 
-                        {/* Scheduled time timelines */}
-                        {it.timeSchedules && it.timeSchedules.length > 0 && (
-                          <div className="space-y-2 border-t border-gray-100 pt-3">
-                            <span className="text-[9px] text-[#315B4F] font-mono font-bold uppercase tracking-wider block">
-                              📍 {t("Scheduled Activities Calendar")}
-                            </span>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              {it.timeSchedules.map((sched, sIdx) => (
-                                <div key={sIdx} className="flex items-start space-x-2 p-2 bg-slate-50/50 rounded-lg border border-slate-100">
-                                  <span className="inline-flex items-center justify-center bg-white text-[#315B4F] font-mono font-bold text-[9px] px-1.5 py-0.5 rounded border border-slate-200">
-                                    {sched.time}
-                                  </span>
-                                  <span className="text-[11px] text-gray-600 font-sans leading-tight">
-                                    {t(sched.activity)}
-                                  </span>
-                                </div>
-                              ))}
+                          {/* Scheduled time timelines */}
+                          {it.timeSchedules && it.timeSchedules.length > 0 && (
+                            <div className="space-y-2 border-t border-gray-100 pt-3">
+                              <span className="text-[9px] text-[#315B4F] font-mono font-bold uppercase tracking-wider block">
+                                📍 {t("Scheduled Activities Calendar")}
+                              </span>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {it.timeSchedules.map((sched, sIdx) => (
+                                  <div key={sIdx} className="flex items-start space-x-2 p-2 bg-slate-50/50 rounded-lg border border-slate-100">
+                                    <span className="inline-flex items-center justify-center bg-white text-[#315B4F] font-mono font-bold text-[9px] px-1.5 py-0.5 rounded border border-slate-200">
+                                      {sched.time}
+                                    </span>
+                                    <span className="text-[11px] text-gray-600 font-sans leading-tight">
+                                      {t(sched.activity)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="p-6 bg-gray-50 rounded-2xl border border-dashed border-gray-200 text-center text-xs text-gray-500 font-sans">
+                  Rincian jadwal dan rencana perjalanan harian sedang dipersiapkan oleh tim penyelenggara.
+                </div>
+              )}
             </div>
           </section>
 
@@ -418,14 +430,18 @@ export default function TripDetail({
                 <span>{t("Price Includes")}</span>
               </h2>
               <ul className="space-y-2 text-xs sm:text-xs text-gray-600 leading-relaxed">
-                {trip.included.map((inc, i) => (
-                  <li key={i} className="flex items-start space-x-2">
-                    <span className="bg-emerald-100 text-[#315B4F] p-0.5 rounded-full mt-0.5">
-                      <Check className="w-3 h-3" />
-                    </span>
-                    <span className="leading-relaxed">{t(inc)}</span>
-                  </li>
-                ))}
+                {included.length > 0 ? (
+                  included.map((inc, i) => (
+                    <li key={i} className="flex items-start space-x-2">
+                      <span className="bg-emerald-100 text-[#315B4F] p-0.5 rounded-full mt-0.5">
+                        <Check className="w-3 h-3" />
+                      </span>
+                      <span className="leading-relaxed">{t(inc)}</span>
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-gray-400 italic text-xs">Informasi fasilitas termasuk akan dikonfirmasi.</li>
+                )}
               </ul>
             </div>
 
@@ -436,20 +452,24 @@ export default function TripDetail({
                 <span>{t("Price Excludes")}</span>
               </h2>
               <ul className="space-y-2 text-xs sm:text-xs text-gray-600 leading-relaxed">
-                {trip.excluded.map((exc, i) => (
-                  <li key={i} className="flex items-start space-x-2">
-                    <span className="bg-rose-100 text-rose-800 p-0.5 rounded-full mt-0.5">
-                      <X className="w-3 h-3" />
-                    </span>
-                    <span className="leading-relaxed">{t(exc)}</span>
-                  </li>
-                ))}
+                {excluded.length > 0 ? (
+                  excluded.map((exc, i) => (
+                    <li key={i} className="flex items-start space-x-2">
+                      <span className="bg-rose-100 text-rose-800 p-0.5 rounded-full mt-0.5">
+                        <X className="w-3 h-3" />
+                      </span>
+                      <span className="leading-relaxed">{t(exc)}</span>
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-gray-400 italic text-xs">Tidak ada catatan fasilitas yang dikecualikan.</li>
+                )}
               </ul>
             </div>
           </section>
 
           {/* Whats to Bring Checklist Section */}
-          {trip.whatsToBring && trip.whatsToBring.length > 0 && (
+          {whatsToBring.length > 0 && (
             <section className="bg-blue-50/15 p-6 sm:p-7 rounded-3xl border border-blue-100/70 space-y-4 shadow-sm">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="space-y-0.5">
@@ -463,12 +483,12 @@ export default function TripDetail({
                 </div>
                 {/* Micro counting badge */}
                 <div className="bg-blue-100 text-blue-800 text-[10px] font-mono px-2.5 py-1 rounded-full font-bold">
-                  {Object.values(packedItems).filter(Boolean).length} / {trip.whatsToBring.length} {t("Packed")}
+                  {Object.values(packedItems).filter(Boolean).length} / {whatsToBring.length} {t("Packed")}
                 </div>
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
-                {trip.whatsToBring.map((item, idx) => {
+                {whatsToBring.map((item, idx) => {
                   const isChecked = !!packedItems[item];
                   return (
                     <button
@@ -499,7 +519,7 @@ export default function TripDetail({
           )}
 
           {/* FAQ Accordion Section */}
-          {trip.faq && trip.faq.length > 0 && (
+          {faqList.length > 0 && (
             <section className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-sm space-y-6">
               <h2 className="text-lg font-display font-bold text-gray-900 flex items-center space-x-2.5">
                 <HelpCircle className="w-5 h-5 text-[#315B4F]" />
@@ -507,7 +527,7 @@ export default function TripDetail({
               </h2>
 
               <div className="space-y-3">
-                {trip.faq.map((item, idx) => {
+                {faqList.map((item, idx) => {
                   const isFAQOpen = openFAQIndex === idx;
                   return (
                     <div 
@@ -980,7 +1000,7 @@ export default function TripDetail({
             {similarTrips.map((otherTrip) => (
               <div 
                 key={otherTrip.id}
-                onClick={() => onSelectTrip && onSelectTrip(otherTrip.slug)}
+                onClick={() => onSelectTrip && onSelectTrip(otherTrip)}
                 className="group bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md cursor-pointer transition-all duration-300 flex flex-col"
               >
                 <div className="relative h-44 overflow-hidden bg-gray-100">

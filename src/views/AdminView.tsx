@@ -163,7 +163,7 @@ export default function AdminView() {
       localStorage.setItem('sj_admin_active_module', activeModule);
     } catch (_) {}
   }, [activeModule]);
-  const [activeSubTab, setActiveSubTab] = useState<'dashboard' | 'management' | 'calendar' | 'blackout' | 'schedule' | 'booking' | 'customer' | 'payment' | 'finance' | 'reports' | 'settings' | 'master-data' | 'pricing-engine' | 'excel-import' | 'excel-export' | 'import-history'>('dashboard');
+  const [activeSubTab, setActiveSubTab] = useState<string>('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [reviewsFilter, setReviewsFilter] = useState<'all' | 'pending' | 'approved'>('all');
 
@@ -6502,6 +6502,13 @@ export default function AdminView() {
                     { id: 'payment', label: 'Status Pembayaran', icon: CreditCard },
                     { id: 'finance', label: 'Keuangan Ledger', icon: DollarSign },
                     { id: 'reports', label: 'Unduh Laporan', icon: FileText }
+                  ] : item.id === 'sharetour' ? [
+                    { id: 'catalog', label: 'Katalog & Paket', icon: Layers },
+                    { id: 'batches', label: 'Jadwal & Kuota Batch', icon: CalendarDays },
+                    { id: 'participants', label: 'Daftar Peserta', icon: Users },
+                    { id: 'verification', label: 'Audit & Verifikasi', icon: FileCheck, badge: shareTourBookings.filter(b => b.status === 'Pending').length },
+                    { id: 'analytics', label: 'Performa & Analitik', icon: BarChart3 },
+                    { id: 'excel-import', label: 'Impor Excel / CSV', icon: Upload }
                   ] : item.id === 'airport' ? [
                     { id: 'dashboard', label: 'Dashboard Overview', icon: LayoutDashboard },
                     { id: 'calendar', label: 'Booking Calendar', icon: CalendarDays },
@@ -6536,7 +6543,7 @@ export default function AdminView() {
                       <button
                         onClick={() => {
                           setActiveModule(item.id as any);
-                          setActiveSubTab('dashboard');
+                          setActiveSubTab(item.id === 'sharetour' ? 'catalog' : 'dashboard');
                           if (sidebarCollapsed) {
                             setSidebarCollapsed(false);
                           }
@@ -8254,7 +8261,7 @@ export default function AdminView() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="space-y-6"
+                className="space-y-6 text-left"
               >
                 {shareTourLoading && shareTourTrips.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-20 space-y-4">
@@ -8270,6 +8277,13 @@ export default function AdminView() {
                     onRefreshDB={loadShareTourData}
                     onLogout={handleLogout}
                     embedded={true}
+                    theme={theme}
+                    isDark={isDark}
+                    currency={currency}
+                    formatPrice={formatPrice}
+                    triggerToast={triggerToast}
+                    activeSubTab={activeSubTab}
+                    setActiveSubTab={setActiveSubTab}
                   />
                 )}
               </motion.div>
