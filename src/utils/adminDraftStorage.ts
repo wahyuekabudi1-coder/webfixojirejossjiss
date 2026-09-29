@@ -130,6 +130,12 @@ function getAdminAuthHeaders(): Record<string, string> {
     headers['Authorization'] = `Bearer ${token}`;
     headers['x-secret-key'] = token;
   }
+  if (typeof window !== 'undefined') {
+    const role = localStorage.getItem('smartjourney_active_role');
+    if (role) {
+      headers['X-Admin-Role'] = role;
+    }
+  }
   return headers;
 }
 

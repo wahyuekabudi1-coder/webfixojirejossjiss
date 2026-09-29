@@ -413,8 +413,15 @@ export default function BookingsView() {
         ) : (
           <div className="space-y-8">
             {localBookings.map((booking) => {
-              const isPaid = booking.paymentStatus === 'Paid';
-              const isPending = booking.paymentStatus === 'Pending';
+              const isPaid = (booking.paymentStatus || '').toLowerCase() === 'paid';
+              const isPending = (booking.paymentStatus || '').toLowerCase() === 'pending' || booking.status === 'Pending Payment' || booking.status === 'Pending Confirmation';
+              const isConfirmedOrCompleted = 
+                booking.status === 'Confirmed' || 
+                booking.status === 'Completed' || 
+                (booking as any).bookingStatus === 'Confirmed' || 
+                (booking as any).bookingStatus === 'Completed' ||
+                (booking.status || '').toLowerCase() === 'confirmed' ||
+                (booking.status || '').toLowerCase() === 'completed';
               
               return (
                 <div
@@ -514,8 +521,8 @@ export default function BookingsView() {
                         <span>Lacak Status &amp; Final Summary</span>
                       </button>
 
-                      {/* Download Confirmation / Invoice PDF: ONLY AVAILABLE WHEN CONFIRMED */}
-                      {booking.status === 'Confirmed' ? (
+                      {/* Download Confirmation / Invoice PDF: AVAILABLE WHEN CONFIRMED OR COMPLETED */}
+                      {isPaid && (booking.status === 'Confirmed' || booking.status === 'Completed' || (booking as any).bookingStatus === 'Confirmed' || (booking as any).bookingStatus === 'Completed') ? (
                         <a
                           id={`btn-download-pdf-${booking.bookingCode || booking.id}`}
                           href={`/api/private-tour/invoice-pdf/${encodeURIComponent(booking.bookingCode || booking.id)}`}

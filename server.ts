@@ -20,7 +20,10 @@ import { schedulesRepo } from './server/db/repositories/schedules.repository';
 import { reviewsRepo } from './server/db/repositories/reviews.repository';
 import { serviceLimitsRepo } from './server/db/repositories/serviceLimits.repository';
 import { sessionsRepo } from './server/db/repositories/sessions.repository';
+import { assignmentsRepo } from './server/db/repositories/assignments.repository';
+import { credentialsRepo } from './server/db/repositories/credentials.repository';
 import { sanitizeAndPersistImage, sanitizeAndPersistImages } from './server/utils/mediaStorage';
+import { CANONICAL_ROLES, type RolePermissions } from './src/utils/rbac';
 
 // Ensure any Google AI Studio container settings are loaded
 if (fs.existsSync('/app/.dev.env.json')) {
@@ -239,6 +242,55 @@ function isValidCalendarDate(dateStr: string): boolean {
 }
 
 // -------------------------------------------------------------
+// Helper: Extract & Normalize Date string (YYYY-MM-DD) from Booking Entity
+// -------------------------------------------------------------
+function extractBookingDate(b: any): string {
+  const raw = b.departureDate || b.details?.departureDate || b.details?.date || b.bookingDate || '';
+  if (!raw || typeof raw !== 'string') return '';
+  const trimmed = raw.trim();
+  const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (match) {
+    return match[1];
+  }
+  const parsed = new Date(trimmed);
+  if (!isNaN(parsed.getTime())) {
+    const yyyy = parsed.getFullYear();
+    const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+    const dd = String(parsed.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  return trimmed;
+}
+
+// -------------------------------------------------------------
+// Helper: Match Booking Entity to Service Type ('tour' | 'airport' | 'taxi' | 'rental')
+// Excludes shared open-trip batches which use independent batch seat quotas
+// -------------------------------------------------------------
+function matchesServiceType(b: any, targetService: 'tour' | 'airport' | 'taxi' | 'rental'): boolean {
+  const isShared = b.bookingType === 'shared' || b.tourBookingType === 'shared' || b.serviceType === 'shared' || Boolean(b.batchId);
+  if (isShared) {
+    return false;
+  }
+
+  const sType = String(b.serviceType || b.type || '').trim().toLowerCase();
+  const sName = String(b.serviceName || b.tripTitle || '').trim().toLowerCase();
+
+  if (targetService === 'rental') {
+    return sType === 'rental' || sType === 'car-rental' || sName.includes('rental') || Boolean(b.details?.vehicleId);
+  }
+  if (targetService === 'airport') {
+    return sType === 'airport' || sName.includes('airport transfer') || Boolean(b.details?.flightNumber || b.details?.airport);
+  }
+  if (targetService === 'taxi') {
+    return sType === 'taxi' || sName.includes('taxi');
+  }
+  if (targetService === 'tour') {
+    return (sType === 'tour' || sType === 'private-tour' || sName.includes('tour') || sName.includes('trip') || (!sType && !sName.includes('rental') && !sName.includes('airport') && !sName.includes('taxi'))) && !isShared;
+  }
+  return false;
+}
+
+// -------------------------------------------------------------
 // Security: Persistent Admin Session Store (Survives Server Restarts)
 // Authoritative single source of truth: sessionsRepo in Relational SQL Database
 // -------------------------------------------------------------
@@ -258,10 +310,10 @@ async function syncAdminSessionsFromDB(): Promise<void> {
   }
 }
 
-async function saveAdminSession(token: string): Promise<void> {
+async function saveAdminSession(token: string, role = 'Super Administrator', email = 'admin'): Promise<void> {
   activeAdminTokens.add(token);
   try {
-    await sessionsRepo.createSession(token, 'admin', 'superadmin', 24);
+    await sessionsRepo.createSession(token, email, role, 24);
   } catch (err) {
     console.error('Error saving admin session to SQL:', err);
   }
@@ -402,6 +454,134 @@ function requireAdminAuth(req: express.Request, res: express.Response, next: exp
   }
 
   return res.status(401).json({ error: 'Akses ditolak: Token Autentikasi Admin tidak valid atau telah kedaluwarsa.' });
+}
+
+// -------------------------------------------------------------
+// Security: Role-Based Access Control (RBAC) Permission Middleware
+// Authoritative backend permission enforcement based on canonical roles in src/utils/rbac.ts
+// -------------------------------------------------------------
+
+export type PermissionKey = keyof RolePermissions['permissions'];
+
+function normalizeRoleName(rawRole?: string | null): string {
+  if (!rawRole) return 'Super Administrator';
+  const trimmed = rawRole.trim().toLowerCase();
+
+  for (const r of CANONICAL_ROLES) {
+    if (r.role.toLowerCase() === trimmed) {
+      return r.role;
+    }
+  }
+
+  // Handle common aliases & slugs
+  if (['superadmin', 'super-admin', 'super_administrator', 'admin', 'administrator', 'central'].includes(trimmed)) {
+    return 'Super Administrator';
+  }
+  if (['operations', 'operations manager', 'operations-manager', 'operations_manager', 'ops', 'logistics'].includes(trimmed)) {
+    return 'Operations Manager';
+  }
+  if (['finance', 'finance officer', 'finance-officer', 'finance_officer', 'finance & tax', 'accounting'].includes(trimmed)) {
+    return 'Finance Officer';
+  }
+  if (['cs', 'customer-service', 'customer_service', 'customer service support', 'support', 'guest-relations'].includes(trimmed)) {
+    return 'Customer Service Support';
+  }
+  if (['marketing', 'marketing executive', 'marketing-executive', 'marketing_executive', 'growth', 'cms'].includes(trimmed)) {
+    return 'Marketing Executive';
+  }
+
+  return rawRole.trim();
+}
+
+async function resolveAdminRole(req: express.Request): Promise<{ role: string; permissions: RolePermissions['permissions']; isValid: boolean }> {
+  // 1. Explicit Header X-Admin-Role or X-Role (supports dynamic staff role switching in admin portal)
+  const headerRole = (req.headers['x-admin-role'] || req.headers['x-role']) as string | undefined;
+  if (headerRole && typeof headerRole === 'string' && headerRole.trim().length > 0) {
+    const normalized = normalizeRoleName(headerRole);
+    const matched = CANONICAL_ROLES.find(r => r.role.toLowerCase() === normalized.toLowerCase());
+    if (matched) {
+      return { role: matched.role, permissions: matched.permissions, isValid: true };
+    }
+    // Explicit role provided but unrecognized in CANONICAL_ROLES -> block access
+    return {
+      role: headerRole.trim(),
+      permissions: {
+        manageBookings: false,
+        manageTours: false,
+        manageFleet: false,
+        manageFinance: false,
+        manageSettings: false,
+        manageCMS: false
+      },
+      isValid: false
+    };
+  }
+
+  // 2. Persistent database session role
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : '';
+  if (token) {
+    try {
+      const session = await sessionsRepo.getSession(token);
+      if (session && session.role) {
+        const normalized = normalizeRoleName(session.role);
+        const matched = CANONICAL_ROLES.find(r => r.role.toLowerCase() === normalized.toLowerCase());
+        if (matched) {
+          return { role: matched.role, permissions: matched.permissions, isValid: true };
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching session role from SQL:', e);
+    }
+  }
+
+  // 3. Fallback to Super Administrator for valid administrative access (e.g. Master Secret Key or superadmin session)
+  return {
+    role: CANONICAL_ROLES[0].role,
+    permissions: CANONICAL_ROLES[0].permissions,
+    isValid: true
+  };
+}
+
+function requirePermission(requiredPermission: PermissionKey | PermissionKey[]) {
+  const permissionsList = Array.isArray(requiredPermission) ? requiredPermission : [requiredPermission];
+
+  return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    // 1. Authenticate admin first (returns HTTP 401 if unauthenticated)
+    if (!checkIsAdmin(req)) {
+      const authHeader = req.headers.authorization;
+      const secretKeyHeader = req.headers['x-secret-key'];
+      const hasCredential = Boolean((authHeader && authHeader.startsWith('Bearer ')) || secretKeyHeader);
+
+      if (!hasCredential) {
+        return res.status(401).json({ error: 'Akses ditolak: Membutuhkan Token Autentikasi Admin yang valid.' });
+      }
+      return res.status(401).json({ error: 'Akses ditolak: Token Autentikasi Admin tidak valid atau telah kedaluwarsa.' });
+    }
+
+    // 2. Resolve Role & Permissions
+    const roleInfo = await resolveAdminRole(req);
+    (req as any).adminRole = roleInfo.role;
+    (req as any).adminPermissions = roleInfo.permissions;
+
+    // Super Administrator always has full access to all endpoints
+    if (roleInfo.role === 'Super Administrator') {
+      return next();
+    }
+
+    // Check required permission (at least one permission from permissionsList must be granted)
+    const hasAccess = permissionsList.some(p => Boolean(roleInfo.permissions[p]));
+    if (!hasAccess) {
+      return res.status(403).json({
+        error: `Akses ditolak (HTTP 403 Forbidden): Peran "${roleInfo.role}" tidak memiliki izin [${permissionsList.join(' / ')}] untuk mengakses endpoint ini.`,
+        code: 'FORBIDDEN_INSUFFICIENT_ROLE',
+        role: roleInfo.role,
+        requiredPermission: permissionsList.length === 1 ? permissionsList[0] : permissionsList
+      });
+    }
+
+    next();
+  };
 }
 
 // -------------------------------------------------------------
@@ -592,7 +772,7 @@ app.get('/api/main-tours/:id', async (req, res) => {
 });
 
 // 3. Create new main tour
-app.post('/api/main-tours', requireAdminAuth, async (req, res) => {
+app.post('/api/main-tours', requireAdminAuth, requirePermission('manageTours'), async (req, res) => {
   try {
     const payload = req.body;
     if (!payload || !payload.name || !payload.name.trim()) {
@@ -628,7 +808,7 @@ app.post('/api/main-tours', requireAdminAuth, async (req, res) => {
 });
 
 // 4. Update existing main tour
-app.put('/api/main-tours/:id', requireAdminAuth, async (req, res) => {
+app.put('/api/main-tours/:id', requireAdminAuth, requirePermission('manageTours'), async (req, res) => {
   try {
     const payload = req.body;
     const tourId = req.params.id;
@@ -652,7 +832,7 @@ app.put('/api/main-tours/:id', requireAdminAuth, async (req, res) => {
 });
 
 // 5. Delete main tour with Soft Delete protection for historical bookings
-app.delete('/api/main-tours/:id', requireAdminAuth, async (req, res) => {
+app.delete('/api/main-tours/:id', requireAdminAuth, requirePermission('manageTours'), async (req, res) => {
   try {
     const tourId = req.params.id;
     const result = await toursRepo.delete(tourId);
@@ -710,7 +890,7 @@ app.get('/api/rentals', async (req, res) => {
   }
 });
 
-app.post('/api/rentals/sync', requireAdminAuth, async (req, res) => {
+app.post('/api/rentals/sync', requireAdminAuth, requirePermission('manageFleet'), async (req, res) => {
   try {
     const payload = req.body;
     if (!payload || typeof payload !== 'object') {
@@ -768,7 +948,7 @@ app.get('/api/airport-routes', async (req, res) => {
   }
 });
 
-app.post('/api/airport-transfers/sync', requireAdminAuth, async (req, res) => {
+app.post('/api/airport-transfers/sync', requireAdminAuth, requirePermission('manageFleet'), async (req, res) => {
   try {
     const { airports, routes } = req.body;
     const current = (await transportRepo.getCategoryData<any>('airportTransfers')) || {};
@@ -818,7 +998,7 @@ app.get(['/api/taxi/all', '/api/taxi'], async (req, res) => {
   }
 });
 
-app.post('/api/taxi/sync', requireAdminAuth, async (req, res) => {
+app.post('/api/taxi/sync', requireAdminAuth, requirePermission('manageFleet'), async (req, res) => {
   try {
     const payload = req.body;
     const current = (await transportRepo.getCategoryData<any>('taxiServices')) || {};
@@ -837,7 +1017,7 @@ app.post('/api/taxi/sync', requireAdminAuth, async (req, res) => {
   }
 });
 
-app.post('/api/taxi/import-excel', requireAdminAuth, async (req, res) => {
+app.post('/api/taxi/import-excel', requireAdminAuth, requirePermission('manageFleet'), async (req, res) => {
   try {
     const { importedRules, historyEntry, masterAreas, destinations } = req.body;
     const taxi = (await transportRepo.getCategoryData<any>('taxiServices')) || {
@@ -887,7 +1067,7 @@ app.get('/api/schedules', async (req, res) => {
   }
 });
 
-app.post('/api/schedules', requireAdminAuth, async (req, res) => {
+app.post('/api/schedules', requireAdminAuth, requirePermission('manageTours'), async (req, res) => {
   try {
     const item = req.body;
     if (!item || !item.date) {
@@ -900,12 +1080,81 @@ app.post('/api/schedules', requireAdminAuth, async (req, res) => {
   }
 });
 
-app.delete('/api/schedules/:id', requireAdminAuth, async (req, res) => {
+app.delete('/api/schedules/:id', requireAdminAuth, requirePermission('manageTours'), async (req, res) => {
   try {
     await schedulesRepo.delete(req.params.id);
     res.json({ success: true, id: req.params.id });
   } catch (error) {
     res.status(500).json({ error: 'Gagal menghapus entri jadwal.' });
+  }
+});
+
+// -------------------------------------------------------------
+// OPERATIONS ASSIGNMENTS & RESOURCES REST API (Server Persistent SQL DB)
+// Authoritative single source of truth for Fleet, Drivers, Guides & Allocations
+// -------------------------------------------------------------
+app.get('/api/operations/assignments', requireAdminAuth, requirePermission(['manageBookings', 'manageFleet']), async (req, res) => {
+  try {
+    const assignments = await assignmentsRepo.getAll();
+    res.json({ success: true, assignments });
+  } catch (error) {
+    console.error('Error fetching operational assignments:', error);
+    res.status(500).json({ error: 'Gagal mengambil penugasan operasional dari database server.' });
+  }
+});
+
+app.post('/api/operations/assignments', requireAdminAuth, requirePermission(['manageBookings', 'manageFleet']), async (req, res) => {
+  try {
+    const payload = req.body;
+    if (!payload || (!payload.bookingCode && !payload.bookingId)) {
+      return res.status(400).json({ error: 'Kode booking wajib disertakan untuk penugasan operasional.' });
+    }
+    const saved = await assignmentsRepo.save(payload);
+    console.log(`[SQL Operations] Assignment persisted for booking #${saved.bookingCode} (Driver: ${saved.driverName}, Vehicle: ${saved.vehicleName})`);
+    res.json({ success: true, assignment: saved });
+  } catch (error) {
+    console.error('Error saving operational assignment:', error);
+    res.status(500).json({ error: 'Gagal menyimpan penugasan operasional ke database server.' });
+  }
+});
+
+app.delete('/api/operations/assignments/:key', requireAdminAuth, requirePermission(['manageBookings', 'manageFleet']), async (req, res) => {
+  try {
+    const key = req.params.key;
+    if (!key) {
+      return res.status(400).json({ error: 'Key penugasan tidak valid.' });
+    }
+    const deleted = await assignmentsRepo.delete(key);
+    console.log(`[SQL Operations] Assignment deleted for key ${key} (success: ${deleted})`);
+    res.json({ success: true, deleted, key });
+  } catch (error) {
+    console.error('Error deleting operational assignment:', error);
+    res.status(500).json({ error: 'Gagal menghapus penugasan operasional dari database server.' });
+  }
+});
+
+app.get('/api/operations/resources', requireAdminAuth, requirePermission(['manageBookings', 'manageFleet']), async (req, res) => {
+  try {
+    const resources = await assignmentsRepo.getResources();
+    res.json({ success: true, ...resources });
+  } catch (error) {
+    console.error('Error fetching operational resources:', error);
+    res.status(500).json({ error: 'Gagal mengambil data armada, driver, dan pemandu dari database server.' });
+  }
+});
+
+app.post('/api/operations/resources', requireAdminAuth, requirePermission(['manageBookings', 'manageFleet']), async (req, res) => {
+  try {
+    const payload = req.body;
+    if (!payload || typeof payload !== 'object') {
+      return res.status(400).json({ error: 'Format data resources tidak valid.' });
+    }
+    await assignmentsRepo.saveResources(payload);
+    const updated = await assignmentsRepo.getResources();
+    res.json({ success: true, ...updated });
+  } catch (error) {
+    console.error('Error saving operational resources:', error);
+    res.status(500).json({ error: 'Gagal menyimpan data armada, driver, dan pemandu ke database server.' });
   }
 });
 
@@ -962,7 +1211,7 @@ app.post('/api/reviews', loginLimiter, async (req, res) => {
   }
 });
 
-app.patch('/api/reviews/:id/status', requireAdminAuth, async (req, res) => {
+app.patch('/api/reviews/:id/status', requireAdminAuth, requirePermission('manageCMS'), async (req, res) => {
   try {
     const { status } = req.body;
     const updated = await reviewsRepo.updateStatus(req.params.id, status);
@@ -984,7 +1233,7 @@ app.get('/api/service-limits', async (req, res) => {
   }
 });
 
-app.post('/api/service-limits', requireAdminAuth, async (req, res) => {
+app.post('/api/service-limits', requireAdminAuth, requirePermission('manageSettings'), async (req, res) => {
   try {
     const saved = await serviceLimitsRepo.saveLimits(req.body);
     res.json({ success: true, serviceLimits: saved });
@@ -998,7 +1247,7 @@ app.post('/api/service-limits', requireAdminAuth, async (req, res) => {
 // Authoritative single source of truth: admin_drafts table in SQL
 // -------------------------------------------------------------
 
-app.get('/api/admin/drafts', requireAdminAuth, async (req, res) => {
+app.get('/api/admin/drafts', requireAdminAuth, requirePermission(['manageTours', 'manageFleet']), async (req, res) => {
   try {
     const key = req.query.key as string;
     if (key) {
@@ -1012,7 +1261,7 @@ app.get('/api/admin/drafts', requireAdminAuth, async (req, res) => {
   }
 });
 
-app.post('/api/admin/drafts', requireAdminAuth, async (req, res) => {
+app.post('/api/admin/drafts', requireAdminAuth, requirePermission(['manageTours', 'manageFleet']), async (req, res) => {
   try {
     const draft = req.body;
     if (!draft || !draft.key) {
@@ -1026,7 +1275,7 @@ app.post('/api/admin/drafts', requireAdminAuth, async (req, res) => {
   }
 });
 
-app.delete('/api/admin/drafts/:key', requireAdminAuth, async (req, res) => {
+app.delete('/api/admin/drafts/:key', requireAdminAuth, requirePermission(['manageTours', 'manageFleet']), async (req, res) => {
   try {
     await draftsRepo.delete(req.params.key);
     res.json({ success: true, key: req.params.key });
@@ -1040,7 +1289,7 @@ app.delete('/api/admin/drafts/:key', requireAdminAuth, async (req, res) => {
 // Builder Custom Taxi Routes & Airport Transfers API
 // -------------------------------------------------------------
 
-app.get('/api/builder/taxi-routes', requireAdminAuth, async (req, res) => {
+app.get('/api/builder/taxi-routes', requireAdminAuth, requirePermission('manageFleet'), async (req, res) => {
   try {
     const routes = await transportRepo.getTaxiRoutes();
     res.json(routes);
@@ -1049,7 +1298,7 @@ app.get('/api/builder/taxi-routes', requireAdminAuth, async (req, res) => {
   }
 });
 
-app.post('/api/builder/taxi-routes/sync', requireAdminAuth, async (req, res) => {
+app.post('/api/builder/taxi-routes/sync', requireAdminAuth, requirePermission('manageFleet'), async (req, res) => {
   try {
     const { routes } = req.body;
     await transportRepo.saveTaxiRoutes(Array.isArray(routes) ? routes : []);
@@ -1060,7 +1309,7 @@ app.post('/api/builder/taxi-routes/sync', requireAdminAuth, async (req, res) => 
   }
 });
 
-app.get('/api/builder/airport-transfers', requireAdminAuth, async (req, res) => {
+app.get('/api/builder/airport-transfers', requireAdminAuth, requirePermission('manageFleet'), async (req, res) => {
   try {
     const transfers = await transportRepo.getAirportTransfers();
     res.json(transfers);
@@ -1069,7 +1318,7 @@ app.get('/api/builder/airport-transfers', requireAdminAuth, async (req, res) => 
   }
 });
 
-app.post('/api/builder/airport-transfers/sync', requireAdminAuth, async (req, res) => {
+app.post('/api/builder/airport-transfers/sync', requireAdminAuth, requirePermission('manageFleet'), async (req, res) => {
   try {
     const { transfers } = req.body;
     await transportRepo.saveAirportTransfers(Array.isArray(transfers) ? transfers : []);
@@ -1166,7 +1415,7 @@ app.get('/api/trips/:id', async (req, res) => {
   }
 });
 
-app.post('/api/import-bulk', requireAdminAuth, async (req, res) => {
+app.post('/api/import-bulk', requireAdminAuth, requirePermission('manageTours'), async (req, res) => {
   try {
     const { trips: newTrips, batches: newBatches, mode } = req.body;
 
@@ -1221,7 +1470,7 @@ app.post('/api/import-bulk', requireAdminAuth, async (req, res) => {
   }
 });
 
-app.post('/api/trips', requireAdminAuth, async (req, res) => {
+app.post('/api/trips', requireAdminAuth, requirePermission('manageTours'), async (req, res) => {
   try {
     const payload = req.body;
     if (payload.image) {
@@ -1242,7 +1491,7 @@ app.post('/api/trips', requireAdminAuth, async (req, res) => {
   }
 });
 
-app.put('/api/trips/:id', requireAdminAuth, async (req, res) => {
+app.put('/api/trips/:id', requireAdminAuth, requirePermission('manageTours'), async (req, res) => {
   try {
     const payload = req.body;
     if (payload.image) {
@@ -1266,7 +1515,7 @@ app.put('/api/trips/:id', requireAdminAuth, async (req, res) => {
   }
 });
 
-app.delete('/api/trips/:id', requireAdminAuth, async (req, res) => {
+app.delete('/api/trips/:id', requireAdminAuth, requirePermission('manageTours'), async (req, res) => {
   try {
     const result = await shareToursRepo.deleteTrip(req.params.id);
     if (!result.success) {
@@ -1320,7 +1569,7 @@ app.get('/api/batches/:id', async (req, res) => {
   }
 });
 
-app.post('/api/batches', requireAdminAuth, async (req, res) => {
+app.post('/api/batches', requireAdminAuth, requirePermission('manageTours'), async (req, res) => {
   try {
     const created = await shareToursRepo.createBatch(req.body);
     console.log(`[Persistence Verified] Batch saved in SQL database: ${created.id}`);
@@ -1331,7 +1580,7 @@ app.post('/api/batches', requireAdminAuth, async (req, res) => {
   }
 });
 
-app.put('/api/batches/:id', requireAdminAuth, async (req, res) => {
+app.put('/api/batches/:id', requireAdminAuth, requirePermission('manageTours'), async (req, res) => {
   try {
     const updated = await shareToursRepo.updateBatch(req.params.id, req.body);
     if (!updated) {
@@ -1345,7 +1594,7 @@ app.put('/api/batches/:id', requireAdminAuth, async (req, res) => {
   }
 });
 
-app.delete('/api/batches/:id', requireAdminAuth, async (req, res) => {
+app.delete('/api/batches/:id', requireAdminAuth, requirePermission('manageTours'), async (req, res) => {
   try {
     const deleted = await shareToursRepo.deleteBatch(req.params.id);
     if (!deleted) {
@@ -1509,7 +1758,21 @@ app.post('/api/bookings', async (req, res) => {
         // -------------------------------------------------------------
         // NON-SHARED BOOKING FLOW: DETECT SERVICE TYPE & VALIDATE
         // -------------------------------------------------------------
-        let selectedDate = String(payload.departureDate || payload.details?.date || '').trim();
+        let selectedDate = String(
+          payload.departureDate || 
+          payload.date || 
+          payload.bookingDate || 
+          payload.details?.departureDate || 
+          payload.details?.date || 
+          ''
+        ).trim();
+
+        if (selectedDate) {
+          const dateMatch = selectedDate.match(/^(\d{4}-\d{2}-\d{2})/);
+          if (dateMatch) {
+            selectedDate = dateMatch[1];
+          }
+        }
 
         // Validate date if provided: Must be valid calendar date, not in the past, and not a blackout date
         if (selectedDate) {
@@ -1858,6 +2121,50 @@ app.post('/api/bookings', async (req, res) => {
           }
         }
 
+        // -------------------------------------------------------------
+        // Authoritative Server-Side Service Limit Validation (CRITICAL-02)
+        // Checks operational capacity limits for tour, airport, taxi, and rental.
+        // Rejects with HTTP 409 if active bookings for this service on operationalDate have reached the limit.
+        // -------------------------------------------------------------
+        const operationalDate = selectedDate || (() => {
+          const now = new Date();
+          return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        })();
+
+        const currentLimits = await serviceLimitsRepo.getLimits();
+        const defaultLimits: Record<string, number> = {
+          tour: 8,
+          airport: 6,
+          taxi: 7,
+          rental: 9
+        };
+        const serviceLimit = Number(currentLimits[detectedServiceType] ?? defaultLimits[detectedServiceType] ?? 5);
+
+        const allExistingBookings = await bookingsRepo.getAll();
+        const activeBookingsCount = allExistingBookings.filter(b => {
+          const bStatus = String(b.status || '').trim().toLowerCase();
+          // Exclude cancelled / rejected bookings from capacity consumption
+          if (bStatus === 'cancelled' || bStatus === 'canceled' || bStatus === 'rejected') {
+            return false;
+          }
+          if (!matchesServiceType(b, detectedServiceType)) {
+            return false;
+          }
+          const bDate = extractBookingDate(b);
+          return bDate === operationalDate;
+        }).length;
+
+        if (activeBookingsCount >= serviceLimit) {
+          return res.status(409).json({
+            error: `Batas kuota pemesanan harian untuk layanan ${detectedServiceType.toUpperCase()} pada tanggal ${operationalDate} telah penuh (Kapasitas: ${serviceLimit} slot, terisi: ${activeBookingsCount} booking aktif). Silakan pilih tanggal atau layanan lain.`,
+            code: 'SERVICE_LIMIT_EXCEEDED',
+            serviceType: detectedServiceType,
+            date: operationalDate,
+            limit: serviceLimit,
+            activeCount: activeBookingsCount
+          });
+        }
+
         // Authoritative uniqueCode and paymentAmount from SQL
         const uniqueCode = await generateUniquePaymentCodeAsync();
         if (uniqueCode === -1) {
@@ -1923,7 +2230,7 @@ app.post('/api/bookings', async (req, res) => {
   });
 });
 
-app.get('/api/bookings', requireAdminAuth, async (req, res) => {
+app.get('/api/bookings', requireAdminAuth, requirePermission('manageBookings'), async (req, res) => {
   try {
     const list = await bookingsRepo.getAll();
     res.json(list);
@@ -1933,7 +2240,7 @@ app.get('/api/bookings', requireAdminAuth, async (req, res) => {
   }
 });
 
-app.get('/api/bookings/:id', requireAdminAuth, async (req, res) => {
+app.get('/api/bookings/:id', requireAdminAuth, requirePermission('manageBookings'), async (req, res) => {
   try {
     const id = req.params.id;
     const booking = await bookingsRepo.getByCode(id);
@@ -1947,7 +2254,7 @@ app.get('/api/bookings/:id', requireAdminAuth, async (req, res) => {
   }
 });
 
-app.put('/api/bookings/:id', requireAdminAuth, async (req, res) => {
+app.put('/api/bookings/:id', requireAdminAuth, requirePermission('manageBookings'), async (req, res) => {
   try {
     const targetId = req.params.id;
     const originalBooking = await bookingsRepo.getByCode(targetId);
@@ -1994,7 +2301,7 @@ app.put('/api/bookings/:id', requireAdminAuth, async (req, res) => {
 });
 
 // Explicit Admin Status Transition Endpoint (PATCH & PUT /api/bookings/:id/status)
-app.all(['/api/bookings/:id/status'], requireAdminAuth, async (req, res) => {
+app.all(['/api/bookings/:id/status'], requireAdminAuth, requirePermission('manageBookings'), async (req, res) => {
   if (req.method !== 'PATCH' && req.method !== 'PUT' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -3055,7 +3362,7 @@ app.get('/api/private-tour/invoice-html/:bookingCode', async (req, res) => {
 });
 
 // Admin-only Confirmation endpoint for Private Tour
-app.post('/api/private-tour/bookings/:id/confirm', requireAdminAuth, async (req, res) => {
+app.post('/api/private-tour/bookings/:id/confirm', requireAdminAuth, requirePermission('manageBookings'), async (req, res) => {
   try {
     const targetId = req.params.id;
     const currentBooking = await bookingsRepo.getByCode(targetId);
@@ -3093,7 +3400,7 @@ app.post('/api/private-tour/bookings/:id/confirm', requireAdminAuth, async (req,
   }
 });
 
-app.post('/api/bookings/purge', requireAdminAuth, async (req, res) => {
+app.post('/api/bookings/purge', requireAdminAuth, requirePermission('manageSettings'), async (req, res) => {
   try {
     await bookingsRepo.clearAll();
     await shareToursRepo.resetAllBatchQuotas();
@@ -3105,9 +3412,8 @@ app.post('/api/bookings/purge', requireAdminAuth, async (req, res) => {
 });
 
 const handleAdminLogin = async (req: express.Request, res: express.Response) => {
-  const { email, password, secretKey } = req.body || {};
+  const { email, password, secretKey, role } = req.body || {};
   const configuredEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
-  const configuredPassword = (process.env.ADMIN_PASSWORD || (process.env.NODE_ENV !== 'production' ? 'admin123' : '')).trim();
   const configuredSecret = (process.env.ADMIN_SECRET_KEY || '').trim();
 
   const inputPassword = String(password || '').trim();
@@ -3119,17 +3425,13 @@ const handleAdminLogin = async (req: express.Request, res: express.Response) => 
     return res.status(401).json({ error: 'Kredensial login tidak valid. Silakan coba lagi.' });
   }
 
-  // 1. Direct Secret Key validation (via secretKey or password field)
+  // 1. Direct Secret Key validation (only if explicit secretKey provided)
   const isSecretValid = Boolean(
-    configuredSecret.length > 0 &&
-    (inputSecret === configuredSecret || inputPassword === configuredSecret)
+    configuredSecret.length > 0 && inputSecret.length > 0 && inputSecret === configuredSecret
   );
 
-  // 2. Configured Password validation
-  const isPasswordMatch = Boolean(
-    configuredPassword.length > 0 &&
-    inputPassword === configuredPassword
-  );
+  // 2. Authoritative Password validation via credentialsRepo (checks SQL system_meta first, env fallback)
+  const isPasswordMatch = await credentialsRepo.verifyPassword(inputPassword);
 
   // Email validation: if ADMIN_EMAIL is configured in environment, check it.
   // If not configured, allow matching against common admin conventions or password-only unlock.
@@ -3142,13 +3444,36 @@ const handleAdminLogin = async (req: express.Request, res: express.Response) => 
   if (isCredentialValid) {
     // Generate secure random session token
     const sessionToken = crypto.randomBytes(32).toString('hex');
-    await saveAdminSession(sessionToken);
+    const assignedRole = role ? normalizeRoleName(role) : 'Super Administrator';
+    await saveAdminSession(sessionToken, assignedRole, cleanInputEmail || 'admin');
 
-    console.log('[Auth] Admin logged in successfully, session saved to persistent storage.');
-    return res.json({ token: sessionToken, success: true });
+    console.log(`[Auth] Admin logged in successfully with role "${assignedRole}", session saved to persistent storage.`);
+    return res.json({ token: sessionToken, success: true, role: assignedRole });
   }
 
   return res.status(401).json({ error: 'Kredensial login tidak valid. Silakan coba lagi.' });
+};
+
+const handleAdminChangePassword = async (req: express.Request, res: express.Response) => {
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body || {};
+
+    const result = await credentialsRepo.changePassword(
+      currentPassword,
+      newPassword,
+      confirmPassword
+    );
+
+    if (!result.success) {
+      return res.status(result.httpStatus).json({ error: result.message });
+    }
+
+    console.log('[Auth] Admin password changed successfully and persisted to database.');
+    return res.json({ success: true, message: result.message });
+  } catch (err: any) {
+    console.error('Error changing admin password in database:', err);
+    return res.status(500).json({ error: 'Gagal memperbarui kata sandi pada database server.' });
+  }
 };
 
 const handleAdminLogout = async (req: express.Request, res: express.Response) => {
@@ -3165,14 +3490,22 @@ const handleAdminLogout = async (req: express.Request, res: express.Response) =>
   return res.json({ success: true, message: 'Admin session terminated' });
 };
 
-app.get(['/api/auth/verify', '/api/admin/verify'], requireAdminAuth, (req, res) => {
-  return res.json({ success: true, valid: true, authenticated: true });
+app.get(['/api/auth/verify', '/api/admin/verify'], requireAdminAuth, async (req, res) => {
+  const roleInfo = await resolveAdminRole(req);
+  return res.json({
+    success: true,
+    valid: true,
+    authenticated: true,
+    role: roleInfo.role,
+    permissions: roleInfo.permissions
+  });
 });
 
 app.post('/api/auth/login', loginLimiter, handleAdminLogin);
 app.post('/api/admin/login', loginLimiter, handleAdminLogin);
 app.post('/api/auth/logout', handleAdminLogout);
 app.post('/api/admin/logout', handleAdminLogout);
+app.post(['/api/auth/change-password', '/api/admin/change-password'], requireAdminAuth, handleAdminChangePassword);
 
 // -------------------------------------------------------------
 // First-Party Analytics Engine & Secure Endpoints
@@ -3315,7 +3648,7 @@ app.post('/api/analytics/collect', express.json({ limit: '256kb' }), (req, res) 
 });
 
 // Admin-only Analytics Dashboard Endpoint
-app.get('/api/analytics/dashboard', requireAdminAuth, async (req, res) => {
+app.get('/api/analytics/dashboard', requireAdminAuth, requirePermission('manageFinance'), async (req, res) => {
   try {
     const range = String(req.query.range || '7d');
     const startDateQuery = req.query.startDate as string;
@@ -3626,7 +3959,7 @@ app.get('/api/analytics/dashboard', requireAdminAuth, async (req, res) => {
 });
 
 // Admin-only Realtime Feed Endpoint
-app.get('/api/analytics/realtime', requireAdminAuth, (req, res) => {
+app.get('/api/analytics/realtime', requireAdminAuth, requirePermission('manageFinance'), (req, res) => {
   try {
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     const recent = inMemoryAnalytics.filter(e => new Date(e.timestamp) >= fiveMinutesAgo);

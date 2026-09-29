@@ -238,7 +238,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
   // Step 1: Pending Payment (Default / Initial)
   // Step 2: Payment Paid
   // Step 3: Pending Confirmation (Verification by Central Admin)
-  // Step 4: Confirmed (Admin confirmed - Final Summary unlocked)
+  // Step 4: Confirmed / Completed (Admin confirmed / Trip completed - Final Summary unlocked)
   const getStepProgress = (): 1 | 2 | 3 | 4 => {
     if (!booking) return 1;
 
@@ -258,6 +258,23 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
   };
 
   const currentStep = getStepProgress();
+  const isPaid = (booking?.paymentStatus || '').toLowerCase() === 'paid';
+  const isStatusConfirmedOrCompleted = Boolean(
+    booking && (
+      booking.bookingStatus === 'Confirmed' ||
+      booking.bookingStatus === 'Completed' ||
+      (booking as any).status === 'Confirmed' ||
+      (booking as any).status === 'Completed' ||
+      (booking.bookingStatus || '').toLowerCase() === 'confirmed' ||
+      (booking.bookingStatus || '').toLowerCase() === 'completed' ||
+      ((booking as any).status || '').toLowerCase() === 'confirmed' ||
+      ((booking as any).status || '').toLowerCase() === 'completed'
+    )
+  );
+  // Authoritative gate: PDF and Final Summary can be downloaded if and only if Paid AND Confirmed/Completed
+  const canDownload = Boolean(
+    booking && isPaid && isStatusConfirmedOrCompleted
+  );
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 py-8" id="private-tour-check-booking-section">
@@ -474,8 +491,12 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                         {currentStep >= 4 ? <CheckCircle2 className="h-4 w-4" /> : '4'}
                       </div>
                       <div>
-                        <span className="text-xs font-bold block">Confirmed</span>
-                        <span className="text-[11px] text-neutral-500">Pemesanan Dikonfirmasi</span>
+                        <span className="text-xs font-bold block">
+                          {booking?.bookingStatus === 'Completed' || (booking as any)?.status === 'Completed' ? 'Completed' : 'Confirmed'}
+                        </span>
+                        <span className="text-[11px] text-neutral-500">
+                          {booking?.bookingStatus === 'Completed' || (booking as any)?.status === 'Completed' ? 'Trip Selesai Dilaksanakan' : 'Pemesanan Dikonfirmasi'}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -489,9 +510,13 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                   <div className="bg-emerald-50 text-emerald-900 border-emerald-200 p-3 rounded-lg flex items-start gap-3">
                     <ShieldCheck className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold block">Booking Confirmed</span>
+                      <span className="font-bold block">
+                        {booking?.bookingStatus === 'Completed' || (booking as any)?.status === 'Completed' ? 'Trip Selesai (Completed)' : 'Booking Confirmed'}
+                      </span>
                       <p className="mt-0.5 text-emerald-800">
-                        Admin Pusat Smart Journey telah mengonfirmasi pemesanan Anda. Seluruh jadwal perjalanan dan kendaraan siap. Silakan unduh Final Booking Confirmation di bawah.
+                        {booking?.bookingStatus === 'Completed' || (booking as any)?.status === 'Completed'
+                          ? 'Perjalanan wisata Anda telah selesai dilaksanakan dengan sukses. Anda tetap dapat mengunduh dokumen resmi invoice / konfirmasi pemesanan di bawah sebagai arsip perjalanan.'
+                          : 'Admin Pusat Smart Journey telah mengonfirmasi pemesanan Anda. Seluruh jadwal perjalanan dan kendaraan siap. Silakan unduh Final Booking Confirmation di bawah.'}
                       </p>
                     </div>
                   </div>
@@ -504,7 +529,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                         Pembayaran Anda sebesar <strong>Rp {(booking.paymentAmount || 0).toLocaleString('id-ID')}</strong> telah berhasil diterima via ArtoPay Gateway. Tim operasional Smart Journey sedang memverifikasi alokasi armada dan pemandu wisata khusus Private Tour Anda.
                       </p>
                       <p className="mt-1 text-[11px] text-amber-700 italic">
-                        * Catatan: Dokumen Final Booking Confirmation hanya akan aktif setelah status resmi berubah menjadi <strong>Confirmed</strong> oleh Admin Pusat.
+                        * Catatan: Dokumen Final Booking Confirmation hanya akan aktif setelah status resmi berubah menjadi <strong>Confirmed</strong> atau <strong>Completed</strong> oleh Admin Pusat.
                       </p>
                     </div>
                   </div>
@@ -616,19 +641,19 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                   <button
                     id="btn-download-invoice-pdf"
                     onClick={handleDownloadPdf}
-                    disabled={!booking.canDownloadFinalSummary && booking.bookingStatus !== 'Confirmed'}
+                    disabled={!canDownload}
                     className={`w-full py-2.5 px-3 font-bold text-xs sm:text-sm rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 ${
-                      booking.canDownloadFinalSummary || booking.bookingStatus === 'Confirmed'
+                      canDownload
                         ? 'bg-emerald-700 hover:bg-emerald-800 text-white cursor-pointer'
                         : 'bg-neutral-100 text-neutral-400 border border-neutral-200 cursor-not-allowed'
                     }`}
                     title={
-                      booking.canDownloadFinalSummary || booking.bookingStatus === 'Confirmed'
+                      canDownload
                         ? 'Unduh dokumen resmi PDF konfirmasi pemesanan'
-                        : 'Dokumen hanya dapat diunduh setelah pemesanan dikonfirmasi oleh Admin'
+                        : 'Dokumen hanya dapat diunduh setelah pemesanan berstatus Confirmed atau Completed oleh Admin'
                     }
                   >
-                    {booking.canDownloadFinalSummary || booking.bookingStatus === 'Confirmed' ? (
+                    {canDownload ? (
                       <>
                         <Download className="h-4 w-4" />
                         <span>Download Invoice (PDF)</span>
@@ -643,16 +668,16 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                   <button
                     id="btn-view-invoice-modal"
                     onClick={handleOpenSummaryModal}
-                    disabled={(!booking.canDownloadFinalSummary && booking.bookingStatus !== 'Confirmed') || loadingSummary}
+                    disabled={!canDownload || loadingSummary}
                     className={`w-full py-2.5 px-3 font-bold text-xs sm:text-sm rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 ${
-                      booking.canDownloadFinalSummary || booking.bookingStatus === 'Confirmed'
+                      canDownload
                         ? 'bg-neutral-900 hover:bg-neutral-800 text-white cursor-pointer'
                         : 'bg-neutral-100 text-neutral-400 border border-neutral-200 cursor-not-allowed'
                     }`}
                     title={
-                      booking.canDownloadFinalSummary || booking.bookingStatus === 'Confirmed'
+                      canDownload
                         ? 'Pratinjau dokumen konfirmasi & invoice'
-                        : 'Pratinjau invoice hanya aktif setelah pemesanan dikonfirmasi oleh Admin'
+                        : 'Pratinjau invoice hanya aktif setelah pemesanan berstatus Confirmed atau Completed oleh Admin'
                     }
                   >
                     {loadingSummary ? (
@@ -660,7 +685,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                         <RefreshCw className="h-4 w-4 animate-spin" />
                         <span>Memuat...</span>
                       </>
-                    ) : booking.canDownloadFinalSummary || booking.bookingStatus === 'Confirmed' ? (
+                    ) : canDownload ? (
                       <>
                         <FileText className="h-4 w-4" />
                         <span>Lihat Invoice</span>
@@ -718,8 +743,10 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                 )}
 
                 <span className="text-[10px] text-neutral-500 text-center block font-medium">
-                  {booking.bookingStatus === 'Confirmed' || booking.canDownloadFinalSummary
-                    ? '✓ Pemesanan terkonfirmasi! Dokumen resmi & invoice siap diunduh dan dicetak.'
+                  {canDownload
+                    ? (booking.bookingStatus === 'Completed' || (booking as any).status === 'Completed'
+                        ? '✓ Perjalanan selesai! Dokumen arsip resmi & invoice siap diunduh dan dicetak.'
+                        : '✓ Pemesanan terkonfirmasi! Dokumen resmi & invoice siap diunduh dan dicetak.')
                     : booking.paymentStatus === 'Paid'
                     ? '⏳ Pembayaran lunas diterima. Dokumen invoice & konfirmasi akan aktif setelah disetujui Admin Pusat.'
                     : '🔒 Dokumen invoice resmi akan aktif setelah pembayaran diselesaikan dan dikonfirmasi Admin.'}

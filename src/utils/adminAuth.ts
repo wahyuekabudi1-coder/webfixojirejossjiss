@@ -39,6 +39,12 @@ export function getAdminHeaders(): Record<string, string> {
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
+  if (typeof window !== 'undefined') {
+    const role = localStorage.getItem('smartjourney_active_role');
+    if (role) {
+      headers['X-Admin-Role'] = role;
+    }
+  }
   return headers;
 }
 
@@ -79,7 +85,8 @@ export async function verifyAdminSession(): Promise<boolean> {
 
 /**
  * Consistent response handler for all Admin CRUD operations.
- * - On 401 / 403: clears stale session and throws 'Session admin telah berakhir. Silakan login kembali.'
+ * - On 401: clears stale session and throws 'Session admin telah berakhir. Silakan login kembali.'
+ * - On 403: throws HTTP 403 Forbidden role permission error without terminating session.
  * - On 400: throws specific server validation error message.
  * - On 500: throws safe server error message.
  * - On 2xx: returns parsed JSON response.
@@ -92,10 +99,24 @@ export async function handleAdminResponse<T = any>(
     return (await res.json()) as T;
   }
 
-  // Handle Authentication / Authorization Failures (401 / 403)
-  if (res.status === 401 || res.status === 403) {
+  // Handle Authentication Failure (401: Invalid/Expired Session)
+  if (res.status === 401) {
     clearAdminSession();
     throw new Error('Session admin telah berakhir. Silakan login kembali.');
+  }
+
+  // Handle Authorization Failure (403: Forbidden - Role lacks permission)
+  if (res.status === 403) {
+    let forbiddenMessage = 'Akses ditolak (HTTP 403 Forbidden): Peran admin Anda tidak memiliki izin untuk tindakan ini.';
+    try {
+      const errorJson = await res.json();
+      forbiddenMessage = errorJson?.error || errorJson?.message || forbiddenMessage;
+    } catch {
+      try {
+        forbiddenMessage = await res.text() || forbiddenMessage;
+      } catch {}
+    }
+    throw new Error(forbiddenMessage);
   }
 
   // Extract server error details safely

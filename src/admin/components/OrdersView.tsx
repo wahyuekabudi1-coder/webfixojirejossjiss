@@ -70,8 +70,13 @@ export default function OrdersView({
 
   // Financial summary counters for quick insights
   const quickStats = useMemo(() => {
+    // Canonical rule: Realized Revenue = paymentStatus === 'Paid' AND bookingStatus !== 'Cancelled' AND bookingStatus !== 'Rejected'
     const totalRevenueIDR = bookings
-      .filter(b => b.paymentStatus === 'Paid' || b.bookingStatus === 'Confirmed' || b.bookingStatus === 'Completed')
+      .filter(b => 
+        (b.paymentStatus === 'Paid' || (b.paymentStatus || '').toLowerCase() === 'paid') && 
+        b.bookingStatus !== 'Cancelled' && 
+        b.bookingStatus !== 'Rejected'
+      )
       .reduce((sum, b) => sum + (Number(b.totalAmountIDR) || 0), 0);
 
     const pendingConfirmationCount = counts.pending_confirmation;

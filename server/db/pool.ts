@@ -314,7 +314,9 @@ export const REQUIRED_INDEXES: IndexDefinition[] = [
   { name: 'idx_payments_order', table: 'payments', columns: ['order_id'] },
   { name: 'idx_payments_booking', table: 'payments', columns: ['booking_id'] },
   { name: 'idx_invoices_number', table: 'invoices', columns: ['invoice_number'] },
-  { name: 'idx_reviews_status', table: 'reviews', columns: ['status'] }
+  { name: 'idx_reviews_status', table: 'reviews', columns: ['status'] },
+  { name: 'idx_assignments_code', table: 'operational_assignments', columns: ['booking_code'] },
+  { name: 'idx_assignments_booking', table: 'operational_assignments', columns: ['booking_id'] }
 ];
 
 export const REQUIRED_TABLES = [
@@ -330,7 +332,8 @@ export const REQUIRED_TABLES = [
   'reviews',
   'service_limits',
   'transport_data',
-  'system_meta'
+  'system_meta',
+  'operational_assignments'
 ];
 
 export async function initSchema(client: DatabaseClient): Promise<void> {

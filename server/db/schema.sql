@@ -202,3 +202,20 @@ CREATE TABLE IF NOT EXISTS system_meta (
   meta_value TEXT NOT NULL,
   updated_at VARCHAR(64)
 );
+
+-- 14. Operational Assignments Table (Fleet & Crew Trip Allocation)
+CREATE TABLE IF NOT EXISTS operational_assignments (
+  id VARCHAR(64) PRIMARY KEY,
+  booking_id VARCHAR(64) NOT NULL,
+  booking_code VARCHAR(64) NOT NULL,
+  vehicle_name VARCHAR(255) NOT NULL,
+  plate_number VARCHAR(64) NOT NULL,
+  driver_name VARCHAR(255) NOT NULL,
+  driver_phone VARCHAR(64) NOT NULL,
+  guide_name VARCHAR(255),
+  guide_phone VARCHAR(64),
+  status VARCHAR(64) DEFAULT 'Ready',
+  note TEXT,
+  assigned_at VARCHAR(64) NOT NULL,
+  updated_at VARCHAR(64) NOT NULL
+);

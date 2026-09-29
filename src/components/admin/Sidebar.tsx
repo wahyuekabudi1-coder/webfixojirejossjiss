@@ -4,8 +4,9 @@ import {
   DollarSign, BarChart3, Sparkles, Settings, ChevronLeft, ChevronRight, 
   LogOut, Globe, CheckCircle2, AlertTriangle, FileText, Compass, 
   Plane, MapPin, Truck, CreditCard, Receipt, TrendingUp, Tag, Shield, 
-  Clock, ShieldAlert, ArrowUpRight, UserCheck
+  Clock, ShieldAlert, ArrowUpRight, UserCheck, Lock
 } from 'lucide-react';
+import { checkModulePermission, checkSubItemPermission } from '../../utils/rbac';
 
 export type AdminModule = 
   | 'dashboard'
@@ -16,7 +17,8 @@ export type AdminModule =
   | 'finance'
   | 'analytics'
   | 'marketing'
-  | 'settings';
+  | 'settings'
+  | 'account';
 
 export type AdminTab = AdminModule | string;
 
@@ -262,28 +264,35 @@ export default function Sidebar({
                   const Icon = item.icon;
                   const isActive = currentModule === item.id;
                   const hasSubItems = Boolean(item.subItems && item.subItems.length > 0);
+                  const isPermitted = checkModulePermission(item.id, role || 'Super Administrator') || 
+                    (item.id === 'settings' && hasSubItems && (item.subItems?.some(s => checkSubItemPermission(item.id, s.id, role || 'Super Administrator')) ?? false));
 
                   return (
                     <div key={item.id} className="space-y-0.5">
                       <button
                         onClick={() => {
+                          if (!isPermitted) return;
                           handleSelectModule(item.id);
                           if (hasSubItems && item.subItems && setActiveSubItem) {
-                            setActiveSubItem(item.subItems[0].id);
+                            const firstPermitted = item.subItems.find(sub => checkSubItemPermission(item.id, sub.id, role || 'Super Administrator')) || item.subItems[0];
+                            setActiveSubItem(firstPermitted.id);
                           }
                         }}
-                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold transition-all relative cursor-pointer ${
-                          isActive 
+                        disabled={!isPermitted}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold transition-all relative ${
+                          !isPermitted
+                            ? 'opacity-40 cursor-not-allowed text-neutral-500'
+                            : isActive 
                             ? isDark
-                              ? 'bg-amber-500/15 border border-amber-500/30 text-amber-400 font-extrabold'
-                              : 'bg-amber-500/15 border border-amber-500/30 text-amber-700 font-extrabold shadow-xs'
+                              ? 'bg-amber-500/15 border border-amber-500/30 text-amber-400 font-extrabold cursor-pointer'
+                              : 'bg-amber-500/15 border border-amber-500/30 text-amber-700 font-extrabold shadow-xs cursor-pointer'
                             : isDark
-                              ? 'text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800/50 border border-transparent'
-                              : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 border border-transparent'
+                              ? 'text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800/50 border border-transparent cursor-pointer'
+                              : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 border border-transparent cursor-pointer'
                         }`}
-                        title={collapsed ? item.label : undefined}
+                        title={collapsed ? (isPermitted ? item.label : `${item.label} (Terkunci oleh RBAC)`) : undefined}
                       >
-                        <Icon className={`h-4.5 w-4.5 shrink-0 ${isActive ? 'text-amber-500' : isDark ? 'text-neutral-400' : 'text-neutral-500'}`} />
+                        <Icon className={`h-4.5 w-4.5 shrink-0 ${!isPermitted ? 'text-neutral-600' : isActive ? 'text-amber-500' : isDark ? 'text-neutral-400' : 'text-neutral-500'}`} />
                         
                         {!collapsed && (
                           <div className="flex items-center justify-between flex-grow min-w-0">
@@ -291,13 +300,15 @@ export default function Sidebar({
                               {item.label}
                             </span>
                             
-                            {item.badge !== undefined && (
+                            {!isPermitted ? (
+                              <Lock className="h-3 w-3 text-neutral-500 shrink-0 ml-1.5" />
+                            ) : item.badge !== undefined ? (
                               <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[9px] font-black shrink-0 ${
                                 item.badgeColor || 'bg-amber-500 text-neutral-950'
                               } animate-pulse`}>
                                 {item.badge}
                               </span>
-                            )}
+                            ) : null}
                           </div>
                         )}
                       </button>
@@ -308,34 +319,42 @@ export default function Sidebar({
                           {item.subItems?.map((sub) => {
                             const SubIcon = sub.icon;
                             const isSubActive = activeSubItem === sub.id;
+                            const isSubPermitted = checkSubItemPermission(item.id, sub.id, role || 'Super Administrator');
                             
                             return (
                               <button
                                 key={sub.id}
+                                disabled={!isSubPermitted}
                                 onClick={() => {
+                                  if (!isSubPermitted) return;
                                   if (setActiveSubItem) {
                                     setActiveSubItem(sub.id);
                                   }
                                 }}
-                                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer text-left ${
-                                  isSubActive
+                                title={!isSubPermitted ? `${sub.label} (Terkunci oleh RBAC)` : undefined}
+                                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all text-left ${
+                                  !isSubPermitted
+                                    ? 'opacity-40 cursor-not-allowed text-neutral-500'
+                                    : 'cursor-pointer ' + (isSubActive
                                     ? isDark
                                       ? 'text-amber-400 font-bold bg-amber-500/10'
                                       : 'text-amber-700 font-bold bg-amber-500/10'
                                     : isDark
                                       ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/40'
-                                      : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
+                                      : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100')
                                 }`}
                               >
                                 <div className="flex items-center gap-2 truncate">
                                   {SubIcon && <SubIcon className="h-3 w-3 shrink-0" />}
                                   <span className="truncate">{sub.label}</span>
                                 </div>
-                                {sub.badge !== undefined && sub.badge > 0 && (
+                                {!isSubPermitted ? (
+                                  <Lock className="h-2.5 w-2.5 text-neutral-500 shrink-0 ml-1" />
+                                ) : sub.badge !== undefined && sub.badge > 0 ? (
                                   <span className="ml-1 text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-500 border border-amber-500/30">
                                     {sub.badge}
                                   </span>
-                                )}
+                                ) : null}
                               </button>
                             );
                           })}
@@ -353,8 +372,18 @@ export default function Sidebar({
       {/* Footer Profile & Exit Section */}
       <div className={`p-3.5 border-t ${isDark ? 'border-neutral-800 bg-neutral-950/70' : 'border-neutral-200 bg-neutral-50'} flex flex-col gap-2.5`}>
         {!collapsed && (
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500 font-black font-mono text-xs">
+          <button
+            type="button"
+            onClick={() => {
+              handleSelectModule('account');
+              if (setActiveSubItem) setActiveSubItem('account');
+            }}
+            className={`w-full flex items-center gap-2.5 p-2 rounded-xl transition-all text-left cursor-pointer ${
+              isDark ? 'hover:bg-neutral-800/50' : 'hover:bg-neutral-100'
+            }`}
+            title="Klik untuk membuka Pengaturan Akun & Profil"
+          >
+            <div className="h-8 w-8 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500 font-black font-mono text-xs shrink-0">
               AD
             </div>
             <div className="min-w-0 flex-grow text-left">
@@ -362,10 +391,10 @@ export default function Sidebar({
                 Admin Pusat
               </p>
               <p className="text-[10px] text-neutral-500 font-mono truncate">
-                Super Administrator
+                {role || 'Super Administrator'}
               </p>
             </div>
-          </div>
+          </button>
         )}
 
         <button
