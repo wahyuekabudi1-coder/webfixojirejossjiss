@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../AppContext';
 import { 
   LayoutDashboard, ClipboardList, Layers, Truck, MapPin, Globe, 
@@ -8,7 +8,7 @@ import {
   Mail, Phone, ChevronDown, CheckCircle2, AlertTriangle, FileText, 
   ArrowUpRight, BarChart3, Database, Save, Eye, EyeOff, Building, 
   FileCheck, ShieldCheck, Download, CalendarDays, RefreshCw, CreditCard, DollarSign,
-  Plane, Plus, Trash2, Edit, Check, Copy, Clock, Image, Upload, ChevronUp, GripVertical, History, Car, Map, Star, ExternalLink, Archive
+  Plane, Plus, Trash2, Edit, Check, Copy, Clock, Image, Upload, ChevronUp, GripVertical, History, Car, Map, Star, ExternalLink, Archive, Tag
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Airport } from '../types';
@@ -16,7 +16,7 @@ import TaxiExcelManager from '../components/admin/TaxiExcelManager';
 import RentalAdminWorkspace from '../components/admin/RentalAdminWorkspace';
 import AirportBookingCalendar from '../components/admin/AirportBookingCalendar';
 import ShareTourAdminDashboard from '../sharetour/components/AdminDashboard';
-import { fetchDB as fetchShareTourDB } from '../sharetour/api';
+import { fetchDB as fetchShareTourDB, updateBooking as updateShareTourBooking } from '../sharetour/api';
 import { Trip as ShareTourTrip, Batch as ShareTourBatch, Booking as ShareTourBooking } from '../sharetour/types';
 import { OFFICIAL_PARTNERS, PARTNERS_DATA_VERSION } from '../data/partnersData';
 import { SocialMediaItem, getStoredSocialMedia, saveStoredSocialMedia } from '../data/socialMediaData';
@@ -34,6 +34,13 @@ import {
   saveAdminSessionToken, 
   ADMIN_AUTH_EXPIRED_EVENT 
 } from '../utils/adminAuth';
+import Sidebar, { AdminModule } from '../components/admin/Sidebar';
+import BookingDetailModal, { UnifiedBookingDetail } from '../components/admin/BookingDetailModal';
+import OrdersView from '../admin/components/OrdersView';
+import OperationsView from '../admin/components/OperationsView';
+import FinanceView from '../admin/components/FinanceView';
+import CustomersView from '../admin/components/CustomersView';
+import SettingsRBAC from '../components/admin/SettingsRBAC';
 
 interface ItineraryFormItem {
   id: string;
@@ -48,6 +55,7 @@ export default function AdminView() {
   const { 
     setPage, 
     bookings, 
+    refreshBookings,
     updateBookingStatus, 
     tours, 
     addTour, 
@@ -147,12 +155,19 @@ export default function AdminView() {
     };
   }, []);
 
-  // Navigation States
-  const [activeModule, setActiveModule] = useState<'dashboard' | 'analytics' | 'tours' | 'sharetour' | 'bookings' | 'reports' | 'airport' | 'taxi' | 'rental' | 'cms' | 'account'>(() => {
+  // Canonical Navigation States for Tahap 1
+  const [activeModule, setActiveModule] = useState<AdminModule>(() => {
     try {
       const saved = localStorage.getItem('sj_admin_active_module');
-      if (saved && ['dashboard', 'analytics', 'tours', 'sharetour', 'bookings', 'reports', 'airport', 'taxi', 'rental', 'cms', 'account'].includes(saved)) {
-        return saved as any;
+      if (saved) {
+        if (['dashboard', 'orders', 'operations', 'services', 'customers', 'finance', 'analytics', 'marketing', 'settings'].includes(saved)) {
+          return saved as AdminModule;
+        }
+        if (saved === 'bookings') return 'orders';
+        if (['tours', 'sharetour', 'airport', 'taxi', 'rental'].includes(saved)) return 'services';
+        if (saved === 'reports') return 'finance';
+        if (saved === 'cms') return 'marketing';
+        if (saved === 'account') return 'settings';
       }
     } catch (_) {}
     return 'dashboard';
@@ -163,9 +178,74 @@ export default function AdminView() {
       localStorage.setItem('sj_admin_active_module', activeModule);
     } catch (_) {}
   }, [activeModule]);
+
+  // Sub-Navigation Tabs per Module
+  const [activeOrdersTab, setActiveOrdersTab] = useState<'all' | 'pending_payment' | 'pending_confirmation' | 'confirmed' | 'completed' | 'cancelled'>('all');
+  const [activeOperationsTab, setActiveOperationsTab] = useState<'calendar' | 'departures' | 'manifest' | 'assignment'>('calendar');
+  const [activeService, setActiveService] = useState<'private-tour' | 'open-trip' | 'airport' | 'taxi' | 'rental'>('private-tour');
+  const [activeCustomersTab, setActiveCustomersTab] = useState<'list' | 'reviews'>('list');
+  const [activeFinanceTab, setActiveFinanceTab] = useState<'payments' | 'invoices' | 'revenue' | 'reports'>('payments');
+  const [activeMarketingTab, setActiveMarketingTab] = useState<'promo' | 'content'>('promo');
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'general' | 'rbac' | 'account'>('general');
+
   const [activeSubTab, setActiveSubTab] = useState<string>('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [reviewsFilter, setReviewsFilter] = useState<'all' | 'pending' | 'approved'>('all');
+
+  // Marketing Promo Codes State
+  const [promoCodes, setPromoCodes] = useState<{
+    id: string;
+    code: string;
+    discountType: 'percentage' | 'fixed';
+    discountValue: number;
+    minSpendIDR: number;
+    validUntil: string;
+    isActive: boolean;
+    usageCount: number;
+  }[]>([
+    {
+      id: 'p1',
+      code: 'SMARTBALI10',
+      discountType: 'percentage',
+      discountValue: 10,
+      minSpendIDR: 500000,
+      validUntil: '2026-12-31',
+      isActive: true,
+      usageCount: 42
+    },
+    {
+      id: 'p2',
+      code: 'EARLYBIRD',
+      discountType: 'percentage',
+      discountValue: 15,
+      minSpendIDR: 1000000,
+      validUntil: '2026-08-31',
+      isActive: true,
+      usageCount: 18
+    },
+    {
+      id: 'p3',
+      code: 'WELCOME2026',
+      discountType: 'fixed',
+      discountValue: 50000,
+      minSpendIDR: 300000,
+      validUntil: '2026-12-31',
+      isActive: true,
+      usageCount: 65
+    }
+  ]);
+  const [newPromoCode, setNewPromoCode] = useState({
+    code: '',
+    discountType: 'percentage' as 'percentage' | 'fixed',
+    discountValue: 10,
+    minSpendIDR: 500000,
+    validUntil: '2026-12-31'
+  });
+  const [showAddPromoModal, setShowAddPromoModal] = useState(false);
+
+  // Booking Detail Modal State
+  const [selectedBookingDetail, setSelectedBookingDetail] = useState<UnifiedBookingDetail | null>(null);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
 
   // ShareTour / Open Trip Data State
   const [shareTourTrips, setShareTourTrips] = useState<ShareTourTrip[]>([]);
@@ -193,9 +273,278 @@ export default function AdminView() {
 
   useEffect(() => {
     if (isAdminUnlocked) {
+      refreshBookings();
       loadShareTourData();
     }
   }, [isAdminUnlocked, activeModule]);
+
+  // Unified Bookings List across all channels (Strict 5 Services & Official Departure Date)
+  const unifiedBookingsList = useMemo<UnifiedBookingDetail[]>(() => {
+    const seenCodes = new Set<string>();
+    const list: UnifiedBookingDetail[] = [];
+
+    for (const b of bookings) {
+      const code = b.bookingCode || b.id;
+      if (!code || seenCodes.has(code) || seenCodes.has(b.id)) continue;
+      seenCodes.add(code);
+      seenCodes.add(b.id);
+
+      const isShared = (b as any).serviceType === 'shared' || (b as any).bookingType === 'shared' || Boolean((b as any).batchId) || b.type === 'sharetour';
+      const serviceType = isShared 
+        ? 'sharetour' 
+        : (b.type === 'tour' ? 'tour' : b.type === 'airport' ? 'airport' : b.type === 'taxi' ? 'taxi' : 'car-rental');
+
+      // Payment Status: Strict Pending / Paid
+      const rawPaymentStatus = (b.paymentStatus || '').trim().toLowerCase();
+      const rawBookingStatus = (b.status || '').trim();
+      let paymentStatus: 'Pending' | 'Paid' = 'Pending';
+      if (rawPaymentStatus === 'paid' || rawBookingStatus === 'Confirmed' || rawBookingStatus === 'Completed') {
+        paymentStatus = 'Paid';
+      } else {
+        paymentStatus = 'Pending';
+      }
+
+      // Booking Status: Strict Pending Payment / Pending Confirmation / Confirmed / Completed / Cancelled
+      let bookingStatus: 'Pending Payment' | 'Pending Confirmation' | 'Confirmed' | 'Completed' | 'Cancelled' = 'Pending Payment';
+      if (rawBookingStatus === 'Cancelled' || rawBookingStatus === 'Rejected' || rawBookingStatus === 'Refunded') {
+        bookingStatus = 'Cancelled';
+      } else if (rawBookingStatus === 'Completed') {
+        bookingStatus = 'Completed';
+      } else if (rawBookingStatus === 'Confirmed') {
+        bookingStatus = 'Confirmed';
+      } else if (paymentStatus === 'Paid') {
+        bookingStatus = 'Pending Confirmation';
+      } else {
+        bookingStatus = 'Pending Payment';
+      }
+
+      // Open Trip mandatory official departureDate
+      const officialDepartureDate = (b as any).departureDate || b.details?.departureDate || (b as any).details?.date || ((b as any).batchId ? shareTourBatches.find(batch => batch.id === (b as any).batchId)?.departureDate : undefined) || b.bookingDate || '-';
+
+      list.push({
+        id: b.id,
+        bookingCode: b.bookingCode || b.id,
+        source: 'main',
+        serviceType,
+        serviceTitle: b.serviceName || (serviceType === 'tour' ? 'Private Tour' : serviceType === 'sharetour' ? 'Open Trip' : serviceType === 'airport' ? 'Airport Transfer' : serviceType === 'taxi' ? 'Taxi Service' : 'Car Rental'),
+        customerName: b.customerName || (b as any).fullName || (b as any).leadFullName || b.guestDetails?.name || 'Anonim',
+        customerEmail: b.customerEmail || (b as any).email || b.guestDetails?.email || '-',
+        customerPhone: b.customerPhone || (b as any).phone || (b as any).phoneNumber || b.guestDetails?.phone || '-',
+        emergencyContact: (b as any).emergencyContact || (b as any).weChatId || (b as any).whatsapp,
+        flightNumber: (b.details as any)?.flightNumber || (b as any).flightNumber,
+        date: isShared ? officialDepartureDate : (b.details?.date || (b as any).departureDate || b.bookingDate || '-'),
+        departureDate: isShared ? officialDepartureDate : (b.details?.departureDate || (b as any).departureDate),
+        time: b.details?.time || (b as any).time,
+        passengers: Number(b.details?.guests || b.details?.passengers || (b as any).participantsCount || 1),
+        participantNames: (b as any).participantsNames || ((b as any).participantData?.members ? (b as any).participantData.members.map((m: any) => m.name || m.fullName).filter(Boolean) : undefined),
+        pickupLocation: b.details?.pickupLocation || (b as any).pickupLocation,
+        dropoffLocation: b.details?.destination || b.details?.cityAddress || (b as any).dropoffLocation,
+        meetingPoint: (b as any).meetingPoint || (isShared ? b.details?.pickupLocation || (b as any).pickupLocation : undefined),
+        batchId: (b as any).batchId,
+        vehicleName: b.details?.vehicleName || (b as any).vehicleName,
+        duration: b.details?.days ? `${b.details.days} Hari` : (b.details?.duration || (b as any).duration),
+        withDriver: b.details?.withDriver,
+        luggage: b.details?.luggage,
+        direction: (b.details as any)?.direction,
+        routeType: (b.details as any)?.routeType,
+        returnDate: b.details?.returnDate,
+        returnTime: (b.details as any)?.returnTimeText || (b.details as any)?.returnTime,
+        operationalCity: (b.details as any)?.operationalCity,
+        pickupArea: (b.details as any)?.pickupArea,
+        dropoffArea: (b.details as any)?.dropoffArea,
+        selectedAddons: (b.details as any)?.selectedAddons,
+        pricingBreakdown: (b.details as any)?.pricingBreakdown,
+        nationalityType: (b as any).nationalityType || (b as any).participantData?.nationalityType,
+        specialRequests: (b as any).specialRequests || (b.details as any)?.notes || (b.details as any)?.specialRequests,
+        totalAmountIDR: b.totalPriceIDR,
+        totalAmountUSD: b.totalPrice,
+        uniqueCode: b.uniqueCode,
+        baseAmount: b.baseAmount,
+        paymentStatus,
+        bookingStatus,
+        createdAt: b.bookingDate,
+        paidAt: b.paidAt,
+        confirmedAt: b.confirmedAt,
+        paymentMethod: (b as any).paymentMethod,
+        rawBooking: b
+      });
+    }
+
+    for (const sb of shareTourBookings) {
+      const code = sb.bookingCode || sb.id;
+      if (!code || seenCodes.has(code) || (sb.id && seenCodes.has(sb.id))) continue;
+      seenCodes.add(code);
+      if (sb.id) seenCodes.add(sb.id);
+
+      // Payment Status: Strict Pending / Paid
+      const rawPaymentStatus = ((sb as any).paymentStatus || '').trim().toLowerCase();
+      const rawBookingStatus = (sb.status || '').trim();
+      let paymentStatus: 'Pending' | 'Paid' = 'Pending';
+      if (rawPaymentStatus === 'paid' || rawBookingStatus === 'Confirmed' || rawBookingStatus === 'Completed') {
+        paymentStatus = 'Paid';
+      } else {
+        paymentStatus = 'Pending';
+      }
+
+      // Booking Status: Strict Pending Payment / Pending Confirmation / Confirmed / Completed / Cancelled
+      let bookingStatus: 'Pending Payment' | 'Pending Confirmation' | 'Confirmed' | 'Completed' | 'Cancelled' = 'Pending Payment';
+      if (rawBookingStatus === 'Cancelled' || rawBookingStatus === 'Rejected' || rawBookingStatus === 'Refunded') {
+        bookingStatus = 'Cancelled';
+      } else if (rawBookingStatus === 'Completed') {
+        bookingStatus = 'Completed';
+      } else if (rawBookingStatus === 'Confirmed') {
+        bookingStatus = 'Confirmed';
+      } else if (paymentStatus === 'Paid') {
+        bookingStatus = 'Pending Confirmation';
+      } else {
+        bookingStatus = 'Pending Payment';
+      }
+
+      // Open Trip mandatory official departureDate
+      const officialDepartureDate = (sb as any).departureDate || (sb.batchId ? shareTourBatches.find(b => b.id === sb.batchId)?.departureDate : undefined) || (sb as any).details?.departureDate || (sb as any).details?.date || (sb as any).createdAt || '-';
+
+      list.push({
+        id: sb.id || sb.bookingCode,
+        bookingCode: sb.bookingCode || sb.id,
+        source: 'sharetour',
+        serviceType: 'sharetour',
+        serviceTitle: (sb as any).tripTitle || sb.serviceName || 'Open Trip / Share Tour',
+        customerName: (sb as any).leadFullName || (sb as any).fullName || (sb as any).customerName || 'Anonim',
+        customerEmail: (sb as any).email || (sb as any).customerEmail || '-',
+        customerPhone: (sb as any).phoneNumber || (sb as any).phone || (sb as any).customerPhone || '-',
+        emergencyContact: (sb as any).weChatId || (sb as any).whatsapp || (sb as any).emergencyContact,
+        flightNumber: (sb as any).flightNumber || (sb as any).participantData?.flightNumber,
+        date: officialDepartureDate,
+        departureDate: officialDepartureDate,
+        time: (sb as any).details?.time || (sb as any).time,
+        passengers: Number((sb as any).participantsCount || (sb as any).participantCount || 1),
+        participantNames: (sb as any).participantsNames || ((sb as any).participantData?.members ? (sb as any).participantData.members.map((m: any) => m.name || m.fullName).filter(Boolean) : []),
+        pickupLocation: (sb as any).pickupLocation || (sb as any).participantData?.pickupLocation,
+        dropoffLocation: (sb as any).dropoffLocation || (sb as any).participantData?.dropoffLocation,
+        meetingPoint: (sb as any).meetingPoint || (sb as any).pickupLocation || (sb as any).participantData?.pickupLocation,
+        batchId: (sb as any).batchId,
+        nationalityType: (sb as any).nationalityType || (sb as any).participantData?.nationalityType,
+        specialRequests: (sb as any).specialRequests || (sb as any).participantData?.specialRequests || (sb as any).adminNotes,
+        totalAmountIDR: (sb as any).totalPriceIDR || (sb as any).totalAmountIDR,
+        totalAmountUSD: (sb as any).totalPrice || (sb as any).totalAmountUSD,
+        uniqueCode: (sb as any).uniqueCode,
+        baseAmount: (sb as any).baseAmount,
+        paymentStatus,
+        bookingStatus,
+        createdAt: (sb as any).createdAt,
+        paidAt: (sb as any).paidAt,
+        confirmedAt: (sb as any).confirmedAt,
+        paymentMethod: (sb as any).paymentMethod,
+        rawBooking: sb
+      });
+    }
+
+    return list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+  }, [bookings, shareTourBookings, shareTourBatches]);
+
+  // Attention buckets
+  const pendingConfirmationBookings = useMemo(() => {
+    return unifiedBookingsList.filter(b => 
+      b.bookingStatus === 'Pending Confirmation' || 
+      (b.bookingStatus === 'Pending' && b.paymentStatus === 'Paid')
+    );
+  }, [unifiedBookingsList]);
+
+  const pendingPaymentBookings = useMemo(() => {
+    return unifiedBookingsList.filter(b => 
+      b.bookingStatus === 'Pending Payment' || 
+      (b.paymentStatus !== 'Paid' && b.bookingStatus !== 'Cancelled' && b.bookingStatus !== 'Rejected')
+    );
+  }, [unifiedBookingsList]);
+
+  const confirmedBookings = useMemo(() => {
+    return unifiedBookingsList.filter(b => b.bookingStatus === 'Confirmed');
+  }, [unifiedBookingsList]);
+
+  const completedBookings = useMemo(() => {
+    return unifiedBookingsList.filter(b => b.bookingStatus === 'Completed');
+  }, [unifiedBookingsList]);
+
+  const cancelledBookings = useMemo(() => {
+    return unifiedBookingsList.filter(b => b.bookingStatus === 'Cancelled' || b.bookingStatus === 'Rejected');
+  }, [unifiedBookingsList]);
+
+  // Action Handlers for Unified Bookings
+  const handleConfirmUnifiedBooking = async (id: string, source: 'main' | 'sharetour') => {
+    const item = unifiedBookingsList.find(b => b.id === id);
+    if (!item) return;
+
+    if (item.paymentStatus !== 'Paid') {
+      triggerToast('Gagal: Admin tidak boleh mengonfirmasi booking jika status pembayaran belum Paid.');
+      return;
+    }
+
+    if (source === 'main') {
+      await updateBookingStatus(id, 'Confirmed', 'Paid');
+      triggerToast(`Booking #${item.bookingCode} berhasil dikonfirmasi!`);
+    } else {
+      try {
+        await updateShareTourBooking(id, { status: 'Confirmed', confirmedAt: new Date().toISOString() });
+        await loadShareTourData();
+        triggerToast(`Open Trip #${item.bookingCode} berhasil dikonfirmasi!`);
+      } catch (err: any) {
+        triggerToast(`Gagal: ${err.message}`);
+      }
+    }
+
+    if (selectedBookingDetail && selectedBookingDetail.id === id) {
+      setSelectedBookingDetail(prev => prev ? { ...prev, bookingStatus: 'Confirmed', confirmedAt: new Date().toISOString() } : null);
+    }
+  };
+
+  const handleCompleteUnifiedBooking = async (id: string, source: 'main' | 'sharetour') => {
+    const item = unifiedBookingsList.find(b => b.id === id);
+    if (!item) return;
+
+    if (source === 'main') {
+      await updateBookingStatus(id, 'Completed');
+      triggerToast(`Booking #${item.bookingCode} ditandai selesai!`);
+    } else {
+      try {
+        await updateShareTourBooking(id, { status: 'Completed' });
+        await loadShareTourData();
+        triggerToast(`Open Trip #${item.bookingCode} ditandai selesai!`);
+      } catch (err: any) {
+        triggerToast(`Gagal: ${err.message}`);
+      }
+    }
+
+    if (selectedBookingDetail && selectedBookingDetail.id === id) {
+      setSelectedBookingDetail(prev => prev ? { ...prev, bookingStatus: 'Completed' } : null);
+    }
+  };
+
+  const handleCancelUnifiedBooking = async (id: string, source: 'main' | 'sharetour') => {
+    const item = unifiedBookingsList.find(b => b.id === id);
+    if (!item) return;
+
+    if (source === 'main') {
+      await updateBookingStatus(id, 'Cancelled');
+      triggerToast(`Booking #${item.bookingCode} berhasil dibatalkan.`);
+    } else {
+      try {
+        await updateShareTourBooking(id, { status: 'Cancelled' });
+        await loadShareTourData();
+        triggerToast(`Open Trip #${item.bookingCode} berhasil dibatalkan.`);
+      } catch (err: any) {
+        triggerToast(`Gagal: ${err.message}`);
+      }
+    }
+
+    if (selectedBookingDetail && selectedBookingDetail.id === id) {
+      setSelectedBookingDetail(prev => prev ? { ...prev, bookingStatus: 'Cancelled' } : null);
+    }
+  };
+
+  const handleOpenBookingDetail = (booking: UnifiedBookingDetail) => {
+    setSelectedBookingDetail(booking);
+    setIsBookingModalOpen(true);
+  };
 
   // Master Unified Bookings State
   const [bookingChannelFilter, setBookingChannelFilter] = useState<'all' | 'tour' | 'sharetour' | 'airport' | 'taxi' | 'car-rental'>('all');
@@ -4288,6 +4637,30 @@ export default function AdminView() {
               </button>
             </div>
 
+            {/* Airport Transfer Rules Reference Banner */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+              <div className={`${theme.card} border rounded-xl p-3.5 space-y-1`}>
+                <span className="text-[10px] font-mono font-bold text-amber-500 uppercase tracking-wider block">1. Direction (Arah Perjalanan)</span>
+                <p className="text-xs font-bold text-neutral-200">2 Arah Otomatis</p>
+                <p className={`text-[10px] ${theme.textSecondary}`}>Berlaku untuk Airport to City maupun City to Airport sesuai bandara asal.</p>
+              </div>
+              <div className={`${theme.card} border rounded-xl p-3.5 space-y-1`}>
+                <span className="text-[10px] font-mono font-bold text-amber-500 uppercase tracking-wider block">2. Tipe Perjalanan (Route Type)</span>
+                <p className="text-xs font-bold text-neutral-200">One Way &amp; Round Trip</p>
+                <p className={`text-[10px] ${theme.textSecondary}`}>Round Trip dihitung 2x tarif rute dengan diskon insentif 5% di customer frontend.</p>
+              </div>
+              <div className={`${theme.card} border rounded-xl p-3.5 space-y-1`}>
+                <span className="text-[10px] font-mono font-bold text-amber-500 uppercase tracking-wider block">3. Multiplier Armada (Vehicle)</span>
+                <p className="text-xs font-bold text-neutral-200">Avanza, Innova, Hiace</p>
+                <p className={`text-[10px] ${theme.textSecondary}`}>Avanza 0.9x • Innova 1.0x (Base) • Hiace Commuter 1.5x • Hiace Premio 1.8x.</p>
+              </div>
+              <div className={`${theme.card} border rounded-xl p-3.5 space-y-1`}>
+                <span className="text-[10px] font-mono font-bold text-amber-500 uppercase tracking-wider block">4. Surcharge Terminal Bandara</span>
+                <p className="text-xs font-bold text-neutral-200">Dikelola per Bandara</p>
+                <p className={`text-[10px] ${theme.textSecondary}`}>Biaya penjemputan terminal bandara dikonfigurasi pada tab Master Bandara.</p>
+              </div>
+            </div>
+
             {/* List Table of Routes */}
             <div className={`${theme.card} border rounded-2xl overflow-hidden`}>
               <div className="overflow-x-auto">
@@ -5256,17 +5629,16 @@ export default function AdminView() {
         const dateStr = selectedCalendarDate;
         const isDateBlocked = schedules.some(s => s.date === dateStr && s.type === 'blocked');
         
-        // Count confirmed daily bookings
-        const dateBookings = bookings.filter(b => 
-          b.details && 
-          b.details.date === dateStr && 
-          (b.status === 'Confirmed' || b.status === 'Completed')
-        );
+        // Count confirmed daily bookings (matches departureDate for Open Trip or details.date)
+        const dateBookings = bookings.filter(b => {
+          const bDate = (b as any).departureDate || b.details?.departureDate || b.details?.date || b.bookingDate || (b as any).date;
+          return bDate === dateStr && (b.status === 'Confirmed' || b.status === 'Completed');
+        });
 
-        const allDateBookings = bookings.filter(b => 
-          b.details && 
-          b.details.date === dateStr
-        );
+        const allDateBookings = bookings.filter(b => {
+          const bDate = (b as any).departureDate || b.details?.departureDate || b.details?.date || b.bookingDate || (b as any).date;
+          return bDate === dateStr;
+        });
 
         const slotCount = dateBookings.length;
         const allocations = schedules.filter(s => s.date === dateStr && s.type === 'allocation');
@@ -5342,12 +5714,11 @@ export default function AdminView() {
                       const isSelected = selectedCalendarDate === cellDateStr;
                       const isCellBlocked = schedules.some(s => s.date === cellDateStr && s.type === 'blocked');
                       
-                      // Count confirmed/completed orders for this day
-                      const cellBookingsCount = bookings.filter(b => 
-                        b.details && 
-                        b.details.date === cellDateStr && 
-                        (b.status === 'Confirmed' || b.status === 'Completed')
-                      ).length;
+                      // Count confirmed/completed orders for this day (supports departureDate for Open Trip)
+                      const cellBookingsCount = bookings.filter(b => {
+                        const bDate = (b as any).departureDate || b.details?.departureDate || b.details?.date || b.bookingDate || (b as any).date;
+                        return bDate === cellDateStr && (b.status === 'Confirmed' || b.status === 'Completed');
+                      }).length;
 
                       const isFull = cellBookingsCount >= capacityLimit;
 
@@ -5677,10 +6048,10 @@ export default function AdminView() {
                                 {b.status}
                               </span>
                             </div>
-                            <div className="font-extrabold text-neutral-200">{b.customerName}</div>
-                            <div className="text-[10px] text-neutral-400">{b.serviceName}</div>
+                            <div className="font-extrabold text-neutral-200">{b.customerName || (b as any).fullName || 'Tamu'}</div>
+                            <div className="text-[10px] text-neutral-400">{b.serviceName || (b as any).tripTitle || 'Tour Service'}</div>
                             <div className="flex justify-between items-center text-[9px] text-neutral-500 font-mono pt-1">
-                              <span>Tamu: {b.details?.guests || 1} Pax</span>
+                              <span>Tamu: {b.details?.guests || (b as any).participantsCount || 1} Pax</span>
                               <span className="text-emerald-400 font-bold">{formatPrice(b.totalPrice, b.totalPriceIDR)}</span>
                             </div>
                           </div>
@@ -5874,13 +6245,13 @@ export default function AdminView() {
 
   // --- MODULE SKELETON PLACEHOLDERS ---
   const renderModuleTabContent = (moduleName: string) => {
-    if (activeModule === 'tours') {
+    if (activeModule === 'tours' || (activeModule === 'services' && activeService === 'private-tour')) {
       return renderToursSubTabContent();
     }
-    if (activeModule === 'airport') {
+    if (activeModule === 'airport' || (activeModule === 'services' && activeService === 'airport')) {
       return renderAirportSubTabContent();
     }
-    if (activeModule === 'rental') {
+    if (activeModule === 'rental' || (activeModule === 'services' && activeService === 'rental')) {
       return (
         <RentalAdminWorkspace
           rentalCities={rentalCities}
@@ -6389,333 +6760,119 @@ export default function AdminView() {
         )}
       </AnimatePresence>
 
-      {/* --- COLLAPSIBLE SIDEBAR --- */}
-      <aside 
-        className={`${theme.sidebar} border-r min-h-screen flex flex-col justify-between transition-all duration-300 z-30 sticky top-0 ${
-          sidebarCollapsed ? 'w-20' : 'w-72'
-        }`}
-      >
-        <div className="flex-grow overflow-y-auto no-scrollbar py-6 px-4 space-y-6">
-          {/* Header Identity */}
-          <div className={`flex items-center justify-between border-b ${theme.borderSubtle} border-dashed pb-5`}>
-            {!sidebarCollapsed ? (
-              <div className="flex items-center gap-2.5">
-                <img 
-                  src="/logo.png" 
-                  alt="Smart Journey Logo" 
-                  className="h-8 w-auto max-w-[120px] object-contain" 
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-                <div>
-                  <h1 className={`text-xs font-black tracking-widest font-mono ${theme.textPrimary}`}>SMART JOURNEY</h1>
-                  <span className="text-[9px] font-mono bg-amber-500/10 text-amber-600 font-extrabold px-1.5 py-0.5 rounded border border-amber-500/20 block mt-0.5">
-                    ADMIN GATE v2.0
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <img 
-                src="/logo.png" 
-                alt="Smart Journey Logo" 
-                className="h-8 w-auto max-w-[36px] object-contain mx-auto"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-            )}
-
-            <button 
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className={`hidden md:flex p-1.5 rounded-lg ${theme.innerCard} border ${theme.border} ${theme.textSecondary} hover:${theme.textPrimary} cursor-pointer transition-all`}
-            >
-              {sidebarCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
-            </button>
-          </div>
-
-          {/* Navigation Menus */}
-          <nav className="space-y-6">
-            {/* Category: Dashboard & Analytics */}
-            <div className="space-y-1.5">
-              {!sidebarCollapsed && (
-                <span className={`text-[10px] font-black ${theme.textMuted} uppercase tracking-widest px-2.5`}>
-                  Executive
-                </span>
-              )}
-              <button
-                onClick={() => {
-                  setActiveModule('dashboard');
-                  setActiveSubTab('dashboard');
-                }}
-                className={`w-full flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all relative cursor-pointer ${
-                  activeModule === 'dashboard' 
-                    ? theme.activeTab
-                    : `${theme.textSecondary} hover:${theme.textPrimary} ${theme.hover} border border-transparent`
-                }`}
-              >
-                <LayoutDashboard className="h-4.5 w-4.5" />
-                {!sidebarCollapsed && <span className="truncate flex-grow text-left">Dashboard</span>}
-              </button>
-
-              <button
-                onClick={() => {
-                  setActiveModule('analytics');
-                }}
-                className={`w-full flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all relative cursor-pointer ${
-                  activeModule === 'analytics' 
-                    ? theme.activeTab
-                    : `${theme.textSecondary} hover:${theme.textPrimary} ${theme.hover} border border-transparent`
-                }`}
-              >
-                <BarChart3 className="h-4.5 w-4.5" />
-                {!sidebarCollapsed && <span className="truncate flex-grow text-left">Analytics</span>}
-              </button>
-            </div>
-
-            {/* Category: Tour Management & Channels */}
-            <div className="space-y-1.5">
-              {!sidebarCollapsed && (
-                <span className={`text-[10px] font-black ${theme.textMuted} uppercase tracking-widest px-2.5`}>
-                  Tours &amp; Services
-                </span>
-              )}
-              <div className="space-y-1">
-                {[
-                  { id: 'tours', label: 'Private Tours', icon: Compass },
-                  { id: 'sharetour', label: 'Share Tour / Open Trip', icon: Users, badge: shareTourBookings.filter(b => b.status === 'Pending').length },
-                  { id: 'bookings', label: 'All Bookings', icon: ClipboardList, badge: bookings.filter(b => b.status === 'Pending').length + shareTourBookings.filter(b => b.status === 'Pending').length },
-                  { id: 'airport', label: 'Airport Transfer', icon: Globe },
-                  { id: 'taxi', label: 'Taxi Service', icon: MapPin },
-                  { id: 'rental', label: 'Car Rental', icon: Truck }
-                ].map((item) => {
-                  const Icon = item.icon;
-                  const isActive = activeModule === item.id;
-                  
-                  const subTabs = item.id === 'tours' ? [
-                    { id: 'dashboard', label: 'Dashboard Overview', icon: LayoutDashboard },
-                    { id: 'management', label: 'Katalog & Paket', icon: Layers },
-                    { id: 'calendar', label: 'Booking Calendar', icon: CalendarDays },
-                    { id: 'blackout', label: 'Aturan & Blackout', icon: Settings },
-                    { id: 'booking', label: 'Daftar Booking', icon: ClipboardList },
-                    { id: 'customer', label: 'Database Tamu', icon: Users },
-                    { id: 'payment', label: 'Status Pembayaran', icon: CreditCard },
-                    { id: 'finance', label: 'Keuangan Ledger', icon: DollarSign },
-                    { id: 'reports', label: 'Unduh Laporan', icon: FileText }
-                  ] : item.id === 'sharetour' ? [
-                    { id: 'catalog', label: 'Katalog & Paket', icon: Layers },
-                    { id: 'batches', label: 'Jadwal & Kuota Batch', icon: CalendarDays },
-                    { id: 'participants', label: 'Daftar Peserta', icon: Users },
-                    { id: 'verification', label: 'Audit & Verifikasi', icon: FileCheck, badge: shareTourBookings.filter(b => b.status === 'Pending').length },
-                    { id: 'analytics', label: 'Performa & Analitik', icon: BarChart3 },
-                    { id: 'excel-import', label: 'Impor Excel / CSV', icon: Upload }
-                  ] : item.id === 'airport' ? [
-                    { id: 'dashboard', label: 'Dashboard Overview', icon: LayoutDashboard },
-                    { id: 'calendar', label: 'Booking Calendar', icon: CalendarDays },
-                    { id: 'routes', label: 'Daftar Rute Admin', icon: Layers },
-                    { id: 'airports', label: 'Pembukaan Bandara', icon: Plane },
-                    { id: 'airport_edit', label: 'Konfigurasi Detail Bandara', icon: Settings },
-                    { id: 'booking', label: 'Daftar Booking & Verifikasi', icon: ClipboardList },
-                    { id: 'reports', label: 'Unduh Laporan', icon: FileCheck }
-                  ] : item.id === 'taxi' ? [
-                    { id: 'dashboard', label: 'Dashboard Overview', icon: LayoutDashboard },
-                    { id: 'calendar', label: 'Kalender Booking', icon: Calendar },
-                    { id: 'master-data', label: 'Master Data', icon: Layers },
-                    { id: 'pricing-engine', label: 'Pricing Engine', icon: DollarSign },
-                    { id: 'excel-import', label: 'Excel Import', icon: Upload },
-                    { id: 'excel-export', label: 'Excel Export', icon: Download },
-                    { id: 'import-history', label: 'Import History', icon: History },
-                    { id: 'settings', label: 'Aturan Dispatcher', icon: Settings }
-                  ] : item.id === 'rental' ? [
-                    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-                    { id: 'calendar', label: 'Booking Calendar', icon: Calendar },
-                    { id: 'cities', label: 'Operational Cities', icon: Globe },
-                    { id: 'areas', label: 'Service Areas', icon: MapPin },
-                    { id: 'vehicles', label: 'Vehicles', icon: Car },
-                    { id: 'categories', label: 'Vehicle Categories', icon: Layers },
-                    { id: 'addons', label: 'Add-on Services', icon: Sparkles },
-                    { id: 'bookings', label: 'Bookings', icon: ClipboardList },
-                    { id: 'settings', label: 'Settings', icon: Settings }
-                  ] : [];
-
-                  return (
-                    <div key={item.id} className="space-y-1">
-                      <button
-                        onClick={() => {
-                          setActiveModule(item.id as any);
-                          setActiveSubTab(item.id === 'sharetour' ? 'catalog' : 'dashboard');
-                          if (sidebarCollapsed) {
-                            setSidebarCollapsed(false);
-                          }
-                        }}
-                        className={`w-full flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all relative cursor-pointer ${
-                          isActive 
-                            ? theme.activeTab
-                            : `${theme.textSecondary} hover:${theme.textPrimary} ${theme.hover} border border-transparent`
-                        }`}
-                      >
-                        <Icon className="h-4.5 w-4.5 shrink-0" />
-                        {!sidebarCollapsed && (
-                          <div className="flex items-center justify-between flex-grow truncate">
-                            <span className="truncate text-left">
-                              {item.label}
-                            </span>
-                            {item.badge !== undefined && item.badge > 0 && (
-                              <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-amber-500 text-neutral-950">
-                                {item.badge}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </button>
-                      
-                      {isActive && !sidebarCollapsed && subTabs.length > 0 && (
-                        <div className={`pl-4 ml-4 border-l ${theme.border} space-y-0.5 mt-1`}>
-                          {subTabs.map((sub) => {
-                            const SubIcon = sub.icon;
-                            const isSubActive = activeSubTab === sub.id;
-                            return (
-                              <button
-                                key={sub.id}
-                                onClick={() => {
-                                  setActiveSubTab(sub.id as any);
-                                  triggerToast(`Beralih ke tab ${sub.label}`);
-                                }}
-                                className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer text-left ${
-                                  isSubActive
-                                    ? 'text-amber-600 font-black bg-amber-500/10'
-                                    : `${theme.textSecondary} hover:${theme.textPrimary} ${theme.hover}`
-                                }`}
-                              >
-                                <SubIcon className="h-3.5 w-3.5 shrink-0" />
-                                <span className="truncate">{sub.label}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Category: Analytics & CMS */}
-            <div className="space-y-1.5">
-              {!sidebarCollapsed && (
-                <span className={`text-[10px] font-black ${theme.textMuted} uppercase tracking-widest px-2.5`}>
-                  Analytics &amp; CMS
-                </span>
-              )}
-              
-              <button
-                onClick={() => {
-                  setActiveModule('reports');
-                  setActiveSubTab('dashboard');
-                }}
-                className={`w-full flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all relative cursor-pointer ${
-                  activeModule === 'reports' 
-                    ? theme.activeTab
-                    : `${theme.textSecondary} hover:${theme.textPrimary} ${theme.hover} border border-transparent`
-                }`}
-              >
-                <BarChart3 className="h-4.5 w-4.5" />
-                {!sidebarCollapsed && <span className="truncate flex-grow text-left">Reports &amp; Finance</span>}
-              </button>
-
-              <button
-                onClick={() => {
-                  setActiveModule('cms');
-                  setActiveCmsTab('hero');
-                }}
-                className={`w-full flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all relative cursor-pointer ${
-                  activeModule === 'cms' 
-                    ? theme.activeTab
-                    : `${theme.textSecondary} hover:${theme.textPrimary} ${theme.hover} border border-transparent`
-                }`}
-              >
-                <ClipboardList className="h-4.5 w-4.5" />
-                {!sidebarCollapsed && <span className="truncate flex-grow text-left">Website CMS</span>}
-              </button>
-            </div>
-
-            {/* Category: Account / Profile */}
-            <div className="space-y-1.5">
-              {!sidebarCollapsed && (
-                <span className={`text-[10px] font-black ${theme.textMuted} uppercase tracking-widest px-2.5`}>
-                  Security &amp; Account
-                </span>
-              )}
-              <button
-                onClick={() => {
-                  setActiveModule('account');
-                  setActiveAccountTab('profile');
-                }}
-                className={`w-full flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all relative cursor-pointer ${
-                  activeModule === 'account' 
-                    ? theme.activeTab
-                    : `${theme.textSecondary} hover:${theme.textPrimary} ${theme.hover} border border-transparent`
-                }`}
-              >
-                <Settings className="h-4.5 w-4.5" />
-                {!sidebarCollapsed && <span className="truncate flex-grow text-left">Settings</span>}
-              </button>
-            </div>
-          </nav>
-        </div>
-
-        {/* User Identity / Exit Portal */}
-        <div className={`p-4 border-t ${theme.border} space-y-2`}>
-          {!sidebarCollapsed && (
-            <div className={`p-3 rounded-xl ${theme.innerCard} border ${theme.border} flex items-center gap-2.5`}>
-              <div className="h-8 w-8 rounded-lg bg-amber-500 flex items-center justify-center text-neutral-950 font-black text-xs">
-                SJT
-              </div>
-              <div className="overflow-hidden">
-                <h5 className={`text-[11px] font-bold ${theme.textPrimary} truncate`}>Administrator</h5>
-                <span className={`text-[9px] ${theme.textMuted} block truncate`}>sawahjaya@gmail.com</span>
-              </div>
-            </div>
-          )}
-          <button 
-            onClick={() => setPage('home')}
-            className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-rose-500 hover:text-rose-600 border border-transparent hover:bg-rose-500/10 cursor-pointer`}
-          >
-            <LogOut className="h-4 w-4 shrink-0" />
-            {!sidebarCollapsed && <span>Keluar Portal</span>}
-          </button>
-        </div>
-      </aside>
+      {/* --- PROFESSIONAL SMART JOURNEY ADMIN SIDEBAR --- */}
+      <Sidebar
+        activeModule={activeModule}
+        setActiveModule={(mod) => {
+          setActiveModule(mod);
+          if (mod === 'orders') setActiveOrdersTab('all');
+          if (mod === 'operations') setActiveOperationsTab('calendar');
+          if (mod === 'services') setActiveService('private-tour');
+          if (mod === 'customers') setActiveCustomersTab('list');
+          if (mod === 'finance') setActiveFinanceTab('payments');
+          if (mod === 'marketing') setActiveMarketingTab('promo');
+          if (mod === 'settings') setActiveSettingsTab('general');
+        }}
+        activeSubItem={
+          activeModule === 'orders' ? activeOrdersTab :
+          activeModule === 'operations' ? activeOperationsTab :
+          activeModule === 'services' ? activeService :
+          activeModule === 'customers' ? activeCustomersTab :
+          activeModule === 'finance' ? activeFinanceTab :
+          activeModule === 'marketing' ? activeMarketingTab :
+          activeModule === 'settings' ? activeSettingsTab : undefined
+        }
+        setActiveSubItem={(sub) => {
+          if (activeModule === 'orders') setActiveOrdersTab(sub as any);
+          else if (activeModule === 'operations') setActiveOperationsTab(sub as any);
+          else if (activeModule === 'services') {
+            setActiveService(sub as any);
+            if (sub === 'private-tour') setActiveSubTab('management');
+            else if (sub === 'open-trip') setActiveSubTab('catalog');
+            else if (sub === 'airport') setActiveSubTab('routes');
+            else if (sub === 'taxi') setActiveSubTab('master-data');
+            else if (sub === 'rental') setActiveSubTab('vehicles');
+          }
+          else if (activeModule === 'customers') setActiveCustomersTab(sub as any);
+          else if (activeModule === 'finance') setActiveFinanceTab(sub as any);
+          else if (activeModule === 'marketing') setActiveMarketingTab(sub as any);
+          else if (activeModule === 'settings') setActiveSettingsTab(sub as any);
+        }}
+        collapsed={sidebarCollapsed}
+        setCollapsed={setSidebarCollapsed}
+        pendingConfirmationCount={pendingConfirmationBookings.length}
+        pendingPaymentCount={pendingPaymentBookings.length}
+        onExit={() => setPage('home')}
+        isDark={isDark}
+      />
 
       {/* --- MAIN FRAMEWORK CONTENT AREA --- */}
       <div className="flex-grow flex flex-col min-h-screen relative overflow-hidden">
         
         {/* --- STICKY TOP NAVIGATION --- */}
-        <header className={`sticky top-0 z-20 ${theme.header} border-b backdrop-blur-md px-8 py-4 flex items-center justify-between`}>
+        <header className={`sticky top-0 z-20 ${theme.header} border-b backdrop-blur-md px-8 py-3.5 flex items-center justify-between`}>
           {/* Breadcrumbs */}
           <div className="flex items-center gap-2 text-xs font-mono">
-            <span className={theme.textMuted}>PORTAL ADMIN</span>
+            <span className={theme.textMuted}>SMART JOURNEY</span>
             <ChevronRight className="h-3.5 w-3.5 text-neutral-600" />
-            <span className="text-amber-500 uppercase font-bold tracking-wider">{activeModule}</span>
-            {activeModule !== 'dashboard' && activeModule !== 'analytics' && activeModule !== 'cms' && activeModule !== 'account' && (
+            <span className="text-amber-500 uppercase font-black tracking-wider">{activeModule}</span>
+            {activeModule === 'orders' && (
               <>
                 <ChevronRight className="h-3.5 w-3.5 text-neutral-600" />
-                <span className={`${theme.textSecondary} uppercase font-bold`}>{activeSubTab}</span>
+                <span className={`${theme.textSecondary} uppercase font-bold`}>{activeOrdersTab.replace('_', ' ')}</span>
+              </>
+            )}
+            {activeModule === 'operations' && (
+              <>
+                <ChevronRight className="h-3.5 w-3.5 text-neutral-600" />
+                <span className={`${theme.textSecondary} uppercase font-bold`}>{activeOperationsTab}</span>
+              </>
+            )}
+            {activeModule === 'services' && (
+              <>
+                <ChevronRight className="h-3.5 w-3.5 text-neutral-600" />
+                <span className={`${theme.textSecondary} uppercase font-bold`}>{activeService}</span>
+                <ChevronRight className="h-3.5 w-3.5 text-neutral-600" />
+                <span className="text-amber-500/80 uppercase font-mono text-[10px] font-bold">{activeSubTab}</span>
+              </>
+            )}
+            {activeModule === 'finance' && (
+              <>
+                <ChevronRight className="h-3.5 w-3.5 text-neutral-600" />
+                <span className={`${theme.textSecondary} uppercase font-bold`}>{activeFinanceTab}</span>
+              </>
+            )}
+            {activeModule === 'customers' && (
+              <>
+                <ChevronRight className="h-3.5 w-3.5 text-neutral-600" />
+                <span className={`${theme.textSecondary} uppercase font-bold`}>{activeCustomersTab}</span>
+              </>
+            )}
+            {activeModule === 'marketing' && (
+              <>
+                <ChevronRight className="h-3.5 w-3.5 text-neutral-600" />
+                <span className={`${theme.textSecondary} uppercase font-bold`}>{activeMarketingTab}</span>
+              </>
+            )}
+            {activeModule === 'settings' && (
+              <>
+                <ChevronRight className="h-3.5 w-3.5 text-neutral-600" />
+                <span className={`${theme.textSecondary} uppercase font-bold`}>{activeSettingsTab}</span>
               </>
             )}
           </div>
 
           {/* Action Tools */}
           <div className="flex items-center gap-4">
-            {/* Search Bar Placeholder */}
+            {/* Search Bar */}
             <div className="relative hidden sm:block">
               <Search className={`absolute left-3.5 top-2.5 h-4 w-4 ${theme.textMuted}`} />
               <input 
                 type="text" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari manifest / parameter..." 
-                className={`w-48 md:w-64 ${theme.input} pl-10 pr-4 py-2 text-xs rounded-xl focus:outline-none focus:border-amber-500 border transition-all`} 
+                placeholder="Pencarian cepat sistem..." 
+                className={`w-48 md:w-64 ${theme.input} pl-10 pr-4 py-1.5 text-xs rounded-xl focus:outline-none focus:border-amber-500 border transition-all`} 
               />
             </div>
 
@@ -6731,20 +6888,20 @@ export default function AdminView() {
               {isDark ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-neutral-600" />}
             </button>
 
-            {/* Notifications Placeholder */}
+            {/* Real Notification Center */}
             <div className="relative">
               <button 
                 onClick={() => {
                   setShowNotifications(!showNotifications);
                   setShowProfileDropdown(false);
-                  if (notificationCount > 0) setNotificationCount(0);
                 }}
                 className={`p-2 rounded-xl border ${theme.border} ${theme.hover} ${theme.textSecondary} hover:${theme.textPrimary} transition-all cursor-pointer relative`}
+                title="Pusat Tindakan & Notifikasi"
               >
                 <Bell className="h-4 w-4" />
-                {notificationCount > 0 && (
+                {pendingConfirmationBookings.length > 0 && (
                   <span className="absolute -top-1 -right-1 h-4 w-4 bg-rose-500 text-white rounded-full text-[8px] font-black flex items-center justify-center animate-pulse">
-                    {notificationCount}
+                    {pendingConfirmationBookings.length}
                   </span>
                 )}
               </button>
@@ -6758,24 +6915,52 @@ export default function AdminView() {
                     className={`absolute right-0 mt-2 w-80 rounded-2xl border ${theme.card} shadow-2xl p-4 space-y-3 z-30`}
                   >
                     <div className={`flex justify-between items-center border-b ${theme.borderSubtle} pb-2`}>
-                      <span className="text-xs font-black uppercase tracking-wider font-mono text-amber-500">Notifikasi Sistem</span>
-                      <button onClick={() => setShowNotifications(false)} className={`text-neutral-500 ${theme.hover} p-1 rounded-lg`}>
+                      <span className="text-xs font-black uppercase tracking-wider font-mono text-amber-500">
+                        Pesanan Butuh Tindakan ({pendingConfirmationBookings.length})
+                      </span>
+                      <button onClick={() => setShowNotifications(false)} className={`text-neutral-500 ${theme.hover} p-1 rounded-lg cursor-pointer`}>
                         <X className="h-3.5 w-3.5" />
                       </button>
                     </div>
-                    <div className="space-y-2 max-h-60 overflow-y-auto no-scrollbar">
-                      {[
-                        { title: 'Pembayaran Diterima', desc: 'Tour #SJ-TB-9811 telah terbayar lunas via ArtoPay.', time: '5m yang lalu' },
-                        { title: 'Alokasi Otomatis Supir', desc: 'Supir "Made Wijaya" berhasil dialokasikan ke Rental #SJ-RB-4410.', time: '12m yang lalu' },
-                        { title: 'Pembaruan Katalog Wisata', desc: 'Admin Smart Journey memperbarui harga promo tur Uluwatu Sunset.', time: '1h yang lalu' }
-                      ].map((n, i) => (
-                        <div key={i} className={`p-2.5 rounded-xl ${theme.innerCard} border ${theme.borderSubtle} space-y-1`}>
-                          <h6 className={`text-[11px] font-black ${theme.textPrimary}`}>{n.title}</h6>
-                          <p className={`text-[10px] ${theme.textSecondary} leading-normal`}>{n.desc}</p>
-                          <span className={`text-[8px] font-mono font-bold ${theme.textMuted} block mt-1`}>{n.time}</span>
-                        </div>
-                      ))}
+
+                    <div className="space-y-2 max-h-64 overflow-y-auto no-scrollbar">
+                      {pendingConfirmationBookings.length === 0 ? (
+                        <p className="text-xs text-neutral-500 py-4 text-center font-mono">
+                          Tidak ada pesanan yang menunggu konfirmasi saat ini.
+                        </p>
+                      ) : (
+                        pendingConfirmationBookings.map((n) => (
+                          <div 
+                            key={n.id} 
+                            onClick={() => {
+                              handleOpenBookingDetail(n);
+                              setShowNotifications(false);
+                            }}
+                            className={`p-2.5 rounded-xl ${theme.innerCard} border border-amber-500/20 hover:border-amber-500/50 space-y-1 cursor-pointer transition-all`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <h6 className="text-[11px] font-black text-amber-500">#{n.bookingCode}</h6>
+                              <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400">Paid</span>
+                            </div>
+                            <p className="text-[10px] text-neutral-200 truncate font-semibold">{n.serviceTitle}</p>
+                            <p className="text-[10px] text-neutral-400">{n.customerName} · {n.date}</p>
+                          </div>
+                        ))
+                      )}
                     </div>
+
+                    {pendingConfirmationBookings.length > 0 && (
+                      <button
+                        onClick={() => {
+                          setActiveModule('orders');
+                          setActiveOrdersTab('pending_confirmation');
+                          setShowNotifications(false);
+                        }}
+                        className="w-full py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 text-xs font-bold text-center border border-amber-500/30 cursor-pointer"
+                      >
+                        Buka Semua Antrean Konfirmasi
+                      </button>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -6904,17 +7089,124 @@ export default function AdminView() {
                   </div>
                 </div>
 
+                {/* SECTION 1.5: NEEDS ATTENTION (OPERATIONAL ACTION CENTER) */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono font-extrabold uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
+                      <AlertTriangle className="h-4 w-4" />
+                      <span>NEEDS ATTENTION · TINDAKAN SEGERA ADMIN</span>
+                    </span>
+                    <span className="text-[10px] font-mono text-neutral-400">
+                      Prioritas Operasional Hari Ini
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Action 1: Pending Confirmation */}
+                    <div 
+                      onClick={() => {
+                        setActiveModule('orders');
+                        setActiveOrdersTab('pending_confirmation');
+                      }}
+                      className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                        pendingConfirmationBookings.length > 0
+                          ? 'bg-amber-500/10 border-amber-500/40 hover:border-amber-500 shadow-sm'
+                          : `${theme.innerCard} border-neutral-800 opacity-60`
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-mono uppercase font-bold text-amber-500">
+                          Menunggu Konfirmasi
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-mono font-black ${
+                          pendingConfirmationBookings.length > 0 ? 'bg-amber-500 text-neutral-950 animate-pulse' : 'bg-neutral-800 text-neutral-400'
+                        }`}>
+                          {pendingConfirmationBookings.length}
+                        </span>
+                      </div>
+                      <p className="text-sm font-bold text-neutral-100">
+                        {pendingConfirmationBookings.length > 0 
+                          ? `${pendingConfirmationBookings.length} pesanan telah lunas & siap dikonfirmasi.`
+                          : 'Tidak ada pesanan menunggu konfirmasi.'}
+                      </p>
+                      <span className="text-[10px] text-amber-500 font-bold block mt-2 hover:underline">
+                        Buka Antrean Konfirmasi →
+                      </span>
+                    </div>
+
+                    {/* Action 2: Pending Payment */}
+                    <div 
+                      onClick={() => {
+                        setActiveModule('orders');
+                        setActiveOrdersTab('pending_payment');
+                      }}
+                      className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                        pendingPaymentBookings.length > 0
+                          ? 'bg-neutral-800/40 border-neutral-700 hover:border-neutral-500'
+                          : `${theme.innerCard} border-neutral-800 opacity-60`
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-mono uppercase font-bold text-neutral-400">
+                          Menunggu Pembayaran
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-xs font-mono font-black bg-neutral-800 text-neutral-300">
+                          {pendingPaymentBookings.length}
+                        </span>
+                      </div>
+                      <p className="text-sm font-bold text-neutral-200">
+                        {pendingPaymentBookings.length > 0
+                          ? `${pendingPaymentBookings.length} pesanan belum menyelesaikan transaksi via ArtoPay.`
+                          : 'Semua pesanan aktif telah terbayar.'}
+                      </p>
+                      <span className="text-[10px] text-neutral-400 font-bold block mt-2 hover:underline">
+                        Lihat Daftar Tagihan →
+                      </span>
+                    </div>
+
+                    {/* Action 3: Upcoming Departures */}
+                    <div 
+                      onClick={() => {
+                        setActiveModule('operations');
+                        setActiveOperationsTab('departures');
+                      }}
+                      className={`p-4 rounded-2xl border transition-all cursor-pointer ${theme.innerCard} border-neutral-700/60 hover:border-neutral-500`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-mono uppercase font-bold text-neutral-400">
+                          Jadwal Operasional
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-xs font-mono font-black bg-neutral-800 text-neutral-300">
+                          {confirmedBookings.length} Aktif
+                        </span>
+                      </div>
+                      <p className="text-sm font-bold text-neutral-200">
+                        Pantau manifest armada dan rute penjemputan tamu hari ini.
+                      </p>
+                      <span className="text-[10px] text-neutral-400 font-bold block mt-2 hover:underline">
+                        Buka Pusat Operasional →
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
                 {/* SECTION 2: SUMMARY CARDS */}
                 {(() => {
                   const todayStr = '2026-07-14';
-                  const todayBookingsCount = bookings.filter(b => b.details && b.details.date === todayStr).length;
+                  const todayBookingsCount = bookings.filter(b => {
+                    const bDate = (b as any).departureDate || b.details?.departureDate || b.details?.date || b.bookingDate || (b as any).date;
+                    return bDate === todayStr;
+                  }).length;
                   
                   const pendingPaymentBookings = bookings.filter(b => b.paymentStatus === 'Pending');
                   const pendingPaymentCount = pendingPaymentBookings.length;
                   const pendingPaymentAmountUSD = pendingPaymentBookings.reduce((sum, b) => sum + (b.totalPrice || 0), 0);
                   const pendingPaymentAmountIDR = pendingPaymentBookings.reduce((sum, b) => sum + (b.totalPriceIDR || 0), 0);
 
-                  const todayPaidBookings = bookings.filter(b => b.details && b.details.date === todayStr && b.paymentStatus === 'Paid');
+                  const todayPaidBookings = bookings.filter(b => {
+                    const bDate = (b as any).departureDate || b.details?.departureDate || b.details?.date || b.bookingDate || (b as any).date;
+                    return bDate === todayStr && b.paymentStatus === 'Paid';
+                  });
                   const todayRevenueUSD = todayPaidBookings.reduce((sum, b) => sum + (b.totalPrice || 0), 0);
                   const todayRevenueIDR = todayPaidBookings.reduce((sum, b) => sum + (b.totalPriceIDR || 0), 0);
 
@@ -7089,9 +7381,12 @@ export default function AdminView() {
                         }
 
                         const getOccupancyInfo = (dateStr: string) => {
-                          const dateBookings = bookings.filter(b => b.details && b.details.date === dateStr);
+                          const dateBookings = bookings.filter(b => {
+                            const bDate = (b as any).departureDate || b.details?.departureDate || b.details?.date || b.bookingDate || (b as any).date;
+                            return bDate === dateStr;
+                          });
                           
-                          const tourCount = dateBookings.filter(b => b.type === 'tour').length;
+                          const tourCount = dateBookings.filter(b => b.type === 'tour' || (b as any).serviceType === 'shared' || (b as any).bookingType === 'shared').length;
                           const airportCount = dateBookings.filter(b => b.type === 'airport').length;
                           const taxiCount = dateBookings.filter(b => b.type === 'taxi').length;
                           const rentalCount = dateBookings.filter(b => b.type === 'rental').length;
@@ -7209,9 +7504,12 @@ export default function AdminView() {
 
                       {/* Display summaries only, no user data */}
                       {(() => {
-                        const dateBookings = bookings.filter(b => b.details && b.details.date === selectedDashDate);
+                        const dateBookings = bookings.filter(b => {
+                          const bDate = (b as any).departureDate || b.details?.departureDate || b.details?.date || b.bookingDate || (b as any).date;
+                          return bDate === selectedDashDate;
+                        });
                         
-                        const tourCount = dateBookings.filter(b => b.type === 'tour').length;
+                        const tourCount = dateBookings.filter(b => b.type === 'tour' || (b as any).serviceType === 'shared' || (b as any).bookingType === 'shared').length;
                         const tourLimit = serviceLimits?.tour ?? 5;
                         
                         const airportCount = dateBookings.filter(b => b.type === 'airport').length;
@@ -7557,6 +7855,283 @@ export default function AdminView() {
               </motion.div>
             )}
 
+            {/* 2. VIEW: ORDERS & TRANSACTIONS (CANONICAL) */}
+            {(activeModule === 'orders' || activeModule === 'bookings') && (
+              <motion.div
+                key="orders-module"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="space-y-6 text-left"
+              >
+                <OrdersView
+                  bookings={unifiedBookingsList}
+                  activeTab={activeOrdersTab}
+                  setActiveTab={setActiveOrdersTab}
+                  onOpenDetail={handleOpenBookingDetail}
+                  onConfirmBooking={handleConfirmUnifiedBooking}
+                  onCompleteBooking={handleCompleteUnifiedBooking}
+                  onCancelBooking={handleCancelUnifiedBooking}
+                  formatPrice={formatPrice}
+                  theme={theme}
+                  isDark={isDark}
+                  triggerToast={triggerToast}
+                />
+              </motion.div>
+            )}
+
+            {/* 3. VIEW: OPERATIONS CENTER (CANONICAL) */}
+            {activeModule === 'operations' && (
+              <motion.div
+                key="operations-module"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="space-y-6 text-left"
+              >
+                <OperationsView
+                  bookings={unifiedBookingsList}
+                  shareTourBatches={shareTourBatches}
+                  shareTourTrips={shareTourTrips}
+                  activeTab={activeOperationsTab}
+                  setActiveTab={setActiveOperationsTab}
+                  onOpenDetail={handleOpenBookingDetail}
+                  theme={theme}
+                  isDark={isDark}
+                  triggerToast={triggerToast}
+                />
+              </motion.div>
+            )}
+
+            {/* 4. VIEW: SERVICES MANAGEMENT (CANONICAL) */}
+            {activeModule === 'services' && (
+              <motion.div
+                key="services-module"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="space-y-6 text-left"
+              >
+                {/* Services Top Hub Navigation */}
+                <div className={`p-4 rounded-2xl border ${theme.card} flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm`}>
+                  <div className="space-y-0.5">
+                    <h3 className="text-sm font-black uppercase tracking-wider font-mono text-amber-500 flex items-center gap-2">
+                      <Layers className="h-4 w-4" />
+                      <span>SERVICES &amp; FLEET HUBS</span>
+                    </h3>
+                    <p className={`text-xs ${theme.textSecondary}`}>
+                      Kelola paket wisata, jadwal open trip, tarif bandara, taksi argo, dan armada rental.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 p-1 rounded-xl bg-neutral-900 border border-neutral-800 overflow-x-auto no-scrollbar">
+                    {[
+                      { id: 'private-tour', label: 'Private Tour', icon: Compass },
+                      { id: 'open-trip', label: 'Open Trip', icon: Globe },
+                      { id: 'airport', label: 'Airport Transfer', icon: Plane },
+                      { id: 'taxi', label: 'Taxi Service', icon: MapPin },
+                      { id: 'rental', label: 'Car Rental', icon: Truck },
+                    ].map((svc) => {
+                      const Icon = svc.icon;
+                      const isActive = activeService === svc.id;
+                      return (
+                        <button
+                          key={svc.id}
+                          onClick={() => {
+                            setActiveService(svc.id as any);
+                            if (svc.id === 'private-tour') setActiveSubTab('management');
+                            else if (svc.id === 'open-trip') setActiveSubTab('catalog');
+                            else if (svc.id === 'airport') setActiveSubTab('routes');
+                            else if (svc.id === 'taxi') setActiveSubTab('master-data');
+                            else if (svc.id === 'rental') setActiveSubTab('vehicles');
+                          }}
+                          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                            isActive
+                              ? 'bg-amber-500 text-neutral-950 font-black shadow-sm'
+                              : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60'
+                          }`}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                          <span>{svc.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Secondary Sub-Service Navigation for Private Tour */}
+                {activeService === 'private-tour' && (
+                  <div className="flex items-center gap-1.5 p-1 rounded-xl bg-neutral-900 border border-neutral-800 overflow-x-auto no-scrollbar shadow-sm">
+                    {[
+                      { id: 'management', label: 'Katalog & Detail Paket', icon: Briefcase },
+                      { id: 'calendar', label: 'Ketersediaan & Kalender (Availability & Blackout)', icon: Calendar },
+                      { id: 'dashboard', label: 'Analitik & Performa Wisata', icon: BarChart3 },
+                    ].map((tab) => {
+                      const Icon = tab.icon;
+                      const isActive = activeSubTab === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setActiveSubTab(tab.id as any)}
+                          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                            isActive
+                              ? 'bg-amber-500 text-neutral-950 font-black shadow-sm'
+                              : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60'
+                          }`}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                          <span>{tab.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Secondary Sub-Service Navigation for Airport Transfer */}
+                {activeService === 'airport' && (
+                  <div className="flex items-center gap-1.5 p-1 rounded-xl bg-neutral-900 border border-neutral-800 overflow-x-auto no-scrollbar shadow-sm">
+                    {[
+                      { id: 'routes', label: 'Rute & Tarif Transfer', icon: Globe },
+                      { id: 'airports', label: 'Master Bandara & Surcharge', icon: Plane },
+                      { id: 'calendar', label: 'Ketersediaan & Jadwal Penjemputan', icon: Calendar },
+                      { id: 'dashboard', label: 'Analitik & Live Flight Monitor', icon: BarChart3 },
+                    ].map((tab) => {
+                      const Icon = tab.icon;
+                      const isActive = activeSubTab === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setActiveSubTab(tab.id as any)}
+                          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                            isActive
+                              ? 'bg-amber-500 text-neutral-950 font-black shadow-sm'
+                              : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60'
+                          }`}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                          <span>{tab.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Sub-Service Active Workspace */}
+                <div>
+                  {activeService === 'private-tour' && (
+                    <div>{renderModuleTabContent('Tour Packages')}</div>
+                  )}
+
+                  {activeService === 'open-trip' && (
+                    <div>
+                      {shareTourLoading && shareTourTrips.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 space-y-4">
+                          <RefreshCw className="w-8 h-8 text-amber-500 animate-spin" />
+                          <p className={`text-xs font-mono ${theme.textSecondary}`}>Memuat Database Share Tour / Open Trip...</p>
+                        </div>
+                      ) : (
+                        <ShareTourAdminDashboard
+                          trips={shareTourTrips}
+                          batches={shareTourBatches}
+                          bookings={shareTourBookings}
+                          tripsRevision={shareTourTripsRevision}
+                          onRefreshDB={loadShareTourData}
+                          onLogout={handleLogout}
+                          embedded={true}
+                          theme={theme}
+                          isDark={isDark}
+                          currency={currency}
+                          formatPrice={formatPrice}
+                          triggerToast={triggerToast}
+                          activeSubTab={activeSubTab}
+                          setActiveSubTab={setActiveSubTab}
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  {activeService === 'airport' && (
+                    <div>{renderModuleTabContent('Airport Transfer')}</div>
+                  )}
+
+                  {activeService === 'taxi' && (
+                    <div>
+                      <TaxiExcelManager
+                        taxiMasterAreas={taxiMasterAreas}
+                        setTaxiMasterAreas={setTaxiMasterAreas}
+                        taxiMasterDestinations={taxiMasterDestinations}
+                        setTaxiMasterDestinations={setTaxiMasterDestinations}
+                        taxiPricingRules={taxiPricingRules}
+                        setTaxiPricingRules={setTaxiPricingRules}
+                        taxiAreaRules={taxiAreaRules}
+                        setTaxiAreaRules={setTaxiAreaRules}
+                        taxiImportHistory={taxiImportHistory}
+                        setTaxiImportHistory={setTaxiImportHistory}
+                        currency={currency}
+                        formatPrice={formatPrice}
+                        triggerToast={triggerToast}
+                        activeTab={activeSubTab as any}
+                        setActiveTab={(tab) => setActiveSubTab(tab as any)}
+                        isDark={isDark}
+                      />
+                    </div>
+                  )}
+
+                  {activeService === 'rental' && (
+                    <div>{renderModuleTabContent('Car Rental')}</div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {/* 5. VIEW: CUSTOMERS HUB (CANONICAL) */}
+            {activeModule === 'customers' && (
+              <motion.div
+                key="customers-module"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="space-y-6 text-left"
+              >
+                <CustomersView
+                  bookings={unifiedBookingsList}
+                  reviews={reviews}
+                  approveReview={approveReview}
+                  rejectReview={rejectReview}
+                  activeTab={activeCustomersTab}
+                  setActiveTab={setActiveCustomersTab}
+                  theme={theme}
+                  isDark={isDark}
+                  triggerToast={triggerToast}
+                  onOpenBookingDetail={handleOpenBookingDetail}
+                />
+              </motion.div>
+            )}
+
+            {/* 6. VIEW: FINANCE & PAYMENTS (CANONICAL) */}
+            {(activeModule === 'finance' || activeModule === 'reports') && (
+              <motion.div
+                key="finance-module"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="space-y-6 text-left"
+              >
+                <FinanceView
+                  bookings={unifiedBookingsList}
+                  activeTab={activeFinanceTab}
+                  setActiveTab={setActiveFinanceTab}
+                  formatPrice={formatPrice}
+                  theme={theme}
+                  isDark={isDark}
+                  triggerToast={triggerToast}
+                  onOpenDetail={handleOpenBookingDetail}
+                />
+              </motion.div>
+            )}
+
             {/* 1.1 VIEW: ADVANCED ANALYTICS DASHBOARD */}
             {activeModule === 'analytics' && (
               <motion.div 
@@ -7647,15 +8222,248 @@ export default function AdminView() {
               </motion.div>
             )}
 
-            {/* 6. VIEW: WEBSITE CMS */}
-            {activeModule === 'cms' && (
+            {/* 8. VIEW: MARKETING & PROMO (CANONICAL) */}
+            {(activeModule === 'marketing' || activeModule === 'cms') && (
               <motion.div 
-                key="website-cms"
+                key="marketing-module"
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="space-y-6"
+                className="space-y-6 text-left"
               >
+                {/* Marketing Sub-Navigation Bar */}
+                <div className={`p-4 rounded-2xl border ${theme.card} flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm`}>
+                  <div className="space-y-0.5">
+                    <h3 className="text-sm font-black uppercase tracking-wider font-mono text-amber-500 flex items-center gap-2">
+                      <Sparkles className="h-4 w-4" />
+                      <span>MARKETING &amp; PROMOTION HUB</span>
+                    </h3>
+                    <p className={`text-xs ${theme.textSecondary}`}>
+                      Kelola voucher diskon pelanggan dan materi publikasi website utama.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 p-1 rounded-xl bg-neutral-900 border border-neutral-800">
+                    <button
+                      onClick={() => setActiveMarketingTab('promo')}
+                      className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        activeMarketingTab === 'promo'
+                          ? 'bg-amber-500 text-neutral-950 font-black shadow-sm'
+                          : 'text-neutral-400 hover:text-white'
+                      }`}
+                    >
+                      <Tag className="h-3.5 w-3.5" />
+                      <span>Kode Promo &amp; Diskon</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveMarketingTab('content')}
+                      className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        activeMarketingTab === 'content' || activeModule === 'cms'
+                          ? 'bg-amber-500 text-neutral-950 font-black shadow-sm'
+                          : 'text-neutral-400 hover:text-white'
+                      }`}
+                    >
+                      <Globe className="h-3.5 w-3.5" />
+                      <span>Website Content (CMS)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Sub Tab: Promo Codes */}
+                {activeMarketingTab === 'promo' && (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h4 className="text-sm font-black font-mono text-neutral-200 uppercase">Daftar Kode Promo Aktif</h4>
+                        <p className={`text-xs ${theme.textSecondary}`}>Voucher diskon otomatis divalidasi pada checkout customer.</p>
+                      </div>
+                      <button
+                        onClick={() => setShowAddPromoModal(true)}
+                        className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-neutral-950 font-black text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      >
+                        <Plus className="h-4 w-4" />
+                        <span>Tambah Promo Baru</span>
+                      </button>
+                    </div>
+
+                    <div className={`${theme.card} border rounded-2xl overflow-hidden shadow-sm`}>
+                      <table className="w-full text-left text-xs">
+                        <thead className={`${theme.innerCard} border-b text-[10px] font-mono uppercase text-neutral-400 font-black`}>
+                          <tr>
+                            <th className="p-3.5">Kode Promo</th>
+                            <th className="p-3.5">Tipe Diskon</th>
+                            <th className="p-3.5">Nilai Potongan</th>
+                            <th className="p-3.5">Min. Belanja</th>
+                            <th className="p-3.5">Berlaku Hingga</th>
+                            <th className="p-3.5 text-center">Status</th>
+                            <th className="p-3.5 text-center">Digunakan</th>
+                            <th className="p-3.5 text-right">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-neutral-850">
+                          {promoCodes.map((p) => (
+                            <tr key={p.id} className={`${theme.hover} transition-colors`}>
+                              <td className="p-3.5 font-mono font-black text-amber-500 text-sm">
+                                {p.code}
+                              </td>
+                              <td className="p-3.5 font-mono capitalize">
+                                {p.discountType === 'percentage' ? 'Persentase (%)' : 'Nominal Tetap (Rp)'}
+                              </td>
+                              <td className="p-3.5 font-mono font-bold text-neutral-200">
+                                {p.discountType === 'percentage' ? `${p.discountValue}%` : `Rp ${p.discountValue.toLocaleString('id-ID')}`}
+                              </td>
+                              <td className="p-3.5 font-mono text-neutral-400">
+                                Rp {p.minSpendIDR.toLocaleString('id-ID')}
+                              </td>
+                              <td className="p-3.5 font-mono text-neutral-400">
+                                {p.validUntil}
+                              </td>
+                              <td className="p-3.5 text-center">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                                  p.isActive ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-neutral-800 text-neutral-500'
+                                }`}>
+                                  {p.isActive ? 'Aktif' : 'Non-aktif'}
+                                </span>
+                              </td>
+                              <td className="p-3.5 text-center font-mono font-bold">
+                                {p.usageCount}x
+                              </td>
+                              <td className="p-3.5 text-right space-x-1.5">
+                                <button
+                                  onClick={() => {
+                                    setPromoCodes(prev => prev.map(item => item.id === p.id ? { ...item, isActive: !item.isActive } : item));
+                                    triggerToast(`Status promo ${p.code} diubah`);
+                                  }}
+                                  className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold cursor-pointer"
+                                  title={p.isActive ? 'Non-aktifkan' : 'Aktifkan'}
+                                >
+                                  {p.isActive ? 'Pause' : 'Aktifkan'}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setPromoCodes(prev => prev.filter(item => item.id !== p.id));
+                                    triggerToast(`Promo ${p.code} dihapus`);
+                                  }}
+                                  className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 cursor-pointer"
+                                  title="Hapus Promo"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Add Promo Modal */}
+                    {showAddPromoModal && (
+                      <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+                        <div className={`max-w-md w-full ${theme.card} border rounded-2xl p-6 space-y-4 shadow-2xl`}>
+                          <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
+                            <h4 className="text-sm font-black font-mono text-amber-500 uppercase">Tambah Kode Promo Baru</h4>
+                            <button onClick={() => setShowAddPromoModal(false)} className="text-neutral-400 hover:text-white cursor-pointer">
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <div className="space-y-3">
+                            <div>
+                              <label className="text-[10px] font-mono text-neutral-400 uppercase block mb-1">Kode Voucher</label>
+                              <input
+                                type="text"
+                                value={newPromoCode.code}
+                                onChange={(e) => setNewPromoCode({ ...newPromoCode, code: e.target.value.toUpperCase() })}
+                                placeholder="CONTOH: PROMO2026"
+                                className={`w-full ${theme.input} border rounded-xl px-3 py-2 text-xs font-mono uppercase`}
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-[10px] font-mono text-neutral-400 uppercase block mb-1">Tipe Diskon</label>
+                                <select
+                                  value={newPromoCode.discountType}
+                                  onChange={(e) => setNewPromoCode({ ...newPromoCode, discountType: e.target.value as any })}
+                                  className={`w-full ${theme.input} border rounded-xl px-3 py-2 text-xs`}
+                                >
+                                  <option value="percentage">Persentase (%)</option>
+                                  <option value="fixed">Nominal Tetap (Rp)</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-mono text-neutral-400 uppercase block mb-1">Nilai Potongan</label>
+                                <input
+                                  type="number"
+                                  value={newPromoCode.discountValue}
+                                  onChange={(e) => setNewPromoCode({ ...newPromoCode, discountValue: Number(e.target.value) })}
+                                  className={`w-full ${theme.input} border rounded-xl px-3 py-2 text-xs font-mono`}
+                                />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-[10px] font-mono text-neutral-400 uppercase block mb-1">Min. Belanja (Rp)</label>
+                                <input
+                                  type="number"
+                                  value={newPromoCode.minSpendIDR}
+                                  onChange={(e) => setNewPromoCode({ ...newPromoCode, minSpendIDR: Number(e.target.value) })}
+                                  className={`w-full ${theme.input} border rounded-xl px-3 py-2 text-xs font-mono`}
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-mono text-neutral-400 uppercase block mb-1">Berlaku Sampai</label>
+                                <input
+                                  type="date"
+                                  value={newPromoCode.validUntil}
+                                  onChange={(e) => setNewPromoCode({ ...newPromoCode, validUntil: e.target.value })}
+                                  className={`w-full ${theme.input} border rounded-xl px-3 py-2 text-xs font-mono`}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex justify-end gap-2 pt-2 border-t border-neutral-800">
+                            <button
+                              onClick={() => setShowAddPromoModal(false)}
+                              className="px-4 py-2 rounded-xl border border-neutral-700 text-xs font-bold text-neutral-300 hover:bg-neutral-800 cursor-pointer"
+                            >
+                              Batal
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (!newPromoCode.code.trim()) {
+                                  triggerToast('Kode voucher tidak boleh kosong');
+                                  return;
+                                }
+                                setPromoCodes(prev => [
+                                  ...prev,
+                                  {
+                                    id: `promo-${Date.now()}`,
+                                    code: newPromoCode.code.trim().toUpperCase(),
+                                    discountType: newPromoCode.discountType,
+                                    discountValue: newPromoCode.discountValue,
+                                    minSpendIDR: newPromoCode.minSpendIDR,
+                                    validUntil: newPromoCode.validUntil,
+                                    isActive: true,
+                                    usageCount: 0
+                                  }
+                                ]);
+                                setShowAddPromoModal(false);
+                                setNewPromoCode({ code: '', discountType: 'percentage', discountValue: 10, minSpendIDR: 500000, validUntil: '2026-12-31' });
+                                triggerToast('Kode promo berhasil ditambahkan!');
+                              }}
+                              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-neutral-950 text-xs font-black cursor-pointer shadow-sm"
+                            >
+                              Simpan Promo
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Sub Tab: Website Content (CMS) */}
+                {(activeMarketingTab === 'content' || activeModule === 'cms') && (
+                  <div className="space-y-6">
                 <div className="space-y-1">
                   <h2 className="text-xl font-black tracking-tight font-mono text-amber-500">WEBSITE CMS INTERFACE</h2>
                   <p className={`text-xs ${theme.textSecondary}`}>
@@ -8251,6 +9059,8 @@ export default function AdminView() {
                     </button>
                   </div>
                 </div>
+                  </div>
+                )}
               </motion.div>
             )}
 
@@ -8430,35 +9240,68 @@ export default function AdminView() {
                       </thead>
                       <tbody className="divide-y divide-neutral-850">
                         {(() => {
-                          // Combine AppContext bookings and ShareTour bookings into unified list
-                          const unifiedList = [
-                            ...bookings.map(b => ({
+                          // Read from authoritative bookings database without duplication
+                          const seenIds = new Set<string>();
+                          const unifiedList: any[] = [];
+
+                          for (const b of bookings) {
+                            const code = b.bookingCode || b.id;
+                            if (!code || seenIds.has(code) || seenIds.has(b.id)) continue;
+                            seenIds.add(code);
+                            seenIds.add(b.id);
+
+                            const isShared = (b as any).serviceType === 'shared' || (b as any).bookingType === 'shared' || Boolean((b as any).batchId);
+                            const channel = isShared 
+                              ? 'Share Tour / Open Trip' 
+                              : b.type === 'tour' 
+                                ? 'Private Tour' 
+                                : b.type === 'airport' 
+                                  ? 'Airport Transfer' 
+                                  : b.type === 'taxi' 
+                                    ? 'Taxi Service' 
+                                    : b.type === 'car-rental' || (b.type as any) === 'rental' 
+                                      ? 'Car Rental' 
+                                      : (b.serviceName || b.type);
+
+                            unifiedList.push({
                               source: 'main' as const,
-                              id: b.id,
-                              channel: b.type === 'tour' ? 'Private Tour' : b.type === 'airport' ? 'Airport Transfer' : b.type === 'taxi' ? 'Taxi Service' : b.type === 'car-rental' ? 'Car Rental' : b.type,
-                              channelRaw: b.type,
-                              guestName: b.guestDetails?.name || 'Anonim',
-                              phone: b.guestDetails?.phone || '-',
-                              email: b.guestDetails?.email || '-',
-                              date: b.details?.date || b.bookingDate,
-                              amount: b.pricing?.totalPrice ? formatPrice(b.pricing.totalPrice) : '-',
+                              id: b.bookingCode || b.id,
+                              bookingCode: b.bookingCode || b.id,
+                              channel,
+                              channelRaw: isShared ? 'sharetour' : b.type,
+                              guestName: b.customerName || (b as any).fullName || b.guestDetails?.name || 'Anonim',
+                              phone: b.customerPhone || (b as any).phone || b.guestDetails?.phone || '-',
+                              email: b.customerEmail || (b as any).email || b.guestDetails?.email || '-',
+                              date: (b as any).departureDate || b.details?.departureDate || b.details?.date || b.bookingDate || '-',
+                              amount: b.totalPriceIDR ? `Rp ${Number(b.totalPriceIDR).toLocaleString('id-ID')}` : (b.totalPrice ? formatPrice(b.totalPrice, b.totalPriceIDR) : '-'),
                               status: b.status,
+                              paymentStatus: b.paymentStatus || 'Pending',
                               original: b
-                            })),
-                            ...shareTourBookings.map(sb => ({
+                            });
+                          }
+
+                          for (const sb of shareTourBookings) {
+                            const code = sb.bookingCode || sb.id;
+                            if (!code || seenIds.has(code) || (sb.id && seenIds.has(sb.id))) continue;
+                            seenIds.add(code);
+                            if (sb.id) seenIds.add(sb.id);
+
+                            unifiedList.push({
                               source: 'sharetour' as const,
-                              id: sb.bookingCode,
+                              id: sb.bookingCode || sb.id,
+                              bookingCode: sb.bookingCode || sb.id,
                               channel: 'Share Tour / Open Trip',
                               channelRaw: 'sharetour',
-                              guestName: sb.leadFullName,
-                              phone: sb.phoneNumber || '-',
-                              email: sb.email || '-',
-                              date: sb.createdAt ? new Date(sb.createdAt).toLocaleDateString() : '-',
-                              amount: `Rp ${sb.totalAmountIDR?.toLocaleString('id-ID')}`,
+                              guestName: (sb as any).leadFullName || (sb as any).customerName || (sb as any).fullName || 'Anonim',
+                              phone: (sb as any).phoneNumber || (sb as any).customerPhone || (sb as any).phone || '-',
+                              email: (sb as any).email || (sb as any).customerEmail || '-',
+                              date: (sb as any).departureDate || (sb as any).details?.date || (sb as any).createdAt || '-',
+                              amount: (sb as any).totalAmountIDR ? `Rp ${Number((sb as any).totalAmountIDR).toLocaleString('id-ID')}` : ((sb as any).totalPriceIDR ? `Rp ${Number((sb as any).totalPriceIDR).toLocaleString('id-ID')}` : '-'),
                               status: sb.status,
+                              paymentStatus: (sb as any).paymentStatus || 'Pending',
                               original: sb
-                            }))
-                          ];
+                            });
+                          }
 
                           const filtered = unifiedList.filter(item => {
                             const matchQuery = !bookingSearchQuery || 
@@ -8534,11 +9377,19 @@ export default function AdminView() {
                                     {(item.status === 'Pending' || item.status === 'Pending Confirmation') && (
                                       <button
                                         onClick={() => {
+                                          if (item.paymentStatus !== 'Paid') {
+                                            triggerToast('Gagal: Admin hanya boleh konfirmasi jika status pembayaran sudah "Paid".');
+                                            return;
+                                          }
                                           updateBookingStatus(item.id, 'Confirmed');
                                           triggerToast(`Booking #${item.id.slice(-6)} telah dikonfirmasi`);
                                         }}
-                                        className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 cursor-pointer"
-                                        title="Konfirmasi Booking"
+                                        className={`p-1.5 rounded-lg border cursor-pointer ${
+                                          item.paymentStatus === 'Paid'
+                                            ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                                            : 'bg-neutral-800 text-neutral-500 border-neutral-700 opacity-60'
+                                        }`}
+                                        title={item.paymentStatus === 'Paid' ? 'Konfirmasi Booking' : 'Menunggu Pembayaran (Harus Paid)'}
                                       >
                                         <Check className="h-3.5 w-3.5" />
                                       </button>
@@ -8683,15 +9534,155 @@ export default function AdminView() {
               </motion.div>
             )}
 
-            {/* 9. VIEW: ACCOUNT PAGE */}
-            {activeModule === 'account' && (
+            {/* 9. VIEW: SETTINGS & RBAC (CANONICAL) */}
+            {(activeModule === 'settings' || activeModule === 'account') && (
               <motion.div 
-                key="account-page"
+                key="settings-module"
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="space-y-6"
+                className="space-y-6 text-left"
               >
+                {/* Settings Sub-Navigation */}
+                <div className={`p-4 rounded-2xl border ${theme.card} flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm`}>
+                  <div className="space-y-0.5">
+                    <h3 className="text-sm font-black uppercase tracking-wider font-mono text-amber-500 flex items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      <span>SYSTEM SETTINGS &amp; ACCESS CONTROL</span>
+                    </h3>
+                    <p className={`text-xs ${theme.textSecondary}`}>
+                      Konfigurasi parameter operasional sistem, matriks hak akses divisi (RBAC), dan akun staf.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 p-1 rounded-xl bg-neutral-900 border border-neutral-800">
+                    <button
+                      onClick={() => setActiveSettingsTab('general')}
+                      className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        activeSettingsTab === 'general' && activeModule !== 'account'
+                          ? 'bg-amber-500 text-neutral-950 font-black shadow-sm'
+                          : 'text-neutral-400 hover:text-white'
+                      }`}
+                    >
+                      <Layers className="h-3.5 w-3.5" />
+                      <span>General &amp; Limits</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveSettingsTab('rbac')}
+                      className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        activeSettingsTab === 'rbac' && activeModule !== 'account'
+                          ? 'bg-amber-500 text-neutral-950 font-black shadow-sm'
+                          : 'text-neutral-400 hover:text-white'
+                      }`}
+                    >
+                      <Shield className="h-3.5 w-3.5" />
+                      <span>Roles &amp; Access (RBAC)</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveSettingsTab('account')}
+                      className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        activeSettingsTab === 'account' || activeModule === 'account'
+                          ? 'bg-amber-500 text-neutral-950 font-black shadow-sm'
+                          : 'text-neutral-400 hover:text-white'
+                      }`}
+                    >
+                      <User className="h-3.5 w-3.5" />
+                      <span>Account &amp; Security</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Sub Tab: General Limits */}
+                {activeSettingsTab === 'general' && activeModule !== 'account' && (
+                  <div className={`${theme.card} border rounded-2xl p-6 space-y-6`}>
+                    <h4 className="text-xs font-black uppercase tracking-widest font-mono text-amber-500 border-b border-neutral-850 pb-2">
+                      Operational Capacity Limits &amp; Automation
+                    </h4>
+
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-neutral-400 uppercase tracking-wider block">Kapasitas Harian Private Tour</label>
+                          <input 
+                            type="number" 
+                            min={1}
+                            max={100}
+                            value={serviceLimits?.tour ?? 5} 
+                            onChange={(e) => setServiceLimit('tour', parseInt(e.target.value, 10) || 5)}
+                            className={`w-full ${theme.input} border rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-500`} 
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-neutral-400 uppercase tracking-wider block">Kapasitas Harian Airport</label>
+                          <input 
+                            type="number" 
+                            min={1}
+                            max={100}
+                            value={serviceLimits?.airport ?? 5} 
+                            onChange={(e) => setServiceLimit('airport', parseInt(e.target.value, 10) || 5)}
+                            className={`w-full ${theme.input} border rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-500`} 
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-neutral-400 uppercase tracking-wider block">Kapasitas Harian Taxi</label>
+                          <input 
+                            type="number" 
+                            min={1}
+                            max={100}
+                            value={serviceLimits?.taxi ?? 5} 
+                            onChange={(e) => setServiceLimit('taxi', parseInt(e.target.value, 10) || 5)}
+                            className={`w-full ${theme.input} border rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-500`} 
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-neutral-400 uppercase tracking-wider block">Kapasitas Harian Rental</label>
+                          <input 
+                            type="number" 
+                            min={1}
+                            max={100}
+                            value={serviceLimits?.rental ?? 5} 
+                            onChange={(e) => setServiceLimit('rental', parseInt(e.target.value, 10) || 5)}
+                            className={`w-full ${theme.input} border rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-500`} 
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-neutral-400 uppercase tracking-wider block">Aturan Pembatalan Otomatis (Unpaid)</label>
+                          <select className={`w-full ${theme.input} border rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-500`}>
+                            <option>Batalkan jika belum bayar dalam 2 Jam</option>
+                            <option>Batalkan jika belum bayar dalam 12 Jam</option>
+                            <option>Batalkan jika belum bayar dalam 24 Jam</option>
+                            <option>Tidak ada pembatalan otomatis</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-neutral-400 uppercase tracking-wider block">Gateway Pembayaran Utama</label>
+                          <input type="text" disabled value="ArtoPay Dynamic QRIS & Virtual Account" className={`w-full ${theme.input} border rounded-xl px-3 py-2 text-xs opacity-75 cursor-not-allowed`} />
+                        </div>
+                      </div>
+
+                      <div className="pt-4 border-t border-neutral-850 flex justify-end">
+                        <button onClick={() => triggerToast('Pengaturan Konfigurasi Disimpan')} className="bg-amber-500 hover:bg-amber-600 text-neutral-950 font-black text-xs px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer">
+                          <Save className="h-4 w-4" />
+                          <span>Simpan Pengaturan</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sub Tab: RBAC */}
+                {activeSettingsTab === 'rbac' && activeModule !== 'account' && (
+                  <div>
+                    <SettingsRBAC triggerNotification={(title, msg) => triggerToast(`${title}: ${msg}`)} />
+                  </div>
+                )}
+
+                {/* Sub Tab: Account Profile & Security */}
+                {(activeSettingsTab === 'account' || activeModule === 'account') && (
+                  <div className="space-y-6">
                 <div className="space-y-1">
                   <h2 className="text-xl font-black tracking-tight font-mono text-amber-500">ACCOUNT SETTINGS &amp; PROFILE</h2>
                   <p className={`text-xs ${theme.textSecondary}`}>
@@ -8822,11 +9813,25 @@ export default function AdminView() {
                     )}
                   </div>
                 </div>
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
 
         </main>
+
+        {/* --- UNIFIED CENTRAL BOOKING DETAIL MODAL --- */}
+        <BookingDetailModal
+          booking={selectedBookingDetail}
+          isOpen={isBookingModalOpen}
+          onClose={() => setIsBookingModalOpen(false)}
+          onConfirmBooking={handleConfirmUnifiedBooking}
+          onCompleteBooking={handleCompleteUnifiedBooking}
+          onCancelBooking={handleCancelUnifiedBooking}
+          formatPrice={formatPrice}
+          isDark={isDark}
+        />
 
         {/* --- DYNAMIC METADATA FOOTER --- */}
         <footer className={`border-t ${theme.border} py-4 px-8 flex flex-col md:flex-row justify-between items-center text-[10px] text-neutral-500 font-mono gap-2`}>

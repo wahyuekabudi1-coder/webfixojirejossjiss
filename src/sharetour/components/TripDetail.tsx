@@ -11,6 +11,7 @@ import {
   MapPin, 
   Clock, 
   HelpCircle, 
+  Compass,
   Layers, 
   Image as ImageIcon, 
   Maximize2, 
@@ -42,6 +43,32 @@ export default function TripDetail({
   trips = [], 
   onSelectTrip 
 }: TripDetailProps) {
+  if (!trip || !trip.id) {
+    return (
+      <div className="max-w-md mx-auto bg-white border border-gray-150 p-8 sm:p-10 rounded-3xl text-center shadow-lg space-y-5 my-12 animate-fade-in" id="trip-detail-fallback">
+        <div className="w-14 h-14 bg-amber-500/10 text-amber-600 rounded-2xl flex items-center justify-center mx-auto">
+          <Compass className="w-7 h-7" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-display font-bold text-gray-900">
+            Tour tidak ditemukan
+          </h2>
+          <p className="text-xs sm:text-sm text-gray-500 leading-relaxed font-sans">
+            Maaf, paket wisata yang Anda cari tidak ditemukan atau telah dinonaktifkan.
+          </p>
+        </div>
+        <div className="pt-2">
+          <button
+            onClick={onBack}
+            className="px-6 py-3 bg-[#315B4F] hover:bg-[#203c34] text-white font-sans font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md cursor-pointer"
+          >
+            ← Kembali
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const [selectedBatchId, setSelectedBatchId] = useState<string>("");
   const [nationalityType, setNationalityType] = useState<'WNI' | 'WNA' | 'WNA_CHINA' | 'WNA_EUROPE' | null>(null);
   const [isItineraryExpanded, setIsItineraryExpanded] = useState<boolean>(true);
@@ -140,12 +167,17 @@ export default function TripDetail({
   const itinerary = Array.isArray(trip.itinerary) ? trip.itinerary : [];
   const included = Array.isArray(trip.included) ? trip.included : [];
   const excluded = Array.isArray(trip.excluded) ? trip.excluded : [];
-  const galleryList = Array.isArray(trip.gallery) && trip.gallery.length > 0 ? trip.gallery : [];
+  const galleryList = Array.isArray(trip.gallery) && trip.gallery.length > 0 
+    ? trip.gallery 
+    : (typeof trip.gallery === 'string' && trip.gallery ? [trip.gallery] : []);
   const galleryPhotos = galleryList.length > 0
     ? galleryList
     : [trip.coverImage || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format'];
   const whatsToBring = Array.isArray(trip.whatsToBring) ? trip.whatsToBring : [];
   const faqList = Array.isArray(trip.faq) ? trip.faq : [];
+  const highlightText = Array.isArray(trip.highlight)
+    ? (trip.highlight as string[]).filter(Boolean).join(', ')
+    : (typeof trip.highlight === 'string' ? trip.highlight : '');
 
   // Calendar render math helpers
   const getDaysInMonth = (year: number, month: number) => {
@@ -310,7 +342,7 @@ export default function TripDetail({
                     <span>{t("Special Trip Highlight")}</span>
                   </div>
                   <p className="text-sm text-emerald-950 font-medium font-sans leading-relaxed">
-                    {t(trip.highlight || "Experience pristine tropical lookouts, professional explorer-grade catamaran transfers, and authentic cultural encounters.")}
+                    {t(highlightText || "Experience pristine tropical lookouts, professional explorer-grade catamaran transfers, and authentic cultural encounters.")}
                   </p>
                 </div>
                 <div className="flex items-center space-x-3 text-xs text-gray-400 font-mono border-t border-emerald-900/10 pt-3">

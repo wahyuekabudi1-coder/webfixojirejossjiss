@@ -1060,9 +1060,16 @@ export const LanguageCurrencyProvider: React.FC<{ children: React.ReactNode }> =
   };
 
   // Safe client translation translator
-  const t = (key: string, params?: Record<string, string | number>): string => {
+  const t = (key: any, params?: Record<string, string | number>): string => {
     if (!key) return "";
+    if (typeof key !== 'string') {
+      if (Array.isArray(key)) {
+        return key.map(k => t(k)).filter(Boolean).join(', ');
+      }
+      return String(key);
+    }
     const cleanKey = key.trim();
+    if (!cleanKey) return "";
     
     // 1. Primary: Use structured hierarchical translator
     const translated = translateKey(cleanKey, language, params);

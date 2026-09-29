@@ -24,13 +24,13 @@ interface ErrorBoundaryState {
 }
 
 class ShareTourErrorBoundary extends (Component as any) {
-  state = { hasError: false, error: null as Error | null };
+  state: ErrorBoundaryState = { hasError: false, error: null };
 
   constructor(props: ErrorBoundaryProps) {
     super(props);
   }
 
-  static getDerivedStateFromError(error: Error) {
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
@@ -43,10 +43,12 @@ class ShareTourErrorBoundary extends (Component as any) {
   };
 
   render() {
-    if (this.state.hasError && this.state.error) {
-      return (this.props as any).fallback(this.state.error, this.reset);
+    const s = (this as any).state;
+    const p = (this as any).props;
+    if (s?.hasError && s?.error) {
+      return p.fallback(s.error, this.reset);
     }
-    return (this.props as any).children;
+    return p.children;
   }
 }
 
@@ -68,44 +70,63 @@ function abortableSleep(ms: number, signal: AbortSignal): Promise<boolean> {
   });
 }
 
+// Helper to extract explicit trip identifier from URL hash or query params
+// Returns empty string if customer is visiting the listing (e.g. #/share-tour)
+export function getExplicitTripIdentifier(): string {
+  if (typeof window === "undefined") return "";
+  const hash = window.location.hash || "";
+  const search = window.location.search || "";
+
+  // Check hash for ?trip=, &trip=, #trip=, #/share-tour?trip=, or ?slug=
+  const hashMatch = hash.match(/[?&#](?:trip|tripid|slug)=([^&]+)/i) || hash.match(/^#(?:trip|slug)=([^&]+)/i);
+  if (hashMatch && hashMatch[1]) {
+    return decodeURIComponent(hashMatch[1]).trim();
+  }
+
+  // Check search params
+  if (search) {
+    try {
+      const sp = new URLSearchParams(search);
+      const val = sp.get("trip") || sp.get("tripId") || sp.get("slug");
+      if (val) return val.trim();
+    } catch {}
+  }
+  return "";
+}
+
 export default function App() {
   const [trips, setTrips] = useState<Trip[]>([]);
+  const tripsRef = useRef<Trip[]>(trips);
+  useEffect(() => {
+    tripsRef.current = trips;
+  }, [trips]);
+
   const [batches, setBatches] = useState<Batch[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   
   // Navigation Routing State
   // "trips" | "trip-detail" | "book" | "success" | "status" | "admin"
+  // DEFAULT IS ALWAYS "trips" (LIST) unless URL explicitly specifies a trip!
   const [currentView, setCurrentView] = useState<string>(() => {
     try {
+      const explicitId = getExplicitTripIdentifier();
+      if (explicitId) {
+        return "trip-detail";
+      }
       const hash = window.location.hash.toLowerCase();
-      const search = window.location.search.toLowerCase();
-      if (hash.startsWith("#trip=") || search.includes("trip=") || search.includes("tripid=")) {
-        return "trip-detail";
-      }
-      const savedView = sessionStorage.getItem("sj_sharetour_view");
-      const savedId = sessionStorage.getItem("sj_selected_trip_id");
-      const savedSlug = sessionStorage.getItem("sj_selected_trip_slug");
-      if (savedView === "trip-detail" && (savedId || savedSlug)) {
-        return "trip-detail";
-      }
+      if (hash === "#admin" || window.location.pathname.endsWith("/admin")) return "admin";
+      if (hash === "#status" || window.location.pathname.endsWith("/status")) return "status";
     } catch {}
     return "trips";
   });
   
   // Primary identifier: trip.id, with slug for URL/SEO fallback
+  // ONLY initialized if URL explicitly contains a trip identifier!
   const [selectedTripId, setSelectedTripId] = useState<string>(() => {
-    try {
-      return sessionStorage.getItem("sj_selected_trip_id") || "";
-    } catch {
-      return "";
-    }
+    return getExplicitTripIdentifier() || "";
   });
   const [selectedTripSlug, setSelectedTripSlug] = useState<string>(() => {
-    try {
-      return sessionStorage.getItem("sj_selected_trip_slug") || "";
-    } catch {
-      return "";
-    }
+    return getExplicitTripIdentifier() || "";
   });
   const [activeTripOverride, setActiveTripOverride] = useState<Trip | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(false);
@@ -195,53 +216,62 @@ export default function App() {
     setRetryCount(0);
   }, []);
 
-  // Save current view to sessionStorage
+  // Save current view to sessionStorage (only 'trips' list view to prevent stale detail restore)
   useEffect(() => {
     try {
-      if (currentView === "trips" || currentView === "trip-detail") {
-        sessionStorage.setItem("sj_sharetour_view", currentView);
+      if (currentView === "trips") {
+        sessionStorage.setItem("sj_sharetour_view", "trips");
       }
     } catch {}
   }, [currentView]);
 
   const handleSelectTrip = useCallback((tripOrIdOrSlug: Trip | string, slugFallback?: string) => {
     setDetailError("");
+    let targetId = "";
+    let targetSlug = "";
+    let targetObj: Trip | null = null;
+
     if (typeof tripOrIdOrSlug === "object" && tripOrIdOrSlug !== null) {
-      const tripObj = tripOrIdOrSlug;
-      setSelectedTripId(tripObj.id);
-      setSelectedTripSlug(tripObj.slug || tripObj.id);
-      setActiveTripOverride(tripObj);
-      try {
-        sessionStorage.setItem("sj_selected_trip_id", tripObj.id);
-        sessionStorage.setItem("sj_selected_trip_slug", tripObj.slug || tripObj.id);
-        sessionStorage.setItem("sj_sharetour_view", "trip-detail");
-      } catch {}
+      targetObj = tripOrIdOrSlug;
+      targetId = targetObj.id;
+      targetSlug = targetObj.slug || targetObj.id;
     } else {
-      const idOrSlug = String(tripOrIdOrSlug).trim();
-      const matched = trips.find((t) => t.id === idOrSlug || t.slug === idOrSlug);
+      const raw = String(tripOrIdOrSlug || "").trim();
+      // Primary: id matching, fallback: slug matching from tripsRef
+      const currentTrips = tripsRef.current;
+      const matched = currentTrips.find((t) => t.id === raw) || currentTrips.find((t) => t.slug === raw);
       if (matched) {
-        setSelectedTripId(matched.id);
-        setSelectedTripSlug(matched.slug || matched.id);
-        setActiveTripOverride(matched);
-        try {
-          sessionStorage.setItem("sj_selected_trip_id", matched.id);
-          sessionStorage.setItem("sj_selected_trip_slug", matched.slug || matched.id);
-          sessionStorage.setItem("sj_sharetour_view", "trip-detail");
-        } catch {}
+        targetObj = matched;
+        targetId = matched.id;
+        targetSlug = matched.slug || matched.id;
       } else {
-        setSelectedTripId(idOrSlug);
-        setSelectedTripSlug(slugFallback || idOrSlug);
-        setActiveTripOverride(null);
-        try {
-          sessionStorage.setItem("sj_selected_trip_id", idOrSlug);
-          sessionStorage.setItem("sj_selected_trip_slug", slugFallback || idOrSlug);
-          sessionStorage.setItem("sj_sharetour_view", "trip-detail");
-        } catch {}
+        targetId = raw;
+        targetSlug = slugFallback || raw;
       }
     }
+
+    if (targetId) {
+      setSelectedTripId(targetId);
+      setSelectedTripSlug(targetSlug);
+      setActiveTripOverride(targetObj);
+      try {
+        sessionStorage.setItem("sj_selected_trip_id", targetId);
+        sessionStorage.setItem("sj_selected_trip_slug", targetSlug);
+      } catch {}
+
+      // Keep URL clean and updated with explicit trip parameter
+      const urlParam = targetSlug || targetId;
+      try {
+        const targetHash = `#/share-tour?trip=${encodeURIComponent(urlParam)}`;
+        if (window.location.hash !== targetHash) {
+          window.location.hash = targetHash;
+        }
+      } catch {}
+    }
+
     setCurrentView("trip-detail");
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [trips]);
+  }, []);
 
   const handleBackToTrips = useCallback(() => {
     setCurrentView("trips");
@@ -254,36 +284,58 @@ export default function App() {
       sessionStorage.removeItem("sj_selected_trip_slug");
       sessionStorage.setItem("sj_sharetour_view", "trips");
     } catch {}
-    if (window.location.hash.startsWith("#trip=")) {
-      window.history.replaceState(null, "", window.location.pathname + window.location.search);
-    }
+    try {
+      window.location.hash = "#/share-tour";
+    } catch {}
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
+  // 1. Initial Database Loading Effect (runs ONCE on mount)
   useEffect(() => {
     refreshDatabase();
+    return () => {
+      if (activeAbortControllerRef.current) {
+        activeAbortControllerRef.current.abort();
+      }
+    };
+  }, [refreshDatabase]);
 
-    // Listen to hash and pathname changes for hidden direct admin url routing & direct trip links
+  // 2. URL & Hash Routing Effect (Separated from DB sync; DOES NOT call refreshDatabase)
+  useEffect(() => {
     const handleUrlRouting = () => {
-      const hash = window.location.hash.toLowerCase();
-      const path = window.location.pathname.toLowerCase();
-      const search = window.location.search.toLowerCase();
+      const hash = window.location.hash || "";
+      const path = window.location.pathname || "";
+      const search = window.location.search || "";
       
-      if (hash === "#admin" || path.endsWith("/admin") || search.includes("admin=true")) {
+      const lowerHash = hash.toLowerCase();
+      const lowerPath = path.toLowerCase();
+      const lowerSearch = search.toLowerCase();
+
+      if (lowerHash === "#admin" || lowerPath.endsWith("/admin") || lowerSearch.includes("admin=true")) {
         setCurrentView("admin");
-      } else if (hash === "#status" || path.endsWith("/status") || path.endsWith("/check-booking") || search.includes("check-booking")) {
+        return;
+      }
+      if (lowerHash === "#status" || lowerPath.endsWith("/status") || lowerPath.endsWith("/check-booking") || lowerSearch.includes("check-booking")) {
         setCurrentView("status");
-      } else if (hash.startsWith("#trip=")) {
-        const idOrSlug = hash.replace("#trip=", "").trim();
-        if (idOrSlug) {
-          handleSelectTrip(idOrSlug);
-        }
-      } else if (search.includes("trip=") || search.includes("tripid=")) {
-        const urlParams = new URLSearchParams(window.location.search);
-        const tripParam = urlParams.get("trip") || urlParams.get("tripId") || urlParams.get("slug");
-        if (tripParam) {
-          handleSelectTrip(tripParam);
-        }
+        return;
+      }
+
+      const explicitTripId = getExplicitTripIdentifier();
+      if (explicitTripId) {
+        // EXPLICIT TRIP IDENTIFIER -> DETAIL VIEW
+        handleSelectTrip(explicitTripId);
+      } else {
+        // NO TRIP IDENTIFIER -> MUST SHOW OPEN TRIP LIST!
+        setCurrentView("trips");
+        setSelectedTripId("");
+        setSelectedTripSlug("");
+        setActiveTripOverride(null);
+        setDetailError("");
+        try {
+          sessionStorage.removeItem("sj_selected_trip_id");
+          sessionStorage.removeItem("sj_selected_trip_slug");
+          sessionStorage.setItem("sj_sharetour_view", "trips");
+        } catch {}
       }
     };
 
@@ -291,14 +343,10 @@ export default function App() {
     window.addEventListener("hashchange", handleUrlRouting);
     window.addEventListener("popstate", handleUrlRouting);
     return () => {
-      // Abort active sync request on component unmount
-      if (activeAbortControllerRef.current) {
-        activeAbortControllerRef.current.abort();
-      }
       window.removeEventListener("hashchange", handleUrlRouting);
       window.removeEventListener("popstate", handleUrlRouting);
     };
-  }, [refreshDatabase, handleSelectTrip]);
+  }, [handleSelectTrip]);
 
   // Auto-recovery: If an error is present, periodically probe every 15s in background
   useEffect(() => {
@@ -315,17 +363,21 @@ export default function App() {
   }, [errorMsg, refreshDatabase]);
 
   // Priority lookup for activeTrip:
-  // 1. activeTripOverride (direct object from card click)
-  // 2. id matching
-  // 3. slug matching
-  const activeTrip: Trip | undefined = activeTripOverride || 
+  // 1. activeTripOverride matching selectedTripId (trip.id is primary)
+  // 2. id matching in trips (trip.id is primary)
+  // 3. slug matching in trips
+  // 4. activeTripOverride fallback
+  const activeTrip: Trip | undefined = 
+    (selectedTripId && activeTripOverride && activeTripOverride.id === selectedTripId ? activeTripOverride : undefined) ||
     (selectedTripId ? trips.find((t) => t.id === selectedTripId) : undefined) ||
     (selectedTripSlug ? trips.find((t) => t.slug === selectedTripSlug || t.id === selectedTripSlug) : undefined) ||
-    (selectedTripId ? trips.find((t) => t.slug === selectedTripId) : undefined);
+    (selectedTripId ? trips.find((t) => t.slug === selectedTripId) : undefined) ||
+    (activeTripOverride || undefined);
 
   // Fallback: If in trip-detail view but activeTrip is not found in state, fetch /api/trips/:id
   useEffect(() => {
     if (currentView === "trip-detail" && !activeTrip && (selectedTripId || selectedTripSlug)) {
+      // Use selectedTripId as primary identifier for server lookup
       const targetIdentifier = selectedTripId || selectedTripSlug;
       let isMounted = true;
       setIsLoadingDetail(true);
@@ -343,7 +395,7 @@ export default function App() {
               return [fetchedTrip, ...prev];
             });
           } else {
-            setDetailError("Paket Open Trip tidak ditemukan atau sudah tidak aktif.");
+            setDetailError("Tour tidak ditemukan atau sudah tidak aktif.");
           }
         })
         .catch((err) => {
@@ -415,8 +467,8 @@ export default function App() {
 
   return (
     <div className={`flex flex-col min-h-screen ${isAdminView ? "bg-[#F8FAFC]" : "bg-[#F4F7F5]"}`} id="smart-journey-root-app">
-      {/* Main Container Core Router - Padded below fixed global website Header */}
-      <main className={isAdminView ? "flex-1 w-full pt-20" : "flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 sm:pt-28"}>
+      {/* Main Container Core Router */}
+      <main className={isAdminView ? "flex-1 w-full pt-20" : "flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6"}>
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4" id="db-loading-spinner">
             <RefreshCw className="w-10 h-10 text-[#315B4F] animate-spin" />
@@ -471,10 +523,10 @@ export default function App() {
                       </div>
                       <div className="space-y-2">
                         <h2 className="text-xl font-display font-bold text-gray-900">
-                          Gagal Memuat Detail Open Trip
+                          Tour tidak ditemukan
                         </h2>
                         <p className="text-xs sm:text-sm text-gray-500 leading-relaxed font-sans">
-                          {err?.message || "Terjadi kendala saat menampilkan detail paket ini. Silakan kembali ke katalog atau coba lagi."}
+                          {err?.message || "Terjadi kendala saat menampilkan detail paket ini. Silakan kembali ke katalog Open Trip."}
                         </p>
                       </div>
                       <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
@@ -485,7 +537,7 @@ export default function App() {
                           }}
                           className="px-6 py-3 bg-[#315B4F] hover:bg-[#203c34] text-white font-sans font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md cursor-pointer"
                         >
-                          ← Kembali ke Katalog Open Trip
+                          ← Kembali
                         </button>
                       </div>
                     </div>
@@ -507,7 +559,7 @@ export default function App() {
                   </div>
                   <div className="space-y-2">
                     <h2 className="text-xl font-display font-bold text-gray-900">
-                      Paket Open Trip Tidak Ditemukan
+                      Tour tidak ditemukan
                     </h2>
                     <p className="text-xs sm:text-sm text-gray-500 leading-relaxed font-sans">
                       {detailError || "Maaf, data paket Open Trip yang Anda tuju tidak ditemukan atau sedang diperbarui oleh tim admin."}
@@ -518,7 +570,7 @@ export default function App() {
                       onClick={handleBackToTrips}
                       className="px-6 py-3 bg-[#315B4F] hover:bg-[#203c34] text-white font-sans font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md cursor-pointer"
                     >
-                      ← Kembali ke Katalog Open Trip
+                      ← Kembali
                     </button>
                   </div>
                 </div>

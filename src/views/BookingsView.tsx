@@ -16,7 +16,10 @@ import {
   ArrowRight,
   Info,
   Search,
-  FileCheck
+  FileCheck,
+  Download,
+  Lock,
+  Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { processArtoPayPayment } from '../lib/artopay';
@@ -31,25 +34,119 @@ export default function BookingsView() {
   const [activeTab, setActiveTab] = useState<'check' | 'list'>('check');
   const [selectedCode, setSelectedCode] = useState<string>('');
 
-  // Check URL param ?code= on load
+  // Sandbox Test Payment state (Active in Sandbox / Development only)
+  const [isSandbox, setIsSandbox] = useState(false);
+  const [simulatingId, setSimulatingId] = useState<string | null>(null);
+
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('code');
+    fetch('/api/artopay/config')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && data.env === 'sandbox') {
+          setIsSandbox(true);
+        } else if ((import.meta as any).env?.DEV || (import.meta as any).env?.VITE_ARTOPAY_SANDBOX === 'true' || (import.meta as any).env?.VITE_ARTOPAY_ENV !== 'production') {
+          setIsSandbox(true);
+        }
+      })
+      .catch(() => {
+        if ((import.meta as any).env?.DEV || (import.meta as any).env?.VITE_ARTOPAY_SANDBOX === 'true' || (import.meta as any).env?.VITE_ARTOPAY_ENV !== 'production') {
+          setIsSandbox(true);
+        }
+      });
+  }, []);
+
+  // Check URL query param ?code= from both search and hash on mount
+  useEffect(() => {
+    let code: string | null = null;
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const hashQuery = window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '';
+      const hashParams = new URLSearchParams(hashQuery);
+      code = hashParams.get('code') || params.get('code');
+    }
     if (code) {
       setSelectedCode(code);
       setActiveTab('check');
     }
+
+    const handleHash = () => {
+      const hashQuery = window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '';
+      const hashParams = new URLSearchParams(hashQuery);
+      const hCode = hashParams.get('code');
+      if (hCode) {
+        setSelectedCode(hCode);
+        setActiveTab('check');
+      }
+    };
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
+
+  // Load customer's personal booking codes from localStorage and sync from authoritative backend
+  useEffect(() => {
+    try {
+      const storedCodes: string[] = JSON.parse(localStorage.getItem('sj_customer_booking_codes') || '[]');
+      if (storedCodes.length > 0) {
+        Promise.all(
+          storedCodes.map(code => 
+            fetch(`/api/private-tour/check-booking/${encodeURIComponent(code)}`)
+              .then(res => res.ok ? res.json() : null)
+              .catch(() => null)
+          )
+        ).then(results => {
+          const valid = results.filter(r => r && r.found);
+          if (valid.length > 0) {
+            setLocalBookings(prev => {
+              const prevCodes = new Set(prev.map(p => (p.bookingCode || p.id).toUpperCase()));
+              const toAdd = valid
+                .filter(v => !prevCodes.has((v.bookingCode || v.id).toUpperCase()))
+                .map(v => ({
+                  id: v.id,
+                  bookingCode: v.bookingCode,
+                  type: v.isShared || v.bookingType === 'shared' ? 'shared' : 'tour',
+                  serviceName: v.serviceName || v.tripTitle,
+                  details: {
+                    date: v.departureDate,
+                    guests: v.participantsCount,
+                    vehicleName: v.vehicleName,
+                    pickupLocation: v.pickupLocation
+                  },
+                  totalPrice: v.baseAmount,
+                  totalPriceIDR: v.paymentAmount,
+                  paymentAmount: v.paymentAmount,
+                  uniqueCode: v.uniqueCode,
+                  baseAmount: v.baseAmount,
+                  status: v.bookingStatus,
+                  paymentStatus: v.paymentStatus,
+                  paidAt: v.paidAt,
+                  bookingDate: v.createdAt
+                } as any));
+              return [...toAdd, ...prev];
+            });
+          }
+        });
+      }
+    } catch {}
   }, []);
 
   // Sync state if bookings change in context
   useEffect(() => {
-    setLocalBookings(bookings);
+    setLocalBookings(prev => {
+      const existingIds = new Set(bookings.map(b => b.id));
+      const preserved = prev.filter(p => !existingIds.has(p.id));
+      return [...bookings, ...preserved];
+    });
   }, [bookings]);
 
-  // Poll server payment status for pending bookings to ensure sync with ArtoPay Webhook
+  // Poll server payment status for unconfirmed bookings to ensure live sync with ArtoPay Webhook & Admin Confirmation
   useEffect(() => {
-    const pendingItems = localBookings.filter(b => b.paymentStatus === 'Pending' || b.paymentStatus === 'Unpaid' || b.paymentStatus === 'Pending Payment');
-    if (pendingItems.length === 0) return;
+    const unconfirmedItems = localBookings.filter(b => 
+      b.status !== 'Confirmed' && 
+      b.status !== 'Completed' && 
+      b.status !== 'Cancelled' && 
+      b.status !== 'Rejected'
+    );
+    if (unconfirmedItems.length === 0) return;
 
     let isMounted = true;
 
@@ -57,16 +154,17 @@ export default function BookingsView() {
       let hasChanges = false;
       const nextBookings = [...localBookings];
 
-      for (const b of pendingItems) {
+      for (const b of unconfirmedItems) {
         try {
-          const res = await fetch(`/api/orders/${encodeURIComponent(b.id)}/payment-status`);
+          const checkTarget = b.bookingCode || b.id;
+          const res = await fetch(`/api/private-tour/check-booking/${encodeURIComponent(checkTarget)}`);
           if (res.ok) {
             const data = await res.json();
             if (data.found) {
-              const idx = nextBookings.findIndex(item => item.id === b.id);
+              const idx = nextBookings.findIndex(item => item.id === b.id || item.bookingCode === b.bookingCode);
               if (idx !== -1) {
                 const serverPaymentStatus = data.paymentStatus || nextBookings[idx].paymentStatus;
-                const serverBookingStatus = data.bookingStatus || data.orderStatus || data.booking?.status || nextBookings[idx].status;
+                const serverBookingStatus = data.bookingStatus || data.status || nextBookings[idx].status;
                 const serverPaymentAmount = data.paymentAmount || nextBookings[idx].paymentAmount;
                 const serverUniqueCode = data.uniqueCode || nextBookings[idx].uniqueCode;
                 const serverBaseAmount = data.baseAmount || nextBookings[idx].baseAmount;
@@ -76,8 +174,7 @@ export default function BookingsView() {
                   nextBookings[idx].status !== serverBookingStatus ||
                   nextBookings[idx].paymentAmount !== serverPaymentAmount
                 ) {
-                  // REQUIREMENT 3: Frontend customer HANYA membaca status apa adanya dari backend
-                  // TIDAK BOLEH auto-confirm menjadi 'Confirmed' di browser customer!
+                  // Single Source of Truth from backend SQL
                   nextBookings[idx] = { 
                     ...nextBookings[idx], 
                     paymentStatus: serverPaymentStatus, 
@@ -103,7 +200,7 @@ export default function BookingsView() {
     };
 
     syncPaymentStatuses();
-    const timer = setInterval(syncPaymentStatuses, 5000);
+    const timer = setInterval(syncPaymentStatuses, 4000);
     return () => {
       isMounted = false;
       clearInterval(timer);
@@ -198,6 +295,44 @@ export default function BookingsView() {
       alert(err.message || 'Gagal memproses pembayaran ke ArtoPay.');
     } finally {
       setPaymentLoadingId(null);
+    }
+  };
+
+  // Sandbox Test Payment Simulation Handler (Only active in sandbox/dev mode)
+  const handleSimulatePayment = async (booking: any) => {
+    const code = booking.bookingCode || booking.id;
+    setSimulatingId(booking.id);
+    try {
+      const res = await fetch('/api/artopay/simulate-webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: code })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        // Re-sync authoritative booking status from backend
+        const checkRes = await fetch(`/api/private-tour/check-booking/${encodeURIComponent(code)}`);
+        if (checkRes.ok) {
+          const updated = await checkRes.json();
+          updateBookingPaymentStatus(
+            booking.id,
+            updated.paymentStatus || 'Paid',
+            updated.bookingStatus || 'Pending Confirmation',
+            updated.paymentAmount,
+            updated.uniqueCode,
+            updated.baseAmount
+          );
+        } else {
+          updateBookingPaymentStatus(booking.id, 'Paid', 'Pending Confirmation');
+        }
+      } else {
+        alert(data.error || 'Simulasi pembayaran gagal.');
+      }
+    } catch (err) {
+      console.error('Simulate payment error:', err);
+      alert('Gagal menghubungi server untuk simulasi pembayaran.');
+    } finally {
+      setSimulatingId(null);
     }
   };
 
@@ -379,6 +514,24 @@ export default function BookingsView() {
                         <span>Lacak Status &amp; Final Summary</span>
                       </button>
 
+                      {/* Download Confirmation / Invoice PDF: ONLY AVAILABLE WHEN CONFIRMED */}
+                      {booking.status === 'Confirmed' ? (
+                        <a
+                          id={`btn-download-pdf-${booking.bookingCode || booking.id}`}
+                          href={`/api/private-tour/invoice-pdf/${encodeURIComponent(booking.bookingCode || booking.id)}`}
+                          download={`SmartJourney-Confirmation-${booking.bookingCode || booking.id}.pdf`}
+                          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center space-x-1.5 transition-all shadow-md cursor-pointer"
+                        >
+                          <Download className="h-4 w-4" />
+                          <span>Download Invoice (PDF)</span>
+                        </a>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 bg-neutral-800 text-neutral-400 border border-neutral-700 px-3 py-2 rounded-xl text-xs font-medium cursor-not-allowed" title="Dokumen konfirmasi resmi hanya dapat diunduh setelah dikonfirmasi Admin">
+                          <Lock className="h-3.5 w-3.5 text-neutral-500" />
+                          <span>Dokumen Terkunci</span>
+                        </span>
+                      )}
+
                       <button
                         onClick={() => handleChatSupport(booking)}
                         className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-neutral-950 font-bold px-4 py-2.5 rounded-xl text-xs flex items-center space-x-1.5 transition-all"
@@ -428,6 +581,29 @@ export default function BookingsView() {
                             Ulangi
                           </button>
                         </div>
+                      )}
+
+                      {/* TOMBOL TEST PAYMENT UNTUK SANDBOX SAJA */}
+                      {isSandbox && !isPaid && (
+                        <button
+                          id={`btn-simulate-payment-${booking.bookingCode || booking.id}`}
+                          onClick={() => handleSimulatePayment(booking)}
+                          disabled={simulatingId === booking.id}
+                          className="bg-amber-500/15 hover:bg-amber-500/25 border-2 border-dashed border-amber-400 text-amber-300 font-bold px-4 py-2.5 rounded-xl text-xs flex items-center space-x-1.5 transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
+                          title="Simulasi Webhook ArtoPay Sukses (Sandbox Testing Saja)"
+                        >
+                          {simulatingId === booking.id ? (
+                            <>
+                              <RefreshCw className="h-3.5 w-3.5 animate-spin text-amber-400" />
+                              <span>Simulasi Webhook...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                              <span>Simulate Payment Success</span>
+                            </>
+                          )}
+                        </button>
                       )}
                       
                       {/* Support Contact Button for reservation change / question */}

@@ -192,6 +192,17 @@ export default function CheckoutModal({
       const newBooking = addBooking(bookingPayload);
       setConfirmedBooking(newBooking);
 
+      if (newBooking && (newBooking.bookingCode || newBooking.id)) {
+        try {
+          const code = newBooking.bookingCode || newBooking.id;
+          const stored = JSON.parse(localStorage.getItem('sj_customer_booking_codes') || '[]');
+          if (!stored.includes(code)) {
+            stored.unshift(code);
+            localStorage.setItem('sj_customer_booking_codes', JSON.stringify(stored.slice(0, 20)));
+          }
+        } catch {}
+      }
+
       // Trigger ArtoPay Payment Gateway
       try {
         await processArtoPayPayment({
@@ -206,13 +217,13 @@ export default function CheckoutModal({
             console.log('ArtoPay Payment Completed Event:', res);
             setIsSubmitting(false);
             onClose();
-            window.location.hash = '#/bookings';
+            window.location.hash = `#/bookings?code=${encodeURIComponent(newBooking.id)}`;
           },
           onPending: (res) => {
             console.log('ArtoPay Payment Pending Event:', res);
             setIsSubmitting(false);
             onClose();
-            window.location.hash = '#/bookings';
+            window.location.hash = `#/bookings?code=${encodeURIComponent(newBooking.id)}`;
           },
           onError: (err) => {
             console.error('ArtoPay Payment Error:', err);

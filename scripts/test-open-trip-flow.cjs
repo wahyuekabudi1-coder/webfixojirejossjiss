@@ -5,7 +5,16 @@ async function run() {
   console.log('=== RUNNING OPEN TRIP CRITICAL FLOW VERIFICATION ===\n');
 
   const API_BASE = 'http://localhost:3000/api';
-  const ADMIN_SECRET = 'smartjourney_admin_2026';
+  
+  // Login as admin to get real session token
+  const loginRes = await fetch(`${API_BASE}/admin/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: 'admin123' })
+  });
+  assert(loginRes.ok, `Login failed: ${loginRes.status}`);
+  const loginData = await loginRes.json();
+  const token = loginData.token;
 
   // 1. Fetch current trips before creation
   const initRes = await fetch(`${API_BASE}/trips`);
@@ -25,7 +34,7 @@ async function run() {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-secret-key': ADMIN_SECRET
+      'Authorization': `Bearer ${token}`
     },
     body: JSON.stringify({
       id: newTripId,
@@ -60,7 +69,7 @@ async function run() {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-secret-key': ADMIN_SECRET
+      'Authorization': `Bearer ${token}`
     },
     body: JSON.stringify({
       tripId: createdTrip.id,

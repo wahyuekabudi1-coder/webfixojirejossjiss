@@ -53,6 +53,10 @@ function parseJsonArray<T = any>(val: any): T[] {
 }
 
 function rowToShareTour(row: ShareTourRow): ShareTourEntity {
+  let highlightArr = parseJsonArray<string>(row.highlight);
+  if (highlightArr.length === 0 && row.highlight && typeof row.highlight === 'string') {
+    highlightArr = [row.highlight];
+  }
   return {
     id: row.id,
     title: row.title,
@@ -65,7 +69,7 @@ function rowToShareTour(row: ShareTourRow): ShareTourEntity {
     description: row.description || '',
     coverImage: row.cover_image || '',
     gallery: parseJsonArray<string>(row.gallery),
-    highlight: parseJsonArray<string>(row.highlight),
+    highlight: highlightArr,
     included: parseJsonArray<string>(row.included),
     excluded: parseJsonArray<string>(row.excluded),
     faq: parseJsonArray<any>(row.faq),
@@ -111,12 +115,28 @@ export class ShareToursRepository {
 
   async getTripById(idOrSlug: string): Promise<ShareTourEntity | null> {
     const client = await this.db();
-    const rows = await client.query<ShareTourRow>(
-      'SELECT * FROM share_tours WHERE id = ? OR slug = ? LIMIT 1',
-      [idOrSlug, idOrSlug]
+    if (!idOrSlug) return null;
+    const cleanId = String(idOrSlug).trim();
+
+    // 1. Primary: search by exact id
+    const byIdRows = await client.query<ShareTourRow>(
+      'SELECT * FROM share_tours WHERE id = ? LIMIT 1',
+      [cleanId]
     );
-    if (!rows || rows.length === 0) return null;
-    return rowToShareTour(rows[0]);
+    if (byIdRows && byIdRows.length > 0) {
+      return rowToShareTour(byIdRows[0]);
+    }
+
+    // 2. Secondary: search by slug for friendly URLs
+    const bySlugRows = await client.query<ShareTourRow>(
+      'SELECT * FROM share_tours WHERE slug = ? LIMIT 1',
+      [cleanId]
+    );
+    if (bySlugRows && bySlugRows.length > 0) {
+      return rowToShareTour(bySlugRows[0]);
+    }
+
+    return null;
   }
 
   async createTrip(trip: Partial<ShareTourEntity>): Promise<ShareTourEntity> {
@@ -232,9 +252,22 @@ export class ShareToursRepository {
     const client = await this.db();
     let sql = 'SELECT * FROM batches';
     const params: any[] = [];
-    if (tripId) {
-      sql += ' WHERE trip_id = ?';
-      params.push(tripId);
+    if (tripId && tripId.trim()) {
+      const cleanParam = tripId.trim();
+      const trip = await this.getTripById(cleanParam);
+      if (trip) {
+        // Support both canonical id and legacy slug for backward-compatibility
+        if (trip.slug && trip.slug !== trip.id) {
+          sql += ' WHERE (trip_id = ? OR trip_id = ?)';
+          params.push(trip.id, trip.slug);
+        } else {
+          sql += ' WHERE trip_id = ?';
+          params.push(trip.id);
+        }
+      } else {
+        sql += ' WHERE trip_id = ?';
+        params.push(cleanParam);
+      }
     }
     sql += ' ORDER BY departure_date ASC';
     const rows = await client.query<BatchRow>(sql, params);
@@ -253,6 +286,15 @@ export class ShareToursRepository {
     const now = new Date().toISOString();
     const id = batch.id && batch.id.trim() !== '' ? batch.id.trim() : `batch-${Date.now()}`;
 
+    // Resolve canonical trip.id for database consistency
+    let canonicalTripId = (batch.tripId || '').trim();
+    if (canonicalTripId) {
+      const matchedTrip = await this.getTripById(canonicalTripId);
+      if (matchedTrip) {
+        canonicalTripId = matchedTrip.id;
+      }
+    }
+
     const sql = `
       INSERT INTO batches (id, trip_id, departure_date, quota, available_seats, price, status, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -260,7 +302,7 @@ export class ShareToursRepository {
 
     const params = [
       id,
-      batch.tripId || '',
+      canonicalTripId,
       batch.departureDate || '',
       Number(batch.quota) || 10,
       Number(batch.availableSeats !== undefined ? batch.availableSeats : batch.quota) || 10,
@@ -281,6 +323,14 @@ export class ShareToursRepository {
     const existing = await this.getBatchById(id);
     if (!existing) return null;
 
+    let targetTripId = batch.tripId !== undefined ? String(batch.tripId).trim() : existing.tripId;
+    if (targetTripId) {
+      const matchedTrip = await this.getTripById(targetTripId);
+      if (matchedTrip) {
+        targetTripId = matchedTrip.id;
+      }
+    }
+
     const sql = `
       UPDATE batches SET
         trip_id = ?,
@@ -294,7 +344,7 @@ export class ShareToursRepository {
     `;
 
     const params = [
-      batch.tripId !== undefined ? batch.tripId : existing.tripId,
+      targetTripId,
       batch.departureDate !== undefined ? batch.departureDate : existing.departureDate,
       batch.quota !== undefined ? Number(batch.quota) : existing.quota,
       batch.availableSeats !== undefined ? Number(batch.availableSeats) : existing.availableSeats,

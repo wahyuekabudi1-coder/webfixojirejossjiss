@@ -546,12 +546,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     const handleHashChange = () => {
-      let hash = (window.location.hash || '').split('?')[0].replace(/^#\/?/, '');
+      const fullHash = window.location.hash || '';
+      let hash = fullHash.split('?')[0].replace(/^#\/?/, '');
       if (!hash && typeof window !== 'undefined' && window.location.pathname && window.location.pathname !== '/') {
         hash = window.location.pathname.replace(/^\/+|\/+$/g, '');
       }
       if (hash === 'rental') {
         hash = 'car-rental';
+      }
+      if (hash.startsWith('trip=') || hash.includes('trip=') || hash.startsWith('share-tour') || hash.startsWith('sharetour')) {
+        setActivePageState('share-tour');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      if (hash === 'tours') {
+        setActivePageState('tours');
+        const tourMatch = fullHash.match(/[?&#](?:tour|tourId|id)=([^&]+)/i);
+        const explicitTourId = tourMatch ? decodeURIComponent(tourMatch[1]).trim() : '';
+        if (explicitTourId) {
+          setSearchParams((prev: any) => ({ ...prev, selectedTourId: explicitTourId }));
+        } else {
+          // NO TOUR IDENTIFIER -> CLEAR selectedTourId to ensure LIST is shown
+          setSearchParams((prev: any) => ({ ...prev, selectedTourId: undefined }));
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
       }
       const validPages: ActivePage[] = ['home', 'tours', 'share-tour', 'airport', 'taxi', 'partnerships', 'contact', 'bookings', 'car-rental', 'about', 'admin'];
       if (validPages.includes(hash as ActivePage)) {
@@ -570,6 +589,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const setPage = (page: ActivePage) => {
     setActivePageState(page);
+    if (page === 'tours') {
+      setSearchParams((prev: any) => ({ ...prev, selectedTourId: undefined }));
+    }
     window.location.hash = `#/${page}`;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -656,6 +678,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     status: string, 
     paymentStatus?: string
   ) => {
+    const targetBooking = bookings.find(b => b.id === id || b.bookingCode === id);
+    const effectivePayment = paymentStatus !== undefined ? paymentStatus : targetBooking?.paymentStatus;
+    if (status === 'Confirmed' && effectivePayment !== 'Paid') {
+      console.warn(`[Admin Security] Blocked confirmation for booking ${id}: paymentStatus is "${effectivePayment}", must be "Paid".`);
+      return;
+    }
+
     const updated = bookings.map(b => {
       if (b.id === id || b.bookingCode === id) {
         return { 
@@ -690,9 +719,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setBookings(prev => prev.map(b => (b.id === serverUpdated.id || b.bookingCode === serverUpdated.bookingCode) ? { ...b, ...serverUpdated } : b));
       } else {
         console.error('Failed to persist booking status update to server:', await res.text());
+        // Refresh authoritative list from server
+        refreshBookings();
       }
     } catch (err) {
       console.error('Error persisting booking status update to server:', err);
+      refreshBookings();
     }
   };
 

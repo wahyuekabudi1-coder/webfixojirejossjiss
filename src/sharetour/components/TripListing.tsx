@@ -61,18 +61,11 @@ export default function TripListing({ trips, batches, onSelectTrip, onNavigateTo
   });
 
   return (
-    <div className="space-y-20 pb-20 font-sans" id="luxury-trip-listing-container">
+    <div className="space-y-8 sm:space-y-10 pb-16 font-sans" id="luxury-trip-listing-container">
       
-      {/* Breadcrumb Navigation */}
-      <nav className="flex items-center space-x-2 text-xs font-medium text-neutral-500 mb-4 px-2">
-        <a href="#/" className="hover:text-amber-600 transition-colors">Home</a>
-        <span>/</span>
-        <span className="text-neutral-900 font-semibold">{t("Share Tour")}</span>
-      </nav>
-
-      {/* 1. HERO SECTION WITH NATURE BACKGROUND & PREMIUM GRADIENT OVERLAY */}
+      {/* 1. HERO SECTION WITH NATURE BACKGROUND & PREMIUM GRADIENT OVERLAY (COMPACT CATALOG EDITION) */}
       <section 
-        className="relative rounded-3xl overflow-hidden shadow-[0_15px_40px_rgba(0,0,0,0.15)] bg-[#0f172a] text-white py-16 sm:py-24 px-6 sm:px-12 md:px-16"
+        className="relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.12)] bg-[#0f172a] text-white py-8 sm:py-10 md:py-12 px-5 sm:px-8 md:px-12"
         id="hero-banner-section"
       >
         {/* Background Image with 40% Dark Overlay */}
@@ -85,35 +78,35 @@ export default function TripListing({ trips, batches, onSelectTrip, onNavigateTo
         <div className="absolute inset-0 bg-gradient-to-tr from-[#1F2E2A]/95 via-[#315B4F]/40 to-transparent opacity-80 pointer-events-none" />
         <div className="absolute -right-24 -top-24 w-96 h-96 rounded-full bg-[#D6B16D]/15 blur-3xl pointer-events-none" />
 
-        <div className="relative max-w-4xl space-y-8" id="hero-headlines">
+        <div className="relative max-w-4xl space-y-4 sm:space-y-5" id="hero-headlines">
           {/* Subheadline */}
-          <div className="inline-flex items-center space-x-2 bg-[#D6B16D]/15 text-white px-4 py-2 rounded-full text-xs sm:text-sm font-sans font-medium tracking-wider uppercase border border-[#D6B16D]/20 shadow-lg select-none">
-            <Sparkles className="w-4 h-4 text-[#D6B16D] animate-pulse" />
+          <div className="inline-flex items-center space-x-1.5 bg-[#D6B16D]/15 text-white px-3 sm:px-3.5 py-1.5 rounded-full text-xs font-sans font-medium tracking-wider uppercase border border-[#D6B16D]/20 shadow-md select-none">
+            <Sparkles className="w-3.5 h-3.5 text-[#D6B16D] animate-pulse" />
             <span>{t("Premium Nature Tour Packages")}</span>
           </div>
 
           {/* Headline */}
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-display font-extrabold text-white tracking-tight leading-none max-w-3xl">
-            {t("Informasi & Booking")} <br className="hidden md:block"/>
+          <h1 className="text-2xl sm:text-4xl md:text-5xl font-display font-extrabold text-white tracking-tight leading-tight max-w-3xl">
+            {t("Informasi & Booking")}{" "}
             <span className="text-[#D6B16D]">
               {t("Share Tour")}
             </span>
           </h1>
 
           {/* Description */}
-          <p className="text-gray-100 font-sans font-normal text-sm sm:text-base leading-relaxed max-w-xl opacity-90">
+          <p className="text-gray-100 font-sans font-normal text-xs sm:text-sm md:text-base leading-relaxed max-w-xl opacity-90">
             {t("Configure your explorer profiles and lock your departure quota before seats deplete.")}
           </p>
 
           {/* Luxury CTA Buttons */}
-          <div className="flex flex-wrap gap-4 pt-2">
+          <div className="flex flex-wrap gap-3 pt-1">
             {/* Primary CTA Button */}
             <button
               id="hero-explore-btn"
               onClick={() => {
                 document.getElementById("signature-tours-sec")?.scrollIntoView({ behavior: "smooth" });
               }}
-              className="bg-[#D6B16D] text-[#315B4F] hover:bg-[#cda45a] hover:scale-105 active:scale-95 font-display font-bold text-xs sm:text-sm tracking-widest px-8 py-4 rounded-xl transition-all duration-200 cursor-pointer text-center block"
+              className="bg-[#D6B16D] text-[#315B4F] hover:bg-[#cda45a] hover:scale-105 active:scale-95 font-display font-bold text-xs sm:text-sm tracking-wider px-6 py-2.5 sm:px-7 sm:py-3 rounded-xl transition-all duration-200 cursor-pointer text-center block shadow-md shadow-[#D6B16D]/20"
             >
               {t("Explore Tour")}
             </button>
@@ -121,7 +114,7 @@ export default function TripListing({ trips, batches, onSelectTrip, onNavigateTo
             <button
               id="hero-status-btn"
               onClick={onNavigateToCheckStatus}
-              className="border-2 border-[#D6B16D]/80 text-[#D6B16D] hover:bg-[#D6B16D]/10 hover:scale-105 active:scale-95 font-display font-bold text-xs sm:text-sm tracking-widest px-8 py-4 rounded-xl transition-all duration-200 cursor-pointer text-center block"
+              className="border border-[#D6B16D]/80 text-[#D6B16D] hover:bg-[#D6B16D]/10 hover:scale-105 active:scale-95 font-display font-bold text-xs sm:text-sm tracking-wider px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl transition-all duration-200 cursor-pointer text-center block backdrop-blur-sm"
             >
               {t("Verify My Ticket")}
             </button>

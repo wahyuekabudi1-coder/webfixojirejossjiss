@@ -216,6 +216,17 @@ export default function BookingForm({
 
       const result = await createBooking(payload);
 
+      if (result && (result.bookingCode || result.id)) {
+        try {
+          const code = result.bookingCode || result.id;
+          const stored = JSON.parse(localStorage.getItem('sj_customer_booking_codes') || '[]');
+          if (!stored.includes(code)) {
+            stored.unshift(code);
+            localStorage.setItem('sj_customer_booking_codes', JSON.stringify(stored.slice(0, 20)));
+          }
+        } catch {}
+      }
+
       // Trigger OJIRE Payment Gateway directly with exact IDR amount
       try {
         await processArtoPayPayment({

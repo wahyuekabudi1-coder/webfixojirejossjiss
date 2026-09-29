@@ -437,8 +437,9 @@ export default function AdminDashboard({
 
   const initEditBatch = (b: Batch) => {
     setEditingBatchId(b.id);
+    const matchedTrip = trips.find(t => t.id === b.tripId || (t.slug && t.slug === b.tripId));
     setBatchForm({
-      tripId: b.tripId,
+      tripId: matchedTrip ? matchedTrip.id : b.tripId,
       departureDate: b.departureDate,
       quota: b.quota,
       availableSeats: b.availableSeats,
@@ -587,13 +588,13 @@ export default function AdminDashboard({
   // 2. Batches filtering
   const filteredBatches = useMemo(() => {
     return batches.filter(b => {
-      const matchedTrip = trips.find(t => t.id === b.tripId);
+      const matchedTrip = trips.find(t => t.id === b.tripId || (t.slug && t.slug === b.tripId));
       const tripTitle = matchedTrip ? matchedTrip.title.toLowerCase() : '';
       const matchSearch = !searchLower ||
         b.id.toLowerCase().includes(searchLower) ||
         b.departureDate.includes(searchLower) ||
         tripTitle.includes(searchLower);
-      const matchTrip = batchTripFilter === 'All' || b.tripId === batchTripFilter;
+      const matchTrip = batchTripFilter === 'All' || b.tripId === batchTripFilter || (matchedTrip && matchedTrip.id === batchTripFilter);
       return matchSearch && matchTrip;
     });
   }, [batches, trips, searchLower, batchTripFilter]);
@@ -1018,7 +1019,7 @@ export default function AdminDashboard({
                     </tr>
                   ) : (
                     paginatedBatches.map(b => {
-                      const matchedTrip = trips.find(t => t.id === b.tripId);
+                      const matchedTrip = trips.find(t => t.id === b.tripId || (t.slug && t.slug === b.tripId));
                       const totalQuota = b.quota || 14;
                       const available = b.availableSeats !== undefined ? b.availableSeats : totalQuota;
                       const booked = Math.max(0, totalQuota - available);

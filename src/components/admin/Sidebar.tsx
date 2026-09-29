@@ -1,164 +1,239 @@
 import React from 'react';
 import { 
-  LayoutDashboard, BarChart3, ClipboardList, Layers, Truck, MapPin, Globe, 
-  CheckSquare, Users, Briefcase, Calendar, Percent, CreditCard, 
-  DollarSign, Settings, ChevronLeft, ChevronRight, LogOut 
+  LayoutDashboard, ClipboardList, CalendarDays, Layers, Users, 
+  DollarSign, BarChart3, Sparkles, Settings, ChevronLeft, ChevronRight, 
+  LogOut, Globe, CheckCircle2, AlertTriangle, FileText, Compass, 
+  Plane, MapPin, Truck, CreditCard, Receipt, TrendingUp, Tag, Shield, 
+  Clock, ShieldAlert, ArrowUpRight, UserCheck
 } from 'lucide-react';
 
-export type AdminTab = 
+export type AdminModule = 
   | 'dashboard'
+  | 'orders'
+  | 'operations'
+  | 'services'
+  | 'customers'
+  | 'finance'
   | 'analytics'
-  | 'bookings' | 'tours' | 'rental' | 'taxi' | 'airport'
-  | 'vehicles' | 'drivers' | 'guides' | 'customers'
-  | 'pricing' | 'promo' | 'payments' | 'finance'
-  | 'cms'
+  | 'marketing'
   | 'settings';
 
+export type AdminTab = AdminModule | string;
+
+export interface NavGroupItem {
+  id: AdminModule;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  badge?: number;
+  badgeColor?: string;
+  subItems?: {
+    id: string;
+    label: string;
+    icon?: React.ComponentType<{ className?: string }>;
+    badge?: number;
+  }[];
+}
+
 interface SidebarProps {
-  activeTab: AdminTab;
-  setActiveTab: (tab: AdminTab) => void;
+  activeModule: AdminModule;
+  setActiveModule: (module: AdminModule) => void;
+  activeSubItem?: string;
+  setActiveSubItem?: (subItem: string) => void;
   collapsed: boolean;
   setCollapsed: (collapsed: boolean) => void;
-  pendingBookingsCount: number;
+  pendingConfirmationCount: number;
+  pendingPaymentCount?: number;
   onExit: () => void;
-  role?: 'central' | 'tour' | 'rental' | 'taxi' | 'airport';
+  role?: string;
   isDark?: boolean;
+  // Backward compatibility props
+  activeTab?: any;
+  setActiveTab?: (tab: any) => void;
+  pendingBookingsCount?: number;
 }
 
 export default function Sidebar({ 
-  activeTab, 
-  setActiveTab, 
+  activeModule, 
+  setActiveModule, 
+  activeSubItem,
+  setActiveSubItem,
   collapsed, 
   setCollapsed, 
-  pendingBookingsCount,
+  pendingConfirmationCount,
+  pendingPaymentCount = 0,
   onExit,
   role = 'central',
-  isDark = false
+  isDark = false,
+  activeTab,
+  setActiveTab,
+  pendingBookingsCount
 }: SidebarProps) {
+  // Support both activeModule and legacy activeTab
+  const currentModule = activeModule || (activeTab as AdminModule) || 'dashboard';
+  const handleSelectModule = (mod: AdminModule) => {
+    if (setActiveModule) setActiveModule(mod);
+    if (setActiveTab) setActiveTab(mod);
+  };
 
-  // Define full raw menu groups
-  const rawMenuGroups = [
+  const effectivePendingCount = pendingConfirmationCount ?? pendingBookingsCount ?? 0;
+
+  // The 9 canonical Admin sections defined in the specifications
+  const navSections: { label: string; items: NavGroupItem[] }[] = [
     {
-      label: 'MAIN',
+      label: 'OVERVIEW',
       items: [
-        { id: 'dashboard', label: 'Dashboard Analitik', icon: LayoutDashboard },
-        { id: 'analytics', label: 'Analytics', icon: BarChart3 }
+        {
+          id: 'dashboard',
+          label: 'Dashboard',
+          icon: LayoutDashboard
+        }
       ]
     },
     {
-      label: 'OPERASI',
+      label: 'TRANSAKSI & OPERASIONAL',
       items: [
-        { id: 'bookings', label: 'Booking Center', icon: ClipboardList, badge: pendingBookingsCount > 0 ? pendingBookingsCount : undefined },
-        { id: 'tours', label: 'Tour Management', icon: Layers },
-        { id: 'rental', label: 'Car Rental', icon: Truck },
-        { id: 'taxi', label: 'Taxi Service', icon: MapPin },
-        { id: 'airport', label: 'Airport Transfer', icon: Globe }
+        {
+          id: 'orders',
+          label: 'Orders',
+          icon: ClipboardList,
+          badge: effectivePendingCount > 0 ? effectivePendingCount : undefined,
+          badgeColor: 'bg-amber-500 text-neutral-950 font-black',
+          subItems: [
+            { id: 'all', label: 'All Orders' },
+            { id: 'pending_payment', label: 'Pending Payment', badge: pendingPaymentCount > 0 ? pendingPaymentCount : undefined },
+            { id: 'pending_confirmation', label: 'Pending Confirmation', badge: effectivePendingCount > 0 ? effectivePendingCount : undefined },
+            { id: 'confirmed', label: 'Confirmed' },
+            { id: 'completed', label: 'Completed' },
+            { id: 'cancelled', label: 'Cancelled' }
+          ]
+        },
+        {
+          id: 'operations',
+          label: 'Operations',
+          icon: CalendarDays,
+          subItems: [
+            { id: 'calendar', label: 'Calendar', icon: CalendarDays },
+            { id: 'departures', label: 'Departures', icon: Clock },
+            { id: 'manifest', label: 'Manifest', icon: FileText },
+            { id: 'assignment', label: 'Assignment', icon: UserCheck }
+          ]
+        }
       ]
     },
     {
-      label: 'SUMBER DAYA',
+      label: 'KATALOG & DIVISI',
       items: [
-        { id: 'vehicles', label: 'Armada Mobil', icon: CheckSquare },
-        { id: 'drivers', label: 'Database Supir', icon: Users },
-        { id: 'guides', label: 'Pemandu Wisata', icon: Briefcase },
-        { id: 'customers', label: 'Database Pelanggan', icon: Users }
+        {
+          id: 'services',
+          label: 'Services',
+          icon: Layers,
+          subItems: [
+            { id: 'private-tour', label: 'Private Tour', icon: Compass },
+            { id: 'open-trip', label: 'Open Trip', icon: Users },
+            { id: 'airport', label: 'Airport Transfer', icon: Plane },
+            { id: 'taxi', label: 'Taxi', icon: MapPin },
+            { id: 'rental', label: 'Car Rental', icon: Truck }
+          ]
+        },
+        {
+          id: 'customers',
+          label: 'Customers',
+          icon: Users,
+          subItems: [
+            { id: 'list', label: 'Customer Directory' },
+            { id: 'reviews', label: 'Reviews & Ratings' }
+          ]
+        }
       ]
     },
     {
-      label: 'BISNIS & KEUANGAN',
+      label: 'FINANSIAL & KONTEN',
       items: [
-        { id: 'pricing', label: 'Kalender & Surcharge', icon: Calendar },
-        { id: 'promo', label: 'Diskon & Promo', icon: Percent },
-        { id: 'payments', label: 'ArtoPay Webhook', icon: CreditCard },
-        { id: 'finance', label: 'Arus Kas Ledger', icon: DollarSign }
+        {
+          id: 'finance',
+          label: 'Finance',
+          icon: DollarSign,
+          subItems: [
+            { id: 'payments', label: 'Payments', icon: CreditCard },
+            { id: 'invoices', label: 'Invoices', icon: Receipt },
+            { id: 'revenue', label: 'Revenue', icon: TrendingUp },
+            { id: 'reports', label: 'Reports', icon: FileText }
+          ]
+        },
+        {
+          id: 'analytics',
+          label: 'Analytics',
+          icon: BarChart3
+        },
+        {
+          id: 'marketing',
+          label: 'Marketing',
+          icon: Sparkles,
+          subItems: [
+            { id: 'promo', label: 'Promo', icon: Tag },
+            { id: 'content', label: 'Website Content', icon: Globe }
+          ]
+        }
       ]
     },
     {
-      label: 'KONTEN',
+      label: 'PENGATURAN',
       items: [
-        { id: 'cms', label: 'Website CMS', icon: Globe }
-      ]
-    },
-    {
-      label: 'SISTEM',
-      items: [
-        { id: 'settings', label: 'Settings & RBAC', icon: Settings }
+        {
+          id: 'settings',
+          label: 'Settings',
+          icon: Settings,
+          subItems: [
+            { id: 'general', label: 'General & Limits' },
+            { id: 'rbac', label: 'Roles & Staff Access' },
+            { id: 'account', label: 'Account & Security' }
+          ]
+        }
       ]
     }
   ];
 
-  // Filter groups and items depending on active role context
-  const menuGroups = rawMenuGroups.map(group => {
-    const filteredItems = group.items.filter(item => {
-      if (role === 'central') return true;
-
-      // Rules for Sub-Admins
-      if (role === 'tour') {
-        const allowed = ['dashboard', 'analytics', 'bookings', 'tours', 'guides', 'customers', 'pricing'];
-        return allowed.includes(item.id);
-      }
-      if (role === 'rental') {
-        const allowed = ['dashboard', 'analytics', 'bookings', 'rental', 'vehicles', 'drivers', 'customers'];
-        return allowed.includes(item.id);
-      }
-      if (role === 'taxi') {
-        const allowed = ['dashboard', 'analytics', 'bookings', 'taxi', 'vehicles', 'drivers', 'customers'];
-        return allowed.includes(item.id);
-      }
-      if (role === 'airport') {
-        const allowed = ['dashboard', 'analytics', 'bookings', 'airport', 'vehicles', 'drivers', 'customers'];
-        return allowed.includes(item.id);
-      }
-      return false;
-    });
-
-    return {
-      ...group,
-      items: filteredItems
-    };
-  }).filter(group => group.items.length > 0);
-
-  // Dynamic Label & Badge for the lower-left profile section
-  const profileDetails = {
-    central: { name: 'Admin Pusat', roleName: 'Super Administrator', initial: 'AP' },
-    tour: { name: 'Manajer Tur', roleName: 'Tour Coordinator', initial: 'MT' },
-    rental: { name: 'Koord. Rental', roleName: 'Rental Dispatcher', initial: 'KR' },
-    taxi: { name: 'Koord. Taksi', roleName: 'Taxi Dispatcher', initial: 'KT' },
-    airport: { name: 'Staf Bandara', roleName: 'Airport Officer', initial: 'SB' }
-  }[role] || { name: 'Staf Operasi', roleName: 'Staff', initial: 'SO' };
-
   return (
-    <div 
+    <aside 
       className={`${
         isDark 
           ? 'bg-neutral-900 border-neutral-800 text-neutral-100' 
           : 'bg-white border-neutral-200 text-neutral-900 shadow-sm'
-      } border-r min-h-screen flex flex-col justify-between transition-all duration-300 z-30 sticky top-0 ${
+      } border-r min-h-screen flex flex-col justify-between transition-all duration-300 z-30 sticky top-0 shrink-0 ${
         collapsed ? 'w-20' : 'w-72'
       }`}
     >
-      <div className="flex-grow overflow-y-auto no-scrollbar py-6 px-4 space-y-6">
-        {/* Company Header Logo */}
-        <div className={`flex items-center justify-between border-b ${isDark ? 'border-neutral-800' : 'border-neutral-200'} pb-5`}>
+      {/* Upper Navigation Content */}
+      <div className="flex-grow overflow-y-auto no-scrollbar py-5 px-3.5 space-y-6">
+        {/* Brand Header */}
+        <div className={`flex items-center justify-between border-b ${isDark ? 'border-neutral-800' : 'border-neutral-200'} pb-4`}>
           {!collapsed ? (
-            <div className="flex items-center gap-2.5 animate-fade-in">
-              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-neutral-950 shadow-md">
+            <div className="flex items-center gap-2.5">
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-neutral-950 font-black shadow-sm">
                 <Globe className="h-5 w-5 stroke-[2.5]" />
               </div>
-              <div>
-                <h1 className={`text-sm font-black tracking-wider ${isDark ? 'text-neutral-100' : 'text-neutral-900'} font-mono`}>SMART JOURNEY</h1>
-                <span className="text-[9px] font-mono bg-amber-500/10 text-amber-600 font-extrabold px-1.5 py-0.5 rounded border border-amber-500/20">
-                  SJOMS v1.0
-                </span>
+              <div className="min-w-0">
+                <h1 className={`text-xs font-black tracking-widest font-mono ${isDark ? 'text-neutral-100' : 'text-neutral-900'} truncate`}>
+                  SMART JOURNEY
+                </h1>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-[9px] font-mono bg-amber-500/10 text-amber-500 font-extrabold px-1.5 py-0.5 rounded border border-amber-500/20">
+                    SJOMS v2.0
+                  </span>
+                  <span className="text-[9px] font-mono text-emerald-500 font-bold flex items-center gap-0.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Live
+                  </span>
+                </div>
               </div>
             </div>
           ) : (
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-neutral-950 mx-auto shadow-md">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-neutral-950 mx-auto shadow-sm">
               <Globe className="h-5 w-5 stroke-[2.5]" />
             </div>
           )}
 
-          {/* Collapse Button */}
+          {/* Collapse Toggle */}
           <button 
             onClick={() => setCollapsed(!collapsed)}
             className={`hidden md:flex p-1.5 rounded-lg ${
@@ -166,56 +241,107 @@ export default function Sidebar({
                 ? 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:text-white' 
                 : 'bg-neutral-100 border-neutral-200 text-neutral-500 hover:text-neutral-900'
             } border transition-all cursor-pointer`}
+            title={collapsed ? 'Perluas Menu' : 'Ciutkan Menu'}
           >
             {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
           </button>
         </div>
 
-        {/* Navigation Items */}
-        <nav className="space-y-6">
-          {menuGroups.map((group) => (
-            <div key={group.label} className="space-y-1.5">
+        {/* Navigation Sections */}
+        <nav className="space-y-5 text-left">
+          {navSections.map((section) => (
+            <div key={section.label} className="space-y-1">
               {!collapsed && (
-                <span className={`text-[10px] font-extrabold ${isDark ? 'text-neutral-500' : 'text-neutral-400'} uppercase tracking-widest px-2.5`}>
-                  {group.label}
+                <span className={`text-[9px] font-mono font-extrabold ${isDark ? 'text-neutral-500' : 'text-neutral-400'} uppercase tracking-wider px-2.5 block mb-1`}>
+                  {section.label}
                 </span>
               )}
-              <div className="space-y-1">
-                {group.items.map((item) => {
+              
+              <div className="space-y-0.5">
+                {section.items.map((item) => {
                   const Icon = item.icon;
-                  const isActive = activeTab === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => setActiveTab(item.id as AdminTab)}
-                      className={`w-full flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all relative cursor-pointer ${
-                        isActive 
-                          ? isDark
-                            ? 'bg-amber-500/10 border border-amber-500/20 text-amber-400 font-extrabold'
-                            : 'bg-amber-500/10 border border-amber-500/30 text-amber-700 font-extrabold'
-                          : isDark
-                            ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/40 border border-transparent'
-                            : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 border border-transparent'
-                      }`}
-                      title={collapsed ? item.label : undefined}
-                    >
-                      <Icon className={`h-4.5 w-4.5 ${isActive ? 'text-amber-500' : isDark ? 'text-neutral-400' : 'text-neutral-500'}`} />
-                      
-                      {!collapsed && (
-                        <span className="truncate flex-grow text-left">
-                          {item.label}
-                        </span>
-                      )}
+                  const isActive = currentModule === item.id;
+                  const hasSubItems = Boolean(item.subItems && item.subItems.length > 0);
 
-                      {/* Notification Badges */}
-                      {item.badge !== undefined && (
-                        <span className={`h-5 min-w-5 px-1.5 text-[10px] font-black rounded-full flex items-center justify-center shrink-0 ${
-                          collapsed ? 'absolute top-1 right-1' : ''
-                        } bg-rose-500 text-white animate-pulse`}>
-                          {item.badge}
-                        </span>
+                  return (
+                    <div key={item.id} className="space-y-0.5">
+                      <button
+                        onClick={() => {
+                          handleSelectModule(item.id);
+                          if (hasSubItems && item.subItems && setActiveSubItem) {
+                            setActiveSubItem(item.subItems[0].id);
+                          }
+                        }}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold transition-all relative cursor-pointer ${
+                          isActive 
+                            ? isDark
+                              ? 'bg-amber-500/15 border border-amber-500/30 text-amber-400 font-extrabold'
+                              : 'bg-amber-500/15 border border-amber-500/30 text-amber-700 font-extrabold shadow-xs'
+                            : isDark
+                              ? 'text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800/50 border border-transparent'
+                              : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 border border-transparent'
+                        }`}
+                        title={collapsed ? item.label : undefined}
+                      >
+                        <Icon className={`h-4.5 w-4.5 shrink-0 ${isActive ? 'text-amber-500' : isDark ? 'text-neutral-400' : 'text-neutral-500'}`} />
+                        
+                        {!collapsed && (
+                          <div className="flex items-center justify-between flex-grow min-w-0">
+                            <span className="truncate text-left text-xs">
+                              {item.label}
+                            </span>
+                            
+                            {item.badge !== undefined && (
+                              <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[9px] font-black shrink-0 ${
+                                item.badgeColor || 'bg-amber-500 text-neutral-950'
+                              } animate-pulse`}>
+                                {item.badge}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </button>
+
+                      {/* Expanded Sub-items (visible when module active & sidebar not collapsed) */}
+                      {!collapsed && isActive && hasSubItems && (
+                        <div className={`ml-4 pl-3.5 border-l ${isDark ? 'border-neutral-800' : 'border-neutral-200'} space-y-0.5 py-1`}>
+                          {item.subItems?.map((sub) => {
+                            const SubIcon = sub.icon;
+                            const isSubActive = activeSubItem === sub.id;
+                            
+                            return (
+                              <button
+                                key={sub.id}
+                                onClick={() => {
+                                  if (setActiveSubItem) {
+                                    setActiveSubItem(sub.id);
+                                  }
+                                }}
+                                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer text-left ${
+                                  isSubActive
+                                    ? isDark
+                                      ? 'text-amber-400 font-bold bg-amber-500/10'
+                                      : 'text-amber-700 font-bold bg-amber-500/10'
+                                    : isDark
+                                      ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/40'
+                                      : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 truncate">
+                                  {SubIcon && <SubIcon className="h-3 w-3 shrink-0" />}
+                                  <span className="truncate">{sub.label}</span>
+                                </div>
+                                {sub.badge !== undefined && sub.badge > 0 && (
+                                  <span className="ml-1 text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-500 border border-amber-500/30">
+                                    {sub.badge}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
                       )}
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -224,16 +350,20 @@ export default function Sidebar({
         </nav>
       </div>
 
-      {/* Footer Profile Exit Area */}
-      <div className={`p-4 border-t ${isDark ? 'border-neutral-800 bg-neutral-950' : 'border-neutral-200 bg-neutral-50'} flex flex-col gap-3`}>
+      {/* Footer Profile & Exit Section */}
+      <div className={`p-3.5 border-t ${isDark ? 'border-neutral-800 bg-neutral-950/70' : 'border-neutral-200 bg-neutral-50'} flex flex-col gap-2.5`}>
         {!collapsed && (
-          <div className="flex items-center gap-3 animate-fade-in">
-            <div className="h-9 w-9 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 font-black font-mono text-xs">
-              {profileDetails.initial}
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500 font-black font-mono text-xs">
+              AD
             </div>
-            <div className="min-w-0 flex-grow">
-              <p className={`text-xs font-extrabold ${isDark ? 'text-neutral-200' : 'text-neutral-800'} truncate`}>{profileDetails.name}</p>
-              <p className="text-[10px] font-semibold text-neutral-500 font-mono truncate">{profileDetails.roleName}</p>
+            <div className="min-w-0 flex-grow text-left">
+              <p className={`text-xs font-bold ${isDark ? 'text-neutral-200' : 'text-neutral-800'} truncate`}>
+                Admin Pusat
+              </p>
+              <p className="text-[10px] text-neutral-500 font-mono truncate">
+                Super Administrator
+              </p>
             </div>
           </div>
         )}
@@ -242,14 +372,14 @@ export default function Sidebar({
           onClick={onExit}
           className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl border ${
             isDark
-              ? 'border-neutral-800 hover:border-neutral-700 hover:bg-neutral-900 text-neutral-400 hover:text-rose-400'
-              : 'border-neutral-200 hover:border-neutral-300 hover:bg-white text-neutral-600 hover:text-rose-600'
+              ? 'border-neutral-800 hover:border-rose-900/40 hover:bg-rose-950/20 text-neutral-400 hover:text-rose-400'
+              : 'border-neutral-200 hover:border-rose-200 hover:bg-rose-50 text-neutral-600 hover:text-rose-600'
           } transition-all text-xs font-bold cursor-pointer font-mono`}
         >
-          <LogOut className="h-4 w-4" />
-          {!collapsed && <span>Pilih Layanan Lain</span>}
+          <LogOut className="h-4 w-4 shrink-0" />
+          {!collapsed && <span>Keluar Portal</span>}
         </button>
       </div>
-    </div>
+    </aside>
   );
 }

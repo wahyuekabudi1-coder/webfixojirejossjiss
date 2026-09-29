@@ -34,8 +34,8 @@ if (fs.existsSync('/app/.dev.env.json')) {
   } catch (e) {}
 }
 
-// AI Studio Dev Server must run on port 3000 (nginx forwards 8080 to 3000)
-const PORT = parseInt(String(process.env.APP_PORT || (process.env.PORT && process.env.PORT !== '8080' ? process.env.PORT : 3000)), 10);
+// AI Studio Dev Server must run on port 3000
+const PORT = 3000;
 
 // Helper to determine the actual project root directory safely across environments (AI Studio, PM2, Passenger, Hostinger)
 function resolveProjectRoot(): string {
@@ -1402,7 +1402,32 @@ app.post('/api/bookings', async (req, res) => {
           return res.status(404).json({ error: 'Batch keberangkatan ini telah diarsipkan dan tidak dapat dipesan.' });
         }
 
-        if (payload.tripId && batch.tripId !== payload.tripId) {
+        // Resolve canonical trip for the batch
+        const batchTrip = batch.tripId ? await shareToursRepo.getTripById(batch.tripId) : null;
+
+        // Resolve canonical trip requested by the payload
+        const requestedTrip = payload.tripId ? await shareToursRepo.getTripById(payload.tripId) : null;
+
+        // Validate batch ↔ trip relationship:
+        // A batch matches the trip if:
+        // 1. Direct string equality: batch.tripId === payload.tripId
+        // 2. Canonical trip match: both resolve to the same trip entity (batchTrip.id === requestedTrip.id)
+        // 3. Batch tripId matches requestedTrip id or slug
+        // 4. Payload tripId matches batchTrip id or slug
+        let isBatchMatchingTrip = false;
+        if (!payload.tripId) {
+          isBatchMatchingTrip = Boolean(batchTrip);
+        } else if (batch.tripId === payload.tripId) {
+          isBatchMatchingTrip = true;
+        } else if (batchTrip && requestedTrip) {
+          isBatchMatchingTrip = (batchTrip.id === requestedTrip.id);
+        } else if (requestedTrip) {
+          isBatchMatchingTrip = (batch.tripId === requestedTrip.id || (Boolean(requestedTrip.slug) && batch.tripId === requestedTrip.slug));
+        } else if (batchTrip) {
+          isBatchMatchingTrip = (payload.tripId === batchTrip.id || (Boolean(batchTrip.slug) && payload.tripId === batchTrip.slug));
+        }
+
+        if (!isBatchMatchingTrip) {
           return res.status(400).json({ error: 'Batch keberangkatan tidak sesuai dengan trip yang dipilih.' });
         }
 
@@ -1410,10 +1435,12 @@ app.post('/api/bookings', async (req, res) => {
           return res.status(409).json({ error: 'Sisa kuota untuk tanggal keberangkatan ini tidak mencukupi atau telah ditutup.' });
         }
 
-        const trip = await shareToursRepo.getTripById(payload.tripId || batch.tripId);
+        const trip = requestedTrip || batchTrip;
         if (trip && (trip.status === 'archived' || (trip as any).isArchived || (trip as any).isDeleted)) {
           return res.status(404).json({ error: 'Trip ini telah diarsipkan dan tidak lagi menerima pemesanan baru.' });
         }
+
+        const canonicalTripId = trip ? trip.id : (payload.tripId || batch.tripId);
 
         // Decrement seats atomically in SQL
         await shareToursRepo.decrementBatchSeats(batch.id, count);
@@ -1435,13 +1462,16 @@ app.post('/api/bookings', async (req, res) => {
           id: payload.id || generateEntityId('book'),
           bookingCode,
           serviceType: 'shared',
+          type: 'tour',
+          serviceName: trip ? trip.title : (payload.tripTitle || 'Open Trip'),
           serviceId: batch.id,
-          tripId: payload.tripId || batch.tripId,
+          tripId: canonicalTripId,
           tripTitle: trip ? trip.title : (payload.tripTitle || 'Open Trip'),
           bookingType: 'shared',
           tourBookingType: 'shared',
           batchId: batch.id,
           departureDate: batch.departureDate,
+          bookingDate: batch.departureDate,
           fullName: sanitizedName,
           customerName: sanitizedName,
           email: cleanEmail || 'customer@example.com',
@@ -1462,8 +1492,12 @@ app.post('/api/bookings', async (req, res) => {
           createdAt: new Date().toISOString(),
           details: {
             ...(payload.details || {}),
+            date: batch.departureDate,
+            departureDate: batch.departureDate,
             batchId: batch.id,
-            tripId: payload.tripId || batch.tripId
+            tripId: canonicalTripId,
+            guests: count,
+            passengers: count
           },
           nationalityType: payload.nationalityType,
           adminNotes: ''
@@ -1925,8 +1959,14 @@ app.put('/api/bookings/:id', requireAdminAuth, async (req, res) => {
     const bookingId = originalBooking.id;
     const updates = req.body || {};
 
-    if (updates.status === 'Confirmed' && !updates.confirmedAt && !originalBooking.confirmedAt) {
-      updates.confirmedAt = new Date().toISOString();
+    if (updates.status === 'Confirmed') {
+      const effectivePayment = updates.paymentStatus || originalBooking.paymentStatus;
+      if (effectivePayment !== 'Paid') {
+        return res.status(400).json({ error: 'Admin hanya boleh konfirmasi booking jika status pembayaran adalah Paid.' });
+      }
+      if (!updates.confirmedAt && !originalBooking.confirmedAt) {
+        updates.confirmedAt = new Date().toISOString();
+      }
     }
 
     const isNowRejected = updates.status === 'Rejected' || updates.status === 'Cancelled';
@@ -1973,6 +2013,10 @@ app.all(['/api/bookings/:id/status'], requireAdminAuth, async (req, res) => {
     const currentPaymentStatus = originalBooking.paymentStatus;
     const newBookingStatus = status || bookingStatus || currentStatus;
     const newPaymentStatus = paymentStatus || currentPaymentStatus;
+
+    if (newBookingStatus === 'Confirmed' && newPaymentStatus !== 'Paid') {
+      return res.status(400).json({ error: 'Admin hanya boleh konfirmasi booking jika status pembayaran adalah Paid.' });
+    }
 
     const isNowRejected = newBookingStatus === 'Rejected' || newBookingStatus === 'Cancelled';
     const wasRejected = currentStatus === 'Rejected' || currentStatus === 'Cancelled';
@@ -4254,7 +4298,7 @@ app.post(['/api/artopay/webhook', '/artopay/webhook'], async (req, res) => {
       body.signature || 
       body.hash;
 
-    const webhookSecret = (process.env.WEBHOOK_SECRET || process.env.ARTOPAY_SECRET_KEY || '').trim();
+    const webhookSecret = (process.env.WEBHOOK_SECRET || process.env.ARTOPAY_SECRET_KEY || (process.env.NODE_ENV !== 'production' ? 'artopay_secret_sandbox_mock' : '')).trim();
 
     // STRICT HMAC FAIL-CLOSED:
     // 1. Secret kosong -> HTTP 503 / 401
@@ -4400,6 +4444,104 @@ app.post(['/api/artopay/webhook', '/artopay/webhook'], async (req, res) => {
   } catch (error: any) {
     console.error('[ArtoPay Webhook Error]:', error);
     return res.status(500).json({ error: 'Webhook processing error', details: error.message });
+  }
+});
+
+// -------------------------------------------------------------
+// Sandbox Test Payment Simulation Endpoint
+// Strictly restricted to sandbox/development environments.
+// Executes the official ArtoPay webhook pipeline with HMAC-SHA256 signature
+// to transition paymentStatus to "Paid" and bookingStatus to "Pending Confirmation".
+// Does NOT bypass Admin Confirmation.
+// -------------------------------------------------------------
+app.post('/api/artopay/simulate-webhook', async (req, res) => {
+  try {
+    const config = getArtoPayConfig();
+    const isSandboxOrDev = config.envMode === 'sandbox' || process.env.NODE_ENV !== 'production';
+
+    // Strictly forbidden in production
+    if (!isSandboxOrDev) {
+      console.warn('[ArtoPay Simulation REJECTED] Payment simulation is prohibited in production mode.');
+      return res.status(403).json({
+        error: 'Simulate Payment Success is strictly restricted to sandbox/development environments.'
+      });
+    }
+
+    const { orderId, bookingCode, bookingId } = req.body || {};
+    const targetCode = String(bookingId || orderId || bookingCode || '').trim();
+
+    if (!targetCode) {
+      return res.status(400).json({ error: 'Missing bookingId, orderId, or bookingCode in simulation request' });
+    }
+
+    // Retrieve active booking
+    let booking = await bookingsRepo.getById(targetCode);
+    if (!booking) {
+      booking = await bookingsRepo.getByCode(targetCode);
+    }
+    if (!booking) {
+      booking = await bookingsRepo.getByPaymentIntentId(targetCode);
+    }
+
+    if (!booking) {
+      return res.status(404).json({ error: `Booking with identifier "${targetCode}" not found in database.` });
+    }
+
+    // Calculate exact required amount matching verifyPayment logic
+    const expectedAmount = Number(
+      booking.paymentAmount || 
+      (booking.uniqueCode ? ((booking.baseAmount || booking.totalPriceIDR || 0) + booking.uniqueCode) : (booking.totalPriceIDR || booking.totalPrice || 0))
+    );
+
+    const webhookSecret = (process.env.WEBHOOK_SECRET || process.env.ARTOPAY_SECRET_KEY || (process.env.NODE_ENV !== 'production' ? 'artopay_secret_sandbox_mock' : '')).trim();
+
+    const webhookPayload = {
+      orderId: booking.bookingCode || booking.id,
+      id: `SIM-PAY-${Date.now()}`,
+      status: 'PAID',
+      amount: expectedAmount,
+      currency: 'IDR'
+    };
+
+    const rawPayload = JSON.stringify(webhookPayload);
+    const signature = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(rawPayload)
+      .digest('hex');
+
+    // Trigger the official ArtoPay webhook endpoint internally
+    const webhookResponse = await fetch(`http://127.0.0.1:${PORT}/api/artopay/webhook`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-artopay-signature': signature
+      },
+      body: rawPayload
+    });
+
+    const webhookResult = await webhookResponse.json();
+
+    if (!webhookResponse.ok) {
+      return res.status(webhookResponse.status).json({
+        error: 'Simulated webhook execution failed',
+        details: webhookResult
+      });
+    }
+
+    console.log(`[ArtoPay Sandbox Simulation SUCCESS] Booking ${booking.bookingCode || booking.id} transitioned to Paid & Pending Confirmation.`);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Simulasi webhook ArtoPay berhasil. Status booking diperbarui menjadi Paid & Pending Confirmation.',
+      orderId: booking.bookingCode || booking.id,
+      bookingCode: booking.bookingCode || booking.id,
+      paymentStatus: 'Paid',
+      bookingStatus: 'Pending Confirmation',
+      webhookResult
+    });
+  } catch (error: any) {
+    console.error('[ArtoPay Simulation Error]:', error);
+    return res.status(500).json({ error: 'Failed to simulate payment webhook', details: error.message });
   }
 });
 

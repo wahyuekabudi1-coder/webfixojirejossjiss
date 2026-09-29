@@ -6,7 +6,8 @@ import {
   RefreshCw, 
   Plane, 
   Printer, 
-  ArrowLeft
+  ArrowLeft,
+  Download
 } from "lucide-react";
 import { useLanguageCurrency } from "../LanguageCurrencyContext";
 
@@ -41,7 +42,7 @@ export default function StatusChecker({
     }
   }, [prefilledCode, bookings]);
 
-  const handleSearch = (code: string = bookingCode) => {
+  const handleSearch = async (code: string = bookingCode) => {
     setErrorMsg("");
     
     if (!code.trim()) {
@@ -59,11 +60,51 @@ export default function StatusChecker({
     if (record) {
       setFoundBooking(record);
       setSearched(true);
-    } else {
-      setFoundBooking(null);
-      setErrorMsg(t("No reservation data found for Booking Code") + ` "${cleanCode}". ` + t("Please double-check your code."));
-      setSearched(true);
+      return;
     }
+
+    // Authoritative Single Source of Truth fetch from backend for public customer
+    try {
+      const res = await fetch(`/api/private-tour/check-booking/${encodeURIComponent(cleanCode)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.found) {
+          const adaptedBooking: Booking = {
+            id: data.id,
+            bookingCode: data.bookingCode,
+            tripId: data.tourSnapshot?.tourId || data.serviceId || 'open-trip',
+            tripTitle: data.tripTitle || data.serviceName,
+            batchId: data.batchId || '',
+            departureDate: data.departureDate,
+            fullName: data.customerName,
+            email: data.customerEmail,
+            phone: data.customerPhone,
+            participantsCount: data.participantsCount,
+            participantsNames: data.participantsNames || [data.customerName],
+            totalPrice: data.paymentAmount || data.baseAmount,
+            proofOfPayment: "ARTOPAY_GATEWAY",
+            status: data.bookingStatus as any,
+            paymentStatus: data.paymentStatus as any,
+            createdAt: data.createdAt,
+            paidAt: data.paidAt,
+            details: {
+              date: data.departureDate,
+              departureDate: data.departureDate,
+              pickupLocation: data.pickupLocation
+            }
+          };
+          setFoundBooking(adaptedBooking);
+          setSearched(true);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn("Backend check error:", e);
+    }
+
+    setFoundBooking(null);
+    setErrorMsg(t("No reservation data found for Booking Code") + ` "${cleanCode}". ` + t("Please double-check your code."));
+    setSearched(true);
   };
 
   const handleReload = async () => {
@@ -71,11 +112,7 @@ export default function StatusChecker({
     try {
       await onRefreshDB();
       if (searched && bookingCode) {
-        const cleanCode = bookingCode.trim().toUpperCase();
-        const record = bookings.find(
-          (b) => b.bookingCode.toUpperCase() === cleanCode
-        );
-        if (record) setFoundBooking(record);
+        await handleSearch(bookingCode);
       }
     } catch {
       setErrorMsg(t("Failed to sync database data."));
@@ -450,14 +487,26 @@ export default function StatusChecker({
                     <br />
                     <span>VERIFIED OFFICIAL SMART JOURNEY DEPARTURES</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handlePrint}
-                    className="w-full md:w-auto px-10 py-4.5 bg-[#D6B16D] hover:bg-[#c19d5f] text-slate-950 rounded-xl font-mono font-black text-xs sm:text-sm tracking-[0.2em] uppercase transition-all shadow-lg hover:shadow-amber-500/10 active:scale-[0.99] flex items-center justify-center space-x-3 cursor-pointer text-center"
-                  >
-                    <Printer className="w-4 h-4 text-slate-950" />
-                    <span>{t("Print Travel Instructions")}</span>
-                  </button>
+                  <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                    <a
+                      id="btn-download-pdf-status-checker"
+                      href={`/api/private-tour/invoice-pdf/${encodeURIComponent(foundBooking.bookingCode)}`}
+                      download={`SmartJourney-Confirmation-${foundBooking.bookingCode}.pdf`}
+                      className="px-6 py-4 bg-[#10B981] hover:bg-emerald-600 text-slate-950 rounded-xl font-mono font-black text-xs sm:text-sm tracking-wider uppercase transition-all shadow-lg flex items-center justify-center space-x-2 cursor-pointer text-center"
+                      title="Download Official PDF Confirmation Document"
+                    >
+                      <Download className="w-4 h-4 text-slate-950" />
+                      <span>{t("Download PDF Document")}</span>
+                    </a>
+                    <button
+                      type="button"
+                      onClick={handlePrint}
+                      className="px-8 py-4 bg-[#D6B16D] hover:bg-[#c19d5f] text-slate-950 rounded-xl font-mono font-black text-xs sm:text-sm tracking-[0.15em] uppercase transition-all shadow-lg hover:shadow-amber-500/10 active:scale-[0.99] flex items-center justify-center space-x-2 cursor-pointer text-center"
+                    >
+                      <Printer className="w-4 h-4 text-slate-950" />
+                      <span>{t("Print Travel Instructions")}</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

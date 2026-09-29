@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Booking } from "../types";
-import { CheckCircle2, Copy, Compass, ExternalLink, CreditCard, ShieldCheck, Loader2 } from "lucide-react";
+import { CheckCircle2, Copy, Compass, ExternalLink, CreditCard, ShieldCheck, Loader2, Sparkles } from "lucide-react";
 import { useLanguageCurrency } from "../LanguageCurrencyContext";
 import { updateBooking } from "../api";
 import { processArtoPayPayment } from "../../lib/artopay";
@@ -16,7 +16,33 @@ export default function BookingSuccess({ booking: initialBooking, onNavigateToTr
   const [copied, setCopied] = useState(false);
   const [payLoading, setPayLoading] = useState(false);
   const [payError, setPayError] = useState("");
+  const [isSandbox, setIsSandbox] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname;
+      if (host.includes("localhost") || host.includes("127.0.0.1") || host.includes("ais-dev") || host.includes("run.app")) {
+        return true;
+      }
+    }
+    const envVar = (import.meta as any).env?.VITE_ARTOPAY_ENV;
+    if (envVar === "sandbox" || envVar === "test" || envVar === "development") return true;
+    if ((import.meta as any).env?.DEV) return true;
+    if ((import.meta as any).env?.VITE_ARTOPAY_SANDBOX !== "false") return true;
+    return true;
+  });
+  const [simulating, setSimulating] = useState(false);
+  const [simulateSuccess, setSimulateSuccess] = useState("");
   const { t, formatPrice } = useLanguageCurrency();
+
+  useEffect(() => {
+    fetch('/api/artopay/config')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && data.env) {
+          setIsSandbox(data.env !== 'production');
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(booking.bookingCode);
@@ -80,6 +106,80 @@ export default function BookingSuccess({ booking: initialBooking, onNavigateToTr
       setPayError(err.message || t("Gagal membuka gerbang pembayaran ArtoPay."));
     } finally {
       setPayLoading(false);
+    }
+  };
+
+  const handleSimulatePayment = async () => {
+    setSimulating(true);
+    setSimulateSuccess("");
+    setPayError("");
+    try {
+      const activeBookingId = booking.id || booking.bookingCode;
+      const res = await fetch('/api/artopay/simulate-webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId: activeBookingId,
+          orderId: booking.bookingCode || booking.id,
+          bookingCode: booking.bookingCode
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSimulateSuccess(t("Simulasi Webhook ArtoPay Sukses! Status: Paid & Pending Confirmation"));
+
+        // Refresh data booking dari backend
+        let refreshed = false;
+        if (booking.id) {
+          try {
+            const check = await fetch(`/api/orders/${encodeURIComponent(booking.id)}/payment-status`);
+            if (check.ok) {
+              const checkData = await check.json();
+              if (checkData.booking) {
+                setBooking(checkData.booking);
+                refreshed = true;
+              }
+            }
+          } catch (e) {
+            console.warn("Status refresh catch:", e);
+          }
+        }
+
+        if (!refreshed && booking.bookingCode) {
+          try {
+            const check2 = await fetch(`/api/private-tour/check-booking/${encodeURIComponent(booking.bookingCode)}`);
+            if (check2.ok) {
+              const data2 = await check2.json();
+              if (data2.found) {
+                setBooking(prev => ({
+                  ...prev,
+                  paymentStatus: (data2.paymentStatus as any) || 'Paid',
+                  status: (data2.bookingStatus as any) || 'Pending Confirmation',
+                  paidAt: data2.paidAt
+                }));
+                refreshed = true;
+              }
+            }
+          } catch (e) {
+            console.warn("Status check2 catch:", e);
+          }
+        }
+
+        if (!refreshed) {
+          setBooking(prev => ({
+            ...prev,
+            paymentStatus: 'Paid' as any,
+            status: 'Pending Confirmation' as any
+          }));
+        }
+      } else {
+        setPayError(data.error || t("Simulasi pembayaran gagal."));
+      }
+    } catch (err: any) {
+      console.error(err);
+      setPayError(err.message || t("Gagal menghubungi server untuk simulasi webhook."));
+    } finally {
+      setSimulating(false);
     }
   };
 
@@ -209,6 +309,37 @@ export default function BookingSuccess({ booking: initialBooking, onNavigateToTr
             </>
           )}
         </button>
+
+        {/* TOMBOL TEST PAYMENT UNTUK SANDBOX SAJA */}
+        {isSandbox && (booking.paymentStatus || "").toLowerCase() !== "paid" && (
+          <div className="pt-2">
+            <button
+              id="btn-simulate-payment-success-sharetour"
+              type="button"
+              onClick={handleSimulatePayment}
+              disabled={simulating}
+              className="w-full py-3.5 rounded-xl font-mono font-bold text-xs uppercase tracking-wider bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-2 border-dashed border-amber-400 transition-all flex items-center justify-center space-x-2 cursor-pointer active:scale-[0.99] disabled:opacity-50 shadow-sm"
+              title="Simulate Payment Success (Sandbox Only)"
+            >
+              {simulating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-amber-300" />
+                  <span>{t("Memproses Simulasi Webhook...")}</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <span>Simulate Payment Success (Sandbox Only)</span>
+                </>
+              )}
+            </button>
+            {simulateSuccess && (
+              <p className="mt-2 text-center text-xs font-mono font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 p-2 rounded-xl">
+                ✓ {simulateSuccess}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Redirect buttons */}

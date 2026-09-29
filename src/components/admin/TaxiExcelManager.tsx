@@ -5,7 +5,8 @@ import {
   MapPin, CheckCircle2, AlertTriangle, RefreshCw, Layers, 
   DollarSign, Percent, ArrowUpFromLine, Plus, Search, Trash2, 
   Edit, ArrowDownToLine, Compass, HelpCircle, Check, X, ShieldAlert,
-  LayoutDashboard, Users, BarChart3, ClipboardList, Plane, TrendingUp
+  LayoutDashboard, Users, BarChart3, ClipboardList, Plane, TrendingUp,
+  Car, Calendar
 } from 'lucide-react';
 import { TaxiMasterArea, TaxiMasterDestination, TaxiPricingRule, TaxiAreaRule, TaxiImportHistory } from '../../types';
 import TaxiBookingCalendar from './TaxiBookingCalendar';
@@ -642,6 +643,37 @@ export default function TaxiExcelManager({
 
 
 
+      {/* Subtab Navigation for Taxi */}
+      <div className="flex items-center gap-1.5 p-1 rounded-xl bg-neutral-900 border border-neutral-800 overflow-x-auto no-scrollbar shadow-sm">
+        {[
+          { id: 'master-data', label: 'Master Area, Destinasi & Armada', icon: MapPin },
+          { id: 'pricing-engine', label: 'Aturan Tarif & Surcharge', icon: DollarSign },
+          { id: 'calendar', label: 'Kalender Ketersediaan', icon: Calendar },
+          { id: 'excel-import', label: 'Import Excel Multi-Sheet', icon: Upload },
+          { id: 'excel-export', label: 'Ekspor Live Database', icon: Download },
+          { id: 'import-history', label: 'Riwayat Impor', icon: History },
+          { id: 'dashboard', label: 'Analitik & Dispatch', icon: BarChart3 },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                isActive
+                  ? 'bg-amber-500 text-neutral-950 font-black shadow-sm'
+                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60'
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* MAIN VIEW CONTROLLER */}
       <div className="space-y-6">
 
@@ -838,6 +870,7 @@ export default function TaxiExcelManager({
               {/* Master sub tabs */}
               <div className="flex bg-neutral-950 p-1 border border-neutral-850 rounded-xl gap-1">
                 <button
+                  type="button"
                   onClick={() => setMasterSubTab('areas')}
                   className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     masterSubTab === 'areas' ? 'bg-amber-500 text-neutral-950 font-black' : 'text-neutral-400 hover:text-white'
@@ -846,6 +879,7 @@ export default function TaxiExcelManager({
                   📍 Master Area (Zones)
                 </button>
                 <button
+                  type="button"
                   onClick={() => setMasterSubTab('destinations')}
                   className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     masterSubTab === 'destinations' ? 'bg-amber-500 text-neutral-950 font-black' : 'text-neutral-400 hover:text-white'
@@ -853,23 +887,43 @@ export default function TaxiExcelManager({
                 >
                   🗺️ Master Destinasi (Places)
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setMasterSubTab('vehicles')}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    masterSubTab === 'vehicles' ? 'bg-amber-500 text-neutral-950 font-black' : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  🚕 Klasifikasi Armada
+                </button>
               </div>
 
               {masterSubTab === 'areas' ? (
                 <button 
+                  type="button"
                   onClick={() => handleOpenAreaModal()}
                   className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-neutral-950 font-black text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow"
                 >
                   <Plus className="h-4 w-4" />
                   <span>Tambah Area Baru</span>
                 </button>
-              ) : (
+              ) : masterSubTab === 'destinations' ? (
                 <button 
+                  type="button"
                   onClick={() => handleOpenDestModal()}
                   className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-neutral-950 font-black text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow"
                 >
                   <Plus className="h-4 w-4" />
                   <span>Tambah Destinasi Baru</span>
+                </button>
+              ) : (
+                <button 
+                  type="button"
+                  onClick={() => setActiveTab('pricing-engine')}
+                  className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-amber-400 font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow border border-neutral-700"
+                >
+                  <DollarSign className="h-4 w-4 text-amber-500" />
+                  <span>Kelola Tarif Armada</span>
                 </button>
               )}
             </div>
@@ -1029,6 +1083,131 @@ export default function TaxiExcelManager({
                       </tbody>
                     </table>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB: VEHICLES FLEET CLASSIFICATION SUB LIST */}
+            {masterSubTab === 'vehicles' && (
+              <div className="space-y-4">
+                <div className={`${theme.card} border rounded-2xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4`}>
+                  <div className="space-y-0.5">
+                    <h5 className="text-xs font-black uppercase tracking-wider font-mono text-amber-500 flex items-center gap-2">
+                      <Car className="h-4 w-4" />
+                      <span>KLASIFIKASI KELAS KENDARAAN LAYANAN TAKSI</span>
+                    </h5>
+                    <p className={`text-[11px] ${theme.textSecondary}`}>
+                      Kategori unit armada yang digunakan algoritma pencarian &amp; penentuan tarif perjalanan taksi argo di customer frontend.
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 px-3 py-1 rounded-full">
+                    4 KELAS STANDAR OTA
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    {
+                      type: 'Standard',
+                      model: 'Toyota Avanza / Daihatsu Xenia / Ertiga',
+                      capacity: '4 Penumpang',
+                      luggage: '2 Bagasi Koper',
+                      multiplier: '0.9x Tarif Dasar',
+                      description: 'Armada standar MPV kompak untuk mobilitas harian hemat dan fleksibel di dalam kota maupun antar-wilayah.',
+                      badgeColor: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+                      features: ['Full AC Dual Blower', 'Kapasitas 4 Pax', 'Efisiensi Bahan Bakar', 'Driver Berpengalaman']
+                    },
+                    {
+                      type: 'Family',
+                      model: 'Toyota Kijang Innova Reborn / Zenix',
+                      capacity: '6 Penumpang',
+                      luggage: '4 Bagasi Koper',
+                      multiplier: '1.0x (Default Baseline)',
+                      description: 'Kendaraan keluarga berukuran sedang dengan kabin senyap, suspensi empuk, dan bagasi lapang untuk rombongan keluarga.',
+                      badgeColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+                      features: ['Kabin Luas Nyaman', 'Kapasitas 6 Pax', 'Suspensi Empuk', 'Paling Populer']
+                    },
+                    {
+                      type: 'Premium',
+                      model: 'Toyota Alphard / Vellfire Luxury',
+                      capacity: '4 Penumpang VIP',
+                      luggage: '4 Bagasi Koper',
+                      multiplier: '1.5x Tarif Dasar',
+                      description: 'Layanan armada eksekutif berkelas VIP dengan captain seat, privacy glass, dan fasilitas kenyamanan premium kelas atas.',
+                      badgeColor: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                      features: ['Ottoman Captain Seat', 'Layanan VIP Prioritas', 'Air Mineral Dingin', 'Pengemudi Berpakaian Formal']
+                    },
+                    {
+                      type: 'Van',
+                      model: 'Toyota HiAce Commuter / HiAce Premio',
+                      capacity: '12 - 14 Penumpang',
+                      luggage: '8 Bagasi Koper',
+                      multiplier: '1.8x Tarif Dasar',
+                      description: 'Minibus kapasitas besar ideal untuk rombongan tur, transfer grup bandara, dan delegasi acara berombongan besar.',
+                      badgeColor: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+                      features: ['Kapasitas 12-14 Pax', 'Headroom Tinggi Lapang', 'Bagasi Ekstra Besar', 'Audio Karaoke & Charger']
+                    }
+                  ].map((vh) => {
+                    const rulesCount = taxiPricingRules.filter(r => r.vehicle_type === vh.type).length;
+                    return (
+                      <div key={vh.type} className={`${theme.card} border rounded-2xl p-5 space-y-3.5 hover:border-amber-500/30 transition-all flex flex-col justify-between`}>
+                        <div className="space-y-2.5">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <span className="text-[10px] font-mono font-black text-amber-500 uppercase tracking-widest block">KELAS ARMADA:</span>
+                              <h4 className="text-base font-black text-neutral-100 flex items-center gap-2">
+                                <span>{vh.type}</span>
+                                <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full border ${vh.badgeColor}`}>
+                                  {vh.multiplier}
+                                </span>
+                              </h4>
+                            </div>
+                            <span className="text-[10px] font-mono font-bold text-neutral-400 bg-neutral-900 border border-neutral-800 px-2.5 py-1 rounded-lg">
+                              {rulesCount} Aturan Tarif Terkait
+                            </span>
+                          </div>
+
+                          <p className="text-xs font-bold text-neutral-200">
+                            🚘 Model: {vh.model}
+                          </p>
+
+                          <div className="flex items-center gap-3 text-xs font-mono text-neutral-400">
+                            <span>👥 {vh.capacity}</span>
+                            <span>•</span>
+                            <span>🧳 {vh.luggage}</span>
+                          </div>
+
+                          <p className={`text-xs ${theme.textSecondary} leading-relaxed`}>
+                            {vh.description}
+                          </p>
+
+                          <div className="flex flex-wrap gap-1.5 pt-1">
+                            {vh.features.map((feat, fIdx) => (
+                              <span key={fIdx} className="text-[10px] bg-neutral-950/60 border border-neutral-850 px-2 py-0.5 rounded text-neutral-300 font-mono">
+                                ✓ {feat}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="pt-3 border-t border-neutral-850/80 flex justify-between items-center">
+                          <span className="text-[10px] font-mono text-neutral-500">Sinkron Customer Frontend</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSearchPriceRule(vh.type);
+                              setActiveTab('pricing-engine');
+                              triggerToast(`Memfilter aturan tarif armada ${vh.type}`);
+                            }}
+                            className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-neutral-950 font-bold text-xs rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                          >
+                            <span>Lihat Tarif {vh.type}</span>
+                            <ArrowDownToLine className="h-3 w-3 -rotate-90" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

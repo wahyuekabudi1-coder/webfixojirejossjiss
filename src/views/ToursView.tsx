@@ -14,11 +14,41 @@ import ComingSoonPage from '../components/ComingSoonPage';
 export default function ToursView() {
   const { formatPrice, searchParams, setSearchParams, tours, setPage } = useApp();
 
+  const handleOpenTourDetail = (tourId: string) => {
+    setSearchParams({ ...searchParams, selectedTourId: tourId });
+    try {
+      window.location.hash = `#/tours?tour=${encodeURIComponent(tourId)}`;
+    } catch {}
+  };
+
+  const handleBackToTourList = () => {
+    setSearchParams({ ...searchParams, selectedTourId: undefined });
+    try {
+      window.location.hash = '#/tours';
+    } catch {}
+  };
+
+  // Sync state with URL: only open detail if explicit tour identifier is present in URL
+  useEffect(() => {
+    const fullHash = window.location.hash || '';
+    const tourMatch = fullHash.match(/[?&#](?:tour|tourId|id)=([^&]+)/i);
+    const explicitTourId = tourMatch ? decodeURIComponent(tourMatch[1]).trim() : '';
+    if (explicitTourId) {
+      if (searchParams?.selectedTourId !== explicitTourId) {
+        setSearchParams((prev: any) => ({ ...prev, selectedTourId: explicitTourId }));
+      }
+    } else {
+      if (searchParams?.selectedTourId) {
+        setSearchParams((prev: any) => ({ ...prev, selectedTourId: undefined }));
+      }
+    }
+  }, []);
+
   if (searchParams?.selectedTourId) {
     return (
       <TourDetailView
         tourId={searchParams.selectedTourId}
-        onBack={() => setSearchParams({ ...searchParams, selectedTourId: undefined })}
+        onBack={handleBackToTourList}
       />
     );
   }
@@ -187,7 +217,7 @@ export default function ToursView() {
                   <div
                     key={tour.id}
                     id={`tour-card-${tour.id}`}
-                    onClick={() => setSearchParams({ ...searchParams, selectedTourId: tour.id })}
+                    onClick={() => handleOpenTourDetail(tour.id)}
                     className="bg-white rounded-[32px] overflow-hidden shadow-[0_12px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_50px_rgba(15,118,110,0.08)] hover:-translate-y-2 transition-all duration-500 group flex flex-col justify-between w-full max-w-[380px] border border-neutral-100/50 h-full cursor-pointer"
                   >
                     {/* Image Block: Fluid Aspect Ratio with Inner Padding */}
@@ -284,7 +314,7 @@ export default function ToursView() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSearchParams({ ...searchParams, selectedTourId: tour.id });
+                            handleOpenTourDetail(tour.id);
                           }}
                           className="bg-[#0F766E] hover:bg-[#0D645E] text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-[#0F766E]/10 transition-all hover:scale-[1.02] cursor-pointer"
                         >

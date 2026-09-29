@@ -45,6 +45,7 @@ export default function RentalAdminWorkspace({
   theme, currency, formatPrice, triggerToast,
   activeSubTab, setActiveSubTab
 }: RentalAdminWorkspaceProps) {
+  const { serviceLimits, setServiceLimit } = useApp();
   
   // Local Form and Filter states
   const [form, setForm] = useState<any>({});
@@ -130,7 +131,41 @@ export default function RentalAdminWorkspace({
     }
   };
 
-  // --- 1. DASHBOARD VIEW ---
+  const renderSubNavBar = () => (
+    <div className="flex items-center gap-1.5 p-1 rounded-xl bg-neutral-900 border border-neutral-800 overflow-x-auto no-scrollbar shadow-sm">
+      {[
+        { id: 'vehicles', label: 'Armada Mobil & Spek', icon: Car },
+        { id: 'categories', label: 'Kategori & Tarif Zona', icon: Layers },
+        { id: 'cities', label: 'Kota Operasional', icon: Globe },
+        { id: 'areas', label: 'Zona & Titik Lokasi', icon: MapPin },
+        { id: 'addons', label: 'Layanan Add-On', icon: Plus },
+        { id: 'calendar', label: 'Kalender Ketersediaan', icon: Calendar },
+        { id: 'dashboard', label: 'Analitik Rental', icon: LayoutDashboard },
+        { id: 'settings', label: 'Batas Kuota Harian', icon: Settings },
+      ].map((tab) => {
+        const Icon = tab.icon;
+        const isActive = activeSubTab === tab.id;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveSubTab(tab.id as any)}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+              isActive
+                ? 'bg-amber-500 text-neutral-950 font-black shadow-sm'
+                : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60'
+            }`}
+          >
+            <Icon className="h-3.5 w-3.5" />
+            <span>{tab.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  const renderBody = () => {
+    // --- 1. DASHBOARD VIEW ---
   if (activeSubTab === 'dashboard') {
     const activeFleet = rentalVehicles.filter(v => v.status === 'Active').length;
     const confirmedCount = rentalBookings.filter(b => b.status === 'Confirmed').length;
@@ -973,7 +1008,18 @@ export default function RentalAdminWorkspace({
       const fallbackImg = form.image || 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80&w=600';
       const featuresArr = typeof form.features === 'string'
         ? form.features.split(',').map((x: string) => x.trim()).filter(Boolean)
-        : (form.features || []);
+        : [...(form.features || [])];
+
+      // Add transmission and withDriver to features if not present
+      if (form.transmission && !featuresArr.includes(form.transmission)) {
+        featuresArr.unshift(form.transmission);
+      }
+      if (form.withDriver && !featuresArr.includes(form.withDriver)) {
+        featuresArr.unshift(form.withDriver);
+      }
+
+      const pUSD = Number(form.pricePerDay) || undefined;
+      const pIDR = Number(form.pricePerDayIDR) || undefined;
 
       if (editingId) {
         setRentalVehicles(prev => prev.map(v => v.id === editingId ? {
@@ -984,6 +1030,8 @@ export default function RentalAdminWorkspace({
           passengers: Number(form.passengers || 4),
           luggage: Number(form.luggage || 2),
           hasAC: form.hasAC ?? true,
+          pricePerDay: pUSD,
+          pricePerDayIDR: pIDR,
           image: fallbackImg,
           description: form.description || '',
           features: featuresArr,
@@ -1000,6 +1048,8 @@ export default function RentalAdminWorkspace({
           passengers: Number(form.passengers || 4),
           luggage: Number(form.luggage || 2),
           hasAC: form.hasAC ?? true,
+          pricePerDay: pUSD,
+          pricePerDayIDR: pIDR,
           image: fallbackImg,
           description: form.description || '',
           features: featuresArr,
@@ -1042,7 +1092,7 @@ export default function RentalAdminWorkspace({
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h3 className="text-base font-black uppercase tracking-wider font-mono text-amber-500">FLEET VEHICLES</h3>
-            <p className={`text-xs ${theme.textSecondary}`}>Register units, specifications, and map them to standard categories. Pricing is governed dynamically by category rules.</p>
+            <p className={`text-xs ${theme.textSecondary}`}>Register units, specifications, transmission, driver option, and pricing.</p>
           </div>
           {!isFormOpen && (
             <button
@@ -1054,9 +1104,13 @@ export default function RentalAdminWorkspace({
                   passengers: 5,
                   luggage: 2,
                   hasAC: true,
+                  transmission: 'Automatic',
+                  withDriver: 'With Driver',
+                  pricePerDay: 35,
+                  pricePerDayIDR: 500000,
                   image: '',
                   description: '',
-                  features: 'Professional Driver, Fuel Included, Clean Cabin',
+                  features: 'Automatic, With Driver, Fuel Included, Clean Cabin',
                   status: 'Active',
                   supportedZones: ['Zone 0', 'Zone 1', 'Zone 2']
                 });
@@ -1182,6 +1236,53 @@ export default function RentalAdminWorkspace({
                   <option value="Inactive">Standby / Service</option>
                 </select>
               </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-neutral-400">Transmisi</label>
+                <select
+                  value={form.transmission || 'Automatic'}
+                  onChange={e => setForm({ ...form, transmission: e.target.value })}
+                  className={`w-full ${theme.input} border px-4 py-2 text-xs rounded-xl focus:outline-none`}
+                >
+                  <option value="Automatic">Automatic (A/T)</option>
+                  <option value="Manual">Manual (M/T)</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-neutral-400">Opsi Pengemudi</label>
+                <select
+                  value={form.withDriver || 'With Driver'}
+                  onChange={e => setForm({ ...form, withDriver: e.target.value })}
+                  className={`w-full ${theme.input} border px-4 py-2 text-xs rounded-xl focus:outline-none`}
+                >
+                  <option value="With Driver">Dengan Supir (Chauffeur)</option>
+                  <option value="Self Drive">Lepas Kunci (Self Drive)</option>
+                  <option value="Both">Tersedia Keduanya (Supir / Lepas Kunci)</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-neutral-400">Tarif Sewa USD / Hari</label>
+                <input
+                  type="number"
+                  value={form.pricePerDay || ''}
+                  onChange={e => setForm({ ...form, pricePerDay: Number(e.target.value) })}
+                  placeholder="35"
+                  className={`w-full ${theme.input} border px-4 py-2 text-xs rounded-xl focus:outline-none font-mono`}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-neutral-400">Tarif Sewa IDR / Hari</label>
+                <input
+                  type="number"
+                  value={form.pricePerDayIDR || ''}
+                  onChange={e => setForm({ ...form, pricePerDayIDR: Number(e.target.value) })}
+                  placeholder="500000"
+                  className={`w-full ${theme.input} border px-4 py-2 text-xs rounded-xl focus:outline-none font-mono`}
+                />
+              </div>
+
               <div className="md:col-span-4 space-y-1">
                 <label className="text-[10px] font-bold uppercase text-neutral-400">Core Features (Separated by commas)</label>
                 <input
@@ -2005,7 +2106,6 @@ export default function RentalAdminWorkspace({
   }
 
   if (activeSubTab === 'settings') {
-    const { serviceLimits, setServiceLimit } = useApp();
     return (
       <div className="space-y-6 animate-fade-in text-left">
         <div>
@@ -2024,7 +2124,7 @@ export default function RentalAdminWorkspace({
                 <label className="text-[10px] font-black text-neutral-500 uppercase tracking-wider block">Limit Booking Harian (Car Rental Quota)</label>
                 <input 
                   type="number" 
-                  min={1}
+                  min={1} 
                   max={100}
                   value={serviceLimits?.rental ?? 5} 
                   onChange={(e) => setServiceLimit('rental', parseInt(e.target.value, 10) || 5)}
@@ -2049,5 +2149,13 @@ export default function RentalAdminWorkspace({
     );
   }
 
-  return null;
+    return null;
+  };
+
+  return (
+    <div className="space-y-6 animate-fade-in text-left">
+      {renderSubNavBar()}
+      {renderBody()}
+    </div>
+  );
 }

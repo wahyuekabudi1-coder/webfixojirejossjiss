@@ -155,9 +155,16 @@ const legacyDictionary: Record<string, Partial<Record<Language, string>>> = {
  * 2. If not found, checks legacy dictionary
  * 3. Falls back to English, then Indonesian, then the key itself
  */
-export function translateKey(key: string, language: Language, params?: Record<string, string | number>): string {
+export function translateKey(key: any, language: Language, params?: Record<string, string | number>): string {
   if (!key) return '';
+  if (typeof key !== 'string') {
+    if (Array.isArray(key)) {
+      return key.map(k => translateKey(k, language, params)).filter(Boolean).join(', ');
+    }
+    return String(key);
+  }
   const cleanKey = key.trim();
+  if (!cleanKey) return '';
 
   // 1. Try structured dot notation in current language
   let result = getNestedValue(translations[language], cleanKey);

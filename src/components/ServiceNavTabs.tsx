@@ -25,7 +25,20 @@ export default function ServiceNavTabs() {
           return (
             <button
               key={srv.id}
-              onClick={() => setPage(srv.id as any)}
+              onClick={() => {
+                setPage(srv.id as any);
+                if (srv.id === 'share-tour') {
+                  try {
+                    window.location.hash = '#/share-tour';
+                    window.dispatchEvent(new HashChangeEvent('hashchange'));
+                  } catch {}
+                } else if (srv.id === 'tours') {
+                  try {
+                    window.location.hash = '#/tours';
+                    window.dispatchEvent(new HashChangeEvent('hashchange'));
+                  } catch {}
+                }
+              }}
               className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap cursor-pointer shrink-0 snap-start min-h-[40px] ${
                 isActive
                   ? 'bg-amber-500 text-neutral-950 shadow-sm font-extrabold scale-105'

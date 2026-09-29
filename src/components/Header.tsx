@@ -58,6 +58,17 @@ export default function Header() {
 
   const handleNavigate = (page: any) => {
     setPage(page);
+    if (page === 'share-tour') {
+      try {
+        window.location.hash = '#/share-tour';
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+      } catch {}
+    } else if (page === 'tours') {
+      try {
+        window.location.hash = '#/tours';
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+      } catch {}
+    }
     setIsMobileMenuOpen(false);
     setIsDropdownOpen(false);
     setIsLangOpen(false);

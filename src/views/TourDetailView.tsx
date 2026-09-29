@@ -297,7 +297,12 @@ export default function TourDetailView({ tourId, onBack }: TourDetailViewProps) 
             onNavigateToCheckStatus={(code, email) => {
               setCreatedBooking(null);
               setIsBookingOpen(false);
-              setPage('bookings');
+              const targetCode = code || createdBooking?.bookingCode || createdBooking?.id || '';
+              if (targetCode) {
+                window.location.hash = `#/bookings?code=${encodeURIComponent(targetCode)}`;
+              } else {
+                setPage('bookings');
+              }
             }}
           />
         </div>

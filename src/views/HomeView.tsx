@@ -263,13 +263,21 @@ export default function HomeView() {
     container.scrollLeft = bentoDrag.scrollLeft - walk;
   };
 
+  const handleOpenTour = (tourId: string) => {
+    setSearchParams((prev: any) => ({ ...prev, selectedTourId: tourId }));
+    try {
+      window.location.hash = `#/tours?tour=${encodeURIComponent(tourId)}`;
+    } catch {}
+    setPage('tours');
+  };
+
   const safeSlide = heroSlides[currentSlide] || heroSlides[0];
 
   return (
     <div id="home-view" className="relative text-neutral-800 overflow-hidden bg-white">
       
-      {/* 1. HERO SECTION */}
-      <section className="relative min-h-[85vh] lg:h-[80vh] lg:min-h-[640px] flex flex-col lg:flex-row items-center justify-center pt-20 pb-10 sm:pt-24 sm:pb-12 lg:pt-36 lg:pb-20 overflow-hidden bg-neutral-950 lg:bg-transparent">
+      {/* 1. HERO SECTION (Compact & Ergonomic 2026 Edition) */}
+      <section className="relative flex flex-col items-center justify-center pt-16 pb-8 sm:pt-20 sm:pb-10 lg:pt-24 lg:pb-12 overflow-hidden bg-neutral-950 lg:bg-transparent">
         {/* Background Slideshow with Crossfade (Desktop only) */}
         <div className="absolute inset-0 z-0 hidden lg:block">
           <AnimatePresence initial={false}>
@@ -298,8 +306,8 @@ export default function HomeView() {
         {/* Hero Content */}
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center justify-center w-full">
           
-          {/* Mobile/Tablet Inline Slideshow */}
-          <div className="relative w-full aspect-[16/10] sm:aspect-[16/9] md:aspect-[2/1] rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl lg:hidden border border-neutral-800 bg-neutral-900 mb-6 z-10">
+          {/* Mobile/Tablet Inline Slideshow (Compact Aspect Ratio) */}
+          <div className="relative w-full aspect-[21/9] sm:aspect-[2.4/1] max-h-[180px] sm:max-h-[220px] rounded-xl sm:rounded-2xl overflow-hidden shadow-lg lg:hidden border border-neutral-800 bg-neutral-900 mb-3 sm:mb-4 z-10">
             <AnimatePresence initial={false}>
               <motion.div
                 key={currentSlide}
@@ -327,50 +335,50 @@ export default function HomeView() {
             <AnimatePresence mode="wait">
               <motion.div
                 key={`${currentSlide}-${language}`}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.6, ease: "easeOut" }}
-                className="space-y-6"
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+                className="space-y-2.5 sm:space-y-3.5"
               >
-                <span className="inline-flex items-center gap-1.5 bg-amber-500/20 text-amber-300 font-extrabold uppercase tracking-widest font-mono text-[10px] sm:text-xs px-3.5 py-1.5 rounded-full border border-amber-500/30 backdrop-blur-sm drop-shadow-md">
+                <span className="inline-flex items-center gap-1 bg-amber-500/20 text-amber-300 font-extrabold uppercase tracking-widest font-mono text-[10px] sm:text-[11px] px-3 py-1 rounded-full border border-amber-500/30 backdrop-blur-sm drop-shadow-md">
                   ★ {safeSlide.tag}
                 </span>
-                <h1 id="homepage-main-h1" className="text-3xl sm:text-5xl lg:text-6.5xl font-black tracking-tight text-white leading-tight drop-shadow-xl">
+                <h1 id="homepage-main-h1" className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight drop-shadow-xl">
                   <span className="text-amber-400 block sm:inline">Smart Journey</span>
-                  <span className="hidden sm:inline text-amber-200/80 mx-2.5 font-light">—</span>
+                  <span className="hidden sm:inline text-amber-200/80 mx-2 font-light">—</span>
                   <span className="block sm:inline text-white">{safeSlide.title}</span>
                 </h1>
-                <p className="text-sm sm:text-lg text-neutral-200 lg:text-neutral-100 font-medium max-w-2xl mx-auto drop-shadow-sm leading-relaxed">
+                <p className="text-xs sm:text-sm lg:text-base text-neutral-200 lg:text-neutral-100 font-medium max-w-2xl mx-auto drop-shadow-sm leading-relaxed">
                   {safeSlide.subtitle}
                 </p>
               </motion.div>
             </AnimatePresence>
 
-            <div className="pt-6 flex flex-wrap items-center justify-center gap-3">
+            <div className="pt-3 sm:pt-4 flex flex-wrap items-center justify-center gap-2.5">
               <button
                 onClick={() => setPage('tours')}
-                className="inline-flex items-center space-x-2 bg-amber-500 hover:bg-amber-400 text-neutral-950 px-8 py-3.5 rounded-full text-xs font-extrabold uppercase tracking-widest shadow-lg hover:shadow-amber-500/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                className="inline-flex items-center space-x-2 bg-amber-500 hover:bg-amber-400 text-neutral-950 px-6 py-2.5 sm:px-7 sm:py-3 rounded-full text-xs font-extrabold uppercase tracking-widest shadow-md hover:shadow-amber-500/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
               >
-                <Compass className="h-4.5 w-4.5" />
+                <Compass className="h-4 w-4" />
                 <span>{t('home.heroCtaTour')}</span>
               </button>
               <button
                 onClick={() => setPage('share-tour')}
-                className="inline-flex items-center space-x-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 px-7 py-3.5 rounded-full text-xs font-bold uppercase tracking-widest backdrop-blur-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                className="inline-flex items-center space-x-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 px-5 py-2.5 sm:px-6 sm:py-3 rounded-full text-xs font-bold uppercase tracking-widest backdrop-blur-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
               >
-                <Users className="h-4.5 w-4.5 text-amber-400" />
+                <Users className="h-4 w-4 text-amber-400" />
                 <span>{t('home.heroCtaShare')}</span>
               </button>
             </div>
           </div>
 
           {/* Tour Search Widget */}
-          <div className="mt-8 lg:mt-12 w-full max-w-4xl mx-auto bg-white/95 border border-neutral-200/80 p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-2xl backdrop-blur-md text-neutral-800">
-            <form onSubmit={handleSearch} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 sm:gap-4">
+          <div className="mt-4 sm:mt-6 w-full max-w-4xl mx-auto bg-white/95 border border-neutral-200/80 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-xl backdrop-blur-md text-neutral-800">
+            <form onSubmit={handleSearch} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-3">
               
               {/* Destination */}
-              <div className="text-left space-y-1">
+              <div className="text-left space-y-0.5">
                 <label htmlFor="home-search-destination" className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest pl-1">
                   {t('home.searchDestinationLabel')}
                 </label>
@@ -378,7 +386,7 @@ export default function HomeView() {
                   id="home-search-destination"
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
-                  className="bg-neutral-50 border border-neutral-200 text-neutral-800 rounded-xl px-3 py-3 text-base lg:text-sm w-full focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all"
+                  className="bg-neutral-50 border border-neutral-200 text-neutral-800 rounded-xl px-2.5 py-2 sm:py-2.5 text-xs sm:text-sm w-full focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all"
                 >
                   <option value="bromo" className="bg-white text-neutral-800">
                     {language === 'zh' ? '布罗莫活火山 (Mount Bromo)' : language === 'id' ? 'Gunung Bromo Volcano' : 'Mount Bromo Volcano'}
@@ -396,7 +404,7 @@ export default function HomeView() {
               </div>
 
               {/* Tour Date */}
-              <div className="text-left space-y-1">
+              <div className="text-left space-y-0.5">
                 <label htmlFor="home-search-date" className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest pl-1">
                   {t('home.searchDateLabel')}
                 </label>
@@ -406,12 +414,12 @@ export default function HomeView() {
                   required
                   value={tourDate}
                   onChange={(e) => setTourDate(e.target.value)}
-                  className="bg-neutral-50 border border-neutral-200 text-neutral-800 rounded-xl px-3 py-3 text-base lg:text-sm w-full focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all"
+                  className="bg-neutral-50 border border-neutral-200 text-neutral-800 rounded-xl px-2.5 py-2 sm:py-2.5 text-xs sm:text-sm w-full focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all"
                 />
               </div>
 
               {/* Number of Guests */}
-              <div className="text-left space-y-1">
+              <div className="text-left space-y-0.5">
                 <label htmlFor="home-search-guests" className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest pl-1">
                   {t('home.searchGuestsLabel')}
                 </label>
@@ -423,12 +431,12 @@ export default function HomeView() {
                   required
                   value={guests}
                   onChange={(e) => setGuests(Number(e.target.value))}
-                  className="bg-neutral-50 border border-neutral-200 text-neutral-800 rounded-xl px-3 py-3 text-base lg:text-sm w-full focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all"
+                  className="bg-neutral-50 border border-neutral-200 text-neutral-800 rounded-xl px-2.5 py-2 sm:py-2.5 text-xs sm:text-sm w-full focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all"
                 />
               </div>
 
               {/* Tour Type */}
-              <div className="text-left space-y-1">
+              <div className="text-left space-y-0.5">
                 <label htmlFor="home-search-type" className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest pl-1">
                   {t('tours.sortBy')}
                 </label>
@@ -436,7 +444,7 @@ export default function HomeView() {
                   id="home-search-type"
                   value={tourType}
                   onChange={(e) => setTourType(e.target.value)}
-                  className="bg-neutral-50 border border-neutral-200 text-neutral-800 rounded-xl px-3 py-3 text-base lg:text-sm w-full focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all"
+                  className="bg-neutral-50 border border-neutral-200 text-neutral-800 rounded-xl px-2.5 py-2 sm:py-2.5 text-xs sm:text-sm w-full focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all"
                 >
                   <option value="Adventure" className="bg-white text-neutral-800">{t('tours.filterAdventure')}</option>
                   <option value="Nature" className="bg-white text-neutral-800">{t('tours.filterNature')}</option>
@@ -448,7 +456,7 @@ export default function HomeView() {
               <div className="flex items-end">
                 <button
                   type="submit"
-                  className="bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold py-3.5 rounded-xl text-sm w-full transition-all shadow-md shadow-amber-500/15 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                  className="bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm w-full transition-all shadow-md shadow-amber-500/15 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                 >
                   {t('home.searchButton')}
                 </button>
@@ -460,7 +468,7 @@ export default function HomeView() {
       </section>
 
       {/* FIND YOUR PERFECT TRIP (DURATION & EXPERIENCE CATEGORY) */}
-      <section id="find-your-perfect-trip-section" className="py-12 sm:py-16 bg-neutral-50/60 border-b border-neutral-200/80 scroll-mt-20">
+      <section id="find-your-perfect-trip-section" className="py-8 sm:py-12 bg-neutral-50/60 border-b border-neutral-200/80 scroll-mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
           
           <TourFilterBar
@@ -537,10 +545,7 @@ export default function HomeView() {
                     <div
                       key={tour.id}
                       id={`tour-card-results-${tour.id}`}
-                      onClick={() => {
-                        setSearchParams({ ...searchParams, selectedTourId: tour.id });
-                        setPage('tours');
-                      }}
+                      onClick={() => handleOpenTour(tour.id)}
                       className="bg-white rounded-[32px] overflow-hidden shadow-[0_12px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_50px_rgba(15,118,110,0.08)] hover:-translate-y-2 transition-all duration-500 group flex flex-col justify-between w-full max-w-[380px] border border-neutral-200/70 h-full cursor-pointer"
                     >
                       {/* Image Block */}
@@ -623,8 +628,7 @@ export default function HomeView() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setSearchParams({ ...searchParams, selectedTourId: tour.id });
-                              setPage('tours');
+                              handleOpenTour(tour.id);
                             }}
                             className="bg-[#0F766E] hover:bg-[#0d635c] text-white font-black px-4 py-2.5 rounded-xl text-xs uppercase tracking-widest transition-all hover:shadow-md hover:shadow-[#0F766E]/10 active:scale-95 cursor-pointer flex items-center gap-1"
                           >
@@ -1104,10 +1108,7 @@ export default function HomeView() {
                  <div
                    key={tour.id}
                    id={`tour-card-home-${tour.id}`}
-                   onClick={() => {
-                     setSearchParams({ ...searchParams, selectedTourId: tour.id });
-                     setPage('tours');
-                   }}
+                   onClick={() => handleOpenTour(tour.id)}
                    className="bg-white rounded-[32px] overflow-hidden shadow-[0_12px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_50px_rgba(15,118,110,0.08)] hover:-translate-y-2 transition-all duration-500 group flex flex-col justify-between w-full max-w-[380px] border border-neutral-100/50 h-full cursor-pointer"
                  >
                    {/* Image Block */}
@@ -1199,8 +1200,7 @@ export default function HomeView() {
                        <button
                          onClick={(e) => {
                            e.stopPropagation();
-                           setSearchParams({ ...searchParams, selectedTourId: tour.id });
-                           setPage('tours');
+                           handleOpenTour(tour.id);
                          }}
                          className="bg-[#0F766E] hover:bg-[#0d635c] text-white font-black px-4 py-2.5 rounded-xl text-xs uppercase tracking-widest transition-all hover:shadow-md hover:shadow-[#0F766E]/10 active:scale-95 cursor-pointer flex items-center gap-1"
                        >
@@ -1237,10 +1237,7 @@ export default function HomeView() {
             {destinationsList.map((dest) => (
               <div
                 key={dest.id}
-                onClick={() => {
-                  setSearchParams({ ...searchParams, selectedTourId: dest.id });
-                  setPage('tours');
-                }}
+                onClick={() => handleOpenTour(dest.id)}
                 className="bg-white border border-neutral-200/80 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 group cursor-pointer flex flex-col justify-between"
               >
                 <div className="relative h-52 overflow-hidden bg-neutral-900">

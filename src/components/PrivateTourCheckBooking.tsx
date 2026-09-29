@@ -17,7 +17,8 @@ import {
   ArrowRight,
   ExternalLink,
   MapPin,
-  RefreshCw
+  RefreshCw,
+  Sparkles
 } from 'lucide-react';
 import FinalBookingSummaryModal, { FinalSummaryData } from './FinalBookingSummaryModal';
 
@@ -73,14 +74,54 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
   const [summaryData, setSummaryData] = useState<FinalSummaryData | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
 
+  // Sandbox Test Payment state (Active in Sandbox / Development only)
+  const [isSandbox, setIsSandbox] = useState(false);
+  const [isSimulatingPayment, setIsSimulatingPayment] = useState(false);
+  const [simulationFeedback, setSimulationFeedback] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Determine if environment is Sandbox/Development
+    fetch('/api/artopay/config')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && data.env === 'sandbox') {
+          setIsSandbox(true);
+        } else if ((import.meta as any).env?.DEV || (import.meta as any).env?.VITE_ARTOPAY_SANDBOX === 'true' || (import.meta as any).env?.VITE_ARTOPAY_ENV !== 'production') {
+          setIsSandbox(true);
+        }
+      })
+      .catch(() => {
+        if ((import.meta as any).env?.DEV || (import.meta as any).env?.VITE_ARTOPAY_SANDBOX === 'true' || (import.meta as any).env?.VITE_ARTOPAY_ENV !== 'production') {
+          setIsSandbox(true);
+        }
+      });
+  }, []);
+
   // Auto search if initialCode provided or URL has ?code=
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const codeFromUrl = urlParams.get('code') || initialCode;
+    let codeFromUrl = initialCode;
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const hashQuery = window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '';
+      const hashParams = new URLSearchParams(hashQuery);
+      codeFromUrl = hashParams.get('code') || urlParams.get('code') || initialCode;
+    }
     if (codeFromUrl && codeFromUrl.trim().length > 2) {
       setSearchCode(codeFromUrl.trim());
       executeSearch(codeFromUrl.trim());
     }
+
+    const handleHashChange = () => {
+      const hashQuery = window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '';
+      const hashParams = new URLSearchParams(hashQuery);
+      const code = hashParams.get('code');
+      if (code && code.trim().length > 2) {
+        setSearchCode(code.trim());
+        executeSearch(code.trim());
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, [initialCode]);
 
   const executeSearch = async (codeToSearch: string) => {
@@ -105,6 +146,16 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
       }
 
       setBooking(data);
+
+      if (data.found && data.bookingCode) {
+        try {
+          const stored = JSON.parse(localStorage.getItem('sj_customer_booking_codes') || '[]');
+          if (!stored.includes(data.bookingCode)) {
+            stored.unshift(data.bookingCode);
+            localStorage.setItem('sj_customer_booking_codes', JSON.stringify(stored.slice(0, 20)));
+          }
+        } catch {}
+      }
     } catch (err: any) {
       console.error('Failed to check booking:', err);
       setError('Gagal menghubungi server. Periksa koneksi internet Anda dan coba lagi.');
@@ -154,6 +205,32 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
       alert('Gagal memuat pratinjau invoice.');
     } finally {
       setLoadingSummary(false);
+    }
+  };
+
+  // Sandbox Test Payment Simulation Handler (Only active in sandbox/dev mode)
+  const handleSimulatePayment = async () => {
+    if (!booking) return;
+    setIsSimulatingPayment(true);
+    setSimulationFeedback(null);
+    try {
+      const res = await fetch('/api/artopay/simulate-webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: booking.bookingCode || booking.id })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSimulationFeedback('Simulasi pembayaran berhasil! Status: Paid & Pending Confirmation.');
+        await executeSearch(booking.bookingCode || booking.id);
+      } else {
+        alert(data.error || 'Simulasi pembayaran gagal.');
+      }
+    } catch (err: any) {
+      console.error('Simulation payment error:', err);
+      alert('Gagal menghubungi server untuk simulasi pembayaran.');
+    } finally {
+      setIsSimulatingPayment(false);
     }
   };
 
@@ -533,32 +610,65 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                 </div>
               </div>
 
-              {/* AKSI INVOICE & DOKUMEN */}
+              {/* AKSI INVOICE & DOKUMEN: HANYA TERSEDIA SETELAH CONFIRMED */}
               <div className="pt-4 border-t border-neutral-100 space-y-2">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <button
                     id="btn-download-invoice-pdf"
                     onClick={handleDownloadPdf}
-                    className="w-full py-2.5 px-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    disabled={!booking.canDownloadFinalSummary && booking.bookingStatus !== 'Confirmed'}
+                    className={`w-full py-2.5 px-3 font-bold text-xs sm:text-sm rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 ${
+                      booking.canDownloadFinalSummary || booking.bookingStatus === 'Confirmed'
+                        ? 'bg-emerald-700 hover:bg-emerald-800 text-white cursor-pointer'
+                        : 'bg-neutral-100 text-neutral-400 border border-neutral-200 cursor-not-allowed'
+                    }`}
+                    title={
+                      booking.canDownloadFinalSummary || booking.bookingStatus === 'Confirmed'
+                        ? 'Unduh dokumen resmi PDF konfirmasi pemesanan'
+                        : 'Dokumen hanya dapat diunduh setelah pemesanan dikonfirmasi oleh Admin'
+                    }
                   >
-                    <Download className="h-4 w-4" />
-                    <span>Download Invoice (PDF)</span>
+                    {booking.canDownloadFinalSummary || booking.bookingStatus === 'Confirmed' ? (
+                      <>
+                        <Download className="h-4 w-4" />
+                        <span>Download Invoice (PDF)</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="h-4 w-4 text-neutral-400" />
+                        <span>Download Terkunci (Belum Confirmed)</span>
+                      </>
+                    )}
                   </button>
                   <button
                     id="btn-view-invoice-modal"
                     onClick={handleOpenSummaryModal}
-                    disabled={loadingSummary}
-                    className="w-full py-2.5 px-3 bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    disabled={(!booking.canDownloadFinalSummary && booking.bookingStatus !== 'Confirmed') || loadingSummary}
+                    className={`w-full py-2.5 px-3 font-bold text-xs sm:text-sm rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 ${
+                      booking.canDownloadFinalSummary || booking.bookingStatus === 'Confirmed'
+                        ? 'bg-neutral-900 hover:bg-neutral-800 text-white cursor-pointer'
+                        : 'bg-neutral-100 text-neutral-400 border border-neutral-200 cursor-not-allowed'
+                    }`}
+                    title={
+                      booking.canDownloadFinalSummary || booking.bookingStatus === 'Confirmed'
+                        ? 'Pratinjau dokumen konfirmasi & invoice'
+                        : 'Pratinjau invoice hanya aktif setelah pemesanan dikonfirmasi oleh Admin'
+                    }
                   >
                     {loadingSummary ? (
                       <>
                         <RefreshCw className="h-4 w-4 animate-spin" />
                         <span>Memuat...</span>
                       </>
-                    ) : (
+                    ) : booking.canDownloadFinalSummary || booking.bookingStatus === 'Confirmed' ? (
                       <>
                         <FileText className="h-4 w-4" />
                         <span>Lihat Invoice</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="h-4 w-4 text-neutral-400" />
+                        <span>Lihat Terkunci (Belum Confirmed)</span>
                       </>
                     )}
                   </button>
@@ -576,10 +686,43 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                   </button>
                 )}
 
+                {/* TOMBOL TEST PAYMENT UNTUK SANDBOX SAJA */}
+                {isSandbox && booking.paymentStatus !== 'Paid' && (
+                  <div className="pt-2">
+                    <button
+                      id="btn-simulate-payment-success"
+                      type="button"
+                      onClick={handleSimulatePayment}
+                      disabled={isSimulatingPayment}
+                      className="w-full py-2.5 px-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 border-2 border-dashed border-amber-400 font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-[0.99] disabled:opacity-50"
+                      title="Simulasi Webhook ArtoPay Sukses (Sandbox Testing Saja)"
+                    >
+                      {isSimulatingPayment ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 animate-spin text-amber-700" />
+                          <span>Memproses Simulasi Webhook ArtoPay...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4 text-amber-600" />
+                          <span>Simulate Payment Success (Sandbox Only)</span>
+                        </>
+                      )}
+                    </button>
+                    {simulationFeedback && (
+                      <p className="mt-1.5 text-center text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 py-1 px-2 rounded-lg">
+                        ✓ {simulationFeedback}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <span className="text-[10px] text-neutral-500 text-center block font-medium">
-                  {booking.paymentStatus === 'Paid'
-                    ? '✓ Invoice lunas resmi terverifikasi dan siap diunduh/dicetak'
-                    : 'Invoice pemesanan resmi tersedia untuk diunduh dan dicetak'}
+                  {booking.bookingStatus === 'Confirmed' || booking.canDownloadFinalSummary
+                    ? '✓ Pemesanan terkonfirmasi! Dokumen resmi & invoice siap diunduh dan dicetak.'
+                    : booking.paymentStatus === 'Paid'
+                    ? '⏳ Pembayaran lunas diterima. Dokumen invoice & konfirmasi akan aktif setelah disetujui Admin Pusat.'
+                    : '🔒 Dokumen invoice resmi akan aktif setelah pembayaran diselesaikan dan dikonfirmasi Admin.'}
                 </span>
               </div>
 
