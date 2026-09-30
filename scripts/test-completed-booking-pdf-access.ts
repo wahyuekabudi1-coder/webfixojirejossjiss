@@ -34,7 +34,10 @@ async function runTests() {
   const testId = 'bk-pdf-test-001';
 
   // Helper to upsert test booking into repository
-  async function setupBooking(paymentStatus: string, bookingStatus: string) {
+  async function setupBooking(
+    paymentStatus: 'Pending' | 'Paid' | 'Expired' | 'Failed',
+    bookingStatus: 'Pending Payment' | 'Confirmed' | 'Rejected' | 'Cancelled' | 'Completed' | 'Pending Confirmation'
+  ) {
     const existing = await bookingsRepo.getById(testId);
     if (existing) {
       await bookingsRepo.update(testId, {
