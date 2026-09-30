@@ -281,7 +281,7 @@ const pageSEOData: Record<string, PageMetadata> = {
 };
 
 const SEOHead: React.FC = () => {
-  const { activePage, searchParams, tours } = useApp();
+  const { activePage, searchParams, tours, activeArticle } = useApp();
   const { language } = useLanguageCurrency();
 
   useEffect(() => {
@@ -297,7 +297,87 @@ const SEOHead: React.FC = () => {
       ? tours.find(t => t.id === searchParams.selectedTourId)
       : null;
 
-    if (activePage === 'tours' && activeTour) {
+    if (activePage === 'about' && activeArticle) {
+      const suffix = language === 'zh' ? ' - 慧捷之旅' : ' - Smart Journey';
+      title = `${activeArticle.seoTitle || activeArticle.title}${suffix}`;
+      description = activeArticle.seoDescription || activeArticle.excerpt || '';
+      keywords = Array.isArray(activeArticle.keywords) && activeArticle.keywords.length > 0 
+        ? activeArticle.keywords.join(', ') 
+        : `${activeArticle.title}, smart journey`;
+      canonical = `${BASE_URL}/#/about?article=${activeArticle.slug}`;
+      breadcrumbItemName = activeArticle.title;
+      ogImage = activeArticle.image || `${BASE_URL}/logo.png`;
+
+      const articleSchema: any = {
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        'headline': activeArticle.title,
+        'description': description,
+        'image': ogImage,
+        'author': {
+          '@type': 'Organization',
+          'name': activeArticle.author || 'Smart Journey Editorial Team',
+          'url': `${BASE_URL}/`
+        },
+        'publisher': {
+          '@type': 'Organization',
+          'name': 'Smart Journey',
+          'logo': {
+            '@type': 'ImageObject',
+            'url': `${BASE_URL}/logo.png`
+          }
+        },
+        'datePublished': activeArticle.date,
+        'mainEntityOfPage': {
+          '@type': 'WebPage',
+          '@id': canonical
+        }
+      };
+
+      const articleBreadcrumbSchema = {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        'itemListElement': [
+          {
+            '@type': 'ListItem',
+            'position': 1,
+            'name': language === 'zh' ? '首页' : language === 'en' ? 'Home' : 'Beranda',
+            'item': `${BASE_URL}/`
+          },
+          {
+            '@type': 'ListItem',
+            'position': 2,
+            'name': language === 'zh' ? '关于我们' : language === 'en' ? 'About Us' : 'Tentang Kami',
+            'item': `${BASE_URL}/#/about`
+          },
+          {
+            '@type': 'ListItem',
+            'position': 3,
+            'name': activeArticle.title,
+            'item': canonical
+          }
+        ]
+      };
+
+      schemaList = [articleSchema, articleBreadcrumbSchema];
+
+      if (Array.isArray(activeArticle.faq) && activeArticle.faq.length > 0) {
+        const faqSchema = {
+          '@context': 'https://schema.org',
+          '@type': 'FAQPage',
+          'mainEntity': activeArticle.faq.map(f => ({
+            '@type': 'Question',
+            'name': f.question,
+            'acceptedAnswer': {
+              '@type': 'Answer',
+              'text': f.answer
+            }
+          }))
+        };
+        schemaList.push(faqSchema);
+      }
+
+    } else if (activePage === 'tours' && activeTour) {
       const locTour = getLocalizedTour(activeTour, language);
       const suffix = language === 'zh' ? ' - 慧捷之旅' : language === 'en' ? ' - Smart Journey' : ' - Smart Journey';
       title = `${locTour.name}${suffix}`;
@@ -443,7 +523,7 @@ const SEOHead: React.FC = () => {
     const ogLocale = language === 'zh' ? 'zh_CN' : language === 'en' ? 'en_US' : 'id_ID';
     setMetaTag('meta[property="og:title"]', 'property', 'og:title', title);
     setMetaTag('meta[property="og:description"]', 'property', 'og:description', description);
-    setMetaTag('meta[property="og:type"]', 'property', 'og:type', activeTour ? 'article' : 'website');
+    setMetaTag('meta[property="og:type"]', 'property', 'og:type', (activeTour || activeArticle) ? 'article' : 'website');
     setMetaTag('meta[property="og:url"]', 'property', 'og:url', canonical);
     setMetaTag('meta[property="og:site_name"]', 'property', 'og:site_name', 'Smart Journey');
     setMetaTag('meta[property="og:locale"]', 'property', 'og:locale', ogLocale);
@@ -472,7 +552,7 @@ const SEOHead: React.FC = () => {
     }
     schemaScript.textContent = JSON.stringify(schemaList);
 
-  }, [activePage, searchParams?.selectedTourId, tours, language]);
+  }, [activePage, searchParams?.selectedTourId, tours, activeArticle, language]);
 
   return null;
 };

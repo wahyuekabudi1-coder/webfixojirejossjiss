@@ -1,15 +1,17 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
   Sparkles, Tag, Globe, Plus, Trash2, Edit, Check, X, Search, 
   Star, Activity, Upload, Building, ExternalLink, Save, Calendar, 
   Clock, Percent, DollarSign, Filter, RefreshCw, AlertCircle, 
   CheckCircle2, ChevronRight, Copy, Eye, MessageSquare, Phone, 
-  Mail, MapPin, Share2, HelpCircle
+  Mail, MapPin, Share2, HelpCircle, FileText, Database
 } from 'lucide-react';
+import { getAdminHeaders, handleAdminResponse } from '../../utils/adminAuth';
 import { Review } from '../../types';
 import { PartnerApp, PARTNERS_DATA_VERSION, OFFICIAL_PARTNERS } from '../../data/partnersData';
 import { SocialMediaItem, getStoredSocialMedia, saveStoredSocialMedia } from '../../data/socialMediaData';
 import { UnifiedBookingDetail } from '../../components/admin/BookingDetailModal';
+import ArticleCmsWorkspace from './ArticleCmsWorkspace';
 
 export interface PromoCode {
   id: string;
@@ -17,52 +19,15 @@ export interface PromoCode {
   discountType: 'percentage' | 'fixed';
   discountValue: number;
   minSpendIDR: number;
+  maxDiscount?: number | null;
   validUntil: string;
-  isActive: boolean;
+  maxUsage?: number | null;
   usageCount: number;
-  maxUsage?: number;
+  isActive: boolean;
   description?: string;
   createdAt?: string;
+  updatedAt?: string;
 }
-
-const INITIAL_PROMO_CODES: PromoCode[] = [
-  {
-    id: 'p1',
-    code: 'SMARTBALI10',
-    discountType: 'percentage',
-    discountValue: 10,
-    minSpendIDR: 500000,
-    validUntil: '2026-12-31',
-    isActive: true,
-    usageCount: 42,
-    maxUsage: 100,
-    description: 'Diskon 10% paket wisata Bali & Jawa Timur min. belanja Rp 500rb'
-  },
-  {
-    id: 'p2',
-    code: 'EARLYBIRD',
-    discountType: 'percentage',
-    discountValue: 15,
-    minSpendIDR: 1000000,
-    validUntil: '2026-08-31',
-    isActive: true,
-    usageCount: 18,
-    maxUsage: 50,
-    description: 'Diskon pemesanan awal (Early Bird) min. belanja Rp 1 Jt'
-  },
-  {
-    id: 'p3',
-    code: 'WELCOME2026',
-    discountType: 'fixed',
-    discountValue: 50000,
-    minSpendIDR: 300000,
-    validUntil: '2026-12-31',
-    isActive: true,
-    usageCount: 65,
-    maxUsage: 200,
-    description: 'Voucher potongan Rp 50.000 untuk pengguna baru'
-  }
-];
 
 interface MarketingViewProps {
   theme: any;
@@ -88,44 +53,36 @@ export default function MarketingView({
   bookings = []
 }: MarketingViewProps) {
   // ---------------------------------------------------------------------------
-  // 1. PROMO CODES ENGINE & PERSISTENCE
+  // 1. PROMO CODES ENGINE & PERSISTENCE (SERVER SQL SINGLE SOURCE OF TRUTH)
   // ---------------------------------------------------------------------------
-  const [promoCodes, setPromoCodes] = useState<PromoCode[]>(() => {
-    try {
-      const stored = localStorage.getItem('smartjourney_promo_codes');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {
-      console.error('Error loading promo codes from localStorage:', e);
-    }
-    // Fallback to initial canonical promo codes
-    try {
-      localStorage.setItem('smartjourney_promo_codes', JSON.stringify(INITIAL_PROMO_CODES));
-    } catch (e) {}
-    return INITIAL_PROMO_CODES;
-  });
+  const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
+  const [loadingPromos, setLoadingPromos] = useState<boolean>(true);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [isSavingPromo, setIsSavingPromo] = useState<boolean>(false);
 
-  // Save promo codes helper (persists to smartjourney_promo_codes & synchronizes sj_promo_coupons)
-  const savePromoCodes = (updated: PromoCode[]) => {
-    setPromoCodes(updated);
+  // Fetch all promo codes from backend API (GET /api/admin/promos)
+  const fetchPromos = useCallback(async () => {
+    setLoadingPromos(true);
+    setPromoError(null);
     try {
-      localStorage.setItem('smartjourney_promo_codes', JSON.stringify(updated));
-      // Backward-compatibility mirror for legacy coupons store
-      const mirroredCoupons = updated.map(c => ({
-        id: c.id,
-        code: c.code,
-        discountType: c.discountType === 'percentage' ? 'Percentage' : 'Flat',
-        amount: c.discountValue,
-        maxDiscount: c.discountType === 'percentage' ? 100000 : undefined,
-        status: c.isActive ? 'Active' : 'Expired'
-      }));
-      localStorage.setItem('sj_promo_coupons', JSON.stringify(mirroredCoupons));
-    } catch (e) {
-      console.error('Error persisting promo codes:', e);
+      const res = await fetch('/api/admin/promos', {
+        headers: getAdminHeaders()
+      });
+      const data = await handleAdminResponse<PromoCode[]>(res, 'Gagal memuat daftar kode promo.');
+      setPromoCodes(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      console.error('Error fetching promo codes:', err);
+      setPromoError(err.message || 'Gagal memuat kode promo dari database server.');
+      triggerToast(err.message || 'Gagal memuat kode promo');
+    } finally {
+      setLoadingPromos(false);
     }
-  };
+  }, [triggerToast]);
+
+  // Load promos on mount
+  useEffect(() => {
+    fetchPromos();
+  }, [fetchPromos]);
 
   // Promo Filter & Search state
   const [promoSearch, setPromoSearch] = useState('');
@@ -133,49 +90,55 @@ export default function MarketingView({
 
   // Promo Add / Edit Modal state
   const [isPromoModalOpen, setIsPromoModalOpen] = useState(false);
-  const [editingPromoId, setEditingPromoId] = useState<string | null>(null);
+  const [editingPromo, setEditingPromo] = useState<PromoCode | null>(null);
   const [promoForm, setPromoForm] = useState({
     code: '',
     discountType: 'percentage' as 'percentage' | 'fixed',
     discountValue: 10,
     minSpendIDR: 500000,
+    maxDiscount: '' as string | number,
     validUntil: '2026-12-31',
-    maxUsage: 100,
-    description: ''
+    maxUsage: '' as string | number,
+    description: '',
+    isActive: true
   });
 
   // Open modal for Create
   const handleOpenAddPromo = () => {
-    setEditingPromoId(null);
+    setEditingPromo(null);
     setPromoForm({
       code: '',
       discountType: 'percentage',
       discountValue: 10,
       minSpendIDR: 500000,
-      validUntil: '2026-12-31',
+      maxDiscount: 100000,
+      validUntil: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       maxUsage: 100,
-      description: ''
+      description: '',
+      isActive: true
     });
     setIsPromoModalOpen(true);
   };
 
   // Open modal for Edit
   const handleOpenEditPromo = (promo: PromoCode) => {
-    setEditingPromoId(promo.id);
+    setEditingPromo(promo);
     setPromoForm({
       code: promo.code,
       discountType: promo.discountType,
       discountValue: promo.discountValue,
       minSpendIDR: promo.minSpendIDR,
+      maxDiscount: promo.maxDiscount != null ? promo.maxDiscount : '',
       validUntil: promo.validUntil,
-      maxUsage: promo.maxUsage || 100,
-      description: promo.description || ''
+      maxUsage: promo.maxUsage != null ? promo.maxUsage : '',
+      description: promo.description || '',
+      isActive: promo.isActive
     });
     setIsPromoModalOpen(true);
   };
 
-  // Submit Promo (Create or Edit) with strict existing validation logic
-  const handleSavePromo = (e: React.FormEvent) => {
+  // Submit Promo (Create or Edit) with strict validation & server persistence
+  const handleSavePromo = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanCode = promoForm.code.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
     
@@ -184,26 +147,19 @@ export default function MarketingView({
       return;
     }
 
-    // Check duplicate code
-    const isDuplicate = promoCodes.some(p => p.code === cleanCode && p.id !== editingPromoId);
-    if (isDuplicate) {
-      triggerToast(`Kode promo "${cleanCode}" sudah terdaftar.`);
-      return;
-    }
-
     if (promoForm.discountType === 'percentage') {
-      if (promoForm.discountValue <= 0 || promoForm.discountValue > 100) {
+      if (Number(promoForm.discountValue) <= 0 || Number(promoForm.discountValue) > 100) {
         triggerToast('Nilai diskon persentase harus antara 1% - 100%');
         return;
       }
     } else {
-      if (promoForm.discountValue < 1000) {
+      if (Number(promoForm.discountValue) < 1000) {
         triggerToast('Nilai diskon nominal tetap minimal Rp 1.000');
         return;
       }
     }
 
-    if (promoForm.minSpendIDR < 0) {
+    if (Number(promoForm.minSpendIDR) < 0) {
       triggerToast('Minimal belanja tidak boleh negatif');
       return;
     }
@@ -213,60 +169,86 @@ export default function MarketingView({
       return;
     }
 
-    if (editingPromoId) {
-      // Update existing promo
-      const updated = promoCodes.map(p => {
-        if (p.id === editingPromoId) {
-          return {
-            ...p,
-            code: cleanCode,
-            discountType: promoForm.discountType,
-            discountValue: Number(promoForm.discountValue),
-            minSpendIDR: Number(promoForm.minSpendIDR),
-            validUntil: promoForm.validUntil,
-            maxUsage: Number(promoForm.maxUsage) || undefined,
-            description: promoForm.description.trim()
-          };
-        }
-        return p;
-      });
-      savePromoCodes(updated);
-      triggerToast(`Voucher ${cleanCode} berhasil diperbarui!`);
-    } else {
-      // Create new promo
-      const newPromo: PromoCode = {
-        id: `promo-${Date.now()}`,
+    setIsSavingPromo(true);
+    try {
+      const payload = {
         code: cleanCode,
         discountType: promoForm.discountType,
         discountValue: Number(promoForm.discountValue),
-        minSpendIDR: Number(promoForm.minSpendIDR),
-        validUntil: promoForm.validUntil,
-        isActive: true,
-        usageCount: 0,
-        maxUsage: Number(promoForm.maxUsage) || undefined,
-        description: promoForm.description.trim(),
-        createdAt: new Date().toISOString()
+        minSpendIDR: Number(promoForm.minSpendIDR) || 0,
+        maxDiscount: promoForm.maxDiscount !== '' && promoForm.maxDiscount != null ? Number(promoForm.maxDiscount) : null,
+        validUntil: String(promoForm.validUntil).trim(),
+        maxUsage: promoForm.maxUsage !== '' && promoForm.maxUsage != null ? Number(promoForm.maxUsage) : null,
+        description: promoForm.description ? promoForm.description.trim() : '',
+        isActive: promoForm.isActive
       };
-      savePromoCodes([newPromo, ...promoCodes]);
-      triggerToast(`Voucher ${cleanCode} berhasil diterbitkan!`);
+
+      if (editingPromo) {
+        // Edit existing promo: PUT /api/admin/promos/:code
+        const res = await fetch(`/api/admin/promos/${encodeURIComponent(editingPromo.code)}`, {
+          method: 'PUT',
+          headers: getAdminHeaders(),
+          body: JSON.stringify(payload)
+        });
+        const updated = await handleAdminResponse<PromoCode>(res, 'Gagal memperbarui voucher promo.');
+        setPromoCodes(prev => prev.map(p => p.id === editingPromo.id ? updated : p));
+        triggerToast(`Voucher ${updated.code} berhasil diperbarui di database!`);
+      } else {
+        // Create new promo: POST /api/admin/promos
+        const res = await fetch('/api/admin/promos', {
+          method: 'POST',
+          headers: getAdminHeaders(),
+          body: JSON.stringify(payload)
+        });
+        const created = await handleAdminResponse<PromoCode>(res, 'Gagal menerbitkan voucher promo baru.');
+        setPromoCodes(prev => [created, ...prev]);
+        triggerToast(`Voucher ${created.code} berhasil diterbitkan dan disimpan ke database!`);
+      }
+
+      setIsPromoModalOpen(false);
+    } catch (err: any) {
+      console.error('Error saving promo code:', err);
+      triggerToast(err.message || 'Gagal menyimpan kode promo.');
+    } finally {
+      setIsSavingPromo(false);
     }
-
-    setIsPromoModalOpen(false);
   };
 
-  // Toggle active / paused status
-  const handleTogglePromoStatus = (promo: PromoCode) => {
-    const updated = promoCodes.map(p => p.id === promo.id ? { ...p, isActive: !p.isActive } : p);
-    savePromoCodes(updated);
-    triggerToast(`Status promo ${promo.code} ${!promo.isActive ? 'diaktifkan' : 'dinonaktifkan'}`);
+  // Toggle active / paused status via PUT /api/admin/promos/:code
+  const handleTogglePromoStatus = async (promo: PromoCode) => {
+    try {
+      const res = await fetch(`/api/admin/promos/${encodeURIComponent(promo.code)}`, {
+        method: 'PUT',
+        headers: getAdminHeaders(),
+        body: JSON.stringify({
+          isActive: !promo.isActive
+        })
+      });
+      const updated = await handleAdminResponse<PromoCode>(res, 'Gagal mengubah status aktif promo.');
+      setPromoCodes(prev => prev.map(p => p.id === promo.id ? updated : p));
+      triggerToast(`Status promo ${promo.code} ${updated.isActive ? 'diaktifkan' : 'dinonaktifkan'}`);
+    } catch (err: any) {
+      console.error('Error toggling promo status:', err);
+      triggerToast(err.message || 'Gagal mengubah status aktif promo.');
+    }
   };
 
-  // Delete promo
-  const handleDeletePromo = (promo: PromoCode) => {
-    if (confirm(`Hapus voucher promo "${promo.code}" secara permanen?`)) {
-      const updated = promoCodes.filter(p => p.id !== promo.id);
-      savePromoCodes(updated);
-      triggerToast(`Promo ${promo.code} telah dihapus.`);
+  // Delete promo via DELETE /api/admin/promos/:code
+  const handleDeletePromo = async (promo: PromoCode) => {
+    if (!confirm(`Hapus voucher promo "${promo.code}" secara permanen dari database server? Tindakan ini tidak dapat dibatalkan.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/admin/promos/${encodeURIComponent(promo.code)}`, {
+        method: 'DELETE',
+        headers: getAdminHeaders()
+      });
+      await handleAdminResponse(res, 'Gagal menghapus kode promo.');
+      setPromoCodes(prev => prev.filter(p => p.id !== promo.id));
+      triggerToast(`Promo ${promo.code} berhasil dihapus dari database.`);
+    } catch (err: any) {
+      console.error('Error deleting promo:', err);
+      triggerToast(err.message || 'Gagal menghapus voucher promo.');
     }
   };
 
@@ -303,7 +285,7 @@ export default function MarketingView({
   // 2. WEBSITE CMS ENGINE (Connected strictly to real frontend consumers)
   // ---------------------------------------------------------------------------
   // CMS subtabs: Only those that have genuine consumer in the frontend
-  const [cmsSubTab, setCmsSubTab] = useState<'reviews' | 'partners' | 'socials'>('reviews');
+  const [cmsSubTab, setCmsSubTab] = useState<'reviews' | 'partners' | 'socials' | 'articles'>('reviews');
 
   // Reviews moderation filter
   const [reviewsFilter, setReviewsFilter] = useState<'all' | 'pending' | 'approved'>('all');
@@ -529,14 +511,42 @@ export default function MarketingView({
               </div>
             </div>
 
-            <button
-              onClick={handleOpenAddPromo}
-              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-black text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-md shrink-0 active:scale-95"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Tambah Promo Baru</span>
-            </button>
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <button
+                onClick={fetchPromos}
+                disabled={loadingPromos}
+                className="px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer border border-neutral-700 disabled:opacity-50"
+                title="Segarkan data dari database"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${loadingPromos ? 'animate-spin text-amber-500' : ''}`} />
+                <span className="hidden sm:inline">Segarkan</span>
+              </button>
+
+              <button
+                onClick={handleOpenAddPromo}
+                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-black text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-md shrink-0 active:scale-95"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Tambah Promo Baru</span>
+              </button>
+            </div>
           </div>
+
+          {/* Error Banner if API fails */}
+          {promoError && (
+            <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-rose-400 shrink-0" />
+                <span>{promoError}</span>
+              </div>
+              <button
+                onClick={fetchPromos}
+                className="px-3 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 font-bold transition-all cursor-pointer"
+              >
+                Coba Lagi
+              </button>
+            </div>
+          )}
 
           {/* Promo Codes Table */}
           <div className={`${theme.card} border rounded-2xl overflow-hidden shadow-sm`}>
@@ -546,6 +556,7 @@ export default function MarketingView({
                   <th className="p-3.5">Kode Promo</th>
                   <th className="p-3.5">Tipe Diskon</th>
                   <th className="p-3.5">Nilai Potongan</th>
+                  <th className="p-3.5">Maks. Diskon</th>
                   <th className="p-3.5">Min. Belanja</th>
                   <th className="p-3.5">Berlaku Hingga</th>
                   <th className="p-3.5 text-center">Batas Penggunaan</th>
@@ -554,9 +565,16 @@ export default function MarketingView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-850">
-                {filteredPromoCodes.length === 0 ? (
+                {loadingPromos && promoCodes.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-neutral-500">
+                    <td colSpan={9} className="p-12 text-center text-neutral-400">
+                      <RefreshCw className="h-6 w-6 mx-auto text-amber-500 animate-spin mb-3" />
+                      <p className="text-xs font-mono font-bold">Memuat data promo dari database SQL...</p>
+                    </td>
+                  </tr>
+                ) : filteredPromoCodes.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="p-8 text-center text-neutral-500">
                       <Tag className="h-8 w-8 mx-auto text-neutral-600 mb-2 opacity-60" />
                       <p className="text-xs font-bold">Tidak ada kode promo yang cocok dengan kriteria pencarian.</p>
                     </td>
@@ -607,6 +625,14 @@ export default function MarketingView({
                         </td>
 
                         <td className="p-3.5 font-mono text-neutral-300">
+                          {p.maxDiscount && p.maxDiscount > 0 ? (
+                            <span>Rp {p.maxDiscount.toLocaleString('id-ID')}</span>
+                          ) : (
+                            <span className="text-neutral-500 text-[11px]">Tanpa Maks.</span>
+                          )}
+                        </td>
+
+                        <td className="p-3.5 font-mono text-neutral-300">
                           {p.minSpendIDR > 0 
                             ? `Rp ${p.minSpendIDR.toLocaleString('id-ID')}` 
                             : 'Tanpa Min.'}
@@ -623,8 +649,10 @@ export default function MarketingView({
 
                         <td className="p-3.5 text-center font-mono">
                           <span className="font-bold text-neutral-200">{p.usageCount}x</span>
-                          {p.maxUsage && (
+                          {p.maxUsage ? (
                             <span className="text-neutral-500 text-[10px]"> / {p.maxUsage}x</span>
+                          ) : (
+                            <span className="text-neutral-500 text-[10px]"> / ∞</span>
                           )}
                         </td>
 
@@ -692,7 +720,7 @@ export default function MarketingView({
                   <div className="flex items-center gap-2">
                     <Tag className="h-4 w-4 text-amber-500" />
                     <h4 className="text-sm font-black font-mono text-amber-500 uppercase">
-                      {editingPromoId ? 'Edit Kode Promo' : 'Tambah Kode Promo Baru'}
+                      {editingPromo ? `Edit Kode Promo: ${editingPromo.code}` : 'Tambah Kode Promo Baru'}
                     </h4>
                   </div>
                   <button 
@@ -767,6 +795,23 @@ export default function MarketingView({
 
                     <div className="space-y-1">
                       <label className="text-[10px] font-mono text-neutral-400 uppercase block font-bold">
+                        Maks. Potongan (Rp, Opsional)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={10000}
+                        value={promoForm.maxDiscount !== '' ? promoForm.maxDiscount : ''}
+                        onChange={(e) => setPromoForm({ ...promoForm, maxDiscount: e.target.value === '' ? '' : Number(e.target.value) })}
+                        placeholder="Contoh: 100000"
+                        className={`w-full ${theme.input} border rounded-xl px-3 py-2 text-xs font-mono`}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono text-neutral-400 uppercase block font-bold">
                         Batas Berlaku *
                       </label>
                       <input
@@ -777,9 +822,7 @@ export default function MarketingView({
                         className={`w-full ${theme.input} border rounded-xl px-3 py-2 text-xs font-mono`}
                       />
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[10px] font-mono text-neutral-400 uppercase block font-bold">
                         Batas Kuota Penggunaan (Opsional)
@@ -787,13 +830,15 @@ export default function MarketingView({
                       <input
                         type="number"
                         min={1}
-                        value={promoForm.maxUsage || ''}
-                        onChange={(e) => setPromoForm({ ...promoForm, maxUsage: Number(e.target.value) })}
+                        value={promoForm.maxUsage !== '' ? promoForm.maxUsage : ''}
+                        onChange={(e) => setPromoForm({ ...promoForm, maxUsage: e.target.value === '' ? '' : Number(e.target.value) })}
                         placeholder="Contoh: 100"
                         className={`w-full ${theme.input} border rounded-xl px-3 py-2 text-xs font-mono`}
                       />
                     </div>
+                  </div>
 
+                  <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[10px] font-mono text-neutral-400 uppercase block font-bold">
                         Keterangan Singkat
@@ -802,9 +847,23 @@ export default function MarketingView({
                         type="text"
                         value={promoForm.description}
                         onChange={(e) => setPromoForm({ ...promoForm, description: e.target.value })}
-                        placeholder="e.g. Promo Musim Liburan Bromo"
+                        placeholder="e.g. Promo Liburan Bromo & Bali"
                         className={`w-full ${theme.input} border rounded-xl px-3 py-2 text-xs`}
                       />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono text-neutral-400 uppercase block font-bold">
+                        Status Saat Terbit
+                      </label>
+                      <select
+                        value={promoForm.isActive ? 'active' : 'inactive'}
+                        onChange={(e) => setPromoForm({ ...promoForm, isActive: e.target.value === 'active' })}
+                        className={`w-full ${theme.input} border rounded-xl px-3 py-2 text-xs`}
+                      >
+                        <option value="active">Aktif (Dapat Digunakan Tamu)</option>
+                        <option value="inactive">Non-aktif (Dijeda)</option>
+                      </select>
                     </div>
                   </div>
 
@@ -818,9 +877,11 @@ export default function MarketingView({
                     </button>
                     <button
                       type="submit"
-                      className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-black cursor-pointer shadow-md transition-all active:scale-95"
+                      disabled={isSavingPromo}
+                      className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-black cursor-pointer shadow-md transition-all active:scale-95 disabled:opacity-50 flex items-center gap-1.5"
                     >
-                      {editingPromoId ? 'Simpan Perubahan' : 'Terbitkan Promo'}
+                      {isSavingPromo && <RefreshCw className="h-3 w-3 animate-spin" />}
+                      <span>{editingPromo ? 'Simpan Perubahan' : 'Terbitkan Promo'}</span>
                     </button>
                   </div>
                 </form>
@@ -849,7 +910,8 @@ export default function MarketingView({
             {[
               { id: 'reviews', label: `Ulasan Tamu (${reviewsSummary.total})`, icon: Star },
               { id: 'partners', label: `Our Partner Platforms (${adminPartners.length})`, icon: Building },
-              { id: 'socials', label: 'Media Sosial & Kontak Resmi', icon: Share2 }
+              { id: 'socials', label: 'Media Sosial & Kontak Resmi', icon: Share2 },
+              { id: 'articles', label: 'Travel Blog & Articles', icon: FileText }
             ].map((tab) => {
               const Icon = tab.icon;
               return (
@@ -1391,6 +1453,17 @@ export default function MarketingView({
                 </div>
               </div>
             </div>
+          )}
+
+          {/* --------------------------------------------------------------- */}
+          {/* CMS SUBTAB 4: TRAVEL BLOG & ARTICLES CMS ENGINE                */}
+          {/* --------------------------------------------------------------- */}
+          {cmsSubTab === 'articles' && (
+            <ArticleCmsWorkspace
+              theme={theme}
+              isDark={isDark}
+              triggerToast={triggerToast}
+            />
           )}
         </div>
       )}

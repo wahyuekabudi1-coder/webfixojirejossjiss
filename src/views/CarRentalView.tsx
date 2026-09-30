@@ -10,6 +10,7 @@ import CustomerReviewsSection from '../components/CustomerReviewsSection';
 import Breadcrumbs from '../components/Breadcrumbs';
 import ServiceNavTabs from '../components/ServiceNavTabs';
 import { processArtoPayPayment } from '../lib/artopay';
+import PromoCodeInput, { PromoValidationResult } from '../components/PromoCodeInput';
 
 interface LocationItem {
   name: string;
@@ -378,6 +379,7 @@ export default function CarRentalView() {
   const [verificationAccepted, setVerificationAccepted] = useState(true);
   const [selectedAddOns, setSelectedAddOns] = useState<string[]>([]);
   const [selectedZone, setSelectedZone] = useState<'Zone 0' | 'Zone 1' | 'Zone 2'>('Zone 0');
+  const [appliedPromo, setAppliedPromo] = useState<PromoValidationResult | null>(null);
 
   // Synchronize selectedZone whenever pickup or dropoff location is manually changed from the dropdown
   useEffect(() => {
@@ -679,7 +681,9 @@ export default function CarRentalView() {
           addonsTotalUSD: finalPrice.addonsUSD,
           addonsTotalIDR: finalPrice.addonsIDR,
           days: durationDays
-        }
+        },
+        promoCode: appliedPromo?.code || undefined,
+        discountAmount: appliedPromo?.discount || 0
       },
       totalPrice: finalPrice.usd,
       totalPriceIDR: finalPrice.idr,
@@ -1708,6 +1712,15 @@ export default function CarRentalView() {
                         <span className="font-mono">{formatPrice(calculateFinalPrice().addonsUSD, calculateFinalPrice().addonsIDR)}</span>
                       </div>
                     )}
+
+                    {/* Promo Code Input Section */}
+                    <div className="pt-2">
+                      <PromoCodeInput
+                        amount={calculateFinalPrice().idr}
+                        onPromoChange={(res) => setAppliedPromo(res)}
+                        theme="dark"
+                      />
+                    </div>
 
                     <div className="h-px bg-neutral-800" />
 

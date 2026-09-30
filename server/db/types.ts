@@ -110,6 +110,7 @@ export interface BookingRow {
   details?: string | null;
   tour_snapshot?: string | null;
   discount?: string | null;
+  promo_code?: string | null;
   admin_notes?: string | null;
   paid_at?: string | null;
   payment_id?: string | null;
@@ -118,4 +119,77 @@ export interface BookingRow {
   confirmed_at?: string | null;
   reject_reason?: string | null;
   verification_hash?: string | null;
+}
+
+export interface ArticleRow {
+  id: string;
+  slug: string;
+  title: string;
+  seo_title?: string | null;
+  seo_description?: string | null;
+  category?: string | null;
+  destination?: string | null;
+  excerpt?: string | null;
+  image?: string | null;
+  read_time?: string | null;
+  date?: string | null;
+  author?: string | null;
+  keywords?: string | null;
+  featured?: number | null;
+  hero_image_prompt?: string | null;
+  featured_image_alt_text?: string | null;
+  introduction?: string | null;
+  history?: string | null;
+  why_visit?: string | null;
+  best_time_to_visit?: string | null;
+  top_attractions?: string | null;
+  best_activities?: string | null;
+  travel_tips?: string | null;
+  weather?: string | null;
+  transportation?: string | null;
+  nearby_attractions?: string | null;
+  food_to_try?: string | null;
+  local_culture?: string | null;
+  suggested_itinerary?: string | null;
+  faq?: string | null;
+  conclusion?: string | null;
+  call_to_action?: string | null;
+  gallery?: string | null;
+  seo_requirements?: string | null;
+  content?: string | null;
+  status?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface PromoCodeRow {
+  id: string;
+  code: string;
+  discount_type: string; // 'percentage' | 'fixed'
+  discount_value: number;
+  min_spend_idr: number;
+  max_discount?: number | null;
+  valid_until: string;
+  max_usage?: number | null;
+  usage_count: number;
+  is_active: number; // 1 or 0
+  description?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface PromoCodeEntity {
+  id: string;
+  code: string;
+  discountType: 'percentage' | 'fixed';
+  discountValue: number;
+  minSpendIDR: number;
+  maxDiscount?: number | null;
+  validUntil: string;
+  maxUsage?: number | null;
+  usageCount: number;
+  isActive: boolean;
+  description?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }

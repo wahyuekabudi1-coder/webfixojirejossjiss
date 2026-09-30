@@ -11,6 +11,7 @@ import { processArtoPayPayment } from '../lib/artopay';
 import CustomerReviewsSection from '../components/CustomerReviewsSection';
 import Breadcrumbs from '../components/Breadcrumbs';
 import ServiceNavTabs from '../components/ServiceNavTabs';
+import PromoCodeInput, { PromoValidationResult } from '../components/PromoCodeInput';
 
 export default function AirportTransferView() {
   const { 
@@ -58,6 +59,7 @@ export default function AirportTransferView() {
   const [confirmedBooking, setConfirmedBooking] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [appliedPromo, setAppliedPromo] = useState<PromoValidationResult | null>(null);
 
   // Helper mapping for common airport codes to full names
   const airportNames = airports.reduce((acc, ap) => {
@@ -221,6 +223,8 @@ export default function AirportTransferView() {
         returnDateText: routeType === 'Round Trip' ? returnDate : undefined,
         returnTimeText: routeType === 'Round Trip' ? returnTime : undefined,
         returnFlightNumber: routeType === 'Round Trip' ? returnFlightNumber : undefined,
+        promoCode: appliedPromo?.code || undefined,
+        discountAmount: appliedPromo?.discount || 0,
       },
       totalPrice: vehiclePrice.usd,
       totalPriceIDR: vehiclePrice.idr,
@@ -1008,6 +1012,15 @@ export default function AirportTransferView() {
                           {formatPrice(getVehiclePrice(selectedVehicle).usd, getVehiclePrice(selectedVehicle).idr)}
                         </span>
                       </div>
+                    </div>
+
+                    {/* Promo Code Input Section */}
+                    <div className="border-t border-neutral-100 pt-4">
+                      <PromoCodeInput
+                        amount={getVehiclePrice(selectedVehicle).idr}
+                        onPromoChange={(res) => setAppliedPromo(res)}
+                        theme="light"
+                      />
                     </div>
 
                   </div>

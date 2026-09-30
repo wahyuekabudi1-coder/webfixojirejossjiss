@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../AppContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -94,18 +94,118 @@ function StatCard({ target, suffix, label, sublabel }: StatCardProps) {
 }
 
 export default function AboutView() {
-  const { setPage } = useApp();
+  const { setPage, searchParams, setActiveArticle } = useApp();
   
   // Interactive FAQ state
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   
   // State for Blog and Articles
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>(BLOG_POSTS);
   const [blogSearch, setBlogSearch] = useState('');
   const [selectedDest, setSelectedDest] = useState('All');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [activePost, setActivePost] = useState<BlogPost | null>(null);
   const [copiedPostId, setCopiedPostId] = useState<string | null>(null);
   const [dialogTab, setDialogTab] = useState<'read' | 'info' | 'gallery' | 'faq'>('read');
+
+  // Fetch published articles from server API with fallback to BLOG_POSTS
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/articles')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          setBlogPosts(data);
+        }
+      })
+      .catch(err => {
+        console.warn('Could not load articles from server, using fallback:', err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Helper to open article by slug (with safe fallback for invalid/draft articles)
+  const openArticleBySlug = useCallback(async (slug: string) => {
+    if (!slug) {
+      setActivePost(null);
+      setActiveArticle(null);
+      return;
+    }
+
+    // 1. Try to find in loaded blogPosts first (only published)
+    const localMatch = blogPosts.find(p => p.slug === slug || (p as any).id === slug);
+    if (localMatch && (localMatch as any).status !== 'draft' && (localMatch as any).status !== 'archived') {
+      setActivePost(localMatch);
+      setActiveArticle(localMatch);
+      return;
+    }
+
+    // 2. Fetch specific published article from /api/articles/:slug
+    try {
+      const res = await fetch(`/api/articles/${encodeURIComponent(slug)}`);
+      if (res.ok) {
+        const remoteArticle = await res.json();
+        if (remoteArticle && remoteArticle.status === 'published') {
+          setActivePost(remoteArticle);
+          setActiveArticle(remoteArticle);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Error fetching single article by slug:', e);
+    }
+
+    // 3. Fallback: Check BLOG_POSTS directly
+    const fallbackMatch = BLOG_POSTS.find(p => p.slug === slug || p.id === slug);
+    if (fallbackMatch) {
+      setActivePost(fallbackMatch);
+      setActiveArticle(fallbackMatch);
+      return;
+    }
+
+    // 4. Not found or not published: DO NOT CRASH, gracefully stay in normal AboutView
+    console.warn(`Article with slug "${slug}" not found or not published. Showing normal About.`);
+    setActivePost(null);
+    setActiveArticle(null);
+  }, [blogPosts, setActiveArticle]);
+
+  // Sync with URL deep-link parameter (#/about?article=<slug>)
+  useEffect(() => {
+    const handleUrlArticleSlug = () => {
+      const fullHash = typeof window !== 'undefined' ? window.location.hash || '' : '';
+      const match = fullHash.match(/[?&#](?:article|articleSlug|slug)=([^&]+)/i);
+      const slug = match ? decodeURIComponent(match[1]).trim() : '';
+      if (slug) {
+        openArticleBySlug(slug);
+      } else {
+        setActivePost(null);
+        setActiveArticle(null);
+      }
+    };
+
+    handleUrlArticleSlug();
+    window.addEventListener('hashchange', handleUrlArticleSlug);
+    return () => {
+      window.removeEventListener('hashchange', handleUrlArticleSlug);
+      setActiveArticle(null);
+    };
+  }, [openArticleBySlug, setActiveArticle]);
+
+  const handleSelectArticle = (post: BlogPost) => {
+    setActivePost(post);
+    setActiveArticle(post);
+    setDialogTab('read');
+    window.location.hash = `#/about?article=${post.slug}`;
+  };
+
+  const handleCloseArticle = () => {
+    setActivePost(null);
+    setActiveArticle(null);
+    window.location.hash = '#/about';
+  };
   
   // State for dynamic background/office image (.png or .jpg)
   const [aboutBgSrc, setAboutBgSrc] = useState<string>('/office.png');
@@ -233,13 +333,15 @@ export default function AboutView() {
     { target: 100, suffix: "%", label: "Transparent", sublabel: "Garansi Tanpa Biaya Tersembunyi" }
   ];
 
-  // Filtered Blog Posts
-  const filteredPosts = BLOG_POSTS.filter(post => {
+  // Filtered Blog Posts (Only published articles)
+  const filteredPosts = blogPosts.filter(post => {
+    if ((post as any).status && (post as any).status !== 'published') return false;
+
     const matchesSearch = 
       post.title.toLowerCase().includes(blogSearch.toLowerCase()) ||
       post.excerpt.toLowerCase().includes(blogSearch.toLowerCase()) ||
       post.destination.toLowerCase().includes(blogSearch.toLowerCase()) ||
-      post.keywords.some(k => k.toLowerCase().includes(blogSearch.toLowerCase()));
+      (Array.isArray(post.keywords) && post.keywords.some(k => k.toLowerCase().includes(blogSearch.toLowerCase())));
       
     const matchesDest = selectedDest === 'All' || post.destination === selectedDest;
     const matchesCategory = selectedCategory === 'All' || post.category === selectedCategory;
@@ -608,7 +710,7 @@ export default function AboutView() {
                       By {post.author}
                     </span>
                     <button
-                      onClick={() => { setActivePost(post); setDialogTab('read'); }}
+                      onClick={() => handleSelectArticle(post)}
                       className="text-xs font-black text-amber-500 hover:text-amber-400 flex items-center gap-1 cursor-pointer transition-colors"
                     >
                       <span>Read Article</span>
@@ -647,7 +749,7 @@ export default function AboutView() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setActivePost(null)}
+              onClick={handleCloseArticle}
               className="fixed inset-0 bg-slate-950/80 backdrop-blur-md"
             />
 
@@ -662,7 +764,7 @@ export default function AboutView() {
               
               {/* Close Floating Trigger */}
               <button
-                onClick={() => setActivePost(null)}
+                onClick={handleCloseArticle}
                 className="absolute top-4 right-4 z-20 bg-slate-950/80 text-white hover:text-amber-500 p-2.5 rounded-full border border-slate-800/80 transition-colors shadow-lg cursor-pointer"
               >
                 <X className="h-4.5 w-4.5" />
@@ -714,14 +816,15 @@ export default function AboutView() {
                     </span>
                     <button
                       onClick={() => {
-                        navigator.clipboard.writeText(window.location.href);
-                        setCopiedPostId(activePost.id);
-                        setTimeout(() => setCopiedPostId(null), 2000);
+                        const shareUrl = `${window.location.origin}${window.location.pathname}#/about?article=${activePost.slug}`;
+                        navigator.clipboard.writeText(shareUrl);
+                        setCopiedPostId(activePost.id || activePost.slug);
+                        setTimeout(() => setCopiedPostId(null), 2500);
                       }}
                       className="ml-auto flex items-center gap-1 bg-slate-950 border border-slate-800 px-3 py-1 rounded-lg hover:text-amber-500 hover:border-amber-500/30 transition-all text-[11px] cursor-pointer"
                     >
                       <Share2 className="h-3.5 w-3.5" />
-                      <span>{copiedPostId === activePost.id ? 'Link Copied!' : 'Share Article'}</span>
+                      <span>{copiedPostId === (activePost.id || activePost.slug) ? 'Link Copied!' : 'Share Article'}</span>
                     </button>
                   </div>
 
@@ -1091,7 +1194,7 @@ export default function AboutView() {
               <div className="bg-slate-950 px-6 sm:px-10 py-4 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-500 font-mono font-bold">
                 <span>© 2026 SmartJourney Travel Agency</span>
                 <button
-                  onClick={() => setActivePost(null)}
+                  onClick={handleCloseArticle}
                   className="text-amber-500 hover:text-amber-400 cursor-pointer font-black"
                 >
                   CLOSE READER

@@ -8,6 +8,7 @@ import {
 import { TOURS, REVIEWS } from './data';
 import { EXCHANGE_RATE_USD_TO_IDR, EXCHANGE_RATE_USD_TO_CNY, ENABLE_FOREIGN_CURRENCIES } from './utils/pricingUtils';
 import { getAdminHeaders, handleAdminResponse } from './utils/adminAuth';
+import type { BlogPost } from './blogData';
 
 interface AppContextProps {
   activePage: ActivePage;
@@ -50,8 +51,12 @@ interface AppContextProps {
     returnDate?: string;
     vehicleType?: string;
     withDriver?: boolean;
+    selectedTourId?: string;
+    selectedArticleSlug?: string;
   };
   setSearchParams: (params: any) => void;
+  activeArticle: BlogPost | null;
+  setActiveArticle: React.Dispatch<React.SetStateAction<BlogPost | null>>;
   maxBookingsPerDay: number;
   setMaxBookingsPerDay: (limit: number) => void;
   airportRoutes: AirportRoute[];
@@ -252,6 +257,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [bookings, setBookings] = useState<Booking[]>([]);
 
   const [searchParams, setSearchParams] = useState<any>({});
+  const [activeArticle, setActiveArticle] = useState<BlogPost | null>(null);
   
   // Authoritative server state for Tours - initialized empty, populated exclusively via API
   const [tours, setTours] = useState<Tour[]>([]);
@@ -572,12 +578,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
+      if (hash === 'about') {
+        setActivePageState('about');
+        const articleMatch = fullHash.match(/[?&#](?:article|articleSlug|slug)=([^&]+)/i);
+        const explicitArticleSlug = articleMatch ? decodeURIComponent(articleMatch[1]).trim() : '';
+        if (explicitArticleSlug) {
+          setSearchParams((prev: any) => ({ ...prev, selectedArticleSlug: explicitArticleSlug }));
+        } else {
+          setSearchParams((prev: any) => ({ ...prev, selectedArticleSlug: undefined }));
+          setActiveArticle(null);
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
       const validPages: ActivePage[] = ['home', 'tours', 'share-tour', 'airport', 'taxi', 'partnerships', 'contact', 'bookings', 'car-rental', 'about', 'admin'];
       if (validPages.includes(hash as ActivePage)) {
         setActivePageState(hash as ActivePage);
+        setActiveArticle(null);
+        setSearchParams((prev: any) => ({ ...prev, selectedArticleSlug: undefined }));
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else if (hash === '') {
         setActivePageState('home');
+        setActiveArticle(null);
+        setSearchParams((prev: any) => ({ ...prev, selectedArticleSlug: undefined }));
       }
     };
 
@@ -591,6 +614,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActivePageState(page);
     if (page === 'tours') {
       setSearchParams((prev: any) => ({ ...prev, selectedTourId: undefined }));
+    }
+    if (page !== 'about') {
+      setActiveArticle(null);
+      setSearchParams((prev: any) => ({ ...prev, selectedArticleSlug: undefined }));
     }
     window.location.hash = `#/${page}`;
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -919,6 +946,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addLog,
         searchParams,
         setSearchParams,
+        activeArticle,
+        setActiveArticle,
         maxBookingsPerDay,
         setMaxBookingsPerDay,
         airportRoutes,

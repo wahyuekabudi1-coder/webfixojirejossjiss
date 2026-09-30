@@ -11,6 +11,7 @@ import { processArtoPayPayment } from '../lib/artopay';
 import CustomerReviewsSection from '../components/CustomerReviewsSection';
 import Breadcrumbs from '../components/Breadcrumbs';
 import ServiceNavTabs from '../components/ServiceNavTabs';
+import PromoCodeInput, { PromoValidationResult } from '../components/PromoCodeInput';
 
 // Predefined node coordinates for matching admin configured tariffs
 const cityCoordinates: Record<string, { lat: number, lon: number }> = {
@@ -151,6 +152,7 @@ export default function TaxiView() {
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [extraNotes, setExtraNotes] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<PromoValidationResult | null>(null);
 
   const [bookingSuccess, setBookingSuccess] = useState<any | null>(null);
   const [paymentLoading, setPaymentLoading] = useState(false);
@@ -679,7 +681,9 @@ export default function TaxiView() {
         vehicleName: selectedVehicle.name,
         flightNumber: flightNumber,
         cityAddress: pickupInput,
-        extraNotes: extraNotes
+        extraNotes: extraNotes,
+        promoCode: appliedPromo?.code || undefined,
+        discountAmount: appliedPromo?.discount || 0
       },
       totalPrice: currentPrice.usd,
       totalPriceIDR: currentPrice.idr,
@@ -1301,6 +1305,15 @@ export default function TaxiView() {
                         </strong>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Promo Code Input Section */}
+                  <div className="bg-neutral-50 border border-neutral-200 p-4 rounded-2xl">
+                    <PromoCodeInput
+                      amount={currentPrice.idr}
+                      onPromoChange={(res) => setAppliedPromo(res)}
+                      theme="light"
+                    />
                   </div>
 
                   {/* Back and Confirm booking */}

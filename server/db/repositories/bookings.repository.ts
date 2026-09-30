@@ -35,7 +35,8 @@ export interface BookingEntity {
   createdAt: string;
   details?: any;
   tourSnapshot?: any;
-  discount?: any;
+  discount?: number;
+  promoCode?: string;
   adminNotes?: string;
   paidAt?: string;
   paymentId?: string;
@@ -58,6 +59,27 @@ function parseJsonObject<T = any>(val: any, fallback: T = {} as T): T {
   } catch {
     return fallback;
   }
+}
+
+export function parseDiscountNumber(val: any): number {
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  if (!val) return 0;
+  if (typeof val === 'string') {
+    try {
+      const parsed = JSON.parse(val);
+      if (typeof parsed === 'number') return isNaN(parsed) ? 0 : parsed;
+      if (parsed && typeof parsed.discount === 'number') return parsed.discount;
+      if (parsed && typeof parsed.amount === 'number') return parsed.amount;
+    } catch {
+      const n = Number(val);
+      if (!isNaN(n)) return n;
+    }
+  }
+  if (typeof val === 'object') {
+    if (typeof val.discount === 'number') return val.discount;
+    if (typeof val.amount === 'number') return val.amount;
+  }
+  return 0;
 }
 
 function rowToBooking(row: BookingRow): BookingEntity {
@@ -91,7 +113,8 @@ function rowToBooking(row: BookingRow): BookingEntity {
     createdAt: row.created_at || new Date().toISOString(),
     details: parsedDetails,
     tourSnapshot: parseJsonObject<any>(row.tour_snapshot, {}),
-    discount: parseJsonObject<any>(row.discount, {}),
+    discount: parseDiscountNumber(row.discount),
+    promoCode: row.promo_code || undefined,
     adminNotes: row.admin_notes || undefined,
     paidAt: row.paid_at || undefined,
     paymentId: row.payment_id || undefined,
@@ -151,7 +174,7 @@ export class BookingsRepository {
         participants_names, proof_of_payment, status, payment_status,
         total_price, total_price_idr, base_amount, unique_code, payment_amount,
         currency, created_at, details, tour_snapshot, discount, admin_notes,
-        paid_at, payment_id, payment_intent_id, checkout_url, confirmed_at, reject_reason, verification_hash
+        paid_at, payment_id, payment_intent_id, checkout_url, confirmed_at, reject_reason, verification_hash, promo_code
       ) VALUES (
         ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?,
@@ -159,7 +182,7 @@ export class BookingsRepository {
         ?, ?, ?, ?,
         ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?, ?, ?
+        ?, ?, ?, ?, ?, ?, ?, ?
       )
     `;
 
@@ -192,7 +215,7 @@ export class BookingsRepository {
       booking.createdAt || now,
       JSON.stringify(booking.details || {}),
       JSON.stringify(booking.tourSnapshot || {}),
-      JSON.stringify(booking.discount || {}),
+      String(parseDiscountNumber(booking.discount)),
       booking.adminNotes || null,
       booking.paidAt || null,
       booking.paymentId || null,
@@ -200,7 +223,8 @@ export class BookingsRepository {
       booking.checkoutUrl || null,
       booking.confirmedAt || null,
       booking.rejectReason || null,
-      booking.verificationHash || null
+      booking.verificationHash || null,
+      booking.promoCode || null
     ];
 
     await client.execute(sql, params);
@@ -238,6 +262,7 @@ export class BookingsRepository {
         payment_amount = ?,
         details = ?,
         tour_snapshot = ?,
+        discount = ?,
         admin_notes = ?,
         paid_at = ?,
         payment_id = ?,
@@ -245,7 +270,8 @@ export class BookingsRepository {
         checkout_url = ?,
         confirmed_at = ?,
         reject_reason = ?,
-        verification_hash = ?
+        verification_hash = ?,
+        promo_code = ?
       WHERE id = ?
     `;
 
@@ -272,6 +298,7 @@ export class BookingsRepository {
       updates.paymentAmount !== undefined ? Number(updates.paymentAmount) : existing.paymentAmount,
       JSON.stringify(updates.details !== undefined ? updates.details : existing.details || {}),
       JSON.stringify(updates.tourSnapshot !== undefined ? updates.tourSnapshot : existing.tourSnapshot || {}),
+      updates.discount !== undefined ? String(parseDiscountNumber(updates.discount)) : String(parseDiscountNumber(existing.discount)),
       updates.adminNotes !== undefined ? updates.adminNotes : existing.adminNotes || null,
       updates.paidAt !== undefined ? updates.paidAt : existing.paidAt || null,
       updates.paymentId !== undefined ? updates.paymentId : existing.paymentId || null,
@@ -280,6 +307,7 @@ export class BookingsRepository {
       updates.confirmedAt !== undefined ? updates.confirmedAt : existing.confirmedAt || null,
       updates.rejectReason !== undefined ? updates.rejectReason : existing.rejectReason || null,
       updates.verificationHash !== undefined ? updates.verificationHash : existing.verificationHash || null,
+      updates.promoCode !== undefined ? updates.promoCode : existing.promoCode || null,
       id
     ];
 

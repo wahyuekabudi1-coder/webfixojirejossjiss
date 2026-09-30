@@ -5,6 +5,7 @@ import { VEHICLES } from '../data';
 import { motion, AnimatePresence } from 'motion/react';
 import { processArtoPayPayment } from '../lib/artopay';
 import { usdToIDR, idrToUSD } from '../utils/pricingUtils';
+import PromoCodeInput, { PromoValidationResult } from './PromoCodeInput';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -46,6 +47,7 @@ export default function CheckoutModal({
   const [confirmedBooking, setConfirmedBooking] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [appliedPromo, setAppliedPromo] = useState<PromoValidationResult | null>(null);
 
   // Calculate pricing upgrades if vehicle is premium or large
   const getVehicleMultiplier = () => {
@@ -180,6 +182,8 @@ export default function CheckoutModal({
         companionNames: companionNames.filter(n => n.trim() !== ''),
         vehicleId: selectedVehicle?.id,
         vehicleName: selectedVehicle?.name,
+        promoCode: appliedPromo?.code || undefined,
+        discountAmount: appliedPromo?.discount || 0,
       },
       totalPrice: finalPrice.usd,
       totalPriceIDR: finalPrice.idr,
@@ -334,6 +338,15 @@ export default function CheckoutModal({
                       </div>
                       <div className="text-[10px] text-neutral-500">All-Inclusive Fixed Pricing</div>
                     </div>
+                  </div>
+
+                  {/* Promo Code Input Section */}
+                  <div className="bg-white/5 border border-white/5 p-4 rounded-2xl">
+                    <PromoCodeInput
+                      amount={finalPrice.idr}
+                      onPromoChange={(res) => setAppliedPromo(res)}
+                      theme="dark"
+                    />
                   </div>
 
                   {/* Vehicle Upgrades or Package Tier Benefits */}

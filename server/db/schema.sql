@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   details TEXT,
   tour_snapshot TEXT,
   discount TEXT,
+  promo_code VARCHAR(64),
   admin_notes TEXT,
   paid_at VARCHAR(64),
   payment_id VARCHAR(128),
@@ -218,4 +219,63 @@ CREATE TABLE IF NOT EXISTS operational_assignments (
   note TEXT,
   assigned_at VARCHAR(64) NOT NULL,
   updated_at VARCHAR(64) NOT NULL
+);
+
+-- 15. Articles Table (SEO Blog & Content Engine)
+CREATE TABLE IF NOT EXISTS articles (
+  id VARCHAR(64) PRIMARY KEY,
+  slug VARCHAR(255) UNIQUE NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  seo_title VARCHAR(255),
+  seo_description TEXT,
+  category VARCHAR(64),
+  destination VARCHAR(64),
+  excerpt TEXT,
+  image TEXT,
+  read_time VARCHAR(32),
+  date VARCHAR(32),
+  author VARCHAR(128),
+  keywords TEXT,
+  featured INT DEFAULT 0,
+  hero_image_prompt TEXT,
+  featured_image_alt_text TEXT,
+  introduction TEXT,
+  history TEXT,
+  why_visit TEXT,
+  best_time_to_visit TEXT,
+  top_attractions TEXT,
+  best_activities TEXT,
+  travel_tips TEXT,
+  weather TEXT,
+  transportation TEXT,
+  nearby_attractions TEXT,
+  food_to_try TEXT,
+  local_culture TEXT,
+  suggested_itinerary TEXT,
+  faq TEXT,
+  conclusion TEXT,
+  call_to_action TEXT,
+  gallery TEXT,
+  seo_requirements TEXT,
+  content TEXT,
+  status VARCHAR(32) DEFAULT 'published',
+  created_at VARCHAR(64),
+  updated_at VARCHAR(64)
+);
+
+-- 16. Promo Codes Table (Marketing & Coupon Engine)
+CREATE TABLE IF NOT EXISTS promo_codes (
+  id VARCHAR(64) PRIMARY KEY,
+  code VARCHAR(64) UNIQUE NOT NULL,
+  discount_type VARCHAR(32) NOT NULL, -- 'percentage' | 'fixed'
+  discount_value DECIMAL(14,2) NOT NULL DEFAULT 0,
+  min_spend_idr DECIMAL(14,2) NOT NULL DEFAULT 0,
+  max_discount DECIMAL(14,2),
+  valid_until VARCHAR(64) NOT NULL,
+  max_usage INT,
+  usage_count INT NOT NULL DEFAULT 0,
+  is_active INT NOT NULL DEFAULT 1,
+  description TEXT,
+  created_at VARCHAR(64),
+  updated_at VARCHAR(64)
 );

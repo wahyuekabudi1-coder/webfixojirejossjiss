@@ -12,6 +12,7 @@ import {
   calculateShareTourPricing, 
   formatCurrencyAmount 
 } from "../../utils/pricingUtils";
+import PromoCodeInput, { PromoValidationResult } from "../../components/PromoCodeInput";
 
 interface BookingFormProps {
   trip: Trip;
@@ -80,6 +81,7 @@ export default function BookingForm({
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState<PromoValidationResult | null>(null);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
@@ -193,6 +195,8 @@ export default function BookingForm({
         paymentStatus: "Pending Payment",
         totalPrice: pricingBreakdown.totalPriceUSD,
         totalPriceIDR: pricingBreakdown.totalPriceIDR,
+        promoCode: appliedPromo?.code || undefined,
+        discountAmount: appliedPromo?.discount || 0,
         nationalityType: currentNationality,
         pickupLocation: pickupLocation.trim(),
         specialRequests: specialRequests.trim(),
@@ -209,7 +213,9 @@ export default function BookingForm({
           pickupLocation: pickupLocation.trim(),
           specialRequests: specialRequests.trim(),
           paymentMethod: "OJIRE_GATEWAY",
-          nationalityType: currentNationality
+          nationalityType: currentNationality,
+          promoCode: appliedPromo?.code || undefined,
+          discountAmount: appliedPromo?.discount || 0
         },
         adminNotes: ""
       };
@@ -372,6 +378,15 @@ export default function BookingForm({
                 <span className="font-display font-black text-xl text-[#315B4F]">
                   {totalPriceFormatted}
                 </span>
+              </div>
+
+              {/* Promo Code Input Card */}
+              <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-xs">
+                <PromoCodeInput
+                  amount={pricingBreakdown.totalPriceIDR}
+                  onPromoChange={(res) => setAppliedPromo(res)}
+                  theme="light"
+                />
               </div>
             </div>
 

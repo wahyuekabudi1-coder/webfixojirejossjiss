@@ -24,6 +24,9 @@ import { assignmentsRepo } from './server/db/repositories/assignments.repository
 import { credentialsRepo } from './server/db/repositories/credentials.repository';
 import { sanitizeAndPersistImage, sanitizeAndPersistImages } from './server/utils/mediaStorage';
 import { CANONICAL_ROLES, type RolePermissions } from './src/utils/rbac';
+import { articlesRepo } from './server/db/repositories/articles.repository';
+import { BLOG_POSTS } from './src/blogData';
+import { promoCodesRepo, normalizePromoCode } from './server/db/repositories/promoCodes.repository';
 
 // Ensure any Google AI Studio container settings are loaded
 if (fs.existsSync('/app/.dev.env.json')) {
@@ -726,6 +729,330 @@ app.get('/sitemap.xml', (req, res) => {
 
   xml += `</urlset>`;
   res.send(xml);
+});
+
+// -------------------------------------------------------------
+// ARTICLES / BLOG REST ENDPOINTS (MEDIUM-01A DATA LAYER)
+// Authoritative SQL Single Source of Truth for Blog & SEO Articles
+// -------------------------------------------------------------
+
+// 1. Public Endpoint: Get all published articles
+app.get('/api/articles', async (req, res) => {
+  try {
+    const category = typeof req.query.category === 'string' ? req.query.category : undefined;
+    const destination = typeof req.query.destination === 'string' ? req.query.destination : undefined;
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+    const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : undefined;
+
+    const articles = await articlesRepo.getAll({
+      publishedOnly: true,
+      category,
+      destination,
+      limit,
+      offset
+    });
+    res.json(articles);
+  } catch (error) {
+    console.error('Error fetching published articles from database:', error);
+    res.status(500).json({ error: 'Gagal mengambil data artikel publik dari database server.' });
+  }
+});
+
+// 2. Public Endpoint: Get single published article by slug
+app.get('/api/articles/:slug', async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const article = await articlesRepo.getBySlug(slug, { publishedOnly: true });
+    if (!article) {
+      return res.status(404).json({ error: 'Artikel tidak ditemukan atau belum dipublikasikan.' });
+    }
+    res.json(article);
+  } catch (error) {
+    console.error(`Error fetching article by slug (${req.params.slug}) from database:`, error);
+    res.status(500).json({ error: 'Gagal mengambil detail artikel dari database server.' });
+  }
+});
+
+// 3. Admin Endpoint: Get all articles (all statuses) with RBAC manageCMS permission
+app.get('/api/admin/articles', requireAdminAuth, requirePermission('manageCMS'), async (req, res) => {
+  try {
+    const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+    const category = typeof req.query.category === 'string' ? req.query.category : undefined;
+    const destination = typeof req.query.destination === 'string' ? req.query.destination : undefined;
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+    const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : undefined;
+
+    const articles = await articlesRepo.getAll({
+      publishedOnly: false,
+      status,
+      category,
+      destination,
+      limit,
+      offset
+    });
+    res.json(articles);
+  } catch (error) {
+    console.error('Error fetching admin articles from database:', error);
+    res.status(500).json({ error: 'Gagal mengambil daftar artikel untuk admin portal.' });
+  }
+});
+
+// 4. Admin Endpoint: Create new article
+app.post('/api/admin/articles', requireAdminAuth, requirePermission('manageCMS'), async (req, res) => {
+  try {
+    const { title, slug } = req.body || {};
+    if (!title || typeof title !== 'string' || !title.trim()) {
+      return res.status(400).json({ error: 'Judul artikel wajib diisi.' });
+    }
+    if (!slug || typeof slug !== 'string' || !slug.trim()) {
+      return res.status(400).json({ error: 'Slug URL artikel wajib diisi.' });
+    }
+
+    const cleanSlug = slug.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-');
+    const existing = await articlesRepo.getBySlug(cleanSlug, { publishedOnly: false });
+    if (existing) {
+      return res.status(400).json({ error: `Slug "${cleanSlug}" sudah digunakan oleh artikel lain.` });
+    }
+
+    const articleData = {
+      ...req.body,
+      title: title.trim(),
+      slug: cleanSlug,
+      status: req.body.status || 'draft',
+      createdAt: req.body.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    const created = await articlesRepo.create(articleData);
+    res.status(201).json(created);
+  } catch (error: any) {
+    console.error('Error creating article in database:', error);
+    res.status(500).json({ error: error.message || 'Gagal menyimpan artikel baru ke database server.' });
+  }
+});
+
+// 5. Admin Endpoint: Update article (Save draft, publish, unpublish/archive, edit fields)
+app.put('/api/admin/articles/:slug', requireAdminAuth, requirePermission('manageCMS'), async (req, res) => {
+  try {
+    const currentSlug = req.params.slug;
+    const existing = await articlesRepo.getBySlug(currentSlug, { publishedOnly: false });
+    if (!existing) {
+      return res.status(404).json({ error: 'Artikel tidak ditemukan.' });
+    }
+
+    if (req.body.slug && req.body.slug !== currentSlug) {
+      const cleanSlug = String(req.body.slug).trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-');
+      const conflict = await articlesRepo.getBySlug(cleanSlug, { publishedOnly: false });
+      if (conflict) {
+        return res.status(400).json({ error: `Slug "${cleanSlug}" sudah digunakan oleh artikel lain.` });
+      }
+      req.body.slug = cleanSlug;
+    }
+
+    const updated = await articlesRepo.update(currentSlug, req.body);
+    if (!updated) {
+      return res.status(404).json({ error: 'Artikel gagal diperbarui.' });
+    }
+    res.json(updated);
+  } catch (error: any) {
+    console.error(`Error updating article ${req.params.slug}:`, error);
+    res.status(500).json({ error: error.message || 'Gagal memperbarui artikel di database server.' });
+  }
+});
+
+// 6. Admin Endpoint: Delete article
+app.delete('/api/admin/articles/:slug', requireAdminAuth, requirePermission('manageCMS'), async (req, res) => {
+  try {
+    const currentSlug = req.params.slug;
+    const existing = await articlesRepo.getBySlug(currentSlug, { publishedOnly: false });
+    if (!existing) {
+      return res.status(404).json({ error: 'Artikel tidak ditemukan.' });
+    }
+
+    const deleted = await articlesRepo.delete(currentSlug);
+    if (!deleted) {
+      return res.status(500).json({ error: 'Gagal menghapus artikel dari database.' });
+    }
+    res.json({ success: true, message: `Artikel "${existing.title}" berhasil dihapus.` });
+  } catch (error: any) {
+    console.error(`Error deleting article ${req.params.slug}:`, error);
+    res.status(500).json({ error: error.message || 'Gagal menghapus artikel dari database server.' });
+  }
+});
+
+// -------------------------------------------------------------
+// PROMO CODES & VOUCHERS REST ENDPOINTS (MEDIUM-02A BACKEND FOUNDATION)
+// Authoritative SQL Single Source of Truth for Promo Codes & Validation
+// -------------------------------------------------------------
+
+// 1. Admin Endpoint: List all promo codes
+app.get('/api/admin/promos', requireAdminAuth, requirePermission('manageCMS'), async (req, res) => {
+  try {
+    const list = await promoCodesRepo.getAll();
+    res.json(list);
+  } catch (error: any) {
+    console.error('Error fetching admin promo codes:', error);
+    res.status(500).json({ error: error.message || 'Gagal memuat daftar kode promo.' });
+  }
+});
+
+// 2. Admin Endpoint: Create promo code
+app.post('/api/admin/promos', requireAdminAuth, requirePermission('manageCMS'), async (req, res) => {
+  try {
+    const body = req.body || {};
+    const code = normalizePromoCode(body.code || '');
+
+    if (!code || code.length < 3) {
+      return res.status(400).json({ error: 'Kode promo minimal 3 karakter alfanumerik.' });
+    }
+
+    const existing = await promoCodesRepo.getByCode(code);
+    if (existing) {
+      return res.status(409).json({ error: `Kode promo "${code}" sudah terdaftar.` });
+    }
+
+    const discountType = body.discountType === 'percentage' ? 'percentage' : 'fixed';
+    const discountValue = Number(body.discountValue);
+    if (isNaN(discountValue) || discountValue <= 0) {
+      return res.status(400).json({ error: 'Nilai diskon harus berupa angka lebih dari 0.' });
+    }
+    if (discountType === 'percentage' && discountValue > 100) {
+      return res.status(400).json({ error: 'Nilai diskon persentase maksimal 100%.' });
+    }
+    if (discountType === 'fixed' && discountValue < 1000) {
+      return res.status(400).json({ error: 'Nilai diskon nominal minimal Rp 1.000.' });
+    }
+
+    const minSpendIDR = Number(body.minSpendIDR) || 0;
+    if (minSpendIDR < 0) {
+      return res.status(400).json({ error: 'Minimal transaksi tidak boleh bernilai negatif.' });
+    }
+
+    if (!body.validUntil) {
+      return res.status(400).json({ error: 'Batas tanggal berlaku (validUntil) wajib diisi.' });
+    }
+
+    const created = await promoCodesRepo.create({
+      code,
+      discountType,
+      discountValue,
+      minSpendIDR,
+      maxDiscount: body.maxDiscount != null ? Number(body.maxDiscount) : null,
+      validUntil: String(body.validUntil).trim(),
+      maxUsage: body.maxUsage != null ? Number(body.maxUsage) : null,
+      description: body.description ? String(body.description).trim() : '',
+      isActive: body.isActive !== false
+    });
+
+    res.status(201).json(created);
+  } catch (error: any) {
+    console.error('Error creating promo code:', error);
+    if (error.message && error.message.includes('sudah terdaftar')) {
+      return res.status(409).json({ error: error.message });
+    }
+    res.status(500).json({ error: error.message || 'Gagal membuat kode promo di database server.' });
+  }
+});
+
+// 3. Admin Endpoint: Update promo code by code or id
+app.put('/api/admin/promos/:code', requireAdminAuth, requirePermission('manageCMS'), async (req, res) => {
+  try {
+    const targetCode = req.params.code;
+    const existing = await promoCodesRepo.getByCode(targetCode) || await promoCodesRepo.getById(targetCode);
+    if (!existing) {
+      return res.status(404).json({ error: `Kode promo "${targetCode}" tidak ditemukan.` });
+    }
+
+    const body = req.body || {};
+    if (body.code) {
+      const normalizedNewCode = normalizePromoCode(body.code);
+      if (normalizedNewCode !== existing.code) {
+        const conflict = await promoCodesRepo.getByCode(normalizedNewCode);
+        if (conflict && conflict.id !== existing.id) {
+          return res.status(409).json({ error: `Kode promo "${normalizedNewCode}" sudah digunakan.` });
+        }
+        body.code = normalizedNewCode;
+      }
+    }
+
+    if (body.discountType === 'percentage' && body.discountValue != null) {
+      const val = Number(body.discountValue);
+      if (val <= 0 || val > 100) {
+        return res.status(400).json({ error: 'Nilai persentase diskon harus antara 1% - 100%.' });
+      }
+    }
+
+    const updated = await promoCodesRepo.update(existing.id, body);
+    if (!updated) {
+      return res.status(404).json({ error: 'Kode promo gagal diperbarui.' });
+    }
+
+    res.json(updated);
+  } catch (error: any) {
+    console.error(`Error updating promo ${req.params.code}:`, error);
+    if (error.message && error.message.includes('sudah digunakan')) {
+      return res.status(409).json({ error: error.message });
+    }
+    res.status(500).json({ error: error.message || 'Gagal memperbarui kode promo.' });
+  }
+});
+
+// 4. Admin Endpoint: Delete promo code by code or id
+app.delete('/api/admin/promos/:code', requireAdminAuth, requirePermission('manageCMS'), async (req, res) => {
+  try {
+    const targetCode = req.params.code;
+    const existing = await promoCodesRepo.getByCode(targetCode) || await promoCodesRepo.getById(targetCode);
+    if (!existing) {
+      return res.status(404).json({ error: `Kode promo "${targetCode}" tidak ditemukan.` });
+    }
+
+    const deleted = await promoCodesRepo.delete(existing.id);
+    if (!deleted) {
+      return res.status(500).json({ error: 'Gagal menghapus kode promo dari database.' });
+    }
+
+    res.json({ success: true, message: `Kode promo "${existing.code}" berhasil dihapus.` });
+  } catch (error: any) {
+    console.error(`Error deleting promo ${req.params.code}:`, error);
+    res.status(500).json({ error: error.message || 'Gagal menghapus kode promo.' });
+  }
+});
+
+// 5. Public Endpoint: Validate promo code against transaction amount (Server-authoritative)
+app.post('/api/promos/validate', async (req, res) => {
+  try {
+    const { code, amount, baseAmount } = req.body || {};
+    const effectiveAmount = Number(amount !== undefined ? amount : baseAmount);
+
+    if (!code || typeof code !== 'string' || !code.trim()) {
+      return res.status(400).json({
+        valid: false,
+        discount: 0,
+        reason: 'CODE_REQUIRED',
+        message: 'Kode promo wajib diisi.'
+      });
+    }
+
+    if (isNaN(effectiveAmount) || effectiveAmount <= 0) {
+      return res.status(400).json({
+        valid: false,
+        discount: 0,
+        reason: 'INVALID_AMOUNT',
+        message: 'Nominal transaksi harus berupa angka positif.'
+      });
+    }
+
+    const result = await promoCodesRepo.validatePromo(code, effectiveAmount);
+    return res.json(result);
+  } catch (error: any) {
+    console.error('Error in /api/promos/validate:', error);
+    return res.status(500).json({
+      valid: false,
+      discount: 0,
+      reason: 'INTERNAL_ERROR',
+      message: 'Gagal memvalidasi kode promo.'
+    });
+  }
 });
 
 // -------------------------------------------------------------
@@ -1609,6 +1936,10 @@ app.delete('/api/batches/:id', requireAdminAuth, requirePermission('manageTours'
 
 app.post('/api/bookings', async (req, res) => {
   return await bookingMutex.runExclusive(async () => {
+    let reservedPromoCode: string | undefined = undefined;
+    let isSeatsDecremented = false;
+    let decrementedBatchId: string | undefined = undefined;
+    let decrementedSeatsCount = 0;
     try {
       const payload = req.body || {};
 
@@ -1693,19 +2024,60 @@ app.post('/api/bookings', async (req, res) => {
 
         // Decrement seats atomically in SQL
         await shareToursRepo.decrementBatchSeats(batch.id, count);
+        isSeatsDecremented = true;
+        decrementedBatchId = batch.id;
+        decrementedSeatsCount = count;
 
         const allBookings = await bookingsRepo.getAll();
         const bookingCode = payload.bookingCode || generateUniqueBookingCode(allBookings.map(b => b.bookingCode));
         const batchPrice = Number(batch.price ?? trip?.price ?? 0);
         if (batchPrice <= 0) {
+          await shareToursRepo.incrementBatchSeats(batch.id, count);
+          isSeatsDecremented = false;
           return res.status(400).json({ error: 'Harga batch open trip di database tidak valid.' });
         }
         const baseAmount = batchPrice * count;
+
+        // Authoritative Server-Side Promo Code Validation & Atomic Reservation
+        const rawPromoCode = String(
+          payload.promoCode || 
+          payload.promo_code || 
+          payload.details?.promoCode || 
+          payload.details?.promo_code || 
+          payload.participantData?.promoCode || 
+          ''
+        ).trim();
+
+        let verifiedDiscount = 0;
+        let verifiedPromoCode: string | undefined = undefined;
+
+        if (rawPromoCode) {
+          const reserveRes = await promoCodesRepo.reservePromoUsage(rawPromoCode, baseAmount);
+          if (!reserveRes.valid) {
+            await shareToursRepo.incrementBatchSeats(batch.id, count);
+            isSeatsDecremented = false;
+            return res.status(400).json({
+              error: reserveRes.message || 'Kode promo tidak valid.',
+              code: reserveRes.reason || 'INVALID_PROMO'
+            });
+          }
+          reservedPromoCode = reserveRes.promo?.code || rawPromoCode.toUpperCase();
+          verifiedPromoCode = reservedPromoCode;
+          verifiedDiscount = Math.max(0, Math.min(baseAmount, Math.round(Number(reserveRes.discount || 0))));
+        }
+
+        const finalBaseAmount = Math.max(0, baseAmount - verifiedDiscount);
         const uniqueCode = await generateUniquePaymentCodeAsync();
         if (uniqueCode === -1) {
+          if (reservedPromoCode) {
+            await promoCodesRepo.decrementUsage(reservedPromoCode).catch(() => {});
+            reservedPromoCode = undefined;
+          }
+          await shareToursRepo.incrementBatchSeats(batch.id, count);
+          isSeatsDecremented = false;
           return res.status(503).json({ error: 'Semua kode unik pembayaran (1-99) sedang digunakan oleh transaksi aktif lain. Silakan coba beberapa saat lagi.' });
         }
-        const paymentAmount = baseAmount + uniqueCode;
+        const paymentAmount = finalBaseAmount + uniqueCode;
 
         const newBooking = {
           id: payload.id || generateEntityId('book'),
@@ -1732,8 +2104,8 @@ app.post('/api/bookings', async (req, res) => {
           proofOfPayment: 'NOT_APPLICABLE_SLEEK_THEME',
           status: 'Pending Payment' as const,
           paymentStatus: 'Pending' as const,
-          totalPrice: baseAmount,
-          totalPriceIDR: baseAmount,
+          totalPrice: finalBaseAmount,
+          totalPriceIDR: finalBaseAmount,
           baseAmount,
           uniqueCode,
           paymentAmount,
@@ -1746,8 +2118,13 @@ app.post('/api/bookings', async (req, res) => {
             batchId: batch.id,
             tripId: canonicalTripId,
             guests: count,
-            passengers: count
+            passengers: count,
+            promoCode: verifiedPromoCode,
+            discountAmount: verifiedDiscount,
+            verifiedDiscount
           },
+          discount: verifiedDiscount,
+          promoCode: verifiedPromoCode,
           nationalityType: payload.nationalityType,
           adminNotes: ''
         };
@@ -2165,12 +2542,44 @@ app.post('/api/bookings', async (req, res) => {
           });
         }
 
+        // Authoritative Server-Side Promo Code Validation & Atomic Reservation
+        const rawPromoCode = String(
+          payload.promoCode || 
+          payload.promo_code || 
+          payload.details?.promoCode || 
+          payload.details?.promo_code || 
+          payload.participantData?.promoCode || 
+          ''
+        ).trim();
+
+        let verifiedDiscount = 0;
+        let verifiedPromoCode: string | undefined = undefined;
+
+        if (rawPromoCode) {
+          const reserveRes = await promoCodesRepo.reservePromoUsage(rawPromoCode, baseAmount);
+          if (!reserveRes.valid) {
+            return res.status(400).json({
+              error: reserveRes.message || 'Kode promo tidak valid.',
+              code: reserveRes.reason || 'INVALID_PROMO'
+            });
+          }
+          reservedPromoCode = reserveRes.promo?.code || rawPromoCode.toUpperCase();
+          verifiedPromoCode = reservedPromoCode;
+          verifiedDiscount = Math.max(0, Math.min(baseAmount, Math.round(Number(reserveRes.discount || 0))));
+        }
+
+        const finalBaseAmount = Math.max(0, baseAmount - verifiedDiscount);
+
         // Authoritative uniqueCode and paymentAmount from SQL
         const uniqueCode = await generateUniquePaymentCodeAsync();
         if (uniqueCode === -1) {
+          if (reservedPromoCode) {
+            await promoCodesRepo.decrementUsage(reservedPromoCode).catch(() => {});
+            reservedPromoCode = undefined;
+          }
           return res.status(503).json({ error: 'Semua kode unik pembayaran (1-99) sedang digunakan oleh transaksi aktif lain. Silakan coba beberapa saat lagi.' });
         }
-        const paymentAmount = baseAmount + uniqueCode;
+        const paymentAmount = finalBaseAmount + uniqueCode;
 
         const allBookings = await bookingsRepo.getAll();
         const bookingCode = payload.bookingCode || generateUniqueBookingCode(allBookings.map(b => b.bookingCode));
@@ -2199,8 +2608,8 @@ app.post('/api/bookings', async (req, res) => {
           proofOfPayment: 'NOT_APPLICABLE_SLEEK_THEME',
           status: 'Pending Payment' as const,
           paymentStatus: 'Pending' as const,
-          totalPrice: baseAmount,
-          totalPriceIDR: baseAmount,
+          totalPrice: finalBaseAmount,
+          totalPriceIDR: finalBaseAmount,
           baseAmount,
           uniqueCode,
           paymentAmount,
@@ -2211,12 +2620,16 @@ app.post('/api/bookings', async (req, res) => {
             ...(tourSnapshot ? {
               duration: payload.details?.duration || tourSnapshot.duration,
               vehicleName: payload.details?.vehicleName || tourSnapshot.vehicleName
-            } : {})
+            } : {}),
+            promoCode: verifiedPromoCode,
+            discountAmount: verifiedDiscount,
+            verifiedDiscount
           },
           tourSnapshot,
           nationalityType: payload.nationalityType,
           items: payload.items || payload.lineItems || payload.details?.items || undefined,
-          discount: payload.discount || payload.details?.discount || 0,
+          discount: verifiedDiscount,
+          promoCode: verifiedPromoCode,
           adminNotes: ''
         };
 
@@ -2224,6 +2637,12 @@ app.post('/api/bookings', async (req, res) => {
         return res.status(201).json(savedBooking);
       }
     } catch (e: any) {
+      if (reservedPromoCode) {
+        await promoCodesRepo.decrementUsage(reservedPromoCode).catch(() => {});
+      }
+      if (isSeatsDecremented && decrementedBatchId && decrementedSeatsCount > 0) {
+        await shareToursRepo.incrementBatchSeats(decrementedBatchId, decrementedSeatsCount).catch(() => {});
+      }
       console.error('[Error in POST /api/bookings]:', e);
       return res.status(500).json({ error: 'Gagal memproses pendaftaran booking: ' + (e.message || '') });
     }
@@ -2289,6 +2708,11 @@ app.put('/api/bookings/:id', requireAdminAuth, requirePermission('manageBookings
       await shareToursRepo.decrementBatchSeats(batchId, participantsCount);
     }
 
+    const originalPromo = originalBooking.promoCode || originalBooking.details?.promoCode;
+    if (isNowRejected && !wasRejected && originalPromo) {
+      await promoCodesRepo.decrementUsage(originalPromo).catch(() => {});
+    }
+
     // Persist to SQL
     const updated = await bookingsRepo.update(bookingId, updates);
 
@@ -2336,6 +2760,11 @@ app.all(['/api/bookings/:id/status'], requireAdminAuth, requirePermission('manag
 
     if (wasRejected && !isNowRejected && batchId) {
       await shareToursRepo.decrementBatchSeats(batchId, count);
+    }
+
+    const originalPromo = originalBooking.promoCode || originalBooking.details?.promoCode;
+    if (isNowRejected && !wasRejected && originalPromo) {
+      await promoCodesRepo.decrementUsage(originalPromo).catch(() => {});
     }
 
     const updated = await bookingsRepo.update(bookingId, {
@@ -5025,6 +5454,16 @@ async function startServer() {
     // Step 5: Run migration
     console.log('[Startup Step 5/6] Checking and Running Data Migration...');
     await runMigrationIfNeeded();
+
+    // Step 5b: Seed initial articles (MEDIUM-01A idempotent data layer)
+    console.log('[Startup Step 5b/6] Checking and Seeding Initial Blog Articles...');
+    const articleSeedResult = await articlesRepo.seedInitialArticles(BLOG_POSTS);
+    console.log(`[Startup Step 5b/6] ✅ Articles Seed Result: ${articleSeedResult.seeded} new seeded, ${articleSeedResult.skipped} existing skipped (Total: ${articleSeedResult.total})`);
+
+    // Step 5c: Seed initial promo codes (MEDIUM-02A idempotent foundation)
+    console.log('[Startup Step 5c/6] Checking and Seeding Initial Promo Codes...');
+    const promoSeedCount = await promoCodesRepo.seedInitialPromos();
+    console.log(`[Startup Step 5c/6] ✅ Promo Codes Seeded: ${promoSeedCount} new seeded`);
 
     // Step 6: Synchronize required startup state
     console.log('[Startup Step 6/6] Synchronizing Admin Authentication & Operational State...');

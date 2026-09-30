@@ -316,7 +316,10 @@ export const REQUIRED_INDEXES: IndexDefinition[] = [
   { name: 'idx_invoices_number', table: 'invoices', columns: ['invoice_number'] },
   { name: 'idx_reviews_status', table: 'reviews', columns: ['status'] },
   { name: 'idx_assignments_code', table: 'operational_assignments', columns: ['booking_code'] },
-  { name: 'idx_assignments_booking', table: 'operational_assignments', columns: ['booking_id'] }
+  { name: 'idx_assignments_booking', table: 'operational_assignments', columns: ['booking_id'] },
+  { name: 'idx_articles_slug', table: 'articles', columns: ['slug'] },
+  { name: 'idx_articles_status', table: 'articles', columns: ['status'] },
+  { name: 'idx_promos_code', table: 'promo_codes', columns: ['code'] }
 ];
 
 export const REQUIRED_TABLES = [
@@ -333,7 +336,9 @@ export const REQUIRED_TABLES = [
   'service_limits',
   'transport_data',
   'system_meta',
-  'operational_assignments'
+  'operational_assignments',
+  'articles',
+  'promo_codes'
 ];
 
 export async function initSchema(client: DatabaseClient): Promise<void> {
@@ -378,6 +383,7 @@ export async function initSchema(client: DatabaseClient): Promise<void> {
     { table: 'bookings', column: 'checkout_url', type: 'TEXT' },
     { table: 'bookings', column: 'payment_status', type: "VARCHAR(64) DEFAULT 'Pending'" },
     { table: 'bookings', column: 'status', type: "VARCHAR(64) DEFAULT 'Pending Payment'" },
+    { table: 'bookings', column: 'promo_code', type: 'VARCHAR(64)' },
     { table: 'payments', column: 'payment_status', type: "VARCHAR(32) DEFAULT 'Pending'" },
     { table: 'payments', column: 'order_id', type: 'VARCHAR(64)' }
   ];
@@ -514,5 +520,5 @@ export async function validateSchema(client: DatabaseClient): Promise<void> {
     }
   }
 
-  console.log(`[DB Validation] ✅ All 13 tables, required columns, and indexes verified successfully.`);
+  console.log(`[DB Validation] ✅ All ${REQUIRED_TABLES.length} tables, required columns, and indexes verified successfully.`);
 }
