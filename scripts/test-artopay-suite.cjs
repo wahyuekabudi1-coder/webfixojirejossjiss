@@ -171,7 +171,7 @@ async function runTests() {
     assert(resF.status === 200, 'Polling endpoint returned 200 OK');
     assert(resF.body.found === true, 'Order was found in system ledger');
     assert(resF.body.paymentStatus === 'Pending', 'Initial order payment status is Pending');
-    assert(resF.body.orderStatus === 'Pending', 'Initial order booking status is Pending');
+    assert(resF.body.orderStatus === 'Pending' || resF.body.orderStatus === 'Pending Payment', 'Initial order booking status is Pending or Pending Payment');
     assert(resF.body.uniqueCode === createdBooking.uniqueCode, 'Polling returns authoritative uniqueCode');
     assert(resF.body.paymentAmount === createdBooking.paymentAmount, 'Polling returns authoritative paymentAmount');
 

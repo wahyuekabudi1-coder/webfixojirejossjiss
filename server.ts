@@ -3170,9 +3170,14 @@ app.get([
       itinerary: booking.details?.itinerary || []
     };
 
-    const baseAmount = booking.baseAmount || booking.totalPriceIDR || booking.totalPrice || 0;
-    const uniqueCode = booking.uniqueCode || 0;
-    const paymentAmount = booking.paymentAmount || (baseAmount + uniqueCode);
+    const verifiedDiscount = Math.max(0, Math.round(Number(
+      booking.discount !== undefined && booking.discount !== null
+        ? booking.discount
+        : (booking.details?.verifiedDiscount ?? 0)
+    )));
+    const baseAmount = Number(booking.baseAmount) || ((Number(booking.totalPriceIDR || booking.totalPrice || 0)) + verifiedDiscount);
+    const uniqueCode = Number(booking.uniqueCode) || 0;
+    const paymentAmount = Number(booking.paymentAmount) || Math.max(0, baseAmount - verifiedDiscount + uniqueCode);
 
     if (!booking.verificationHash) {
       const codeClean = (booking.bookingCode || booking.id).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
@@ -3248,7 +3253,7 @@ app.get([
       payment: {
         baseAmount,
         uniqueCode,
-        discount: rawBooking.discount || booking.details?.discount || 0,
+        discount: verifiedDiscount,
         totalPaid: paymentAmount,
         currency: 'IDR',
         paidAt: booking.paidAt || '',
@@ -3328,9 +3333,15 @@ app.get('/api/private-tour/invoice-html/:bookingCode', async (req, res) => {
       itinerary: booking.details?.itinerary || []
     };
 
-    const baseAmount = booking.baseAmount || booking.totalPriceIDR || booking.totalPrice || 0;
-    const uniqueCode = booking.uniqueCode || 0;
-    const paymentAmount = booking.paymentAmount || (baseAmount + uniqueCode);
+    const verifiedDiscount = Math.max(0, Math.round(Number(
+      booking.discount !== undefined && booking.discount !== null
+        ? booking.discount
+        : (booking.details?.verifiedDiscount ?? 0)
+    )));
+    const baseAmount = Number(booking.baseAmount) || ((Number(booking.totalPriceIDR || booking.totalPrice || 0)) + verifiedDiscount);
+    const uniqueCode = Number(booking.uniqueCode) || 0;
+    const paymentAmount = Number(booking.paymentAmount) || Math.max(0, baseAmount - verifiedDiscount + uniqueCode);
+    const promoCodeEscaped = sanitizeHtml(booking.promoCode || booking.details?.promoCode || '');
 
     if (!booking.verificationHash) {
       const codeClean = (booking.bookingCode || booking.id).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
@@ -3712,6 +3723,12 @@ app.get('/api/private-tour/invoice-html/:bookingCode', async (req, res) => {
         <td style="color: #64748b;">Harga Dasar Tur (Base Price)</td>
         <td style="text-align: right; font-weight: 600; font-family: monospace;">Rp ${baseAmount.toLocaleString('id-ID')}</td>
       </tr>
+      ${verifiedDiscount > 0 ? `
+      <tr>
+        <td style="color: #dc2626;">Diskon Promo (${promoCodeEscaped || 'Voucher Terverifikasi'})</td>
+        <td style="text-align: right; font-weight: 600; font-family: monospace; color: #dc2626;">- Rp ${verifiedDiscount.toLocaleString('id-ID')}</td>
+      </tr>
+      ` : ''}
       <tr>
         <td style="color: #64748b;">Kode Unik Pembayaran (Unique Payment Code)</td>
         <td style="text-align: right; font-weight: 600; font-family: monospace;">Rp ${uniqueCode.toLocaleString('id-ID')}</td>
@@ -4580,30 +4597,53 @@ app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/paymen
     }
 
     // Backend authoritative amount check (Never trust frontend amount directly)
-    let baseAmount = Number(existingOrder.baseAmount || existingOrder.totalPriceIDR || existingOrder.totalPrice);
-    if (!baseAmount || isNaN(baseAmount) || baseAmount <= 0) {
+    // Server Authoritative: paymentAmount = verifiedBaseAmount - verifiedDiscount + uniqueCode (MEDIUM-02D)
+    const verifiedDiscount = Math.max(0, Math.round(Number(
+      existingOrder.discount !== undefined && existingOrder.discount !== null
+        ? existingOrder.discount
+        : (existingOrder.details?.verifiedDiscount ?? existingOrder.details?.discountAmount ?? 0)
+    )));
+
+    let verifiedBaseAmount = Number(existingOrder.baseAmount);
+    if (!verifiedBaseAmount || isNaN(verifiedBaseAmount) || verifiedBaseAmount <= 0) {
+      const netBase = Number(existingOrder.totalPriceIDR || existingOrder.totalPrice || 0);
+      verifiedBaseAmount = netBase > 0 ? (netBase + verifiedDiscount) : 0;
+    }
+
+    if (!verifiedBaseAmount || isNaN(verifiedBaseAmount) || verifiedBaseAmount <= 0) {
       return res.status(400).json({ error: 'Nominal harga booking tidak valid di database backend.' });
     }
 
+    const finalPayableBase = Math.max(0, verifiedBaseAmount - verifiedDiscount);
+
     let uniqueCode = Number(existingOrder.uniqueCode || 0);
     let paymentAmount = Number(existingOrder.paymentAmount || 0);
+    const expectedPaymentAmount = finalPayableBase + uniqueCode;
 
-    // If booking doesn't have uniqueCode or paymentAmount, or if uniqueCode is out of 1-99 range:
-    if (!uniqueCode || uniqueCode < 1 || uniqueCode > 99 || !paymentAmount || paymentAmount !== baseAmount + uniqueCode) {
-      const allBookings = await bookingsRepo.getAll();
-      uniqueCode = generateUniquePaymentCode(allBookings.filter(b => b.id !== existingOrder.id));
-      paymentAmount = baseAmount + uniqueCode;
-      existingOrder.baseAmount = baseAmount;
+    // If booking doesn't have uniqueCode or valid paymentAmount, or if uniqueCode is out of 1-99 range:
+    if (!uniqueCode || uniqueCode < 1 || uniqueCode > 99 || !paymentAmount || paymentAmount !== expectedPaymentAmount) {
+      if (!uniqueCode || uniqueCode < 1 || uniqueCode > 99) {
+        const allBookings = await bookingsRepo.getAll();
+        uniqueCode = generateUniquePaymentCode(allBookings.filter(b => b.id !== existingOrder.id));
+      }
+      paymentAmount = finalPayableBase + uniqueCode;
+      existingOrder.baseAmount = verifiedBaseAmount;
+      existingOrder.discount = verifiedDiscount;
       existingOrder.uniqueCode = uniqueCode;
       existingOrder.paymentAmount = paymentAmount;
+      existingOrder.totalPrice = finalPayableBase;
+      existingOrder.totalPriceIDR = finalPayableBase;
       await bookingsRepo.update(existingOrder.id, {
-        baseAmount,
+        baseAmount: verifiedBaseAmount,
+        discount: verifiedDiscount,
         uniqueCode,
-        paymentAmount
+        paymentAmount,
+        totalPrice: finalPayableBase,
+        totalPriceIDR: finalPayableBase
       });
     }
 
-    // REQUIREMENT 7: Final payment amount sent to ArtoPay MUST be paymentAmount (baseAmount + uniqueCode)!
+    // REQUIREMENT: Final payment amount sent to ArtoPay MUST be paymentAmount (verifiedBaseAmount - verifiedDiscount + uniqueCode)!
     const numericAmount = paymentAmount;
 
     const config = getArtoPayConfig();
@@ -4674,7 +4714,9 @@ app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/paymen
           travelDate: existingOrder.departureDate,
           nationality: existingOrder.nationalityType,
           pax: existingOrder.participantsCount,
-          baseAmount: existingOrder.baseAmount,
+          baseAmount: verifiedBaseAmount,
+          discount: verifiedDiscount,
+          promoCode: existingOrder.promoCode || undefined,
           uniqueCode: existingOrder.uniqueCode,
           paymentAmount: existingOrder.paymentAmount
         } : {}),

@@ -368,15 +368,27 @@ export class BookingsRepository {
 
   async getActivePendingUniqueCodes(): Promise<Set<number>> {
     const client = await this.db();
-    const rows = await client.query<{ unique_code: number }>(
-      `SELECT unique_code FROM bookings 
+    const now = Date.now();
+    const PAYMENT_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours
+    const rows = await client.query<{ unique_code: number; created_at?: string | null }>(
+      `SELECT unique_code, created_at FROM bookings 
        WHERE (LOWER(payment_status) = 'pending' OR LOWER(payment_status) = 'pending payment' OR LOWER(payment_status) = 'unpaid')
        AND LOWER(status) NOT IN ('cancelled', 'canceled', 'rejected', 'failed', 'expired')
        AND unique_code > 0`
     );
     const set = new Set<number>();
     for (const r of rows) {
-      if (r.unique_code > 0) set.add(Number(r.unique_code));
+      const code = Number(r.unique_code);
+      if (code > 0) {
+        const createdAtMs = r.created_at ? new Date(r.created_at).getTime() : 0;
+        const elapsed = now - createdAtMs;
+        // Only pending bookings created within the 2-hour payment window reserve their unique code
+        // Bookings older than 2 hours (or invalid created_at) do NOT block unique code slots
+        const isWithinPaymentWindow = createdAtMs > 0 && elapsed >= -60000 && elapsed <= PAYMENT_WINDOW_MS;
+        if (isWithinPaymentWindow) {
+          set.add(code);
+        }
+      }
     }
     return set;
   }
