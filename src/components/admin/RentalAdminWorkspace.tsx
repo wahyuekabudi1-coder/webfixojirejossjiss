@@ -55,24 +55,20 @@ export default function RentalAdminWorkspace({
   const [activeZoneDetail, setActiveZoneDetail] = useState<'Zone 0' | 'Zone 1' | 'Zone 2' | null>(null);
 
   const [editingRatesZone, setEditingRatesZone] = useState<'Zone 0' | 'Zone 1' | 'Zone 2' | null>(null);
-  const [zoneRatesForm, setZoneRatesForm] = useState<Record<string, { usd: number, idr: number }>>({});
+  const [zoneRatesForm, setZoneRatesForm] = useState<Record<string, { idr: number }>>({});
 
   const handleStartEditRates = (zoneCode: 'Zone 0' | 'Zone 1' | 'Zone 2') => {
-    const initialForm: Record<string, { usd: number, idr: number }> = {};
+    const initialForm: Record<string, { idr: number }> = {};
     rentalCategories.forEach(cat => {
-      let usd = 0;
       let idr = 0;
       if (zoneCode === 'Zone 0') {
-        usd = cat.priceZone0USD || 0;
         idr = cat.priceZone0IDR || 0;
       } else if (zoneCode === 'Zone 1') {
-        usd = cat.priceZone1USD || 0;
         idr = cat.priceZone1IDR || 0;
       } else {
-        usd = cat.priceZone2USD || 0;
         idr = cat.priceZone2IDR || 0;
       }
-      initialForm[cat.id] = { usd, idr };
+      initialForm[cat.id] = { idr };
     });
     setZoneRatesForm(initialForm);
     setEditingRatesZone(zoneCode);
@@ -83,22 +79,24 @@ export default function RentalAdminWorkspace({
       const formVal = zoneRatesForm[cat.id];
       if (!formVal) return cat;
 
+      const derivedUSD = Math.round(formVal.idr / 16000);
+
       if (zoneCode === 'Zone 0') {
         return {
           ...cat,
-          priceZone0USD: formVal.usd,
+          priceZone0USD: derivedUSD,
           priceZone0IDR: formVal.idr
         };
       } else if (zoneCode === 'Zone 1') {
         return {
           ...cat,
-          priceZone1USD: formVal.usd,
+          priceZone1USD: derivedUSD,
           priceZone1IDR: formVal.idr
         };
       } else {
         return {
           ...cat,
-          priceZone2USD: formVal.usd,
+          priceZone2USD: derivedUSD,
           priceZone2IDR: formVal.idr
         };
       }
@@ -678,33 +676,32 @@ export default function RentalAdminWorkspace({
                         <div className="space-y-3 pt-1">
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                             {rentalCategories.map(cat => {
-                              const rates = zoneRatesForm[cat.id] || { usd: 0, idr: 0 };
+                              const rates = zoneRatesForm[cat.id] || { idr: 0 };
                               return (
                                 <div key={cat.id} className="bg-neutral-900/60 p-3 rounded-lg border border-neutral-800 space-y-2">
-                                  <span className="text-[10px] font-bold text-white uppercase block">{cat.name}</span>
-                                  <div className="grid grid-cols-2 gap-2">
-                                    <div className="space-y-0.5">
-                                      <label className="text-[8px] font-mono text-neutral-500 uppercase block">USD Rate</label>
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-[10px] font-bold text-white uppercase block">{cat.name}</span>
+                                    {rates.idr > 0 && (
+                                      <span className="text-[8px] font-mono text-neutral-400">
+                                        ≈ ${Math.round(rates.idr / 16000)} / ¥{(Math.round(rates.idr / 16000) * 7.2).toFixed(0)}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    <label className="text-[8px] font-mono text-neutral-500 uppercase block">Tarif Harian (Rp IDR)</label>
+                                    <div className="relative font-mono">
+                                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-emerald-500 font-mono">Rp</span>
                                       <input
                                         type="number"
-                                        value={rates.usd}
+                                        min={10000}
+                                        step={10000}
+                                        value={rates.idr || ''}
                                         onChange={e => setZoneRatesForm(prev => ({
                                           ...prev,
-                                          [cat.id]: { ...rates, usd: Number(e.target.value) }
+                                          [cat.id]: { idr: Number(e.target.value) }
                                         }))}
-                                        className={`w-full ${theme.input} border px-2 py-1 text-xs rounded-lg focus:outline-none focus:border-amber-500`}
-                                      />
-                                    </div>
-                                    <div className="space-y-0.5">
-                                      <label className="text-[8px] font-mono text-neutral-500 uppercase block">IDR Rate</label>
-                                      <input
-                                        type="number"
-                                        value={rates.idr}
-                                        onChange={e => setZoneRatesForm(prev => ({
-                                          ...prev,
-                                          [cat.id]: { ...rates, idr: Number(e.target.value) }
-                                        }))}
-                                        className={`w-full ${theme.input} border px-2 py-1 text-xs rounded-lg focus:outline-none focus:border-amber-500`}
+                                        placeholder="500000"
+                                        className={`w-full ${theme.input} border pl-6 pr-2 py-1 text-xs rounded-lg focus:outline-none focus:border-amber-500 font-mono font-bold`}
                                       />
                                     </div>
                                   </div>

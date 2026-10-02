@@ -4424,11 +4424,16 @@ export default function AdminView() {
               <form 
                 onSubmit={(e) => {
                   e.preventDefault();
+                  const normalizedRoute = {
+                    ...airportForm,
+                    priceIDR: Number(airportForm.priceIDR || 0),
+                    priceUSD: Math.round(Number(airportForm.priceIDR || 0) / 16000)
+                  };
                   if (editingAirportRoute) {
-                    setAirportRoutes(airportRoutes.map(r => r.id === airportForm.id ? airportForm : r));
+                    setAirportRoutes(airportRoutes.map(r => r.id === airportForm.id ? normalizedRoute : r));
                     triggerToast('Rute transfer berhasil diperbarui');
                   } else {
-                    setAirportRoutes([airportForm, ...airportRoutes]);
+                    setAirportRoutes([normalizedRoute, ...airportRoutes]);
                     triggerToast('Rute transfer baru berhasil didaftarkan');
                   }
                   clearAirportDraft();
@@ -4461,29 +4466,36 @@ export default function AdminView() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-left">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-neutral-500 uppercase">Harga USD</label>
-                    <input 
-                      type="number" 
-                      required
-                      value={airportForm.priceUSD}
-                      onChange={(e) => setAirportForm({ ...airportForm, priceUSD: Number(e.target.value) })}
-                      placeholder="30" 
-                      className={`w-full ${theme.input} border rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-amber-500 font-mono`} 
-                    />
+                <div className="space-y-1 text-left">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-black text-neutral-500 uppercase">Harga Rute Transfer (Rp IDR)</label>
+                    {Number(airportForm.priceIDR) > 0 && (
+                      <span className="text-[9px] font-mono text-emerald-500 font-bold">
+                        ≈ ${Math.round(Number(airportForm.priceIDR) / 16000)} USD / ¥{(Math.round(Number(airportForm.priceIDR) / 16000) * 7.2).toFixed(0)} CNY
+                      </span>
+                    )}
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-neutral-500 uppercase">Harga IDR</label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-600 font-mono">Rp</span>
                     <input 
                       type="number" 
                       required
-                      value={airportForm.priceIDR}
-                      onChange={(e) => setAirportForm({ ...airportForm, priceIDR: Number(e.target.value) })}
+                      min={10000}
+                      step={10000}
+                      value={airportForm.priceIDR || ''}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setAirportForm({ 
+                          ...airportForm, 
+                          priceIDR: val,
+                          priceUSD: val > 0 ? Math.round(val / 16000) : 0
+                        });
+                      }}
                       placeholder="450000" 
-                      className={`w-full ${theme.input} border rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-amber-500 font-mono`} 
+                      className={`w-full ${theme.input} border rounded-xl pl-9 pr-3.5 py-2.5 text-xs focus:outline-none focus:border-amber-500 font-mono`} 
                     />
                   </div>
+                  <span className="text-[9px] text-neutral-500 block">Harga transaksi wajib IDR. Kurs USD/CNY merupakan estimasi konversi tampilan pelanggan.</span>
                 </div>
 
                 <div className="pt-4 border-t border-neutral-850 flex justify-end gap-2.5">
@@ -4574,8 +4586,8 @@ export default function AdminView() {
                           <td className="p-4 font-mono font-bold text-amber-500">{row.id}</td>
                           <td className="p-4 font-black">✈️ {row.airport}</td>
                           <td className="p-4 font-extrabold">{row.city}</td>
-                          <td className="p-4 font-mono font-bold text-emerald-500">${row.priceUSD}</td>
-                          <td className="p-4 font-mono font-bold text-emerald-500">Rp {row.priceIDR.toLocaleString('id-ID')}</td>
+                          <td className="p-4 font-mono font-bold text-neutral-400 text-xs">≈ ${Math.round((row.priceIDR || 0) / 16000)}</td>
+                          <td className="p-4 font-mono font-bold text-emerald-500">Rp {(row.priceIDR || 0).toLocaleString('id-ID')}</td>
                           <td className="p-4">
                             <span className="text-[9px] font-mono font-black uppercase px-2 py-0.5 rounded border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
                               {row.status}
@@ -4590,8 +4602,8 @@ export default function AdminView() {
                                     id: row.id,
                                     airport: row.airport,
                                     city: row.city,
-                                    priceUSD: row.priceUSD,
-                                    priceIDR: row.priceIDR,
+                                    priceUSD: Math.round(Number(row.priceIDR || 0) / 16000),
+                                    priceIDR: Number(row.priceIDR || 0),
                                     status: row.status
                                   });
                                   setIsAirportFormOpen(true);
@@ -4714,27 +4726,35 @@ export default function AdminView() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-left">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-neutral-500 uppercase">Surcharge USD</label>
+                <div className="space-y-1 text-left">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-black text-neutral-500 uppercase">Surcharge Penjemputan Bandara (Rp IDR)</label>
+                    {Number(newAirportForm.surchargeIDR) > 0 && (
+                      <span className="text-[9px] font-mono text-emerald-500 font-bold">
+                        ≈ ${Math.round(Number(newAirportForm.surchargeIDR) / 16000)} USD / ¥{(Math.round(Number(newAirportForm.surchargeIDR) / 16000) * 7.2).toFixed(0)} CNY
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-600 font-mono">Rp</span>
                     <input 
                       type="number" 
-                      value={newAirportForm.surchargeUSD}
-                      onChange={(e) => setNewAirportForm({ ...newAirportForm, surchargeUSD: Number(e.target.value) })}
+                      min={0}
+                      step={5000}
+                      value={newAirportForm.surchargeIDR || ''}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setNewAirportForm({ 
+                          ...newAirportForm, 
+                          surchargeIDR: val,
+                          surchargeUSD: val > 0 ? Math.round(val / 16000) : 0
+                        });
+                      }}
                       placeholder="0" 
-                      className={`w-full ${theme.input} border rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-amber-500 font-mono`} 
+                      className={`w-full ${theme.input} border rounded-xl pl-9 pr-3.5 py-2.5 text-xs focus:outline-none focus:border-amber-500 font-mono font-bold text-slate-900`} 
                     />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-neutral-500 uppercase">Surcharge IDR</label>
-                    <input 
-                      type="number" 
-                      value={newAirportForm.surchargeIDR}
-                      onChange={(e) => setNewAirportForm({ ...newAirportForm, surchargeIDR: Number(e.target.value) })}
-                      placeholder="0" 
-                      className={`w-full ${theme.input} border rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-amber-500 font-mono`} 
-                    />
-                  </div>
+                  <span className="text-[9px] text-neutral-500 block">Biaya tambahan terminal / gerbang bandara dalam Rupiah (USD/CNY preview display).</span>
                 </div>
 
                 <div className="space-y-1 text-left">
@@ -4935,31 +4955,35 @@ export default function AdminView() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-black text-neutral-500 uppercase">Surcharge Penjemputan USD</label>
+                    <div className="space-y-1 text-left">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-black text-neutral-500 uppercase">Surcharge Penjemputan Bandara (Rp IDR)</label>
+                        {Number(activeAp.surchargeIDR) > 0 && (
+                          <span className="text-[9px] font-mono text-emerald-500 font-bold">
+                            ≈ ${Math.round(Number(activeAp.surchargeIDR) / 16000)} USD / ¥{(Math.round(Number(activeAp.surchargeIDR) / 16000) * 7.2).toFixed(0)} CNY
+                          </span>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-600 font-mono">Rp</span>
                         <input
                           type="number"
-                          value={activeAp.surchargeUSD}
+                          min={0}
+                          step={5000}
+                          value={activeAp.surchargeIDR || ''}
                           onChange={(e) => {
-                            const updated = airports.map(a => a.code === activeAp.code ? { ...a, surchargeUSD: Number(e.target.value) } : a);
+                            const val = Number(e.target.value);
+                            const updated = airports.map(a => a.code === activeAp.code ? { 
+                              ...a, 
+                              surchargeIDR: val,
+                              surchargeUSD: val > 0 ? Math.round(val / 16000) : 0
+                            } : a);
                             setAirports(updated);
                           }}
-                          className={`w-full ${theme.input} border rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-amber-500 font-mono`}
+                          className={`w-full ${theme.input} border rounded-xl pl-9 pr-3.5 py-2 text-xs focus:outline-none focus:border-amber-500 font-mono`}
                         />
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-black text-neutral-500 uppercase">Surcharge Penjemputan IDR</label>
-                        <input
-                          type="number"
-                          value={activeAp.surchargeIDR}
-                          onChange={(e) => {
-                            const updated = airports.map(a => a.code === activeAp.code ? { ...a, surchargeIDR: Number(e.target.value) } : a);
-                            setAirports(updated);
-                          }}
-                          className={`w-full ${theme.input} border rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-amber-500 font-mono`}
-                        />
-                      </div>
+                      <span className="text-[9px] text-neutral-500 block">Surcharge gerbang/terminal bandara wajib IDR. Kurs USD/CNY adalah display-only.</span>
                     </div>
 
                     <div className="space-y-1">
@@ -5027,12 +5051,12 @@ export default function AdminView() {
                         <span className="text-[10px] font-black font-mono text-amber-500 block">BIAYA SURCHARGE AKTIF</span>
                         <div className="grid grid-cols-2 gap-4 text-xs font-mono">
                           <div>
-                            <span className="text-[9px] text-neutral-500 block font-bold">MATA UANG USD</span>
-                            <span className="font-black text-emerald-400">${activeAp.surchargeUSD}</span>
+                            <span className="text-[9px] text-neutral-500 block font-bold">ESTIMASI KURS (DISPLAY)</span>
+                            <span className="font-bold text-neutral-400">≈ ${Math.round((activeAp.surchargeIDR || 0) / 16000)} USD</span>
                           </div>
                           <div>
-                            <span className="text-[9px] text-neutral-500 block font-bold">MATA UANG IDR</span>
-                            <span className="font-black text-emerald-400">Rp {activeAp.surchargeIDR.toLocaleString('id-ID')}</span>
+                            <span className="text-[9px] text-neutral-500 block font-bold">TARIF TRANSAKSI RESMI (IDR)</span>
+                            <span className="font-black text-emerald-400">Rp {(activeAp.surchargeIDR || 0).toLocaleString('id-ID')}</span>
                           </div>
                         </div>
                       </div>

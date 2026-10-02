@@ -21,8 +21,8 @@ interface TaxiRoute {
   vehicle: string;
   maxPassengers: number;
   maxLuggage: number;
-  price: number; // USD
-  priceIDR: number; // IDR
+  price: number; // USD display only (derived from priceIDR)
+  priceIDR: number; // IDR (Authoritative transactional)
   status: 'Active' | 'Inactive';
 }
 
@@ -37,8 +37,8 @@ interface AirportTransfer {
   maxLuggage: number;
   meetAndGreet: boolean;
   flightNumRequired: boolean;
-  price: number; // USD
-  priceIDR: number; // IDR
+  price: number; // USD display only (derived from priceIDR)
+  priceIDR: number; // IDR (Authoritative transactional)
   status: 'Active' | 'Inactive';
 }
 
@@ -87,7 +87,6 @@ export default function TaxiAirportBuilders({
     destinationArea: 'Bandara Juanda T1',
     vehicleIndex: 1, // Innova Reborn
     priceIDR: 650000,
-    priceUSD: 43,
     status: 'Active' as 'Active' | 'Inactive'
   });
 
@@ -102,7 +101,6 @@ export default function TaxiAirportBuilders({
     meetAndGreet: true,
     flightNumRequired: true,
     priceIDR: 600000,
-    priceUSD: 40,
     status: 'Active' as 'Active' | 'Inactive'
   });
 
@@ -224,7 +222,7 @@ export default function TaxiAirportBuilders({
       vehicle: preset.name,
       maxPassengers: preset.passengers,
       maxLuggage: preset.luggage,
-      price: Number(taxiForm.priceUSD),
+      price: Math.round(Number(taxiForm.priceIDR) / 16000),
       priceIDR: Number(taxiForm.priceIDR),
       status: taxiForm.status
     };
@@ -301,7 +299,7 @@ export default function TaxiAirportBuilders({
       maxLuggage: preset.luggage,
       meetAndGreet: airportForm.meetAndGreet,
       flightNumRequired: airportForm.flightNumRequired,
-      price: Number(airportForm.priceUSD),
+      price: Math.round(Number(airportForm.priceIDR) / 16000),
       priceIDR: Number(airportForm.priceIDR),
       status: airportForm.status
     };
@@ -415,7 +413,6 @@ export default function TaxiAirportBuilders({
                     destinationArea: 'Bandara Juanda T1',
                     vehicleIndex: 1,
                     priceIDR: 650000,
-                    priceUSD: 43,
                     status: 'Active'
                   });
                   setIsTaxiModalOpen(true);
@@ -485,7 +482,6 @@ export default function TaxiAirportBuilders({
                                   destinationArea: r.destinationArea,
                                   vehicleIndex: idx !== -1 ? idx : 1,
                                   priceIDR: r.priceIDR,
-                                  priceUSD: r.price,
                                   status: r.status
                                 });
                                 setIsTaxiModalOpen(true);
@@ -556,7 +552,6 @@ export default function TaxiAirportBuilders({
                     meetAndGreet: true,
                     flightNumRequired: true,
                     priceIDR: 600000,
-                    priceUSD: 40,
                     status: 'Active'
                   });
                   setIsAirportModalOpen(true);
@@ -631,8 +626,7 @@ export default function TaxiAirportBuilders({
                                   vehicleIndex: idx !== -1 ? idx : 1,
                                   meetAndGreet: t.meetAndGreet,
                                   flightNumRequired: t.flightNumRequired,
-                                  priceIDR: t.priceIDR,
-                                  priceUSD: t.price,
+                                  priceIDR: Number(t.priceIDR || 0),
                                   status: t.status
                                 });
                                 setIsAirportModalOpen(true);
@@ -758,27 +752,37 @@ export default function TaxiAirportBuilders({
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-800 block uppercase">Harga Fixed (IDR)</label>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold text-slate-800 block uppercase">Harga Fixed Taxi (Rp IDR)</label>
+                  {taxiForm.priceIDR > 0 && (
+                    <span className="text-[9px] font-mono text-neutral-500 font-semibold">
+                      ≈ ${Math.round(taxiForm.priceIDR / 16000)} USD / ¥{(Math.round(taxiForm.priceIDR / 16000) * 7.2).toFixed(0)} CNY
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-600 font-mono">Rp</span>
                   <input
                     type="number"
                     required
-                    value={taxiForm.priceIDR}
-                    onChange={(e) => setTaxiForm({ ...taxiForm, priceIDR: Number(e.target.value), priceUSD: Math.round(Number(e.target.value) / 15000) })}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:border-amber-500 text-slate-900"
+                    min={10000}
+                    step={10000}
+                    value={taxiForm.priceIDR || ''}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setTaxiForm({
+                        ...taxiForm,
+                        priceIDR: val
+                      });
+                    }}
+                    placeholder="650000"
+                    className="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-3 py-2 text-xs font-mono font-bold focus:outline-none focus:border-amber-500 text-slate-900"
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-800 block uppercase">Harga USD Equivalen</label>
-                  <input
-                    type="number"
-                    required
-                    value={taxiForm.priceUSD}
-                    onChange={(e) => setTaxiForm({ ...taxiForm, priceUSD: Number(e.target.value) })}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:border-amber-500 text-slate-900"
-                  />
-                </div>
+                <span className="text-[9px] text-slate-500 block">
+                  Semua harga transaksi taksi wajib IDR. Kurs USD/CNY merupakan pratinjau display pelanggan.
+                </span>
               </div>
 
               <div className="space-y-1">
@@ -912,27 +916,37 @@ export default function TaxiAirportBuilders({
                 </label>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-800 block uppercase">Harga (IDR)</label>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold text-slate-800 block uppercase">Harga Rute Transfer (Rp IDR)</label>
+                  {airportForm.priceIDR > 0 && (
+                    <span className="text-[9px] font-mono text-neutral-500 font-semibold">
+                      ≈ ${Math.round(airportForm.priceIDR / 16000)} USD / ¥{(Math.round(airportForm.priceIDR / 16000) * 7.2).toFixed(0)} CNY
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-600 font-mono">Rp</span>
                   <input
                     type="number"
                     required
-                    value={airportForm.priceIDR}
-                    onChange={(e) => setAirportForm({ ...airportForm, priceIDR: Number(e.target.value), priceUSD: Math.round(Number(e.target.value) / 15000) })}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:border-amber-500 text-slate-900"
+                    min={10000}
+                    step={10000}
+                    value={airportForm.priceIDR || ''}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setAirportForm({
+                        ...airportForm,
+                        priceIDR: val
+                      });
+                    }}
+                    placeholder="600000"
+                    className="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-3 py-2 text-xs font-mono font-bold focus:outline-none focus:border-amber-500 text-slate-900"
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-800 block uppercase">Harga USD Equivalen</label>
-                  <input
-                    type="number"
-                    required
-                    value={airportForm.priceUSD}
-                    onChange={(e) => setAirportForm({ ...airportForm, priceUSD: Number(e.target.value) })}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:border-amber-500 text-slate-900"
-                  />
-                </div>
+                <span className="text-[9px] text-slate-500 block">
+                  Semua harga transaksi transfer bandara wajib IDR. Kurs USD/CNY merupakan pratinjau display pelanggan.
+                </span>
               </div>
 
               <div className="flex gap-3 pt-4 border-t border-slate-200">

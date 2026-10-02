@@ -98,8 +98,8 @@ export default function AirportTransferView() {
       r => r.airport === selectedAirport && r.city === destinationCity
     );
 
-    let baseUSD = matchingRoute ? matchingRoute.priceUSD : 25;
-    let baseIDR = matchingRoute ? matchingRoute.priceIDR : 380000;
+    let baseIDR = matchingRoute ? Number(matchingRoute.priceIDR || 0) : 380000;
+    let baseUSD = matchingRoute ? (matchingRoute.priceIDR > 0 ? Math.round(matchingRoute.priceIDR / 16000) : (matchingRoute.priceUSD || 25)) : 25;
 
     // Route Type modifier (Round trip is double the single way, with a 5% discount!)
     if (routeType === 'Round Trip') {

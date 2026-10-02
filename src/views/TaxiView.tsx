@@ -557,8 +557,8 @@ export default function TaxiView() {
     let baseIDR = 450000;
 
     if (rule) {
-      baseUSD = rule.price_usd;
-      baseIDR = rule.price_idr;
+      baseIDR = Number(rule.price_idr || 0);
+      baseUSD = Number(rule.price_usd || Math.round(baseIDR / 16000));
     } else {
       const distKm = distance || 25;
       baseUSD = Math.max(15, Math.round(10 + distKm * 0.45));
@@ -578,12 +578,14 @@ export default function TaxiView() {
     const destSurcharge = (taxiAreaRules || []).find(r => r.area_id === destAreaId);
 
     if (pickupSurcharge) {
-      baseUSD += pickupSurcharge.surcharge_usd;
-      baseIDR += pickupSurcharge.surcharge_idr;
+      const pIDR = Number(pickupSurcharge.surcharge_idr || 0);
+      baseIDR += pIDR;
+      baseUSD += Number(pickupSurcharge.surcharge_usd || Math.round(pIDR / 16000));
     }
     if (destSurcharge) {
-      baseUSD += destSurcharge.surcharge_usd;
-      baseIDR += destSurcharge.surcharge_idr;
+      const dIDR = Number(destSurcharge.surcharge_idr || 0);
+      baseIDR += dIDR;
+      baseUSD += Number(destSurcharge.surcharge_usd || Math.round(dIDR / 16000));
     }
 
     return { usd: baseUSD, idr: baseIDR };

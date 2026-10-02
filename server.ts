@@ -1295,9 +1295,41 @@ app.post('/api/airport-transfers/sync', requireAdminAuth, requirePermission('man
   try {
     const { airports, routes } = req.body;
     const current = (await transportRepo.getCategoryData<any>('airportTransfers')) || {};
+
+    // IDR-only normalization for routes:
+    // priceIDR is the only transactional price source; priceUSD is display conversion preview
+    const normalizedRoutes = Array.isArray(routes) ? routes.map((r: any) => {
+      let priceIDR = Number(r.priceIDR || 0);
+      const existing = Array.isArray(current.routes) ? current.routes.find((er: any) => er.id === r.id) : null;
+      if (priceIDR <= 0 && existing && Number(existing.priceIDR) > 0) {
+        priceIDR = Number(existing.priceIDR);
+      }
+      return {
+        ...r,
+        priceIDR,
+        priceUSD: priceIDR > 0 ? Math.round(priceIDR / 16000) : Number(r.priceUSD || r.price || 0)
+      };
+    }) : (current.routes || []);
+
+    // IDR-only normalization for airport hubs:
+    // surchargeIDR is the only transactional surcharge source; surchargeUSD is display conversion preview
+    const normalizedAirports = Array.isArray(airports) ? airports.map((a: any) => {
+      let surchargeIDR = Number(a.surchargeIDR || 0);
+      const existing = Array.isArray(current.airports) ? current.airports.find((ea: any) => ea.code === a.code) : null;
+      if (surchargeIDR <= 0 && existing && Number(existing.surchargeIDR) > 0) {
+        surchargeIDR = Number(existing.surchargeIDR);
+      }
+      return {
+        ...a,
+        surchargeIDR,
+        surchargeUSD: surchargeIDR > 0 ? Math.round(surchargeIDR / 16000) : Number(a.surchargeUSD || 0)
+      };
+    }) : (current.airports || []);
+
     const updated = {
-      airports: Array.isArray(airports) ? airports : (current.airports || []),
-      routes: Array.isArray(routes) ? routes : (current.routes || [])
+      airports: normalizedAirports,
+      routes: normalizedRoutes,
+      transfers: Array.isArray(current.transfers) ? current.transfers : (Array.isArray(current) ? current : [])
     };
     if (JSON.stringify(current) === JSON.stringify(updated)) {
       return res.json({ success: true, airportTransfers: updated, noop: true });
@@ -1316,13 +1348,29 @@ app.post('/api/airport-transfers/sync', requireAdminAuth, requirePermission('man
 
 app.get(['/api/taxi/all', '/api/taxi'], async (req, res) => {
   try {
-    const taxi = (await transportRepo.getCategoryData<any>('taxiServices')) || {
-      masterAreas: [],
-      destinations: [],
-      pricingRules: [],
-      areaRules: [],
-      importHistory: []
-    };
+    const rawTaxi = await transportRepo.getCategoryData<any>('taxiServices');
+    let taxi = (rawTaxi && typeof rawTaxi === 'object' && !Array.isArray(rawTaxi)) ? rawTaxi : null;
+    if (!taxi) {
+      taxi = {
+        masterAreas: [
+          { id: "area-sub", code: "SUB", name: "Surabaya", type: "City" },
+          { id: "area-mlg", code: "MLG", name: "Malang", type: "City" },
+          { id: "area-brm", code: "BRM", name: "Bromo", type: "City" }
+        ],
+        destinations: [],
+        pricingRules: [
+          { id: "taxi-rule-sub-mlg", source_id: "area-sub", destination_id: "area-mlg", price_idr: 300000, status: "Active" },
+          { id: "taxi-rule-sub-brm", source_id: "area-sub", destination_id: "area-brm", price_idr: 650000, status: "Active" },
+          { id: "taxi-rule-sub-mlg-prem", source_id: "area-sub", destination_id: "area-mlg", vehicle_type: "Premium", price_idr: 450000, status: "Active" }
+        ],
+        areaRules: [
+          { id: "ar-brm-surcharge", area_id: "area-brm", surcharge_idr: 50000, surcharge_usd: 4, is_blackout: false, note: "Bromo National Park Entrance Surcharge" }
+        ],
+        importHistory: [],
+        routes: Array.isArray(rawTaxi) ? rawTaxi : []
+      };
+      await transportRepo.saveCategoryData('taxiServices', taxi);
+    }
 
     const isAdmin = checkIsAdmin(req);
     if (isAdmin) {
@@ -1345,12 +1393,36 @@ app.post('/api/taxi/sync', requireAdminAuth, requirePermission('manageFleet'), a
   try {
     const payload = req.body;
     const current = (await transportRepo.getCategoryData<any>('taxiServices')) || {};
+
+    const rawPricing = Array.isArray(payload.pricingRules) ? payload.pricingRules : (current.pricingRules || []);
+    const normalizedPricing = rawPricing.map((r: any) => {
+      const priceIDR = Number(r.price_idr ?? r.priceIDR ?? 0);
+      const rawUSD = Number(r.price_usd ?? r.priceUSD ?? 0);
+      return {
+        ...r,
+        price_idr: priceIDR,
+        price_usd: (priceIDR > 0) ? Math.round(priceIDR / 16000) : rawUSD
+      };
+    });
+
+    const rawAreaRules = Array.isArray(payload.areaRules) ? payload.areaRules : (current.areaRules || []);
+    const normalizedAreaRules = rawAreaRules.map((ar: any) => {
+      const surchargeIDR = Number(ar.surcharge_idr ?? ar.surchargeIDR ?? 0);
+      const rawUSD = Number(ar.surcharge_usd ?? ar.surchargeUSD ?? 0);
+      return {
+        ...ar,
+        surcharge_idr: surchargeIDR,
+        surcharge_usd: (surchargeIDR > 0) ? Math.round(surchargeIDR / 16000) : rawUSD
+      };
+    });
+
     const updated = {
       masterAreas: Array.isArray(payload.masterAreas) ? payload.masterAreas : (current.masterAreas || []),
       destinations: Array.isArray(payload.destinations) ? payload.destinations : (current.destinations || []),
-      pricingRules: Array.isArray(payload.pricingRules) ? payload.pricingRules : (current.pricingRules || []),
-      areaRules: Array.isArray(payload.areaRules) ? payload.areaRules : (current.areaRules || []),
-      importHistory: Array.isArray(payload.importHistory) ? payload.importHistory : (current.importHistory || [])
+      pricingRules: normalizedPricing,
+      areaRules: normalizedAreaRules,
+      importHistory: Array.isArray(payload.importHistory) ? payload.importHistory : (current.importHistory || []),
+      routes: Array.isArray(payload.routes) ? payload.routes : (current.routes || [])
     };
     await transportRepo.saveCategoryData('taxiServices', updated);
     console.log('[SQL Persistence] Taxi services synced to persistent SQL database.');
@@ -1379,9 +1451,16 @@ app.post('/api/taxi/import-excel', requireAdminAuth, requirePermission('manageFl
     }
 
     if (Array.isArray(importedRules)) {
-      // Upsert rules by id
+      // Upsert rules by id, normalizing IDR authoritative
       const existing = new Map((taxi.pricingRules || []).map((r: any) => [r.id, r]));
-      importedRules.forEach(r => existing.set(r.id, r));
+      importedRules.forEach(r => {
+        const priceIDR = Number(r.price_idr ?? r.priceIDR ?? 0);
+        existing.set(r.id, {
+          ...r,
+          price_idr: priceIDR,
+          price_usd: Math.round(priceIDR / 16000)
+        });
+      });
       taxi.pricingRules = Array.from(existing.values());
     }
 
@@ -1644,7 +1723,25 @@ app.get('/api/builder/taxi-routes', requireAdminAuth, requirePermission('manageF
 app.post('/api/builder/taxi-routes/sync', requireAdminAuth, requirePermission('manageFleet'), async (req, res) => {
   try {
     const { routes } = req.body;
-    await transportRepo.saveTaxiRoutes(Array.isArray(routes) ? routes : []);
+    const incoming = Array.isArray(routes) ? routes : [];
+    const currentRoutes = await transportRepo.getTaxiRoutes();
+    const currentMap = new Map((Array.isArray(currentRoutes) ? currentRoutes : []).map((r: any) => [r.id, r]));
+
+    const normalized = incoming.map((r: any) => {
+      const existing = currentMap.get(r.id);
+      let priceIDR = Number(r.priceIDR ?? r.price_idr ?? 0);
+      if (priceIDR <= 0 && existing) {
+        priceIDR = Number(existing.priceIDR ?? existing.price_idr ?? 0);
+      }
+      return {
+        ...r,
+        priceIDR,
+        price_idr: priceIDR,
+        price: Math.round(priceIDR / 16000)
+      };
+    });
+
+    await transportRepo.saveTaxiRoutes(normalized);
     console.log('[Persistence] Builder Taxi Routes synced to SQL database.');
     res.json({ success: true, routes: await transportRepo.getTaxiRoutes() });
   } catch (error) {
@@ -1664,7 +1761,27 @@ app.get('/api/builder/airport-transfers', requireAdminAuth, requirePermission('m
 app.post('/api/builder/airport-transfers/sync', requireAdminAuth, requirePermission('manageFleet'), async (req, res) => {
   try {
     const { transfers } = req.body;
-    await transportRepo.saveAirportTransfers(Array.isArray(transfers) ? transfers : []);
+    const incoming = Array.isArray(transfers) ? transfers : [];
+    const currentTransfers = await transportRepo.getAirportTransfers();
+
+    // IDR-only normalization for builder transfers:
+    // 1. Transactional price source must be priceIDR.
+    // 2. Do not use priceUSD as an independent transactional source.
+    // 3. Preserve existing valid IDR route data if incoming priceIDR is missing or invalid.
+    const normalizedTransfers = incoming.map((t: any) => {
+      const existing = currentTransfers.find((c: any) => c.id === t.id);
+      let priceIDR = Number(t.priceIDR || 0);
+      if (priceIDR <= 0 && existing && Number(existing.priceIDR) > 0) {
+        priceIDR = Number(existing.priceIDR);
+      }
+      return {
+        ...t,
+        priceIDR,
+        price: priceIDR > 0 ? Math.round(priceIDR / 16000) : 0 // read-only USD display
+      };
+    });
+
+    await transportRepo.saveAirportTransfers(normalizedTransfers);
     console.log('[Persistence] Builder Airport Transfers synced to SQL database.');
     res.json({ success: true, transfers: await transportRepo.getAirportTransfers() });
   } catch (error) {
@@ -1826,9 +1943,10 @@ app.post('/api/trips', requireAdminAuth, requirePermission('manageTours'), async
       payload.gallery = await sanitizeAndPersistImages(payload.gallery, 'sharetour-gallery');
     }
     const wnaPriceIDR = payload.wnaPriceIDR !== undefined ? Number(payload.wnaPriceIDR) : undefined;
-    const wniPriceIDR = payload.startingPriceIDR !== undefined 
+    const rawWni = payload.startingPriceIDR !== undefined 
       ? Number(payload.startingPriceIDR) 
-      : (payload.wniPrice !== undefined ? Number(payload.wniPrice) : (payload.price !== undefined ? Number(payload.price) : undefined));
+      : (payload.wniPrice !== undefined ? Number(payload.wniPrice) : (Number(payload.price) >= 10000 ? Number(payload.price) : undefined));
+    const wniPriceIDR = rawWni !== undefined && rawWni > 0 ? rawWni : undefined;
 
     const created = await shareToursRepo.createTrip({
       ...payload,
@@ -1856,9 +1974,10 @@ app.put('/api/trips/:id', requireAdminAuth, requirePermission('manageTours'), as
       payload.gallery = await sanitizeAndPersistImages(payload.gallery, 'sharetour-gallery');
     }
     const wnaPriceIDR = payload.wnaPriceIDR !== undefined ? Number(payload.wnaPriceIDR) : undefined;
-    const wniPriceIDR = payload.startingPriceIDR !== undefined 
+    const rawWni = payload.startingPriceIDR !== undefined 
       ? Number(payload.startingPriceIDR) 
-      : (payload.wniPrice !== undefined ? Number(payload.wniPrice) : (payload.price !== undefined ? Number(payload.price) : undefined));
+      : (payload.wniPrice !== undefined ? Number(payload.wniPrice) : (Number(payload.price) >= 10000 ? Number(payload.price) : undefined));
+    const wniPriceIDR = rawWni !== undefined && rawWni > 0 ? rawWni : undefined;
 
     const updated = await shareToursRepo.updateTrip(req.params.id, {
       ...payload,
@@ -1933,7 +2052,7 @@ app.get('/api/batches/:id', async (req, res) => {
 app.post('/api/batches', requireAdminAuth, requirePermission('manageTours'), async (req, res) => {
   try {
     const payload = { ...req.body };
-    if (!payload.price || Number(payload.price) <= 0) {
+    if (!payload.price || Number(payload.price) < 10000) {
       const trip = payload.tripId ? await shareToursRepo.getTripById(payload.tripId) : null;
       if (trip) {
         payload.price = Number(trip.startingPriceIDR ?? (trip as any).wniPrice ?? 0);
@@ -2395,9 +2514,17 @@ app.post('/api/bookings', async (req, res) => {
             return res.status(400).json({ error: 'Rute transfer bandara sedang tidak aktif.' });
           }
 
+          // Legacy USD safety check: reject if route has USD-only without authoritative IDR
+          if ((!route.priceIDR || Number(route.priceIDR) <= 0) && Number(route.priceUSD || route.price || 0) > 0) {
+            return res.status(400).json({
+              error: 'Rute transfer bandara memiliki tarif legacy USD tanpa tarif IDR resmi. Transaksi ditolak demi keamanan.',
+              code: 'AIRPORT_LEGACY_USD_UNSUPPORTED'
+            });
+          }
+
           let routePrice = Number(route.priceIDR || 0);
           if (routePrice <= 0) {
-            return res.status(400).json({ error: 'Tarif rute bandara di database backend tidak valid.' });
+            return res.status(400).json({ error: 'Tarif rute bandara di database backend tidak valid atau belum terkonfigurasi dalam IDR.' });
           }
 
           const isRoundTrip = payload.details?.routeType === 'Round Trip' || payload.routeType === 'Round Trip';
@@ -2420,6 +2547,12 @@ app.post('/api/bookings', async (req, res) => {
           if (airportCode && Array.isArray(airportTransfers.airports)) {
             const airportObj = airportTransfers.airports.find((a: any) => a.code?.toUpperCase() === String(airportCode).toUpperCase());
             if (airportObj) {
+              if ((airportObj.surchargeIDR === undefined || airportObj.surchargeIDR === null || Number(airportObj.surchargeIDR) < 0) && Number(airportObj.surchargeUSD) > 0) {
+                return res.status(400).json({
+                  error: 'Surcharge bandara memiliki tarif legacy USD tanpa tarif IDR resmi. Transaksi ditolak demi keamanan.',
+                  code: 'AIRPORT_HUB_LEGACY_USD_UNSUPPORTED'
+                });
+              }
               surcharge = Number(airportObj.surchargeIDR || 0);
             }
           }
@@ -2462,7 +2595,10 @@ app.post('/api/bookings', async (req, res) => {
 
         } else if (isTaxi) {
           detectedServiceType = 'taxi';
-          const taxiServices = (await transportRepo.getCategoryData<any>('taxiServices')) || { pricingRules: [], masterAreas: [], destinations: [], areaRules: [] };
+          const rawTaxi = await transportRepo.getCategoryData<any>('taxiServices');
+          const taxiServices = (rawTaxi && typeof rawTaxi === 'object' && !Array.isArray(rawTaxi))
+            ? rawTaxi
+            : { pricingRules: [], masterAreas: [], destinations: [], areaRules: [], routes: Array.isArray(rawTaxi) ? rawTaxi : [] };
           const ruleId = String(payload.serviceId || payload.ruleId || payload.details?.ruleId || '').trim();
 
           const masterAreas = taxiServices.masterAreas || [];
@@ -2557,6 +2693,23 @@ app.post('/api/bookings', async (req, res) => {
             }
           }
 
+          // Check builder custom routes if not found in pricingRules
+          if (!rule && ruleId) {
+            const builderRoutes = await transportRepo.getTaxiRoutes();
+            const bRoute = (Array.isArray(builderRoutes) ? builderRoutes : []).find((r: any) => r.id === ruleId);
+            if (bRoute) {
+              rule = {
+                id: bRoute.id,
+                source_id: bRoute.pickupArea || bRoute.pickupCity,
+                destination_id: bRoute.destinationArea || bRoute.destinationCity,
+                vehicle_type: bRoute.vehicle,
+                price_idr: Number(bRoute.priceIDR ?? bRoute.price_idr ?? 0),
+                price_usd: Number(bRoute.price ?? bRoute.priceUSD ?? bRoute.price_usd ?? 0),
+                status: bRoute.status || 'Active'
+              };
+            }
+          }
+
           if (!rule) {
             return res.status(404).json({ error: 'Aturan tarif taksi tidak ditemukan di database backend.' });
           }
@@ -2565,7 +2718,18 @@ app.post('/api/bookings', async (req, res) => {
             return res.status(400).json({ error: 'Layanan tarif taksi sedang tidak aktif.' });
           }
 
-          let basePrice = Number(rule.price_idr || rule.priceIDR || 0);
+          // Legacy USD safety check: reject if rule has USD-only without authoritative IDR
+          const rawIDR = rule.price_idr !== undefined ? rule.price_idr : rule.priceIDR;
+          const rawUSD = rule.price_usd !== undefined ? rule.price_usd : (rule.priceUSD !== undefined ? rule.priceUSD : rule.price);
+
+          if ((rawIDR === undefined || rawIDR === null || Number(rawIDR) <= 0) && Number(rawUSD || 0) > 0) {
+            return res.status(400).json({
+              error: 'Aturan tarif taksi memiliki tarif legacy USD tanpa tarif IDR resmi. Transaksi ditolak demi keamanan.',
+              code: 'TAXI_LEGACY_USD_UNSUPPORTED'
+            });
+          }
+
+          let basePrice = Number(rawIDR || 0);
           if (basePrice <= 0) {
             return res.status(400).json({ error: 'Tarif taksi di database backend tidak valid.' });
           }
@@ -2584,12 +2748,24 @@ app.post('/api/bookings', async (req, res) => {
           if (sAreaId) {
             const pRule = (areaRules || []).find((ar: any) => ar.area_id === sAreaId);
             if (pRule && !pRule.is_blackout) {
+              if ((pRule.surcharge_idr === undefined || pRule.surcharge_idr === null || Number(pRule.surcharge_idr) <= 0) && Number(pRule.surcharge_usd || 0) > 0) {
+                return res.status(400).json({
+                  error: 'Surcharge area taksi memiliki tarif legacy USD tanpa tarif IDR resmi. Transaksi ditolak demi keamanan.',
+                  code: 'TAXI_AREA_LEGACY_USD_UNSUPPORTED'
+                });
+              }
               areaSurchargeTotal += Number(pRule.surcharge_idr || 0);
             }
           }
           if (dAreaId && dAreaId !== sAreaId) {
             const dRule = (areaRules || []).find((ar: any) => ar.area_id === dAreaId);
             if (dRule && !dRule.is_blackout) {
+              if ((dRule.surcharge_idr === undefined || dRule.surcharge_idr === null || Number(dRule.surcharge_idr) <= 0) && Number(dRule.surcharge_usd || 0) > 0) {
+                return res.status(400).json({
+                  error: 'Surcharge area taksi memiliki tarif legacy USD tanpa tarif IDR resmi. Transaksi ditolak demi keamanan.',
+                  code: 'TAXI_AREA_LEGACY_USD_UNSUPPORTED'
+                });
+              }
               areaSurchargeTotal += Number(dRule.surcharge_idr || 0);
             }
           }

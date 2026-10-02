@@ -164,16 +164,16 @@ export interface TaxiPricingRule {
   source_id: string; // reference to TaxiMasterArea.id or TaxiMasterDestination.id
   destination_id: string; // reference to TaxiMasterArea.id or TaxiMasterDestination.id
   vehicle_type: 'Standard' | 'Premium' | 'Family' | 'Van';
-  price_usd: number;
-  price_idr: number;
+  price_usd?: number; // USD display only (derived from price_idr)
+  price_idr: number; // IDR (Authoritative transactional)
   status: 'Active' | 'Inactive';
 }
 
 export interface TaxiAreaRule {
   id: string; // e.g. "AR001"
   area_id: string; // foreign key to TaxiMasterArea.id
-  surcharge_usd: number;
-  surcharge_idr: number;
+  surcharge_usd?: number; // USD display only (derived from surcharge_idr)
+  surcharge_idr: number; // IDR (Authoritative transactional)
   is_blackout: boolean;
   note?: string;
 }
@@ -226,8 +226,8 @@ export interface RentalVehicle {
   passengers: number;
   luggage: number;
   hasAC: boolean;
-  pricePerDay?: number;
-  pricePerDayIDR?: number;
+  pricePerDay?: number; // Display-only conversion preview
+  pricePerDayIDR?: number; // Authoritative transactional rate in IDR
   image: string;
   description: string;
   features: string[];
@@ -241,20 +241,20 @@ export interface RentalCategory {
   description: string;
   displayOrder: number;
   status: 'Active' | 'Inactive';
-  priceZone0USD?: number;
-  priceZone0IDR?: number;
-  priceZone1USD?: number;
-  priceZone1IDR?: number;
-  priceZone2USD?: number;
-  priceZone2IDR?: number;
+  priceZone0USD?: number; // Display-only conversion preview
+  priceZone0IDR?: number; // Authoritative transactional rate in IDR
+  priceZone1USD?: number; // Display-only conversion preview
+  priceZone1IDR?: number; // Authoritative transactional rate in IDR
+  priceZone2USD?: number; // Display-only conversion preview
+  priceZone2IDR?: number; // Authoritative transactional rate in IDR
 }
 
 export interface RentalAddon {
   id: string;
   name: string;
   description: string;
-  priceUSD: number;
-  priceIDR: number;
+  priceUSD: number; // Display-only conversion preview
+  priceIDR: number; // Authoritative transactional price in IDR
   pricingType: 'Fixed' | 'Per Day';
   status: 'Active' | 'Inactive';
   displayOrder: number;
@@ -267,8 +267,8 @@ export interface ZonePricing {
   cityId: string;
   pickupZoneCode: string;
   dropoffZoneCode: string;
-  priceUSD: number;
-  priceIDR: number;
+  priceUSD: number; // Display-only conversion preview
+  priceIDR: number; // Authoritative transactional surcharge in IDR
   status: 'Active' | 'Inactive';
 }
 

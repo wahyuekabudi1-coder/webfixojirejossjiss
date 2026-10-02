@@ -146,10 +146,14 @@ export function calculateShareTourPricing(
 
   let unitPriceIDR = 0;
 
-  const rawBatchPrice = batch ? Number(batch.price || 0) : 0;
-  const rawBatchWnaIDR = batch ? Number(batch.wnaPriceIDR || 0) : 0;
-  const rawTripPriceIDR = Number(trip?.startingPriceIDR || trip?.wniPrice || trip?.price || 0);
-  const rawTripWnaIDR = Number(trip?.wnaPriceIDR || 0);
+  // Authoritative IDR prices must be valid transactional IDR values (>= 10,000)
+  // Legacy USD values (< 10,000, e.g. 150) must NEVER be treated as IDR or used as fallback
+  const rawBatchPrice = (batch && Number(batch.price) >= 10000) ? Number(batch.price) : 0;
+  const rawBatchWnaIDR = (batch && Number(batch.wnaPriceIDR) >= 10000) ? Number(batch.wnaPriceIDR) : 0;
+
+  const explicitTripIDR = Number(trip?.startingPriceIDR || trip?.wniPrice || 0);
+  const rawTripPriceIDR = explicitTripIDR >= 10000 ? explicitTripIDR : (Number(trip?.price) >= 10000 ? Number(trip?.price) : 0);
+  const rawTripWnaIDR = Number(trip?.wnaPriceIDR) >= 10000 ? Number(trip?.wnaPriceIDR) : 0;
 
   if (isWNI) {
     unitPriceIDR = rawBatchPrice > 0 ? rawBatchPrice : rawTripPriceIDR;

@@ -227,7 +227,10 @@ export default function TaxiExcelManager({
   const handleOpenPriceRuleModal = (rule: TaxiPricingRule | null = null) => {
     if (rule) {
       setEditingPriceRule(rule);
-      setPriceRuleForm({ ...rule });
+      setPriceRuleForm({
+        ...rule,
+        price_usd: Math.round((rule.price_idr || 0) / 16000)
+      });
     } else {
       setEditingPriceRule(null);
       setPriceRuleForm({
@@ -235,7 +238,7 @@ export default function TaxiExcelManager({
         source_id: taxiMasterAreas.find(a => a.type === 'Airport')?.id || taxiMasterAreas[0]?.id || '',
         destination_id: taxiMasterAreas.find(a => a.type === 'City')?.id || taxiMasterAreas[0]?.id || '',
         vehicle_type: 'Standard',
-        price_usd: 25,
+        price_usd: 24,
         price_idr: 380000,
         status: 'Active'
       });
@@ -245,11 +248,17 @@ export default function TaxiExcelManager({
 
   const handleSavePriceRule = (e: React.FormEvent) => {
     e.preventDefault();
+    const idr = Number(priceRuleForm.price_idr) || 0;
+    const ruleToSave: TaxiPricingRule = {
+      ...priceRuleForm,
+      price_idr: idr,
+      price_usd: Math.round(idr / 16000)
+    };
     if (editingPriceRule) {
-      setTaxiPricingRules(prev => prev.map(r => r.id === priceRuleForm.id ? { ...priceRuleForm } as TaxiPricingRule : r));
+      setTaxiPricingRules(prev => prev.map(r => r.id === priceRuleForm.id ? ruleToSave : r));
       triggerToast('Aturan tarif berhasil diperbarui!');
     } else {
-      setTaxiPricingRules(prev => [...prev, { ...priceRuleForm } as TaxiPricingRule]);
+      setTaxiPricingRules(prev => [...prev, ruleToSave]);
       triggerToast('Aturan tarif baru berhasil ditambahkan!');
     }
     setIsPriceRuleFormOpen(false);
@@ -383,15 +392,16 @@ export default function TaxiExcelManager({
           const source_id = String(row.source_id || row['Source Area ID'] || '').trim();
           const destination_id = String(row.destination_id || row['Destination Area ID'] || '').trim();
           const vehicle_type = String(row.vehicle_type || row['Vehicle Type'] || 'Standard').trim() as 'Standard' | 'Family' | 'Premium' | 'Van';
-          const price_usd = parseFloat(row.price_usd || row['Price USD'] || 0);
           const price_idr = parseFloat(row.price_idr || row['Price IDR'] || 0);
+          // price_usd is derived display preview only; Excel USD columns are ignored for transaction pricing
+          const price_usd = Math.round(price_idr / 16000);
           const status = String(row.status || 'Active').trim() as 'Active' | 'Inactive';
 
           if (!id) errors.push(`[Pricing_Rules] Row ${rowNum}: ID Aturan Tarif kosong`);
           if (!source_id) errors.push(`[Pricing_Rules] Row ${rowNum}: Source Area ID kosong`);
           if (!destination_id) errors.push(`[Pricing_Rules] Row ${rowNum}: Destination Area ID kosong`);
-          if (price_usd <= 0 || price_idr <= 0) {
-            warnings.push(`[Pricing_Rules] Row ${rowNum}: Nominal harga USD ($${price_usd}) atau IDR (Rp ${price_idr}) bernilai 0 atau negatif.`);
+          if (price_idr <= 0) {
+            warnings.push(`[Pricing_Rules] Row ${rowNum}: Nominal tarif IDR (Rp ${price_idr}) bernilai 0 atau negatif.`);
           }
 
           // Check source referential integrity
@@ -423,8 +433,8 @@ export default function TaxiExcelManager({
           const rowNum = idx + 2;
           const id = String(row.id || row['Rule ID'] || '').trim();
           const area_id = String(row.area_id || row['Area ID'] || '').trim();
-          const surcharge_usd = parseFloat(row.surcharge_usd || row['Surcharge USD'] || 0);
           const surcharge_idr = parseFloat(row.surcharge_idr || row['Surcharge IDR'] || 0);
+          const surcharge_usd = Math.round(surcharge_idr / 16000);
           const is_blackout_val = row.is_blackout || row['Is Blackout'] || false;
           const is_blackout = is_blackout_val === true || String(is_blackout_val).toLowerCase() === 'true' || is_blackout_val === 1 || String(is_blackout_val).toLowerCase() === 'yes';
           const note = String(row.note || '').trim();
@@ -694,7 +704,7 @@ export default function TaxiExcelManager({
           const cityPct = totalAreas ? Math.round((cityAreasCount / totalAreas) * 100) : 0;
 
           // Surcharge details
-          const activeSurchargesCount = taxiAreaRules.filter(r => (r.surcharge_usd > 0 || r.surcharge_idr > 0) && !r.is_blackout).length;
+          const activeSurchargesCount = taxiAreaRules.filter(r => (r.surcharge_idr || 0) > 0 && !r.is_blackout).length;
           const blackoutZonesCount = taxiAreaRules.filter(r => r.is_blackout).length;
 
           return (
@@ -1247,8 +1257,8 @@ export default function TaxiExcelManager({
                       <th className="p-4">ZONA ASAL</th>
                       <th className="p-4">ZONA TUJUAN</th>
                       <th className="p-4">TIPE MOBIL</th>
-                      <th className="p-4 text-right">TARIF USD</th>
-                      <th className="p-4 text-right">TARIF IDR</th>
+                      <th className="p-4 text-right">TARIF DASAR IDR (UTAMA)</th>
+                      <th className="p-4 text-right">PREVIEW KURS</th>
                       <th className="p-4">STATUS</th>
                       <th className="p-4 text-right">TINDAKAN</th>
                     </tr>
@@ -1265,8 +1275,10 @@ export default function TaxiExcelManager({
                           <td className="p-4 font-bold text-neutral-200">{getAreaName(rule.source_id)}</td>
                           <td className="p-4 font-bold text-neutral-200">{getAreaName(rule.destination_id)}</td>
                           <td className="p-4 font-extrabold font-mono text-indigo-400">{rule.vehicle_type}</td>
-                          <td className="p-4 text-right font-mono font-black text-emerald-400">${rule.price_usd}</td>
-                          <td className="p-4 text-right font-mono font-black text-emerald-400">Rp {rule.price_idr.toLocaleString('id-ID')}</td>
+                          <td className="p-4 text-right font-mono font-black text-emerald-400">Rp {(rule.price_idr || 0).toLocaleString('id-ID')}</td>
+                          <td className="p-4 text-right font-mono text-neutral-400 text-[10px]">
+                            ≈ ${Math.round((rule.price_idr || 0) / 16000)} USD
+                          </td>
                           <td className="p-4">
                             <button
                               onClick={() => {
@@ -1547,8 +1559,8 @@ export default function TaxiExcelManager({
                       <tr>
                         <th className="p-4">ID ATURAN</th>
                         <th className="p-4">WILAYAH AREA TARGET</th>
-                        <th className="p-4 text-right">BIAYA TAMBAHAN USD</th>
-                        <th className="p-4 text-right">BIAYA TAMBAHAN IDR</th>
+                        <th className="p-4 text-right">BIAYA TAMBAHAN IDR (UTAMA)</th>
+                        <th className="p-4 text-right">PREVIEW KURS</th>
                         <th className="p-4">BLACKOUT AKTIF</th>
                         <th className="p-4">DESKRIPSI / CATATAN</th>
                         <th className="p-4 text-right">TINDAKAN</th>
@@ -1564,8 +1576,8 @@ export default function TaxiExcelManager({
                           <tr key={rule.id} className="hover:bg-neutral-850/20 transition-all text-neutral-300">
                             <td className="p-4 font-mono font-bold text-amber-500">{rule.id}</td>
                             <td className="p-4 font-bold text-neutral-100">{getAreaName(rule.area_id)}</td>
-                            <td className="p-4 text-right font-mono font-black text-rose-400">+${rule.surcharge_usd}</td>
-                            <td className="p-4 text-right font-mono font-black text-rose-400">+Rp {rule.surcharge_idr.toLocaleString('id-ID')}</td>
+                            <td className="p-4 text-right font-mono font-black text-rose-400">+Rp {(rule.surcharge_idr || 0).toLocaleString('id-ID')}</td>
+                            <td className="p-4 text-right font-mono text-neutral-400 text-[10px]">≈ +${Math.round((rule.surcharge_idr || 0) / 16000)} USD</td>
                             <td className="p-4">
                               <button
                                 onClick={() => {
@@ -1880,28 +1892,34 @@ export default function TaxiExcelManager({
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1 font-mono">
-                  <label className="text-[10px] font-black font-mono text-slate-800 block uppercase">TARIF DASAR (USD)</label>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-black font-mono text-slate-800 block uppercase">TARIF DASAR TRANSAKSI (RP IDR)</label>
+                  {priceRuleForm.price_idr > 0 && (
+                    <span className="text-[9px] font-mono text-neutral-500 font-semibold">
+                      ≈ ${Math.round(priceRuleForm.price_idr / 16000)} USD / ¥{(Math.round(priceRuleForm.price_idr / 16000) * 7.2).toFixed(0)} CNY
+                    </span>
+                  )}
+                </div>
+                <div className="relative font-mono">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-600 font-mono">Rp</span>
                   <input 
                     type="number" 
                     required
-                    value={priceRuleForm.price_usd}
-                    onChange={(e) => setPriceRuleForm({ ...priceRuleForm, price_usd: parseInt(e.target.value, 10) || 0 })}
-                    className="w-full bg-white border border-slate-300 px-3.5 py-2 rounded-xl text-slate-900 focus:outline-none focus:border-amber-500 font-bold" 
+                    min={10000}
+                    step={10000}
+                    value={priceRuleForm.price_idr || ''}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10) || 0;
+                      setPriceRuleForm({ ...priceRuleForm, price_idr: val, price_usd: Math.round(val / 16000) });
+                    }}
+                    placeholder="380000"
+                    className="w-full bg-white border border-slate-300 pl-9 pr-3.5 py-2 rounded-xl text-slate-900 focus:outline-none focus:border-amber-500 font-bold" 
                   />
                 </div>
-
-                <div className="space-y-1 font-mono">
-                  <label className="text-[10px] font-black font-mono text-slate-800 block uppercase">TARIF DASAR (IDR)</label>
-                  <input 
-                    type="number" 
-                    required
-                    value={priceRuleForm.price_idr}
-                    onChange={(e) => setPriceRuleForm({ ...priceRuleForm, price_idr: parseInt(e.target.value, 10) || 0 })}
-                    className="w-full bg-white border border-slate-300 px-3.5 py-2 rounded-xl text-slate-900 focus:outline-none focus:border-amber-500 font-bold" 
-                  />
-                </div>
+                <span className="text-[9px] text-slate-500 block">
+                  Semua transaksi taksi wajib IDR. Kurs USD/CNY merupakan pratinjau display pelanggan.
+                </span>
               </div>
 
               <div className="space-y-1">

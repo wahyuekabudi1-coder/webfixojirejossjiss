@@ -158,8 +158,11 @@ export class ShareToursRepository {
     const slug = trip.slug && trip.slug.trim() !== '' ? trip.slug.trim() : `trip-${Date.now()}`;
 
     const wnaPriceIDR = Number(trip.wnaPriceIDR) || 0;
-    const wniPriceIDR = Number(trip.startingPriceIDR ?? trip.wniPrice ?? trip.price) || 0;
-    const derivedUSD = wnaPriceIDR > 0 ? Math.round(wnaPriceIDR / 16000) : (Number(trip.startingPrice) || 0);
+    const rawWni = Number(trip.startingPriceIDR ?? trip.wniPrice);
+    const wniPriceIDR = (rawWni && rawWni >= 10000) ? rawWni : (Number(trip.price) >= 10000 ? Number(trip.price) : 0);
+    const derivedUSD = wnaPriceIDR > 0 
+      ? Math.round(wnaPriceIDR / 16000) 
+      : (wniPriceIDR > 0 ? Math.round(wniPriceIDR / 16000) : (Number(trip.startingPrice) || 0));
 
     const sql = `
       INSERT INTO share_tours (
@@ -209,10 +212,10 @@ export class ShareToursRepository {
     const wnaPriceIDR = trip.wnaPriceIDR !== undefined ? Number(trip.wnaPriceIDR) : (existing.wnaPriceIDR || 0);
     const wniPriceIDR = trip.startingPriceIDR !== undefined 
       ? Number(trip.startingPriceIDR) 
-      : (trip.wniPrice !== undefined ? Number(trip.wniPrice) : (trip.price !== undefined ? Number(trip.price) : existing.startingPriceIDR));
+      : (trip.wniPrice !== undefined ? Number(trip.wniPrice) : (Number(trip.price) >= 10000 ? Number(trip.price) : existing.startingPriceIDR));
     const derivedUSD = wnaPriceIDR > 0 
       ? Math.round(wnaPriceIDR / 16000) 
-      : (trip.startingPrice !== undefined ? Number(trip.startingPrice) : existing.startingPrice);
+      : (wniPriceIDR > 0 ? Math.round(wniPriceIDR / 16000) : existing.startingPrice);
 
     const sql = `
       UPDATE share_tours SET

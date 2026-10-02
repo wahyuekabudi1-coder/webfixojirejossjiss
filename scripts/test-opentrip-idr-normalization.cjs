@@ -256,6 +256,64 @@ async function run() {
     `Client totalPrice manipulation ignored (authoritative calculation is Rp ${expectedSingleWni.toLocaleString('id-ID')}, got Rp ${totalTamperRes.body.baseAmount?.toLocaleString('id-ID')})`
   );
 
+  // 6b. Test E2: Missing Authoritative IDR safely rejected without guessing
+  console.log('\n--- 6b. Test E2: Rejection when trip has no authoritative IDR price ---');
+  const legacyNoIdrTripId = `trip-noidr-${Date.now()}`;
+  await request({
+    hostname: 'localhost',
+    port: 3000,
+    path: '/api/trips',
+    method: 'POST',
+    headers: adminHeaders
+  }, {
+    id: legacyNoIdrTripId,
+    title: 'Legacy USD Only Trip Test',
+    slug: `legacy-usd-${Date.now()}`,
+    startingPrice: 150, // only legacy USD
+    price: 0,
+    startingPriceIDR: 0,
+    status: 'published'
+  });
+
+  const legacyBatchId = `batch-noidr-${Date.now()}`;
+  await request({
+    hostname: 'localhost',
+    port: 3000,
+    path: '/api/batches',
+    method: 'POST',
+    headers: adminHeaders
+  }, {
+    id: legacyBatchId,
+    tripId: legacyNoIdrTripId,
+    departureDate: getNextWeekday(),
+    quota: 10,
+    availableSeats: 10,
+    price: 0,
+    status: 'open'
+  });
+
+  const missingIdrBookingRes = await request({
+    hostname: 'localhost',
+    port: 3000,
+    path: '/api/bookings',
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  }, {
+    bookingType: 'shared',
+    tripId: legacyNoIdrTripId,
+    batchId: legacyBatchId,
+    nationalityType: 'WNI',
+    participantsCount: 1,
+    fullName: 'Test No IDR',
+    email: 'noidr@test.com',
+    phone: '+6281100001111'
+  });
+
+  assert(
+    missingIdrBookingRes.status === 400 && missingIdrBookingRes.body.code === 'MISSING_OPENTRIP_IDR_PRICE',
+    `Booking on trip without authoritative IDR is safely rejected with HTTP 400 MISSING_OPENTRIP_IDR_PRICE (got ${missingIdrBookingRes.status})`
+  );
+
   // 7. Test F: Existing batch-4 and batch-5 remain Rp2.250.000
   console.log('\n--- 7. Test F: Existing batch-4 and batch-5 remain Rp 2.250.000 ---');
   const batch4Res = await request({

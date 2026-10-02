@@ -352,9 +352,13 @@ export default function AdminDashboard({
       description: trip.description || '',
       coverImage,
       highlight: trip.highlight || '',
-      startingPrice: trip.wnaPriceIDR ? Math.round(Number(trip.wnaPriceIDR) / 16000) : (trip.startingPrice || 150),
-      startingPriceIDR: trip.startingPriceIDR || trip.wniPrice || trip.price || 0,
-      wniPrice: trip.startingPriceIDR || trip.wniPrice || trip.price || 0,
+      startingPrice: trip.wnaPriceIDR 
+        ? Math.round(Number(trip.wnaPriceIDR) / 16000) 
+        : ((trip.startingPriceIDR || trip.wniPrice) 
+            ? Math.round(Number(trip.startingPriceIDR || trip.wniPrice) / 16000) 
+            : (trip.startingPrice || 0)),
+      startingPriceIDR: trip.startingPriceIDR || trip.wniPrice || (Number(trip.price) >= 10000 ? Number(trip.price) : 0),
+      wniPrice: trip.startingPriceIDR || trip.wniPrice || (Number(trip.price) >= 10000 ? Number(trip.price) : 0),
       wnaPrice: trip.wnaPriceIDR ? Math.round(Number(trip.wnaPriceIDR) / 16000) : (trip.startingPrice || 0),
       wnaPriceIDR: trip.wnaPriceIDR || 0,
       status: (trip.status === 'draft' ? 'draft' : 'published'),
@@ -385,7 +389,9 @@ export default function AdminDashboard({
 
       const wnaIDR = Number(tripForm.wnaPriceIDR) || 0;
       const wniIDR = Number(tripForm.startingPriceIDR ?? tripForm.wniPrice) || 0;
-      const derivedUSD = wnaIDR > 0 ? Math.round(wnaIDR / 16000) : (Number(tripForm.startingPrice) || 0);
+      const derivedUSD = wnaIDR > 0 
+        ? Math.round(wnaIDR / 16000) 
+        : (wniIDR > 0 ? Math.round(wniIDR / 16000) : (Number(tripForm.startingPrice) || 0));
 
       const payload: Omit<Trip, 'id'> = {
         ...tripForm,

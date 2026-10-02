@@ -768,11 +768,13 @@ export default function ShareTourWorkspaceForm({
                           value={tripForm.wniPrice || tripForm.startingPriceIDR || ''}
                           onChange={(e) => {
                             const val = Number(e.target.value);
+                            const wnaIDR = Number(tripForm.wnaPriceIDR) || 0;
+                            const derivedUSD = wnaIDR > 0 ? Math.round(wnaIDR / 16000) : Math.round(val / 16000);
                             setTripForm({
                               ...tripForm,
                               wniPrice: val,
                               startingPriceIDR: val,
-                              ...(!tripForm.wnaPriceIDR ? { startingPrice: Math.round(val / 16000) } : {})
+                              startingPrice: derivedUSD
                             });
                           }}
                           placeholder="450000"
@@ -805,11 +807,13 @@ export default function ShareTourWorkspaceForm({
                           value={tripForm.wnaPriceIDR || ''}
                           onChange={(e) => {
                             const val = Number(e.target.value);
+                            const wniIDR = Number(tripForm.startingPriceIDR || tripForm.wniPrice) || 0;
+                            const derivedUSD = val > 0 ? Math.round(val / 16000) : (wniIDR > 0 ? Math.round(wniIDR / 16000) : 0);
                             setTripForm({
                               ...tripForm,
                               wnaPriceIDR: val,
-                              startingPrice: Math.round(val / 16000),
-                              wnaPrice: Math.round(val / 16000)
+                              startingPrice: derivedUSD,
+                              wnaPrice: derivedUSD
                             });
                           }}
                           placeholder="600000"
