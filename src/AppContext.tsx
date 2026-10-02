@@ -7,7 +7,7 @@ import {
 } from './types';
 import { TOURS, REVIEWS } from './data';
 import { EXCHANGE_RATE_USD_TO_IDR, EXCHANGE_RATE_USD_TO_CNY, ENABLE_FOREIGN_CURRENCIES } from './utils/pricingUtils';
-import { getAdminHeaders, handleAdminResponse } from './utils/adminAuth';
+import { getAdminHeaders, handleAdminResponse, getAdminToken } from './utils/adminAuth';
 import type { BlogPost } from './blogData';
 
 interface AppContextProps {
@@ -307,6 +307,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Server fetch for Bookings (authoritative source)
   const refreshBookings = useCallback(async () => {
+    const token = getAdminToken();
+    if (!token) return;
+
     try {
       const headers = getAdminHeaders();
       const res = await fetch('/api/bookings', { headers });
