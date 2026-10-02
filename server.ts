@@ -27,7 +27,7 @@ import { CANONICAL_ROLES, type RolePermissions } from './src/utils/rbac';
 import { articlesRepo } from './server/db/repositories/articles.repository';
 import { BLOG_POSTS } from './src/blogData';
 import { promoCodesRepo, normalizePromoCode } from './server/db/repositories/promoCodes.repository';
-import { calculatePrivateTourPricing } from './src/utils/pricingUtils';
+import { calculatePrivateTourPricing, calculateShareTourPricing } from './src/utils/pricingUtils';
 
 // Ensure any Google AI Studio container settings are loaded
 if (fs.existsSync('/app/.dev.env.json')) {
@@ -1114,9 +1114,16 @@ app.post('/api/main-tours', requireAdminAuth, requirePermission('manageTours'), 
     const sanitizedExcludes = Array.isArray(payload.excludes) ? payload.excludes : [];
     const sanitizedWhatToBring = Array.isArray(payload.whatToBring) ? payload.whatToBring : [];
 
+    const wnaPriceIDR = payload.wnaPriceIDR !== undefined ? Number(payload.wnaPriceIDR) : undefined;
+    const wniPriceIDR = payload.startingPriceIDR !== undefined 
+      ? Number(payload.startingPriceIDR) 
+      : (payload.wniPrice !== undefined ? Number(payload.wniPrice) : undefined);
+
     const newTour = await toursRepo.create({
       ...payload,
       name: payload.name.trim(),
+      ...(wniPriceIDR !== undefined ? { startingPriceIDR: wniPriceIDR, wniPrice: wniPriceIDR } : {}),
+      ...(wnaPriceIDR !== undefined ? { wnaPriceIDR } : {}),
       image: sanitizedImage,
       highlights: sanitizedHighlights,
       itinerary: sanitizedItinerary,
@@ -1145,7 +1152,16 @@ app.put('/api/main-tours/:id', requireAdminAuth, requirePermission('manageTours'
       payload.image = await sanitizeAndPersistImage(payload.image, 'tour');
     }
 
-    const updated = await toursRepo.update(tourId, payload);
+    const wnaPriceIDR = payload.wnaPriceIDR !== undefined ? Number(payload.wnaPriceIDR) : undefined;
+    const wniPriceIDR = payload.startingPriceIDR !== undefined 
+      ? Number(payload.startingPriceIDR) 
+      : (payload.wniPrice !== undefined ? Number(payload.wniPrice) : undefined);
+
+    const updated = await toursRepo.update(tourId, {
+      ...payload,
+      ...(wniPriceIDR !== undefined ? { startingPriceIDR: wniPriceIDR, wniPrice: wniPriceIDR } : {}),
+      ...(wnaPriceIDR !== undefined ? { wnaPriceIDR } : {})
+    });
     if (!updated) {
       return res.status(404).json({ error: 'Paket tour tidak ditemukan untuk diperbarui.' });
     }
@@ -1809,7 +1825,16 @@ app.post('/api/trips', requireAdminAuth, requirePermission('manageTours'), async
     if (Array.isArray(payload.gallery)) {
       payload.gallery = await sanitizeAndPersistImages(payload.gallery, 'sharetour-gallery');
     }
-    const created = await shareToursRepo.createTrip(payload);
+    const wnaPriceIDR = payload.wnaPriceIDR !== undefined ? Number(payload.wnaPriceIDR) : undefined;
+    const wniPriceIDR = payload.startingPriceIDR !== undefined 
+      ? Number(payload.startingPriceIDR) 
+      : (payload.wniPrice !== undefined ? Number(payload.wniPrice) : (payload.price !== undefined ? Number(payload.price) : undefined));
+
+    const created = await shareToursRepo.createTrip({
+      ...payload,
+      ...(wniPriceIDR !== undefined ? { startingPriceIDR: wniPriceIDR, wniPrice: wniPriceIDR, price: wniPriceIDR } : {}),
+      ...(wnaPriceIDR !== undefined ? { wnaPriceIDR } : {})
+    });
     console.log(`[Persistence Verified] Trip saved in SQL database: ${created.title} (${created.id})`);
     res.status(201).json(created);
   } catch (err: any) {
@@ -1830,7 +1855,16 @@ app.put('/api/trips/:id', requireAdminAuth, requirePermission('manageTours'), as
     if (Array.isArray(payload.gallery)) {
       payload.gallery = await sanitizeAndPersistImages(payload.gallery, 'sharetour-gallery');
     }
-    const updated = await shareToursRepo.updateTrip(req.params.id, payload);
+    const wnaPriceIDR = payload.wnaPriceIDR !== undefined ? Number(payload.wnaPriceIDR) : undefined;
+    const wniPriceIDR = payload.startingPriceIDR !== undefined 
+      ? Number(payload.startingPriceIDR) 
+      : (payload.wniPrice !== undefined ? Number(payload.wniPrice) : (payload.price !== undefined ? Number(payload.price) : undefined));
+
+    const updated = await shareToursRepo.updateTrip(req.params.id, {
+      ...payload,
+      ...(wniPriceIDR !== undefined ? { startingPriceIDR: wniPriceIDR, wniPrice: wniPriceIDR, price: wniPriceIDR } : {}),
+      ...(wnaPriceIDR !== undefined ? { wnaPriceIDR } : {})
+    });
     if (!updated) {
       return res.status(404).json({ error: 'Trip not found' });
     }
@@ -2037,13 +2071,35 @@ app.post('/api/bookings', async (req, res) => {
 
         const allBookings = await bookingsRepo.getAll();
         const bookingCode = payload.bookingCode || generateUniqueBookingCode(allBookings.map(b => b.bookingCode));
-        const batchPrice = Number(batch.price ?? trip?.price ?? 0);
-        if (batchPrice <= 0) {
+
+        // Authoritative Server-Side Calculation using pure IDR pricing (no USD/1.25x guessing)
+        const rawNationality = String(
+          payload.nationalityType || 
+          payload.details?.nationalityType || 
+          payload.participantData?.nationalityType || 
+          'WNI'
+        ).trim();
+        const nationalityType: 'WNI' | 'WNA' | 'WNA_CHINA' | 'WNA_EUROPE' = 
+          rawNationality === 'WNA_CHINA' ? 'WNA_CHINA' :
+          rawNationality === 'WNA_EUROPE' ? 'WNA_EUROPE' :
+          rawNationality === 'WNA' ? 'WNA' : 'WNI';
+
+        const pricingResult = calculateShareTourPricing(
+          trip || { price: 0 },
+          batch,
+          nationalityType,
+          count
+        );
+
+        if (!pricingResult.totalPriceIDR || pricingResult.totalPriceIDR <= 0) {
           await shareToursRepo.incrementBatchSeats(batch.id, count);
           isSeatsDecremented = false;
-          return res.status(400).json({ error: 'Harga batch open trip di database tidak valid.' });
+          return res.status(400).json({
+            error: 'Paket open trip atau batch keberangkatan belum memiliki tarif IDR resmi di database backend. Silakan konfigurasi harga di Admin.',
+            code: 'MISSING_OPENTRIP_IDR_PRICE'
+          });
         }
-        const baseAmount = batchPrice * count;
+        const baseAmount = pricingResult.totalPriceIDR;
 
         // Authoritative Server-Side Promo Code Validation & Atomic Reservation
         const rawPromoCode = String(
@@ -2640,13 +2696,24 @@ app.post('/api/bookings', async (req, res) => {
             }
           }
 
-          // Server-authoritative calculation using database tour prices
+          // Server-authoritative calculation using database tour prices (IDR only)
+          if (nationalityType !== 'WNI') {
+            const authWnaIDR = Number(resolvedTour.wnaPriceIDR || resolvedTour.wna_price_idr || 0);
+            if (authWnaIDR <= 0) {
+              return res.status(400).json({
+                error: 'Paket tour belum memiliki tarif WNA (IDR) resmi di database backend. Silakan konfigurasi harga WNA di Admin.',
+                code: 'MISSING_WNA_IDR_PRICE'
+              });
+            }
+          }
+
           const tourPricing = calculatePrivateTourPricing(
             {
               startingPrice: Number(resolvedTour.startingPrice || resolvedTour.starting_price_usd || resolvedTour.price || 0),
               startingPriceIDR: Number(resolvedTour.startingPriceIDR || resolvedTour.starting_price_idr || resolvedTour.wniPrice || resolvedTour.wni_price || 0),
               wnaPrice: Number(resolvedTour.wnaPrice || resolvedTour.wna_price || 0),
-              wniPrice: Number(resolvedTour.wniPrice || resolvedTour.wni_price || resolvedTour.startingPriceIDR || resolvedTour.starting_price_idr || 0)
+              wniPrice: Number(resolvedTour.wniPrice || resolvedTour.wni_price || resolvedTour.startingPriceIDR || resolvedTour.starting_price_idr || 0),
+              wnaPriceIDR: Number(resolvedTour.wnaPriceIDR || resolvedTour.wna_price_idr || 0)
             },
             nationalityType,
             participants,
@@ -2667,6 +2734,7 @@ app.post('/api/bookings', async (req, res) => {
             duration: payload.details?.duration || resolvedTour.duration || '1 Hari',
             vehicleName: payload.details?.vehicleName || 'Standard Private Tourism Vehicle',
             startingPriceIDR: Number(resolvedTour.startingPriceIDR || resolvedTour.starting_price_idr || resolvedTour.wniPrice || resolvedTour.wni_price || 0),
+            wnaPriceIDR: Number(resolvedTour.wnaPriceIDR || resolvedTour.wna_price_idr || 0),
             unitPriceIDR: tourPricing.unitPriceIDR,
             unitPriceUSD: tourPricing.unitPriceUSD,
             pax: participants,

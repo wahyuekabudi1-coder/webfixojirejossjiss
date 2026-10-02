@@ -237,7 +237,7 @@ export default function BookingForm({
       try {
         await processArtoPayPayment({
           orderId: result.bookingCode || result.id,
-          amount: pricingBreakdown.paymentAmountIDR,
+          amount: result.paymentAmount || result.totalPriceIDR || pricingBreakdown.paymentAmountIDR,
           currency: 'IDR',
           description: isPrivate 
             ? `Private Tour: ${trip.title} (${selectedDepartureDate}, ${numParticipants} Pax)` 

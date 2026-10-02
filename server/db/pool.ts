@@ -385,7 +385,10 @@ export async function initSchema(client: DatabaseClient): Promise<void> {
     { table: 'bookings', column: 'status', type: "VARCHAR(64) DEFAULT 'Pending Payment'" },
     { table: 'bookings', column: 'promo_code', type: 'VARCHAR(64)' },
     { table: 'payments', column: 'payment_status', type: "VARCHAR(32) DEFAULT 'Pending'" },
-    { table: 'payments', column: 'order_id', type: 'VARCHAR(64)' }
+    { table: 'payments', column: 'order_id', type: 'VARCHAR(64)' },
+    { table: 'tours', column: 'wna_price_idr', type: 'DECIMAL(14,2) DEFAULT 0' },
+    { table: 'share_tours', column: 'wna_price_idr', type: 'DECIMAL(14,2) DEFAULT 0' },
+    { table: 'batches', column: 'wna_price_idr', type: 'DECIMAL(14,2) DEFAULT 0' }
   ];
 
   for (const col of columnMigrations) {

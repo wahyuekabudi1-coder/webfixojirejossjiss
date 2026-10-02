@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS tours (
   starting_price_idr DECIMAL(14,2) DEFAULT 0,
   wni_price DECIMAL(14,2) DEFAULT 0,
   wna_price DECIMAL(10,2) DEFAULT 0,
+  wna_price_idr DECIMAL(14,2) DEFAULT 0,
   rating DECIMAL(3,2) DEFAULT 5.0,
   review_count INT DEFAULT 0,
   image TEXT,
@@ -51,6 +52,7 @@ CREATE TABLE IF NOT EXISTS share_tours (
   status VARCHAR(32) DEFAULT 'published',
   starting_price_idr DECIMAL(14,2) DEFAULT 0,
   starting_price_usd DECIMAL(10,2) DEFAULT 0,
+  wna_price_idr DECIMAL(14,2) DEFAULT 0,
   itinerary TEXT,
   created_at VARCHAR(64),
   updated_at VARCHAR(64)
@@ -64,6 +66,7 @@ CREATE TABLE IF NOT EXISTS batches (
   quota INT DEFAULT 10,
   available_seats INT DEFAULT 10,
   price DECIMAL(14,2) DEFAULT 0,
+  wna_price_idr DECIMAL(14,2) DEFAULT 0,
   status VARCHAR(32) DEFAULT 'open',
   created_at VARCHAR(64),
   updated_at VARCHAR(64)

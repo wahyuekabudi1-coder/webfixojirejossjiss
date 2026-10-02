@@ -55,9 +55,10 @@ export function usdToCNY(usd: number): number {
 /**
  * Canonical Pricing Calculator for Private Tours.
  * 
- * - WNI (Wisatawan Domestik): Base is tour.startingPriceIDR (or tour.wniPrice).
- * - WNA (Wisatawan Mancanegara): Base is tour.wnaPrice || Math.round(tour.startingPrice * 1.25).
- *   Equivalent in IDR is exactly unitPriceUSD * 16,000.
+ * - WNI (Wisatawan Domestik): Base is tour.startingPriceIDR (or tour.wniPrice) in IDR.
+ * - WNA (Wisatawan Mancanegara): Authoritative base is tour.wnaPriceIDR in IDR.
+ *   Do NOT calculate from WNI price, do NOT apply 1.25x rule, do NOT guess.
+ *   USD is strictly a read-only display conversion (IDR / 16,000).
  */
 export function calculatePrivateTourPricing(
   tour: {
@@ -65,6 +66,7 @@ export function calculatePrivateTourPricing(
     startingPriceIDR?: number;
     wnaPrice?: number;
     wniPrice?: number;
+    wnaPriceIDR?: number;
   },
   nationalityType: 'WNI' | 'WNA' | 'WNA_CHINA' | 'WNA_EUROPE' = 'WNI',
   pax: number = 1,
@@ -74,22 +76,25 @@ export function calculatePrivateTourPricing(
   const safePax = Math.max(1, Number(pax) || 1);
   const mult = Math.max(1.0, Number(surchargeMultiplier) || 1.0);
 
-  const baseStartingPriceUSD = Number(tour?.startingPrice) || 135;
-  const baseStartingPriceIDR = Number(tour?.startingPriceIDR || tour?.wniPrice) || Math.round(baseStartingPriceUSD * EXCHANGE_RATE_USD_TO_IDR);
+  const baseStartingPriceIDR = Number(tour?.startingPriceIDR || tour?.wniPrice) || 0;
 
-  let unitPriceUSD: number;
-  let unitPriceIDR: number;
+  let unitPriceUSD = 0;
+  let unitPriceIDR = 0;
 
   if (isWNI) {
     unitPriceIDR = baseStartingPriceIDR;
-    unitPriceUSD = Number(tour?.startingPrice) && Number(tour?.startingPrice) < 1000 
-      ? Number(tour.startingPrice) 
-      : Math.round(unitPriceIDR / EXCHANGE_RATE_USD_TO_IDR);
+    unitPriceUSD = unitPriceIDR > 0 ? Math.round(unitPriceIDR / EXCHANGE_RATE_USD_TO_IDR) : 0;
   } else {
-    // WNA: e.g. 135 * 1.25 = 168.75 -> 169 USD
-    unitPriceUSD = Number(tour?.wnaPrice) || Math.round(baseStartingPriceUSD * 1.25);
-    // IDR equivalent is 169 * 16,000 = 2,704,000 IDR
-    unitPriceIDR = Math.round(unitPriceUSD * EXCHANGE_RATE_USD_TO_IDR);
+    // Authoritative WNA IDR: Must use wnaPriceIDR directly
+    const authWnaPriceIDR = Number(tour?.wnaPriceIDR || 0);
+    if (authWnaPriceIDR > 0) {
+      unitPriceIDR = authWnaPriceIDR;
+      unitPriceUSD = Math.round(unitPriceIDR / EXCHANGE_RATE_USD_TO_IDR);
+    } else {
+      // Legacy tour without authoritative WNA IDR: 0 (reports missing to prevent guessing)
+      unitPriceIDR = 0;
+      unitPriceUSD = 0;
+    }
   }
 
   const subtotalUSD = unitPriceUSD * safePax;
@@ -111,6 +116,12 @@ export function calculatePrivateTourPricing(
 
 /**
  * Canonical Pricing Calculator for Share Tours / Open Trips.
+ * 
+ * - WNI (Wisatawan Domestik): Base is batch.price (or trip.startingPriceIDR / trip.wniPrice) in IDR.
+ * - WNA (Wisatawan Mancanegara): Authoritative base is batch.wnaPriceIDR (or trip.wnaPriceIDR) in IDR if set;
+ *   otherwise falls back to authoritative batch.price / trip IDR.
+ *   Do NOT apply 1.25x rule, do NOT guess price from USD.
+ *   USD is strictly a read-only display conversion (IDR / 16,000).
  */
 export function calculateShareTourPricing(
   trip: {
@@ -120,10 +131,12 @@ export function calculateShareTourPricing(
     wnaPrice?: number;
     wniPrice?: number;
     startingPriceIDR?: number;
+    wnaPriceIDR?: number;
   },
   batch: {
     price?: number;
     wnaPrice?: number;
+    wnaPriceIDR?: number;
   } | null | undefined,
   nationalityType: 'WNI' | 'WNA' | 'WNA_CHINA' | 'WNA_EUROPE' = 'WNI',
   pax: number = 1
@@ -131,33 +144,28 @@ export function calculateShareTourPricing(
   const isWNI = nationalityType === 'WNI';
   const safePax = Math.max(1, Number(pax) || 1);
 
-  let unitPriceUSD: number;
-  let unitPriceIDR: number;
+  let unitPriceIDR = 0;
 
-  const rawBatchPrice = batch ? Number(batch.price) : 0;
-  const rawTripPriceIDR = Number(trip.startingPriceIDR || trip.wniPrice) || 0;
-  const rawTripPriceUSD = Number(trip.startingPrice || trip.price) || 150;
+  const rawBatchPrice = batch ? Number(batch.price || 0) : 0;
+  const rawBatchWnaIDR = batch ? Number(batch.wnaPriceIDR || 0) : 0;
+  const rawTripPriceIDR = Number(trip?.startingPriceIDR || trip?.wniPrice || trip?.price || 0);
+  const rawTripWnaIDR = Number(trip?.wnaPriceIDR || 0);
 
-  if (rawBatchPrice > 0) {
-    // batches.price is strictly treated as transactional IDR
-    if (isWNI) {
-      unitPriceIDR = rawBatchPrice;
-      unitPriceUSD = Math.round(unitPriceIDR / EXCHANGE_RATE_USD_TO_IDR);
-    } else {
-      unitPriceUSD = Number(batch?.wnaPrice) || Math.round((rawBatchPrice / EXCHANGE_RATE_USD_TO_IDR) * 1.25);
-      unitPriceIDR = Math.round(unitPriceUSD * EXCHANGE_RATE_USD_TO_IDR);
-    }
+  if (isWNI) {
+    unitPriceIDR = rawBatchPrice > 0 ? rawBatchPrice : rawTripPriceIDR;
   } else {
-    // No batch or batch price is 0: fallback to trip IDR / USD
-    if (isWNI) {
-      unitPriceIDR = rawTripPriceIDR > 0 ? rawTripPriceIDR : Math.round(rawTripPriceUSD * EXCHANGE_RATE_USD_TO_IDR);
-      unitPriceUSD = Math.round(unitPriceIDR / EXCHANGE_RATE_USD_TO_IDR);
+    // International / WNA: Explicit authoritative IDR price if available
+    const explicitWnaIDR = rawBatchWnaIDR > 0 ? rawBatchWnaIDR : rawTripWnaIDR;
+    if (explicitWnaIDR > 0) {
+      unitPriceIDR = explicitWnaIDR;
+    } else if (rawBatchPrice > 0) {
+      unitPriceIDR = rawBatchPrice;
     } else {
-      unitPriceUSD = Number(trip.wnaPrice || trip.wnaStartingPrice) || Math.round(rawTripPriceUSD * 1.25);
-      unitPriceIDR = Math.round(unitPriceUSD * EXCHANGE_RATE_USD_TO_IDR);
+      unitPriceIDR = rawTripPriceIDR;
     }
   }
 
+  const unitPriceUSD = unitPriceIDR > 0 ? Math.round(unitPriceIDR / EXCHANGE_RATE_USD_TO_IDR) : 0;
   const totalPriceUSD = unitPriceUSD * safePax;
   const totalPriceIDR = unitPriceIDR * safePax;
 

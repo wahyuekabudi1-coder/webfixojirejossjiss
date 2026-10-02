@@ -9,7 +9,8 @@ export interface Tour {
   startingPrice: number; // in USD (WNA Price)
   startingPriceIDR: number; // in IDR (WNI Price)
   wniPrice?: number; // explicit alias for startingPriceIDR
-  wnaPrice?: number; // explicit alias for startingPrice in USD
+  wnaPrice?: number; // legacy display alias for startingPrice in USD
+  wnaPriceIDR?: number; // Authoritative WNA price in IDR (Rupiah)
   rating: number;
   reviewCount: number;
   image: string;

@@ -18,6 +18,7 @@ export interface TourEntity {
   startingPriceIDR: number;
   wniPrice: number;
   wnaPrice: number;
+  wnaPriceIDR?: number;
   rating: number;
   reviewCount: number;
   image: string;
@@ -63,6 +64,9 @@ function rowToTour(row: TourRow): TourEntity {
     startingPriceIDR: Number(row.starting_price_idr) || Number(row.wni_price) || 0,
     wniPrice: Number(row.wni_price) || Number(row.starting_price_idr) || 0,
     wnaPrice: Number(row.wna_price) || Number(row.starting_price_usd) || 0,
+    wnaPriceIDR: (row.wna_price_idr !== null && row.wna_price_idr !== undefined && Number(row.wna_price_idr) > 0)
+      ? Number(row.wna_price_idr)
+      : undefined,
     rating: Number(row.rating) || 5.0,
     reviewCount: Number(row.review_count) || 0,
     image: row.image || '',
@@ -120,13 +124,17 @@ export class ToursRepository {
     const id = (tour.id && tour.id.trim() !== '') ? tour.id.trim() : `tour-${Date.now()}`;
     const status = tour.status || 'published';
 
+    const wnaPriceIDR = Number(tour.wnaPriceIDR) || 0;
+    const wniPriceIDR = Number(tour.startingPriceIDR) || Number(tour.wniPrice) || 0;
+    const derivedUSD = wnaPriceIDR > 0 ? Math.round(wnaPriceIDR / 16000) : (Number(tour.startingPrice) || Number(tour.wnaPrice) || 0);
+
     const sql = `
       INSERT INTO tours (
         id, name, description, category, days, nights, duration,
-        starting_price_usd, starting_price_idr, wni_price, wna_price,
+        starting_price_usd, starting_price_idr, wni_price, wna_price, wna_price_idr,
         rating, review_count, image, highlights, itinerary, includes, excludes, what_to_bring,
         status, is_deleted, is_archived, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -137,10 +145,11 @@ export class ToursRepository {
       Number(tour.days) || 1,
       Number(tour.nights) || 0,
       tour.duration || `${tour.days || 1}D`,
-      Number(tour.startingPrice) || Number(tour.wnaPrice) || 0,
-      Number(tour.startingPriceIDR) || Number(tour.wniPrice) || 0,
-      Number(tour.wniPrice) || Number(tour.startingPriceIDR) || 0,
-      Number(tour.wnaPrice) || Number(tour.startingPrice) || 0,
+      derivedUSD,
+      wniPriceIDR,
+      wniPriceIDR,
+      derivedUSD,
+      wnaPriceIDR,
       Number(tour.rating) || 5.0,
       Number(tour.reviewCount) || 0,
       tour.image || '',
@@ -171,6 +180,9 @@ export class ToursRepository {
 
     const now = new Date().toISOString();
     const status = tour.status || existing.status;
+    const wnaPriceIDR = tour.wnaPriceIDR !== undefined ? Number(tour.wnaPriceIDR) : (existing.wnaPriceIDR || 0);
+    const wniPriceIDR = tour.startingPriceIDR !== undefined ? Number(tour.startingPriceIDR) : (tour.wniPrice !== undefined ? Number(tour.wniPrice) : existing.startingPriceIDR);
+    const derivedUSD = wnaPriceIDR > 0 ? Math.round(wnaPriceIDR / 16000) : (tour.startingPrice !== undefined ? Number(tour.startingPrice) : existing.startingPrice);
 
     const sql = `
       UPDATE tours SET
@@ -184,6 +196,7 @@ export class ToursRepository {
         starting_price_idr = ?,
         wni_price = ?,
         wna_price = ?,
+        wna_price_idr = ?,
         rating = ?,
         review_count = ?,
         image = ?,
@@ -205,10 +218,11 @@ export class ToursRepository {
       tour.days !== undefined ? Number(tour.days) : existing.days,
       tour.nights !== undefined ? Number(tour.nights) : existing.nights,
       tour.duration !== undefined ? tour.duration : existing.duration,
-      tour.startingPrice !== undefined ? Number(tour.startingPrice) : existing.startingPrice,
-      tour.startingPriceIDR !== undefined ? Number(tour.startingPriceIDR) : existing.startingPriceIDR,
-      tour.wniPrice !== undefined ? Number(tour.wniPrice) : existing.wniPrice,
-      tour.wnaPrice !== undefined ? Number(tour.wnaPrice) : existing.wnaPrice,
+      derivedUSD,
+      wniPriceIDR,
+      wniPriceIDR,
+      derivedUSD,
+      wnaPriceIDR,
       tour.rating !== undefined ? Number(tour.rating) : existing.rating,
       tour.reviewCount !== undefined ? Number(tour.reviewCount) : existing.reviewCount,
       tour.image !== undefined ? tour.image : existing.image,

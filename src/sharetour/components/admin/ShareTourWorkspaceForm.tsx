@@ -48,6 +48,8 @@ interface ShareTourWorkspaceFormProps {
     highlight: string;
     startingPrice: number;
     wniPrice?: number;
+    startingPriceIDR?: number;
+    wnaPriceIDR?: number;
     status: 'published' | 'draft';
     included: string[];
     excluded: string[];
@@ -129,6 +131,7 @@ export default function ShareTourWorkspaceForm({
   const [batchQuota, setBatchQuota] = useState<number>(14);
   const defaultBatchPriceIDR = Number(tripForm.wniPrice || (tripForm as any).startingPriceIDR) || 450000;
   const [batchPrice, setBatchPrice] = useState<number>(defaultBatchPriceIDR);
+  const [batchWnaPriceIDR, setBatchWnaPriceIDR] = useState<number>(Number(tripForm.wnaPriceIDR) || 0);
   const [batchStatus, setBatchStatus] = useState<'Open' | 'Closed'>('Open');
   const [isSubmittingBatch, setIsSubmittingBatch] = useState(false);
   const [expandedBatchParticipants, setExpandedBatchParticipants] = useState<{ [key: string]: boolean }>({});
@@ -137,7 +140,10 @@ export default function ShareTourWorkspaceForm({
   React.useEffect(() => {
     const idrPrice = Number(tripForm.wniPrice || (tripForm as any).startingPriceIDR) || 450000;
     setBatchPrice(idrPrice);
-  }, [tripForm.wniPrice, (tripForm as any).startingPriceIDR, editingTripId]);
+    if (tripForm.wnaPriceIDR) {
+      setBatchWnaPriceIDR(Number(tripForm.wnaPriceIDR));
+    }
+  }, [tripForm.wniPrice, (tripForm as any).startingPriceIDR, tripForm.wnaPriceIDR, editingTripId]);
 
   // Fallback theme if not provided
   const t = theme || {
@@ -159,8 +165,14 @@ export default function ShareTourWorkspaceForm({
 
   const formatPriceLabel = (usd: number, idr?: number) => {
     if (formatPrice) return formatPrice(usd, idr);
-    const numIdr = idr || usd * 16000;
-    return `Rp ${numIdr.toLocaleString('id-ID')} / $${usd} USD`;
+    const numIdr = Number(idr) || 0;
+    if (numIdr > 0) {
+      return `Rp ${numIdr.toLocaleString('id-ID')} (≈ $${Math.round(numIdr / 16000)} USD)`;
+    }
+    if (usd && Number(usd) > 0) {
+      return `Warisan: $${usd} USD (Belum diset IDR)`;
+    }
+    return 'Belum diatur';
   };
 
   // ---------------------------------------------------------------------------
@@ -434,6 +446,7 @@ export default function ShareTourWorkspaceForm({
         quota: Number(batchQuota) || 14,
         availableSeats: Number(batchQuota) || 14,
         price: Number(batchPrice) || defaultBatchPriceIDR,
+        wnaPriceIDR: Number(batchWnaPriceIDR) > 0 ? Number(batchWnaPriceIDR) : undefined,
         status: batchStatus
       });
       notify(`Jadwal batch tanggal ${batchDepartureDate} berhasil dibuka!`);
@@ -724,33 +737,42 @@ export default function ShareTourWorkspaceForm({
                   </p>
                 </div>
 
-                {/* STRUKTUR HARGA OPEN TRIP: WNI & WNA TERPISAH */}
+                {/* STRUKTUR HARGA OPEN TRIP: WNI & WNA TERPISAH (IDR ONLY) */}
                 <div className="space-y-3 bg-slate-500/5 p-4 rounded-2xl border border-slate-200/60 dark:border-neutral-800">
                   <label className="text-[10px] font-black text-slate-800 dark:text-neutral-200 uppercase tracking-wider flex items-center gap-1.5">
                     <CreditCard className="h-3.5 w-3.5 text-amber-500" />
-                    <span>Struktur Harga Tiket Open Trip (WNI &amp; WNA)</span>
+                    <span>Struktur Harga Tiket Open Trip (WNI &amp; WNA) — Basis Rupiah (IDR)</span>
                   </label>
                   <p className="text-[10px] text-slate-500 dark:text-neutral-400">
-                    Tarif tiket per peserta untuk wisatawan domestik (IDR) dan mancanegara (USD). Harga WNA dapat Anda atur secara bebas dan independen.
+                    Semua harga transaksi operasional wajib diatur dalam Rupiah (IDR). Konversi mata uang asing (USD / CNY) bersifat display-only bagi pelanggan.
                   </p>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                     {/* WNI Price */}
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-wider block">
-                        Harga Tiket WNI / Domestik (IDR / Rupiah)
-                      </label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-wider block">
+                          Harga Tiket WNI / Domestik (IDR / Rupiah)
+                        </label>
+                        {Number(tripForm.wniPrice || tripForm.startingPriceIDR) > 0 && (
+                          <span className="text-[9px] font-mono text-neutral-400">
+                            ≈ ${Math.round(Number(tripForm.wniPrice || tripForm.startingPriceIDR) / 16000)} USD / ¥{(Math.round(Number(tripForm.wniPrice || tripForm.startingPriceIDR) / 16000) * 7.2).toFixed(0)} CNY
+                          </span>
+                        )}
+                      </div>
                       <div className="relative">
                         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-600 font-mono">Rp</span>
                         <input
                           type="number"
                           required
-                          value={tripForm.wniPrice || ''}
+                          value={tripForm.wniPrice || tripForm.startingPriceIDR || ''}
                           onChange={(e) => {
                             const val = Number(e.target.value);
                             setTripForm({
                               ...tripForm,
-                              wniPrice: val
+                              wniPrice: val,
+                              startingPriceIDR: val,
+                              ...(!tripForm.wnaPriceIDR ? { startingPrice: Math.round(val / 16000) } : {})
                             });
                           }}
                           placeholder="450000"
@@ -760,29 +782,41 @@ export default function ShareTourWorkspaceForm({
                       <span className="text-[9px] text-slate-500 dark:text-neutral-400 block">Contoh: Rp 450.000 per orang untuk wisatawan domestik</span>
                     </div>
 
-                    {/* WNA Price */}
+                    {/* WNA Price (Authoritative IDR) */}
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-wider block">
-                        Harga Tiket WNA / International (USD / Dollar)
-                      </label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-wider block">
+                          Harga Tiket WNA / International (IDR / Rupiah)
+                        </label>
+                        {Number(tripForm.wnaPriceIDR) > 0 ? (
+                          <span className="text-[9px] font-mono text-amber-600 font-semibold">
+                            ≈ ${Math.round(Number(tripForm.wnaPriceIDR) / 16000)} USD / ¥{(Math.round(Number(tripForm.wnaPriceIDR) / 16000) * 7.2).toFixed(0)} CNY
+                          </span>
+                        ) : Number(tripForm.startingPrice) > 0 ? (
+                          <span className="text-[9px] font-mono text-neutral-400">
+                            Warisan: ${tripForm.startingPrice} USD (Belum diatur IDR)
+                          </span>
+                        ) : null}
+                      </div>
                       <div className="relative">
-                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-600 font-mono">$</span>
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-600 font-mono">Rp</span>
                         <input
                           type="number"
-                          required
-                          value={tripForm.startingPrice || ''}
+                          value={tripForm.wnaPriceIDR || ''}
                           onChange={(e) => {
                             const val = Number(e.target.value);
                             setTripForm({
                               ...tripForm,
-                              startingPrice: val
+                              wnaPriceIDR: val,
+                              startingPrice: Math.round(val / 16000),
+                              wnaPrice: Math.round(val / 16000)
                             });
                           }}
-                          placeholder="35"
-                          className={`w-full ${t.input} border rounded-xl pl-8 pr-4 py-2.5 focus:outline-none focus:border-amber-500 font-mono text-sm font-extrabold`}
+                          placeholder="600000"
+                          className={`w-full ${t.input} border rounded-xl pl-11 pr-4 py-2.5 focus:outline-none focus:border-amber-500 font-mono text-sm font-extrabold`}
                         />
                       </div>
-                      <span className="text-[9px] text-slate-500 dark:text-neutral-400 block">Contoh: USD 35 per orang untuk turis mancanegara</span>
+                      <span className="text-[9px] text-slate-500 dark:text-neutral-400 block">Contoh: Rp 600.000 per orang untuk turis mancanegara (USD/CNY dikonversi otomatis)</span>
                     </div>
                   </div>
                 </div>
@@ -1458,7 +1492,14 @@ export default function ShareTourWorkspaceForm({
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[9px] font-black uppercase text-neutral-400 block">Tarif per Orang (Rp IDR)</label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-[9px] font-black uppercase text-neutral-400 block">Tarif WNI (Rp IDR)</label>
+                        {batchPrice > 0 && (
+                          <span className="text-[8px] font-mono text-neutral-400">
+                            ≈ ${Math.round(batchPrice / 16000)} USD / ¥{(Math.round(batchPrice / 16000) * 7.2).toFixed(0)} CNY
+                          </span>
+                        )}
+                      </div>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-500 font-mono">Rp</span>
                         <input
@@ -1468,6 +1509,29 @@ export default function ShareTourWorkspaceForm({
                           value={batchPrice}
                           onChange={(e) => setBatchPrice(Number(e.target.value) || 0)}
                           placeholder="450000"
+                          className={`w-full ${t.input} border rounded-xl pl-9 pr-3 py-2 text-xs font-mono font-bold`}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[9px] font-black uppercase text-amber-500 block">Tarif WNA (Opsional - Rp IDR)</label>
+                        {batchWnaPriceIDR > 0 && (
+                          <span className="text-[8px] font-mono text-amber-400">
+                            ≈ ${Math.round(batchWnaPriceIDR / 16000)} USD / ¥{(Math.round(batchWnaPriceIDR / 16000) * 7.2).toFixed(0)} CNY
+                          </span>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-500 font-mono">Rp</span>
+                        <input
+                          type="number"
+                          min={0}
+                          step={10000}
+                          value={batchWnaPriceIDR || ''}
+                          onChange={(e) => setBatchWnaPriceIDR(Number(e.target.value) || 0)}
+                          placeholder="Opsional (Rp)"
                           className={`w-full ${t.input} border rounded-xl pl-9 pr-3 py-2 text-xs font-mono font-bold`}
                         />
                       </div>
@@ -1536,12 +1600,18 @@ export default function ShareTourWorkspaceForm({
                                   {b.status}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-3 text-[11px] text-neutral-400 font-mono">
+                              <div className="flex flex-wrap items-center gap-3 text-[11px] text-neutral-400 font-mono">
                                 <span>Kuota: <strong className="text-neutral-200">{b.quota} Kursi</strong></span>
                                 <span>|</span>
                                 <span>Tersedia: <strong className="text-emerald-400">{b.availableSeats} Kursi</strong></span>
                                 <span>|</span>
-                                <span>Tarif: <strong className="text-emerald-400 font-mono">Rp {Number(b.price || 0).toLocaleString('id-ID')}</strong></span>
+                                <span>Tarif WNI: <strong className="text-emerald-400 font-mono">Rp {Number(b.price || 0).toLocaleString('id-ID')}</strong></span>
+                                {Number(b.wnaPriceIDR) > 0 && (
+                                  <>
+                                    <span>|</span>
+                                    <span>Tarif WNA: <strong className="text-amber-400 font-mono">Rp {Number(b.wnaPriceIDR).toLocaleString('id-ID')}</strong></span>
+                                  </>
+                                )}
                               </div>
                             </div>
 
@@ -1663,7 +1733,7 @@ export default function ShareTourWorkspaceForm({
                 {tripForm.category || 'Adventure'}
               </div>
               <div className="absolute bottom-3 right-3 bg-neutral-950/85 backdrop-blur-md text-xs font-mono font-black text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-md">
-                {formatPriceLabel(tripForm.startingPrice, tripForm.wniPrice)}
+                {formatPriceLabel(Math.round(Number(tripForm.startingPriceIDR || tripForm.wniPrice || 0) / 16000), tripForm.startingPriceIDR || tripForm.wniPrice)}
               </div>
             </div>
 

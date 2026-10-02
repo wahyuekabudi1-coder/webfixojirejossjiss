@@ -63,6 +63,7 @@ export interface Trip {
   price?: number;
   wnaPrice?: number;
   wniPrice?: number;
+  wnaPriceIDR?: number;
 }
 
 export interface Batch {
@@ -72,6 +73,7 @@ export interface Batch {
   quota: number;
   availableSeats: number;
   price: number;
+  wnaPriceIDR?: number;
   wnaPrice?: number;
   status: 'Open' | 'Closed' | 'archived';
   isArchived?: boolean;

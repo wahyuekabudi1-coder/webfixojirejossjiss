@@ -513,10 +513,11 @@ export default function AdminView() {
     duration: '2 Days / 1 Night',
     days: 2,
     nights: 1,
-    startingPrice: 120, // WNA in USD
+    startingPrice: 125, // legacy display in USD
     startingPriceIDR: 1500000, // WNI in IDR
     wniPrice: 1500000,
-    wnaPrice: 120,
+    wnaPrice: 125,
+    wnaPriceIDR: 2000000, // Authoritative WNA in IDR
     image: '',
     category: 'Adventure' as 'Adventure' | 'Nature' | 'Culture' | 'City',
     highlights: '',
@@ -1446,16 +1447,21 @@ export default function AdminView() {
                   const tourNights = typeof tourForm.nights !== 'undefined' ? Number(tourForm.nights) : Math.max(0, tourDays - 1);
                   const computedDuration = formatTourDuration(tourDays, tourNights);
                   
+                  const wnaIDR = Number(tourForm.wnaPriceIDR) || 0;
+                  const wniIDR = Number(tourForm.startingPriceIDR) || Number(tourForm.wniPrice) || 750000;
+                  const derivedUSD = wnaIDR > 0 ? Math.round(wnaIDR / 16000) : (Number(tourForm.startingPrice) || Number(tourForm.wnaPrice) || 50);
+
                   const finalTour = {
                     ...tourForm,
                     status: targetStatus,
                     days: tourDays,
                     nights: tourNights,
                     duration: computedDuration,
-                    startingPrice: Number(tourForm.startingPrice) || Number(tourForm.wnaPrice) || 50,
-                    startingPriceIDR: Number(tourForm.startingPriceIDR) || Number(tourForm.wniPrice) || 750000,
-                    wniPrice: Number(tourForm.startingPriceIDR) || Number(tourForm.wniPrice) || 750000,
-                    wnaPrice: Number(tourForm.startingPrice) || Number(tourForm.wnaPrice) || 50,
+                    startingPrice: derivedUSD,
+                    startingPriceIDR: wniIDR,
+                    wniPrice: wniIDR,
+                    wnaPrice: derivedUSD,
+                    wnaPriceIDR: wnaIDR,
                     highlights: parsedHighlights,
                     itinerary: parsedItinerary,
                     includes: parsedIncludes,
@@ -1627,22 +1633,29 @@ export default function AdminView() {
                           </p>
                         </div>
 
-                        {/* STRUKTUR HARGA PRIVATE TOUR: WNI & WNA TERPISAH */}
+                        {/* STRUKTUR HARGA PRIVATE TOUR: WNI & WNA TERPISAH (IDR ONLY) */}
                         <div className="space-y-3 bg-slate-500/5 p-4 rounded-2xl border border-slate-200/60">
                           <label className="text-[10px] font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                             <CreditCard className="h-3.5 w-3.5 text-amber-500" />
-                            <span>Struktur Harga Private Tour (WNI &amp; WNA)</span>
+                            <span>Struktur Harga Private Tour (WNI &amp; WNA) — Basis Rupiah (IDR)</span>
                           </label>
                           <p className="text-[10px] text-slate-500">
-                            Satu paket wisata memiliki 2 tarif independen. Harga WNA tidak dihitung otomatis dari WNI dan dapat Anda atur secara bebas.
+                            Semua harga transaksi operasional wajib diatur dalam Rupiah (IDR). Konversi mata uang asing (USD / CNY) bersifat display-only bagi pelanggan.
                           </p>
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                             {/* WNI Price */}
                             <div className="space-y-1.5">
-                              <label className="text-[10px] font-black text-emerald-700 uppercase tracking-wider block">
-                                Harga WNI / Domestik (IDR / Rupiah)
-                              </label>
+                              <div className="flex items-center justify-between">
+                                <label className="text-[10px] font-black text-emerald-700 uppercase tracking-wider block">
+                                  Harga WNI / Domestik (IDR / Rupiah)
+                                </label>
+                                {Number(tourForm.startingPriceIDR) > 0 && (
+                                  <span className="text-[9px] font-mono text-neutral-400">
+                                    ≈ ${Math.round(Number(tourForm.startingPriceIDR) / 16000)} USD / ¥{(Math.round(Number(tourForm.startingPriceIDR) / 16000) * 7.2).toFixed(0)} CNY
+                                  </span>
+                                )}
+                              </div>
                               <div className="relative">
                                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-600 font-mono">Rp</span>
                                 <input 
@@ -1664,30 +1677,38 @@ export default function AdminView() {
                               <span className="text-[9px] text-slate-500 block">Contoh: Rp 1.500.000 untuk wisatawan domestik</span>
                             </div>
 
-                            {/* WNA Price */}
+                            {/* WNA Price (Authoritative IDR) */}
                             <div className="space-y-1.5">
-                              <label className="text-[10px] font-black text-amber-700 uppercase tracking-wider block">
-                                Harga WNA / International (USD / Dollar)
-                              </label>
+                              <div className="flex items-center justify-between">
+                                <label className="text-[10px] font-black text-amber-700 uppercase tracking-wider block">
+                                  Harga WNA / International (IDR / Rupiah)
+                                </label>
+                                {Number(tourForm.wnaPriceIDR) > 0 && (
+                                  <span className="text-[9px] font-mono text-amber-600 font-semibold">
+                                    ≈ ${Math.round(Number(tourForm.wnaPriceIDR) / 16000)} USD / ¥{(Math.round(Number(tourForm.wnaPriceIDR) / 16000) * 7.2).toFixed(0)} CNY
+                                  </span>
+                                )}
+                              </div>
                               <div className="relative">
-                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-600 font-mono">$</span>
+                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-600 font-mono">Rp</span>
                                 <input 
                                   type="number" 
                                   required
-                                  value={tourForm.startingPrice || ''}
+                                  value={tourForm.wnaPriceIDR || ''}
                                   onChange={(e) => {
                                     const val = Number(e.target.value);
                                     setTourForm({ 
                                       ...tourForm, 
-                                      startingPrice: val,
-                                      wnaPrice: val
+                                      wnaPriceIDR: val,
+                                      startingPrice: Math.round(val / 16000),
+                                      wnaPrice: Math.round(val / 16000)
                                     });
                                   }}
-                                  placeholder="120" 
-                                  className={`w-full ${theme.input} border rounded-xl pl-8 pr-4 py-2.5 focus:outline-none focus:border-amber-500 font-mono text-sm font-extrabold`} 
+                                  placeholder="2000000" 
+                                  className={`w-full ${theme.input} border rounded-xl pl-11 pr-4 py-2.5 focus:outline-none focus:border-amber-500 font-mono text-sm font-extrabold`} 
                                 />
                               </div>
-                              <span className="text-[9px] text-slate-500 block">Contoh: USD 120 untuk turis mancanegara</span>
+                              <span className="text-[9px] text-slate-500 block">Contoh: Rp 2.000.000 untuk turis mancanegara (USD/CNY dikonversi otomatis)</span>
                             </div>
                           </div>
                         </div>
@@ -2434,10 +2455,11 @@ export default function AdminView() {
                     duration: '2 Days / 1 Night',
                     days: 2,
                     nights: 1,
-                    startingPrice: 120,
+                    startingPrice: 125,
                     startingPriceIDR: 1500000,
                     wniPrice: 1500000,
-                    wnaPrice: 120,
+                    wnaPrice: 125,
+                    wnaPriceIDR: 2000000,
                     image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4',
                     category: 'Adventure',
                     highlights: '',
@@ -2521,10 +2543,14 @@ export default function AdminView() {
                         </td>
                         <td className="p-4 font-mono text-xs">
                           <div className="font-extrabold text-emerald-400">
-                            WNI: Rp {(tour.startingPriceIDR || tour.wniPrice || (tour.startingPrice * 16000)).toLocaleString('id-ID')}
+                            WNI: Rp {(tour.startingPriceIDR || tour.wniPrice || 0).toLocaleString('id-ID')}
                           </div>
                           <div className="text-amber-400 font-bold mt-0.5">
-                            WNA: ${(tour.startingPrice || tour.wnaPrice || 0).toLocaleString()} USD
+                            {tour.wnaPriceIDR && Number(tour.wnaPriceIDR) > 0 ? (
+                              <>WNA: Rp {Number(tour.wnaPriceIDR).toLocaleString('id-ID')} <span className="text-[10px] text-neutral-400 font-normal">(≈ ${Math.round(Number(tour.wnaPriceIDR) / 16000)} USD)</span></>
+                            ) : (
+                              <span className="text-amber-400/80 text-[10px] italic">WNA: Belum diset (IDR) — Warisan: ${tour.wnaPrice || tour.startingPrice || 0} USD</span>
+                            )}
                           </div>
                         </td>
                         <td className="p-4">
@@ -2641,10 +2667,11 @@ export default function AdminView() {
                                   duration: tour.duration || formatTourDuration(tourD, tourN),
                                   days: tourD,
                                   nights: tourN,
-                                  startingPrice: tour.startingPrice || tour.wnaPrice || 50,
+                                  startingPrice: tour.wnaPriceIDR ? Math.round(Number(tour.wnaPriceIDR) / 16000) : (tour.startingPrice || tour.wnaPrice || 50),
                                   startingPriceIDR: tour.startingPriceIDR || tour.wniPrice || 750000,
                                   wniPrice: tour.startingPriceIDR || tour.wniPrice || 750000,
-                                  wnaPrice: tour.startingPrice || tour.wnaPrice || 50,
+                                  wnaPrice: tour.wnaPriceIDR ? Math.round(Number(tour.wnaPriceIDR) / 16000) : (tour.startingPrice || tour.wnaPrice || 50),
+                                  wnaPriceIDR: tour.wnaPriceIDR || 0,
                                   image: tour.image,
                                   category: tour.category || 'Adventure',
                                   highlights: tour.highlights?.join(', ') || '',

@@ -147,6 +147,8 @@ export default function AdminDashboard({
     highlight: string;
     startingPrice: number;
     wniPrice?: number;
+    startingPriceIDR?: number;
+    wnaPriceIDR?: number;
     status: 'published' | 'draft';
     included: string[];
     excluded: string[];
@@ -167,7 +169,9 @@ export default function AdminDashboard({
     coverImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format',
     highlight: '',
     startingPrice: 150,
+    startingPriceIDR: 2400000,
     wniPrice: 2400000,
+    wnaPriceIDR: 2400000,
     status: 'published',
     included: [],
     excluded: [],
@@ -264,7 +268,7 @@ export default function AdminDashboard({
 
   const formatPriceLabel = (usd: number, idr?: number) => {
     if (formatPrice) return formatPrice(usd, idr);
-    const numIdr = idr || usd * 16000;
+    const numIdr = idr || (usd ? usd * 16000 : 0);
     return `Rp ${numIdr.toLocaleString('id-ID')}`;
   };
 
@@ -348,8 +352,11 @@ export default function AdminDashboard({
       description: trip.description || '',
       coverImage,
       highlight: trip.highlight || '',
-      startingPrice: trip.startingPrice || 150,
-      wniPrice: trip.wniPrice || trip.startingPriceIDR || (trip.startingPrice * 16000),
+      startingPrice: trip.wnaPriceIDR ? Math.round(Number(trip.wnaPriceIDR) / 16000) : (trip.startingPrice || 150),
+      startingPriceIDR: trip.startingPriceIDR || trip.wniPrice || trip.price || 0,
+      wniPrice: trip.startingPriceIDR || trip.wniPrice || trip.price || 0,
+      wnaPrice: trip.wnaPriceIDR ? Math.round(Number(trip.wnaPriceIDR) / 16000) : (trip.startingPrice || 0),
+      wnaPriceIDR: trip.wnaPriceIDR || 0,
       status: (trip.status === 'draft' ? 'draft' : 'published'),
       included: trip.included || [],
       excluded: trip.excluded || [],
@@ -376,6 +383,10 @@ export default function AdminDashboard({
         ? tripForm.gallery[0]
         : (tripForm.coverImage || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format');
 
+      const wnaIDR = Number(tripForm.wnaPriceIDR) || 0;
+      const wniIDR = Number(tripForm.startingPriceIDR ?? tripForm.wniPrice) || 0;
+      const derivedUSD = wnaIDR > 0 ? Math.round(wnaIDR / 16000) : (Number(tripForm.startingPrice) || 0);
+
       const payload: Omit<Trip, 'id'> = {
         ...tripForm,
         coverImage,
@@ -384,8 +395,12 @@ export default function AdminDashboard({
         duration: computedDuration,
         category: category as any,
         experienceCategory: category as any,
-        startingPrice: Number(tripForm.startingPrice) || 150,
-        wniPrice: Number(tripForm.wniPrice) || (Number(tripForm.startingPrice) * 16000),
+        startingPrice: derivedUSD,
+        startingPriceIDR: wniIDR,
+        wniPrice: wniIDR,
+        price: wniIDR,
+        wnaPrice: derivedUSD,
+        wnaPriceIDR: wnaIDR,
         status: targetStatus
       };
 
@@ -870,10 +885,16 @@ export default function AdminDashboard({
                           </td>
                           <td className="p-4 font-mono text-xs whitespace-nowrap">
                             <div className="font-extrabold text-emerald-400">
-                              WNI: Rp {(trip.wniPrice || trip.startingPriceIDR || (trip.startingPrice * 16000)).toLocaleString('id-ID')}
+                              WNI: Rp {(trip.startingPriceIDR || trip.wniPrice || trip.price || 0).toLocaleString('id-ID')}
                             </div>
                             <div className="text-amber-400 font-bold mt-0.5">
-                              WNA: ${(trip.startingPrice || 0).toLocaleString()} USD
+                              {trip.wnaPriceIDR && Number(trip.wnaPriceIDR) > 0 ? (
+                                <>WNA: Rp {Number(trip.wnaPriceIDR).toLocaleString('id-ID')} <span className="text-[10px] text-neutral-400 font-normal">(≈ ${Math.round(Number(trip.wnaPriceIDR) / 16000)} USD)</span></>
+                              ) : trip.startingPrice && Number(trip.startingPrice) > 0 ? (
+                                <span className="text-amber-400/80 text-[10px] italic">WNA: Belum diset (IDR) — Warisan: ${trip.startingPrice} USD</span>
+                              ) : (
+                                <span className="text-neutral-400 text-[10px]">WNA: Mengikuti tarif batch</span>
+                              )}
                             </div>
                           </td>
                           <td className="p-4 whitespace-nowrap">

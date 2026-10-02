@@ -26,6 +26,9 @@ export interface ShareTourEntity {
   startingPrice: number;
   price: number;
   startingPriceIDR: number;
+  wniPrice?: number;
+  wnaPrice?: number;
+  wnaPriceIDR?: number;
   itinerary: any[];
   createdAt: string;
   updatedAt: string;
@@ -38,6 +41,7 @@ export interface BatchEntity {
   quota: number;
   availableSeats: number;
   price: number;
+  wnaPriceIDR?: number;
   status: string;
 }
 
@@ -77,6 +81,11 @@ function rowToShareTour(row: ShareTourRow): ShareTourEntity {
     startingPrice: Number(row.starting_price_usd) || 0,
     price: Number(row.starting_price_idr) || 0,
     startingPriceIDR: Number(row.starting_price_idr) || 0,
+    wniPrice: Number(row.starting_price_idr) || 0,
+    wnaPrice: Number(row.starting_price_usd) || 0,
+    wnaPriceIDR: (row.wna_price_idr !== null && row.wna_price_idr !== undefined && Number(row.wna_price_idr) > 0)
+      ? Number(row.wna_price_idr)
+      : undefined,
     itinerary: parseJsonArray<any>(row.itinerary),
     createdAt: row.created_at || new Date().toISOString(),
     updatedAt: row.updated_at || new Date().toISOString()
@@ -91,6 +100,9 @@ function rowToBatch(row: BatchRow): BatchEntity {
     quota: Number(row.quota) || 10,
     availableSeats: Number(row.available_seats) || 0,
     price: Number(row.price) || 0,
+    wnaPriceIDR: (row.wna_price_idr !== null && row.wna_price_idr !== undefined && Number(row.wna_price_idr) > 0)
+      ? Number(row.wna_price_idr)
+      : undefined,
     status: row.status || 'open'
   };
 }
@@ -145,12 +157,16 @@ export class ShareToursRepository {
     const id = trip.id && trip.id.trim() !== '' ? trip.id.trim() : `trip-${Date.now()}`;
     const slug = trip.slug && trip.slug.trim() !== '' ? trip.slug.trim() : `trip-${Date.now()}`;
 
+    const wnaPriceIDR = Number(trip.wnaPriceIDR) || 0;
+    const wniPriceIDR = Number(trip.startingPriceIDR ?? trip.wniPrice ?? trip.price) || 0;
+    const derivedUSD = wnaPriceIDR > 0 ? Math.round(wnaPriceIDR / 16000) : (Number(trip.startingPrice) || 0);
+
     const sql = `
       INSERT INTO share_tours (
         id, title, slug, location, category, duration, days, nights, description,
         cover_image, gallery, highlight, included, excluded, faq, status,
-        starting_price_idr, starting_price_usd, itinerary, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        starting_price_idr, starting_price_usd, wna_price_idr, itinerary, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -170,8 +186,9 @@ export class ShareToursRepository {
       JSON.stringify(trip.excluded || []),
       JSON.stringify(trip.faq || []),
       trip.status || 'published',
-      Number(trip.startingPriceIDR || trip.price) || 0,
-      Number(trip.startingPrice) || 0,
+      wniPriceIDR,
+      derivedUSD,
+      wnaPriceIDR,
       JSON.stringify(trip.itinerary || []),
       trip.createdAt || now,
       now
@@ -189,6 +206,14 @@ export class ShareToursRepository {
     if (!existing) return null;
 
     const now = new Date().toISOString();
+    const wnaPriceIDR = trip.wnaPriceIDR !== undefined ? Number(trip.wnaPriceIDR) : (existing.wnaPriceIDR || 0);
+    const wniPriceIDR = trip.startingPriceIDR !== undefined 
+      ? Number(trip.startingPriceIDR) 
+      : (trip.wniPrice !== undefined ? Number(trip.wniPrice) : (trip.price !== undefined ? Number(trip.price) : existing.startingPriceIDR));
+    const derivedUSD = wnaPriceIDR > 0 
+      ? Math.round(wnaPriceIDR / 16000) 
+      : (trip.startingPrice !== undefined ? Number(trip.startingPrice) : existing.startingPrice);
+
     const sql = `
       UPDATE share_tours SET
         title = ?,
@@ -208,6 +233,7 @@ export class ShareToursRepository {
         status = ?,
         starting_price_idr = ?,
         starting_price_usd = ?,
+        wna_price_idr = ?,
         itinerary = ?,
         updated_at = ?
       WHERE id = ?
@@ -229,8 +255,9 @@ export class ShareToursRepository {
       JSON.stringify(trip.excluded !== undefined ? trip.excluded : existing.excluded),
       JSON.stringify(trip.faq !== undefined ? trip.faq : existing.faq),
       trip.status !== undefined ? trip.status : existing.status,
-      trip.startingPriceIDR !== undefined ? Number(trip.startingPriceIDR) : existing.startingPriceIDR,
-      trip.startingPrice !== undefined ? Number(trip.startingPrice) : existing.startingPrice,
+      wniPriceIDR,
+      derivedUSD,
+      wnaPriceIDR,
       JSON.stringify(trip.itinerary !== undefined ? trip.itinerary : existing.itinerary),
       now,
       id
@@ -295,9 +322,11 @@ export class ShareToursRepository {
       }
     }
 
+    const wnaPriceIDR = Number(batch.wnaPriceIDR) || 0;
+
     const sql = `
-      INSERT INTO batches (id, trip_id, departure_date, quota, available_seats, price, status, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO batches (id, trip_id, departure_date, quota, available_seats, price, wna_price_idr, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -307,6 +336,7 @@ export class ShareToursRepository {
       Number(batch.quota) || 10,
       Number(batch.availableSeats !== undefined ? batch.availableSeats : batch.quota) || 10,
       Number(batch.price) || 0,
+      wnaPriceIDR,
       batch.status || 'open',
       now,
       now
@@ -331,6 +361,8 @@ export class ShareToursRepository {
       }
     }
 
+    const wnaPriceIDR = batch.wnaPriceIDR !== undefined ? Number(batch.wnaPriceIDR) : (existing.wnaPriceIDR || 0);
+
     const sql = `
       UPDATE batches SET
         trip_id = ?,
@@ -338,6 +370,7 @@ export class ShareToursRepository {
         quota = ?,
         available_seats = ?,
         price = ?,
+        wna_price_idr = ?,
         status = ?,
         updated_at = ?
       WHERE id = ?
@@ -349,6 +382,7 @@ export class ShareToursRepository {
       batch.quota !== undefined ? Number(batch.quota) : existing.quota,
       batch.availableSeats !== undefined ? Number(batch.availableSeats) : existing.availableSeats,
       batch.price !== undefined ? Number(batch.price) : existing.price,
+      wnaPriceIDR,
       batch.status !== undefined ? batch.status : existing.status,
       new Date().toISOString(),
       id

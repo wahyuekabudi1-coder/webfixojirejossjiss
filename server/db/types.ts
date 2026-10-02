@@ -29,6 +29,7 @@ export interface TourRow {
   starting_price_idr?: number | null;
   wni_price?: number | null;
   wna_price?: number | null;
+  wna_price_idr?: number | null;
   rating?: number | null;
   review_count?: number | null;
   image?: string | null;
@@ -63,6 +64,7 @@ export interface ShareTourRow {
   status?: string | null;
   starting_price_idr?: number | null;
   starting_price_usd?: number | null;
+  wna_price_idr?: number | null;
   itinerary?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
@@ -75,6 +77,7 @@ export interface BatchRow {
   quota: number;
   available_seats: number;
   price: number;
+  wna_price_idr?: number | null;
   status: string;
   created_at?: string | null;
   updated_at?: string | null;
