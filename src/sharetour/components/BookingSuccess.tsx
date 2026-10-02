@@ -56,10 +56,8 @@ export default function BookingSuccess({ booking: initialBooking, onNavigateToTr
 
     try {
       const orderId = booking.bookingCode || booking.id || `SJ-${Math.floor(100000 + Math.random() * 900000)}`;
-      const rawPrice = Number(booking.totalPrice) || 1500000;
-      const amountInIDR = rawPrice > 10000 
-        ? Math.round(rawPrice) 
-        : Math.round(rawPrice * 16000);
+      // Transaction amount is strictly in IDR
+      const amountInIDR = Math.round(Number(booking.paymentAmount || booking.totalPriceIDR || booking.totalPrice || 0));
 
       await processArtoPayPayment({
         orderId,

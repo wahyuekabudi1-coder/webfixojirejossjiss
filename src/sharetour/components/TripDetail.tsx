@@ -23,6 +23,7 @@ import {
   Briefcase
 } from "lucide-react";
 import { useLanguageCurrency } from "../LanguageCurrencyContext";
+import { calculateShareTourPricing } from "../../utils/pricingUtils";
 import { trackTourDetailView, trackBookNowClick } from "../../lib/analytics";
 
 interface TripDetailProps {
@@ -94,18 +95,13 @@ export default function TripDetail({
   const tripBatches = batches.filter((b) => b.tripId === trip.id || (trip.slug && b.tripId === trip.slug));
   const selectedBatch = tripBatches.find((b) => b.id === selectedBatchId);
 
-  const getEffectiveUnitPrice = (batch?: Batch) => {
-    const isWNA = nationalityType === 'WNA' || nationalityType === 'WNA_CHINA' || nationalityType === 'WNA_EUROPE';
-    if (!batch) {
-      if (isWNA) {
-        return trip.wnaStartingPrice || (trip.startingPrice ? trip.startingPrice + 20 : 170);
-      }
-      return trip.startingPrice || 150;
-    }
-    if (isWNA) {
-      return batch.wnaPrice || batch.price + 20;
-    }
-    return batch.price;
+  const getDisplayPricing = (batch?: Batch | null, targetNationality?: 'WNI' | 'WNA' | 'WNA_CHINA' | 'WNA_EUROPE' | null) => {
+    const nat = targetNationality || nationalityType || 'WNI';
+    return calculateShareTourPricing(trip, batch, nat, 1);
+  };
+
+  const getEffectiveUnitPrice = (batch?: Batch | null) => {
+    return getDisplayPricing(batch, nationalityType).unitPriceUSD;
   };
 
   useEffect(() => {
@@ -836,7 +832,7 @@ export default function TripDetail({
                       KTP / Paspor RI
                     </span>
                     <span className={`block text-[11px] font-bold font-mono ${nationalityType === 'WNI' ? "text-[#D6B16D]" : "text-[#315B4F]"}`}>
-                      {formatPrice(selectedBatch ? selectedBatch.price : (trip.startingPrice || 150))}
+                      {formatPrice(getDisplayPricing(selectedBatch, 'WNI').unitPriceUSD)}
                     </span>
                   </div>
                 </button>
@@ -868,7 +864,7 @@ export default function TripDetail({
                       Non-Indonesian
                     </span>
                     <span className={`block text-[11px] font-bold font-mono ${(nationalityType === 'WNA_CHINA' || nationalityType === 'WNA_EUROPE' || nationalityType === 'WNA') ? "text-[#D6B16D]" : "text-[#315B4F]"}`}>
-                      {formatPrice(selectedBatch ? (selectedBatch.wnaPrice || selectedBatch.price + 20) : (trip.wnaStartingPrice || (trip.startingPrice || 150) + 20))}
+                      {formatPrice(getDisplayPricing(selectedBatch, nationalityType === 'WNI' ? 'WNA' : nationalityType).unitPriceUSD)}
                     </span>
                   </div>
                 </button>

@@ -118,6 +118,8 @@ export function calculateShareTourPricing(
     wnaStartingPrice?: number;
     price?: number;
     wnaPrice?: number;
+    wniPrice?: number;
+    startingPriceIDR?: number;
   },
   batch: {
     price?: number;
@@ -130,24 +132,34 @@ export function calculateShareTourPricing(
   const safePax = Math.max(1, Number(pax) || 1);
 
   let unitPriceUSD: number;
+  let unitPriceIDR: number;
 
-  if (batch) {
+  const rawBatchPrice = batch ? Number(batch.price) : 0;
+  const rawTripPriceIDR = Number(trip.startingPriceIDR || trip.wniPrice) || 0;
+  const rawTripPriceUSD = Number(trip.startingPrice || trip.price) || 150;
+
+  if (rawBatchPrice > 0) {
+    // batches.price is strictly treated as transactional IDR
     if (isWNI) {
-      unitPriceUSD = Number(batch.price) || 150;
+      unitPriceIDR = rawBatchPrice;
+      unitPriceUSD = Math.round(unitPriceIDR / EXCHANGE_RATE_USD_TO_IDR);
     } else {
-      unitPriceUSD = Number(batch.wnaPrice) || (Number(batch.price) ? Number(batch.price) + 20 : 170);
+      unitPriceUSD = Number(batch?.wnaPrice) || Math.round((rawBatchPrice / EXCHANGE_RATE_USD_TO_IDR) * 1.25);
+      unitPriceIDR = Math.round(unitPriceUSD * EXCHANGE_RATE_USD_TO_IDR);
     }
   } else {
+    // No batch or batch price is 0: fallback to trip IDR / USD
     if (isWNI) {
-      unitPriceUSD = Number(trip.price || trip.startingPrice) || 150;
+      unitPriceIDR = rawTripPriceIDR > 0 ? rawTripPriceIDR : Math.round(rawTripPriceUSD * EXCHANGE_RATE_USD_TO_IDR);
+      unitPriceUSD = Math.round(unitPriceIDR / EXCHANGE_RATE_USD_TO_IDR);
     } else {
-      unitPriceUSD = Number(trip.wnaPrice || trip.wnaStartingPrice) || ((Number(trip.price || trip.startingPrice) || 150) + 20);
+      unitPriceUSD = Number(trip.wnaPrice || trip.wnaStartingPrice) || Math.round(rawTripPriceUSD * 1.25);
+      unitPriceIDR = Math.round(unitPriceUSD * EXCHANGE_RATE_USD_TO_IDR);
     }
   }
 
-  const unitPriceIDR = Math.round(unitPriceUSD * EXCHANGE_RATE_USD_TO_IDR);
   const totalPriceUSD = unitPriceUSD * safePax;
-  const totalPriceIDR = Math.round(totalPriceUSD * EXCHANGE_RATE_USD_TO_IDR);
+  const totalPriceIDR = unitPriceIDR * safePax;
 
   return {
     unitPriceUSD,

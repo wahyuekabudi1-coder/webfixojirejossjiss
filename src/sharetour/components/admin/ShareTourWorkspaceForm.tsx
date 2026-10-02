@@ -127,10 +127,17 @@ export default function ShareTourWorkspaceForm({
     new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString().split('T')[0]
   );
   const [batchQuota, setBatchQuota] = useState<number>(14);
-  const [batchPrice, setBatchPrice] = useState<number>(tripForm.startingPrice || 150);
+  const defaultBatchPriceIDR = Number(tripForm.wniPrice || (tripForm as any).startingPriceIDR) || 450000;
+  const [batchPrice, setBatchPrice] = useState<number>(defaultBatchPriceIDR);
   const [batchStatus, setBatchStatus] = useState<'Open' | 'Closed'>('Open');
   const [isSubmittingBatch, setIsSubmittingBatch] = useState(false);
   const [expandedBatchParticipants, setExpandedBatchParticipants] = useState<{ [key: string]: boolean }>({});
+
+  // Sync batch transactional price with trip IDR price when trip loads
+  React.useEffect(() => {
+    const idrPrice = Number(tripForm.wniPrice || (tripForm as any).startingPriceIDR) || 450000;
+    setBatchPrice(idrPrice);
+  }, [tripForm.wniPrice, (tripForm as any).startingPriceIDR, editingTripId]);
 
   // Fallback theme if not provided
   const t = theme || {
@@ -426,7 +433,7 @@ export default function ShareTourWorkspaceForm({
         departureDate: batchDepartureDate,
         quota: Number(batchQuota) || 14,
         availableSeats: Number(batchQuota) || 14,
-        price: Number(batchPrice) || tripForm.startingPrice || 150,
+        price: Number(batchPrice) || defaultBatchPriceIDR,
         status: batchStatus
       });
       notify(`Jadwal batch tanggal ${batchDepartureDate} berhasil dibuka!`);
@@ -1451,14 +1458,19 @@ export default function ShareTourWorkspaceForm({
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[9px] font-black uppercase text-neutral-400 block">Tarif per Orang ($ USD)</label>
-                      <input
-                        type="number"
-                        min={1}
-                        value={batchPrice}
-                        onChange={(e) => setBatchPrice(Number(e.target.value) || 150)}
-                        className={`w-full ${t.input} border rounded-xl px-3 py-2 text-xs font-mono`}
-                      />
+                      <label className="text-[9px] font-black uppercase text-neutral-400 block">Tarif per Orang (Rp IDR)</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-500 font-mono">Rp</span>
+                        <input
+                          type="number"
+                          min={1}
+                          step={10000}
+                          value={batchPrice}
+                          onChange={(e) => setBatchPrice(Number(e.target.value) || 0)}
+                          placeholder="450000"
+                          className={`w-full ${t.input} border rounded-xl pl-9 pr-3 py-2 text-xs font-mono font-bold`}
+                        />
+                      </div>
                     </div>
 
                     <div className="space-y-1">
@@ -1529,7 +1541,7 @@ export default function ShareTourWorkspaceForm({
                                 <span>|</span>
                                 <span>Tersedia: <strong className="text-emerald-400">{b.availableSeats} Kursi</strong></span>
                                 <span>|</span>
-                                <span>Tarif: <strong className="text-amber-400">${b.price} USD</strong></span>
+                                <span>Tarif: <strong className="text-emerald-400 font-mono">Rp {Number(b.price || 0).toLocaleString('id-ID')}</strong></span>
                               </div>
                             </div>
 

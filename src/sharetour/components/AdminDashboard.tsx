@@ -424,12 +424,14 @@ export default function AdminDashboard({
   // ---------------------------------------------------------------------------
   const initCreateBatch = () => {
     setEditingBatchId(null);
+    const selectedTrip = trips[0];
+    const defaultPriceIDR = Number(selectedTrip?.wniPrice || selectedTrip?.startingPriceIDR) || 450000;
     setBatchForm({
-      tripId: trips[0]?.id || '',
+      tripId: selectedTrip?.id || '',
       departureDate: new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString().split('T')[0],
       quota: 14,
       availableSeats: 14,
-      price: trips[0]?.startingPrice || 150,
+      price: defaultPriceIDR,
       status: 'Open'
     });
     setShowBatchModal(true);
@@ -1060,7 +1062,7 @@ export default function AdminDashboard({
                             </div>
                           </td>
                           <td className="p-4 font-mono font-bold text-emerald-400 whitespace-nowrap">
-                            {formatPriceLabel(b.price || 150)}
+                            Rp {Number(b.price || 0).toLocaleString('id-ID')}
                           </td>
                           <td className="p-4 whitespace-nowrap">
                             <span className={`inline-flex items-center gap-1 text-[10px] font-mono font-black uppercase px-2.5 py-0.5 rounded-full ${
@@ -1587,7 +1589,16 @@ export default function AdminDashboard({
                 <label className="text-[10px] font-black uppercase tracking-wider block">Pilih Paket Open Trip</label>
                 <select
                   value={batchForm.tripId}
-                  onChange={(e) => setBatchForm({ ...batchForm, tripId: e.target.value })}
+                  onChange={(e) => {
+                    const selectedId = e.target.value;
+                    const matched = trips.find(tr => tr.id === selectedId);
+                    const newPriceIDR = matched ? (Number(matched.wniPrice || (matched as any).startingPriceIDR) || 450000) : batchForm.price;
+                    setBatchForm({ 
+                      ...batchForm, 
+                      tripId: selectedId,
+                      ...(!editingBatchId ? { price: newPriceIDR } : {})
+                    });
+                  }}
                   className={`w-full ${t.input} border rounded-xl px-3 py-2 text-xs font-bold`}
                 >
                   {trips.map(tr => (
@@ -1619,14 +1630,19 @@ export default function AdminDashboard({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase tracking-wider block">Harga Tiket (USD)</label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={batchForm.price}
-                    onChange={(e) => setBatchForm({ ...batchForm, price: parseFloat(e.target.value) || 150 })}
-                    className={`w-full ${t.input} border rounded-xl px-3 py-2 text-xs font-mono`}
-                  />
+                  <label className="text-[10px] font-black uppercase tracking-wider block">Harga Tiket Batch (Rp IDR)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-500 font-mono">Rp</span>
+                    <input
+                      type="number"
+                      min={1}
+                      step={10000}
+                      value={batchForm.price}
+                      onChange={(e) => setBatchForm({ ...batchForm, price: parseFloat(e.target.value) || 0 })}
+                      placeholder="450000"
+                      className={`w-full ${t.input} border rounded-xl pl-9 pr-3 py-2 text-xs font-mono font-bold`}
+                    />
+                  </div>
                 </div>
               </div>
 

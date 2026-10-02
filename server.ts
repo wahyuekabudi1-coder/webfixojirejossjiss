@@ -27,6 +27,7 @@ import { CANONICAL_ROLES, type RolePermissions } from './src/utils/rbac';
 import { articlesRepo } from './server/db/repositories/articles.repository';
 import { BLOG_POSTS } from './src/blogData';
 import { promoCodesRepo, normalizePromoCode } from './server/db/repositories/promoCodes.repository';
+import { calculatePrivateTourPricing } from './src/utils/pricingUtils';
 
 // Ensure any Google AI Studio container settings are loaded
 if (fs.existsSync('/app/.dev.env.json')) {
@@ -1897,7 +1898,14 @@ app.get('/api/batches/:id', async (req, res) => {
 
 app.post('/api/batches', requireAdminAuth, requirePermission('manageTours'), async (req, res) => {
   try {
-    const created = await shareToursRepo.createBatch(req.body);
+    const payload = { ...req.body };
+    if (!payload.price || Number(payload.price) <= 0) {
+      const trip = payload.tripId ? await shareToursRepo.getTripById(payload.tripId) : null;
+      if (trip) {
+        payload.price = Number(trip.startingPriceIDR ?? (trip as any).wniPrice ?? 0);
+      }
+    }
+    const created = await shareToursRepo.createBatch(payload);
     console.log(`[Persistence Verified] Batch saved in SQL database: ${created.id}`);
     res.status(201).json(created);
   } catch (err: any) {
@@ -2212,13 +2220,39 @@ app.post('/api/bookings', async (req, res) => {
             return res.status(400).json({ error: 'Kendaraan rental sedang tidak aktif atau tidak tersedia.' });
           }
 
-          const dailyPrice = Number(vehicle.pricePerDayIDR || (vehicle.pricePerDay ? vehicle.pricePerDay * 15000 : 0));
+          const dailyPrice = Number(vehicle.pricePerDayIDR || 0);
           if (dailyPrice <= 0) {
             return res.status(400).json({ error: 'Tarif sewa kendaraan di database backend tidak valid.' });
           }
 
-          const days = Math.max(1, Math.floor(Number(payload.details?.days || payload.duration || payload.days || 1)));
-          let rentalBase = dailyPrice * days;
+          // Authoritative rental days calculation & validation
+          let days = 0;
+          if (payload.details?.days !== undefined || payload.days !== undefined || payload.duration !== undefined) {
+            const rawDays = Number(payload.details?.days ?? payload.days ?? payload.duration);
+            if (isNaN(rawDays) || rawDays < 1) {
+              return res.status(400).json({ error: 'Durasi hari sewa kendaraan tidak valid (minimal 1 hari).' });
+            }
+            days = Math.floor(rawDays);
+          } else {
+            const pDate = payload.departureDate || payload.details?.date || payload.details?.pickupDate;
+            const rDate = payload.details?.returnDate || payload.returnDate;
+            if (pDate && rDate) {
+              const diffMs = new Date(rDate).getTime() - new Date(pDate).getTime();
+              const calcDays = Math.round(diffMs / (1000 * 3600 * 24));
+              if (calcDays < 1) {
+                return res.status(400).json({ error: 'Durasi hari sewa kendaraan tidak valid (minimal 1 hari).' });
+              }
+              days = calcDays;
+            } else {
+              days = 1;
+            }
+          }
+
+          // Service type / driver multiplier matching CarRentalView.tsx (without_driver = 0.8x)
+          const withDriver = payload.details?.withDriver !== false && payload.details?.serviceType !== 'without_driver';
+          const driverMultiplier = withDriver ? 1.0 : 0.8;
+          const effectiveDailyPrice = Math.round(dailyPrice * driverMultiplier);
+          let rentalBase = effectiveDailyPrice * days;
 
           // Addons calculation
           const requestedAddons: string[] = Array.isArray(payload.details?.selectedAddons) 
@@ -2230,7 +2264,7 @@ app.post('/api/bookings', async (req, res) => {
             for (const item of requestedAddons) {
               const addon = rentals.addons.find((a: any) => a.id === item || a.name === item);
               if (addon && (addon.status === 'Active' || !addon.status)) {
-                const addonPrice = Number(addon.priceIDR || (addon.priceUSD ? addon.priceUSD * 15000 : 0));
+                const addonPrice = Number(addon.priceIDR || 0);
                 if (addon.pricingType === 'Per Day') {
                   addonsTotal += addonPrice * days;
                 } else {
@@ -2244,12 +2278,16 @@ app.post('/api/bookings', async (req, res) => {
           if (Array.isArray(rentals.zonePricing) && rentals.zonePricing.length > 0) {
             const pickupZone = payload.details?.pickupZone;
             const dropoffZone = payload.details?.dropoffZone;
-            const zoneRule = rentals.zonePricing.find((z: any) => 
-              (z.pickupZone === pickupZone && z.dropoffZone === dropoffZone) ||
-              z.zoneId === pickupZone || z.zoneId === dropoffZone
-            );
-            if (zoneRule) {
-              rentalBase += Number(zoneRule.surchargeIDR || 0);
+            if (pickupZone || dropoffZone) {
+              const zoneRule = rentals.zonePricing.find((z: any) => 
+                (z.pickupZone === pickupZone && z.dropoffZone === dropoffZone) ||
+                (z.pickupZoneCode === pickupZone && z.dropoffZoneCode === dropoffZone) ||
+                z.zoneId === pickupZone || z.zoneId === dropoffZone ||
+                z.id === pickupZone || z.id === dropoffZone
+              );
+              if (zoneRule) {
+                rentalBase += Number(zoneRule.surchargeIDR || zoneRule.priceIDR || 0);
+              }
             }
           }
 
@@ -2285,8 +2323,8 @@ app.post('/api/bookings', async (req, res) => {
                 id: bItem.id,
                 airport: bItem.airportName,
                 city: bItem.destinationArea,
-                priceUSD: bItem.price || Math.round((bItem.priceIDR || 0) / 15000),
-                priceIDR: bItem.priceIDR || (bItem.price * 15000),
+                priceUSD: Number(bItem.price || 0),
+                priceIDR: Number(bItem.priceIDR || 0),
                 status: bItem.status || 'Published'
               };
             }
@@ -2301,14 +2339,24 @@ app.post('/api/bookings', async (req, res) => {
             return res.status(400).json({ error: 'Rute transfer bandara sedang tidak aktif.' });
           }
 
-          let routePrice = Number(route.priceIDR || (route.priceUSD ? route.priceUSD * 15000 : 0));
+          let routePrice = Number(route.priceIDR || 0);
           if (routePrice <= 0) {
             return res.status(400).json({ error: 'Tarif rute bandara di database backend tidak valid.' });
           }
 
           const isRoundTrip = payload.details?.routeType === 'Round Trip' || payload.routeType === 'Round Trip';
-          if (isRoundTrip) {
-            routePrice = routePrice * 2;
+          // Canonical formula from AirportTransferView.tsx: Round trip gets 5% discount (routePrice * 2 * 0.95)
+          let baseRateIDR = isRoundTrip ? Math.round(routePrice * 2 * 0.95) : routePrice;
+
+          // Canonical child seat surcharge from AirportTransferView.tsx (+Rp 75.000 IDR)
+          const hasChildSeat = Boolean(
+            payload.details?.childSeat === true || 
+            payload.details?.childSeat === 'true' || 
+            payload.childSeat === true || 
+            payload.childSeat === 'true'
+          );
+          if (hasChildSeat) {
+            baseRateIDR += 75000;
           }
 
           let surcharge = 0;
@@ -2316,66 +2364,140 @@ app.post('/api/bookings', async (req, res) => {
           if (airportCode && Array.isArray(airportTransfers.airports)) {
             const airportObj = airportTransfers.airports.find((a: any) => a.code?.toUpperCase() === String(airportCode).toUpperCase());
             if (airportObj) {
-              surcharge = Number(airportObj.surchargeIDR || (airportObj.surchargeUSD ? airportObj.surchargeUSD * 15000 : 0));
+              surcharge = Number(airportObj.surchargeIDR || 0);
             }
           }
+          baseRateIDR += surcharge;
+
+          // Authoritative Vehicle Multiplier Resolution (from AirportTransferView.tsx & data.ts fleet)
+          const vehicleIdInput = String(payload.vehicleId || payload.details?.vehicleId || '').trim().toLowerCase();
+          const vehicleNameInput = String(payload.vehicleName || payload.details?.vehicleName || '').trim().toLowerCase();
+
+          let vehicleMultiplier = 1.0;
+          let resolvedVehicleName = 'Toyota Innova Reborn';
+
+          if (vehicleIdInput || vehicleNameInput) {
+            if (vehicleIdInput === 'avanza' || vehicleNameInput.includes('avanza')) {
+              vehicleMultiplier = 0.9;
+              resolvedVehicleName = 'Toyota Avanza';
+            } else if (vehicleIdInput === 'innova' || vehicleNameInput.includes('innova')) {
+              vehicleMultiplier = 1.0;
+              resolvedVehicleName = 'Toyota Innova Reborn';
+            } else if (vehicleIdInput === 'hiace-commuter' || vehicleNameInput.includes('commuter')) {
+              vehicleMultiplier = 1.5;
+              resolvedVehicleName = 'Toyota Hiace Commuter';
+            } else if (vehicleIdInput === 'hiace-premio' || vehicleNameInput.includes('premio')) {
+              vehicleMultiplier = 1.8;
+              resolvedVehicleName = 'Toyota Hiace Premio';
+            } else {
+              return res.status(400).json({ error: 'Kendaraan armada transfer bandara tidak valid.' });
+            }
+          } else {
+            // Default to standard Innova (1.0x) if vehicle not specified
+            vehicleMultiplier = 1.0;
+            resolvedVehicleName = 'Toyota Innova Reborn';
+          }
+
+          const finalBaseAmount = Math.round(baseRateIDR * vehicleMultiplier);
 
           matchedServiceId = route.id;
-          resolvedTitle = `Airport Transfer: ${route.airport || 'Airport'} ⇄ ${route.city || 'City'}`;
-          baseAmount = routePrice + surcharge;
+          resolvedTitle = `Airport Transfer: ${route.airport || 'Airport'} ⇄ ${route.city || 'City'} (${resolvedVehicleName})`;
+          baseAmount = finalBaseAmount;
 
         } else if (isTaxi) {
           detectedServiceType = 'taxi';
-          const taxiServices = (await transportRepo.getCategoryData<any>('taxiServices')) || { pricingRules: [], masterAreas: [], destinations: [] };
+          const taxiServices = (await transportRepo.getCategoryData<any>('taxiServices')) || { pricingRules: [], masterAreas: [], destinations: [], areaRules: [] };
           const ruleId = String(payload.serviceId || payload.ruleId || payload.details?.ruleId || '').trim();
+
+          const masterAreas = taxiServices.masterAreas || [];
+          const masterDestinations = taxiServices.destinations || taxiServices.masterDestinations || [];
+          const areaRules = taxiServices.areaRules || [];
+
+          // Authoritative vehicle type resolution matching TaxiView.tsx
+          const rawVehicle = String(
+            payload.details?.vehicleId || 
+            payload.vehicleId || 
+            payload.details?.vehicleType || 
+            payload.vehicleType || 
+            payload.details?.vehicleName || 
+            payload.vehicleName || 
+            'innova'
+          ).toLowerCase();
+
+          let vType: 'Standard' | 'Family' | 'Premium' | 'Van' = 'Family';
+          let vehicleMultiplier = 1.0;
+          let vehicleName = 'Toyota Innova Reborn';
+
+          if (rawVehicle.includes('avanza') || rawVehicle === 'standard') {
+            vType = 'Standard';
+            vehicleMultiplier = 0.9;
+            vehicleName = 'Toyota Avanza';
+          } else if (rawVehicle.includes('innova') || rawVehicle === 'family') {
+            vType = 'Family';
+            vehicleMultiplier = 1.0;
+            vehicleName = 'Toyota Innova Reborn';
+          } else if (rawVehicle.includes('alphard') || rawVehicle.includes('premium')) {
+            vType = 'Premium';
+            vehicleMultiplier = 1.5;
+            vehicleName = 'Toyota Alphard';
+          } else if (rawVehicle.includes('hiace') || rawVehicle.includes('van') || rawVehicle.includes('commuter') || rawVehicle.includes('premio')) {
+            vType = 'Van';
+            vehicleMultiplier = 1.8;
+            vehicleName = 'Toyota HiAce';
+          }
 
           let rule = ruleId ? (taxiServices.pricingRules || []).find((r: any) => r.id === ruleId) : null;
 
-          if (!rule && ruleId) {
-            const builderTaxiRoutes = await transportRepo.getTaxiRoutes();
-            const bRoute = builderTaxiRoutes.find((b: any) => b.id === ruleId || b.code === ruleId);
-            if (bRoute) {
-              rule = {
-                id: bRoute.id,
-                price_idr: bRoute.priceIDR || (bRoute.price * 15000),
-                status: bRoute.status || 'Active'
-              };
+          let srcAreaId = String(payload.pickupAreaId || payload.details?.pickupAreaId || payload.source_id || payload.details?.source_id || '').trim();
+          let dstAreaId = String(payload.destAreaId || payload.details?.destAreaId || payload.destination_id || payload.details?.destination_id || '').trim();
+
+          const pickup = String(payload.pickup || payload.details?.pickupLocation || payload.pickupLocation || '').trim().toLowerCase();
+          const dest = String(payload.destination || payload.details?.destination || '').trim().toLowerCase();
+
+          if (!srcAreaId && pickup) {
+            const matchedArea = masterAreas.find((a: any) => 
+              pickup.includes(a.name?.toLowerCase()) || 
+              pickup.includes(a.code?.toLowerCase()) || 
+              pickup.includes(a.id?.toLowerCase())
+            );
+            if (matchedArea) {
+              srcAreaId = matchedArea.id;
+            } else {
+              const matchedDest = masterDestinations.find((d: any) => pickup.includes(d.name?.toLowerCase()));
+              if (matchedDest) srcAreaId = matchedDest.area_id;
             }
           }
 
-          if (!rule) {
-            const pickup = String(payload.pickup || payload.details?.pickupLocation || payload.pickupLocation || '').trim().toLowerCase();
-            const dest = String(payload.destination || payload.details?.destination || '').trim().toLowerCase();
-            const vehicleType = String(payload.vehicleType || payload.details?.vehicleType || payload.details?.vehicleName || 'Standard').trim().toLowerCase();
-
-            const masterAreas = taxiServices.masterAreas || [];
-            const srcArea = masterAreas.find((a: any) => pickup.includes(a.name?.toLowerCase()) || pickup.includes(a.code?.toLowerCase()));
-            const dstArea = masterAreas.find((a: any) => dest.includes(a.name?.toLowerCase()) || dest.includes(a.code?.toLowerCase()));
-
-            if (srcArea && dstArea) {
-              rule = (taxiServices.pricingRules || []).find((r: any) => 
-                r.source_id === srcArea.id && 
-                r.destination_id === dstArea.id &&
-                (!vehicleType || r.vehicle_type?.toLowerCase() === vehicleType || vehicleType.includes(r.vehicle_type?.toLowerCase()))
-              );
-              if (!rule) {
-                rule = (taxiServices.pricingRules || []).find((r: any) => r.source_id === srcArea.id && r.destination_id === dstArea.id);
-              }
+          if (!dstAreaId && dest) {
+            const matchedArea = masterAreas.find((a: any) => 
+              dest.includes(a.name?.toLowerCase()) || 
+              dest.includes(a.code?.toLowerCase()) || 
+              dest.includes(a.id?.toLowerCase())
+            );
+            if (matchedArea) {
+              dstAreaId = matchedArea.id;
+            } else {
+              const matchedDest = masterDestinations.find((d: any) => dest.includes(d.name?.toLowerCase()));
+              if (matchedDest) dstAreaId = matchedDest.area_id;
             }
+          }
 
+          if (!rule && srcAreaId && dstAreaId) {
+            // First search rule specific to this vehicle_type (bidirectional)
+            rule = (taxiServices.pricingRules || []).find((r: any) => 
+              r.status === 'Active' &&
+              ((r.source_id === srcAreaId && r.destination_id === dstAreaId) ||
+               (r.source_id === dstAreaId && r.destination_id === srcAreaId)) &&
+              r.vehicle_type?.toLowerCase() === vType.toLowerCase()
+            );
+
+            // If no specific vehicle_type rule, search general route rule (bidirectional)
             if (!rule) {
-              const builderTaxiRoutes = await transportRepo.getTaxiRoutes();
-              const matchedBuilder = builderTaxiRoutes.find((b: any) => 
-                (pickup.includes(b.pickupCity?.toLowerCase()) || pickup.includes(b.pickupArea?.toLowerCase())) &&
-                (dest.includes(b.destinationCity?.toLowerCase()) || dest.includes(b.destinationArea?.toLowerCase()))
+              rule = (taxiServices.pricingRules || []).find((r: any) => 
+                r.status === 'Active' &&
+                ((r.source_id === srcAreaId && r.destination_id === dstAreaId) ||
+                 (r.source_id === dstAreaId && r.destination_id === srcAreaId))
               );
-              if (matchedBuilder) {
-                rule = {
-                  id: matchedBuilder.id,
-                  price_idr: matchedBuilder.priceIDR || (matchedBuilder.price * 15000),
-                  status: matchedBuilder.status || 'Active'
-                };
-              }
             }
           }
 
@@ -2387,114 +2509,172 @@ app.post('/api/bookings', async (req, res) => {
             return res.status(400).json({ error: 'Layanan tarif taksi sedang tidak aktif.' });
           }
 
-          const rulePrice = Number(rule.price_idr || rule.priceIDR || (rule.price_usd ? rule.price_usd * 15000 : (rule.price ? rule.price * 15000 : 0)));
-          if (rulePrice <= 0) {
+          let basePrice = Number(rule.price_idr || rule.priceIDR || 0);
+          if (basePrice <= 0) {
             return res.status(400).json({ error: 'Tarif taksi di database backend tidak valid.' });
           }
 
+          // If the rule has an explicit matching vehicle_type, rule.price_idr is used directly.
+          // If the rule does NOT have vehicle_type specified, apply canonical vehicle multiplier from TaxiView.tsx.
+          if (!rule.vehicle_type) {
+            basePrice = Math.round(basePrice * vehicleMultiplier);
+          }
+
+          // Add Area Surcharges if applicable from taxiAreaRules
+          let areaSurchargeTotal = 0;
+          const sAreaId = rule.source_id || srcAreaId;
+          const dAreaId = rule.destination_id || dstAreaId;
+
+          if (sAreaId) {
+            const pRule = (areaRules || []).find((ar: any) => ar.area_id === sAreaId);
+            if (pRule && !pRule.is_blackout) {
+              areaSurchargeTotal += Number(pRule.surcharge_idr || 0);
+            }
+          }
+          if (dAreaId && dAreaId !== sAreaId) {
+            const dRule = (areaRules || []).find((ar: any) => ar.area_id === dAreaId);
+            if (dRule && !dRule.is_blackout) {
+              areaSurchargeTotal += Number(dRule.surcharge_idr || 0);
+            }
+          }
+
+          const finalTaxiBase = basePrice + areaSurchargeTotal;
+
           matchedServiceId = rule.id;
-          resolvedTitle = `Private Taxi Transfer`;
-          baseAmount = rulePrice;
+          resolvedTitle = `Private Taxi Transfer (${vehicleName})`;
+          baseAmount = finalTaxiBase;
 
         } else {
           // -------------------------------------------------------------
-          // PRIVATE TOUR FLOW (Requirement 2 & 13)
+          // PRIVATE TOUR FLOW (Authoritative Server-Side Pricing Engine)
           // -------------------------------------------------------------
           detectedServiceType = 'tour';
           const tourId = String(payload.tripId || payload.details?.tourId || payload.tourId || payload.serviceId || '').trim();
           if (!tourId) {
-            if (payload.baseAmount || payload.totalPriceIDR || payload.totalPrice) {
-              baseAmount = Number(payload.baseAmount || payload.totalPriceIDR || payload.totalPrice);
-              matchedServiceId = payload.serviceId || payload.serviceType || 'tour-custom';
-              resolvedTitle = payload.tripTitle || payload.serviceName || 'Private Tour';
-              tourSnapshot = {
-                tourId: matchedServiceId,
-                tourName: resolvedTitle,
-                duration: payload.details?.duration || '1 Hari',
-                vehicleName: payload.details?.vehicleName || 'Standard Private Tourism Vehicle',
-                startingPriceIDR: baseAmount,
-                highlights: [],
-                itinerary: []
-              };
+            return res.status(400).json({ error: 'tripId atau tourId wajib disertakan untuk booking tour.' });
+          }
+
+          const allTours = await toursRepo.getAll();
+          const allTrips = await shareToursRepo.getAllTrips({ all: true });
+
+          // 1. Prioritize exact ID match
+          let mainTour = allTours.find(t => t.id === tourId);
+          let trip = (!mainTour) ? allTrips.find((t: any) => t.id === tourId) : null;
+
+          // 2. Slug match
+          if (!mainTour && !trip) {
+            mainTour = allTours.find(t => t.slug === tourId);
+            trip = (!mainTour) ? allTrips.find((t: any) => t.slug === tourId) : null;
+          }
+
+          // 3. Case-insensitive exact ID match
+          if (!mainTour && !trip) {
+            mainTour = allTours.find(t => t.id && t.id.toLowerCase() === tourId.toLowerCase());
+            trip = (!mainTour) ? allTrips.find((t: any) => t.id && t.id.toLowerCase() === tourId.toLowerCase()) : null;
+          }
+
+          // Strict Authoritative Check: Never fallback to client totalPrice/baseAmount!
+          if (!mainTour && !trip) {
+            return res.status(404).json({ error: 'Tour tidak ditemukan di database backend. Pemesanan private tour wajib menggunakan tour yang terdaftar resmi.' });
+          }
+
+          const resolvedTour: any = mainTour || trip;
+          const isArchived = Boolean(
+            resolvedTour.isDeleted || 
+            resolvedTour.isArchived || 
+            resolvedTour.status === 'archived' || 
+            resolvedTour.status === 'deleted'
+          );
+          const isPublished = Boolean(
+            resolvedTour.status === 'published' || 
+            resolvedTour.status === 'Active' || 
+            resolvedTour.status === 'active' ||
+            resolvedTour.status === 'Published'
+          );
+
+          if (isArchived || !isPublished) {
+            return res.status(404).json({ error: 'Tour tidak aktif, diarsipkan, atau telah dihapus.' });
+          }
+
+          // Authoritative nationality and participant count
+          const rawNationality = String(
+            payload.nationalityType || 
+            payload.details?.nationalityType || 
+            payload.participantData?.nationalityType || 
+            'WNI'
+          ).trim();
+          const nationalityType: 'WNI' | 'WNA' | 'WNA_CHINA' | 'WNA_EUROPE' = 
+            rawNationality === 'WNA_CHINA' ? 'WNA_CHINA' :
+            rawNationality === 'WNA_EUROPE' ? 'WNA_EUROPE' :
+            rawNationality === 'WNA' ? 'WNA' : 'WNI';
+
+          const participants = Math.max(1, Math.floor(Number(
+            payload.participantsCount || 
+            payload.details?.guests || 
+            payload.details?.passengers || 
+            count || 
+            1
+          )));
+
+          // Server-authoritative peak / weekend surcharge multiplier from database schedules
+          let serverMultiplier = 1.0;
+          if (selectedDate) {
+            const allSchedules = await schedulesRepo.getAll();
+            const peakSch = allSchedules.find((s: any) => {
+              const sDate = s.startDate || s.date;
+              const sType = String(s.category || s.type || '').toLowerCase();
+              const isPeak = sType.includes('peak') || sType.includes('high') || s.type === 'peak';
+              if (isPeak && sDate === selectedDate) return true;
+              if (isPeak && s.startDate && s.endDate && selectedDate >= s.startDate && selectedDate <= s.endDate) return true;
+              return false;
+            });
+            if (peakSch) {
+              const peakSurcharge = Number((peakSch as any).surcharge || 0);
+              serverMultiplier = peakSurcharge > 0 ? (1 + (peakSurcharge / 100)) : 1.15;
             } else {
-              return res.status(400).json({ error: 'tripId atau tourId wajib disertakan untuk booking tour.' });
-            }
-          } else {
-            const allTours = await toursRepo.getAll();
-            const allTrips = await shareToursRepo.getAllTrips({ all: true });
-
-            // 1. Prioritize exact ID match
-            let mainTour = allTours.find(t => t.id === tourId);
-            let trip = (!mainTour) ? allTrips.find((t: any) => t.id === tourId) : null;
-
-            // 2. Slug match
-            if (!mainTour && !trip) {
-              mainTour = allTours.find(t => t.slug === tourId);
-              trip = (!mainTour) ? allTrips.find((t: any) => t.slug === tourId) : null;
-            }
-
-            // 3. Case-insensitive exact ID match
-            if (!mainTour && !trip) {
-              mainTour = allTours.find(t => t.id && t.id.toLowerCase() === tourId.toLowerCase());
-              trip = (!mainTour) ? allTrips.find((t: any) => t.id && t.id.toLowerCase() === tourId.toLowerCase()) : null;
-            }
-
-            if (!mainTour && !trip) {
-              if (payload.baseAmount || payload.totalPriceIDR || payload.totalPrice) {
-                baseAmount = Number(payload.baseAmount || payload.totalPriceIDR || payload.totalPrice);
-                matchedServiceId = tourId || payload.serviceId || 'tour-custom';
-                resolvedTitle = payload.tripTitle || payload.serviceName || 'Private Tour';
-                tourSnapshot = {
-                  tourId: matchedServiceId,
-                  tourName: resolvedTitle,
-                  duration: payload.details?.duration || '1 Hari',
-                  vehicleName: payload.details?.vehicleName || 'Standard Private Tourism Vehicle',
-                  startingPriceIDR: baseAmount,
-                  highlights: payload.details?.highlights || [],
-                  itinerary: payload.details?.itinerary || []
-                };
-              } else {
-                return res.status(404).json({ error: 'Tour tidak ditemukan di database backend.' });
+              const [y, m, d] = selectedDate.split('-').map(Number);
+              const dayOfWeek = new Date(y, m - 1, d).getDay();
+              if (dayOfWeek === 0 || dayOfWeek === 6) {
+                serverMultiplier = 1.15;
               }
-            } else {
-              const resolvedTour: any = mainTour || trip;
-              const isArchived = Boolean(
-                resolvedTour.isDeleted || 
-                resolvedTour.isArchived || 
-                resolvedTour.status === 'archived' || 
-                resolvedTour.status === 'deleted'
-              );
-              const isPublished = Boolean(
-                resolvedTour.status === 'published' || 
-                resolvedTour.status === 'Active' || 
-                resolvedTour.status === 'active' ||
-                resolvedTour.status === 'Published'
-              );
-
-              if (isArchived || !isPublished) {
-                return res.status(404).json({ error: 'Tour tidak aktif, diarsipkan, atau telah dihapus.' });
-              }
-
-              const serverPrice = Number(resolvedTour.startingPriceIDR ?? resolvedTour.wniPrice ?? resolvedTour.price ?? 0);
-              if (serverPrice <= 0) {
-                return res.status(400).json({ error: 'Harga tour di database backend tidak valid.' });
-              }
-
-              matchedServiceId = resolvedTour.id;
-              resolvedTitle = resolvedTour.name || resolvedTour.title || payload.tripTitle || payload.serviceName || 'Private Tour';
-              baseAmount = serverPrice;
-
-              tourSnapshot = {
-                tourId: resolvedTour.id,
-                tourName: resolvedTitle,
-                duration: payload.details?.duration || resolvedTour.duration || '1 Hari',
-                vehicleName: payload.details?.vehicleName || 'Standard Private Tourism Vehicle',
-                startingPriceIDR: baseAmount,
-                highlights: resolvedTour.highlights || [],
-                itinerary: (payload.details?.itinerary && payload.details.itinerary.length > 0) ? payload.details.itinerary : (resolvedTour.itinerary || [])
-              };
             }
           }
+
+          // Server-authoritative calculation using database tour prices
+          const tourPricing = calculatePrivateTourPricing(
+            {
+              startingPrice: Number(resolvedTour.startingPrice || resolvedTour.starting_price_usd || resolvedTour.price || 0),
+              startingPriceIDR: Number(resolvedTour.startingPriceIDR || resolvedTour.starting_price_idr || resolvedTour.wniPrice || resolvedTour.wni_price || 0),
+              wnaPrice: Number(resolvedTour.wnaPrice || resolvedTour.wna_price || 0),
+              wniPrice: Number(resolvedTour.wniPrice || resolvedTour.wni_price || resolvedTour.startingPriceIDR || resolvedTour.starting_price_idr || 0)
+            },
+            nationalityType,
+            participants,
+            serverMultiplier
+          );
+
+          if (!tourPricing.totalPriceIDR || tourPricing.totalPriceIDR <= 0) {
+            return res.status(400).json({ error: 'Harga tour di database backend tidak valid.' });
+          }
+
+          matchedServiceId = resolvedTour.id;
+          resolvedTitle = resolvedTour.name || resolvedTour.title || payload.tripTitle || payload.serviceName || 'Private Tour';
+          baseAmount = tourPricing.totalPriceIDR;
+
+          tourSnapshot = {
+            tourId: resolvedTour.id,
+            tourName: resolvedTitle,
+            duration: payload.details?.duration || resolvedTour.duration || '1 Hari',
+            vehicleName: payload.details?.vehicleName || 'Standard Private Tourism Vehicle',
+            startingPriceIDR: Number(resolvedTour.startingPriceIDR || resolvedTour.starting_price_idr || resolvedTour.wniPrice || resolvedTour.wni_price || 0),
+            unitPriceIDR: tourPricing.unitPriceIDR,
+            unitPriceUSD: tourPricing.unitPriceUSD,
+            pax: participants,
+            nationalityType,
+            surchargeMultiplier: serverMultiplier,
+            highlights: resolvedTour.highlights || [],
+            itinerary: (payload.details?.itinerary && payload.details.itinerary.length > 0) ? payload.details.itinerary : (resolvedTour.itinerary || [])
+          };
         }
 
         // -------------------------------------------------------------
@@ -4605,7 +4785,7 @@ app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/paymen
 
     let verifiedBaseAmount = Number(existingOrder.baseAmount);
     if (!verifiedBaseAmount || isNaN(verifiedBaseAmount) || verifiedBaseAmount <= 0) {
-      const netBase = Number(existingOrder.totalPriceIDR || existingOrder.totalPrice || 0);
+      const netBase = Number(existingOrder.totalPriceIDR || 0);
       verifiedBaseAmount = netBase > 0 ? (netBase + verifiedDiscount) : 0;
     }
 
