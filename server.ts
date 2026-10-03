@@ -1241,13 +1241,78 @@ app.post('/api/rentals/sync', requireAdminAuth, requirePermission('manageFleet')
     }
 
     const currentRentals = (await transportRepo.getCategoryData<any>('rentals')) || {};
+
+    // 1. Vehicle Fleet: pricePerDayIDR is the only authoritative price; pricePerDay (USD) is display preview
+    const normalizedVehicles = Array.isArray(payload.vehicles) ? payload.vehicles.map((v: any) => {
+      let pricePerDayIDR = Number(v.pricePerDayIDR || 0);
+      const existing = Array.isArray(currentRentals.vehicles) ? currentRentals.vehicles.find((ev: any) => ev.id === v.id) : null;
+      if (pricePerDayIDR <= 0 && existing && Number(existing.pricePerDayIDR) > 0) {
+        pricePerDayIDR = Number(existing.pricePerDayIDR);
+      }
+      return {
+        ...v,
+        pricePerDayIDR,
+        pricePerDay: pricePerDayIDR > 0 ? Math.round(pricePerDayIDR / 16000) : (Number(v.pricePerDay) || undefined)
+      };
+    }) : (currentRentals.vehicles || []);
+
+    // 2. Categories: priceZone0IDR, priceZone1IDR, priceZone2IDR are authoritative; USD derived
+    const normalizedCategories = Array.isArray(payload.categories) ? payload.categories.map((c: any) => {
+      let z0IDR = Number(c.priceZone0IDR || 0);
+      let z1IDR = Number(c.priceZone1IDR || 0);
+      let z2IDR = Number(c.priceZone2IDR || 0);
+      const existing = Array.isArray(currentRentals.categories) ? currentRentals.categories.find((ec: any) => ec.id === c.id) : null;
+      if (z0IDR <= 0 && existing && Number(existing.priceZone0IDR) > 0) z0IDR = Number(existing.priceZone0IDR);
+      if (z1IDR <= 0 && existing && Number(existing.priceZone1IDR) > 0) z1IDR = Number(existing.priceZone1IDR);
+      if (z2IDR <= 0 && existing && Number(existing.priceZone2IDR) > 0) z2IDR = Number(existing.priceZone2IDR);
+
+      return {
+        ...c,
+        priceZone0IDR: z0IDR,
+        priceZone0USD: z0IDR > 0 ? Math.round(z0IDR / 16000) : Number(c.priceZone0USD || 0),
+        priceZone1IDR: z1IDR,
+        priceZone1USD: z1IDR > 0 ? Math.round(z1IDR / 16000) : Number(c.priceZone1USD || 0),
+        priceZone2IDR: z2IDR,
+        priceZone2USD: z2IDR > 0 ? Math.round(z2IDR / 16000) : Number(c.priceZone2USD || 0)
+      };
+    }) : (currentRentals.categories || []);
+
+    // 3. Add-ons: priceIDR is authoritative; priceUSD is display preview
+    const normalizedAddons = Array.isArray(payload.addons) ? payload.addons.map((a: any) => {
+      let priceIDR = Number(a.priceIDR || 0);
+      const existing = Array.isArray(currentRentals.addons) ? currentRentals.addons.find((ea: any) => ea.id === a.id) : null;
+      if (priceIDR <= 0 && existing && Number(existing.priceIDR) > 0) {
+        priceIDR = Number(existing.priceIDR);
+      }
+      return {
+        ...a,
+        priceIDR,
+        priceUSD: priceIDR > 0 ? Math.round(priceIDR / 16000) : Number(a.priceUSD || 0)
+      };
+    }) : (currentRentals.addons || []);
+
+    // 4. Zone Pricing: priceIDR / surchargeIDR is authoritative; USD derived
+    const normalizedZonePricing = Array.isArray(payload.zonePricing) ? payload.zonePricing.map((z: any) => {
+      let priceIDR = Number(z.priceIDR || z.surchargeIDR || 0);
+      const existing = Array.isArray(currentRentals.zonePricing) ? currentRentals.zonePricing.find((ez: any) => ez.id === z.id) : null;
+      if (priceIDR <= 0 && existing) {
+        priceIDR = Number(existing.priceIDR || existing.surchargeIDR || 0);
+      }
+      return {
+        ...z,
+        priceIDR,
+        surchargeIDR: priceIDR,
+        priceUSD: priceIDR > 0 ? Math.round(priceIDR / 16000) : Number(z.priceUSD || z.surchargeUSD || 0)
+      };
+    }) : (currentRentals.zonePricing || []);
+
     const updated = {
       cities: Array.isArray(payload.cities) ? payload.cities : (currentRentals.cities || []),
       locations: Array.isArray(payload.locations) ? payload.locations : (currentRentals.locations || []),
-      categories: Array.isArray(payload.categories) ? payload.categories : (currentRentals.categories || []),
-      vehicles: Array.isArray(payload.vehicles) ? payload.vehicles : (currentRentals.vehicles || []),
-      addons: Array.isArray(payload.addons) ? payload.addons : (currentRentals.addons || []),
-      zonePricing: Array.isArray(payload.zonePricing) ? payload.zonePricing : (currentRentals.zonePricing || [])
+      categories: normalizedCategories,
+      vehicles: normalizedVehicles,
+      addons: normalizedAddons,
+      zonePricing: normalizedZonePricing
     };
 
     if (JSON.stringify(currentRentals) === JSON.stringify(updated)) {
@@ -2377,6 +2442,7 @@ app.post('/api/bookings', async (req, res) => {
         let resolvedTitle = '';
         let baseAmount = 0;
         let tourSnapshot: any = undefined;
+        let rentalBreakdown: any = undefined;
 
         if (isRental) {
           detectedServiceType = 'rental';
@@ -2397,7 +2463,7 @@ app.post('/api/bookings', async (req, res) => {
 
           const dailyPrice = Number(vehicle.pricePerDayIDR || 0);
           if (dailyPrice <= 0) {
-            return res.status(400).json({ error: 'Tarif sewa kendaraan di database backend tidak valid.' });
+            return res.status(400).json({ error: 'Tarif sewa kendaraan di database backend tidak valid atau tidak memiliki tarif IDR resmi.' });
           }
 
           // Authoritative rental days calculation & validation
@@ -2429,7 +2495,7 @@ app.post('/api/bookings', async (req, res) => {
           const effectiveDailyPrice = Math.round(dailyPrice * driverMultiplier);
           let rentalBase = effectiveDailyPrice * days;
 
-          // Addons calculation
+          // Addons calculation: Authoritative IDR only; reject legacy USD-only addons
           const requestedAddons: string[] = Array.isArray(payload.details?.selectedAddons) 
             ? payload.details.selectedAddons 
             : (Array.isArray(payload.details?.addOns) ? payload.details.addOns : (Array.isArray(payload.addons) ? payload.addons : []));
@@ -2439,17 +2505,22 @@ app.post('/api/bookings', async (req, res) => {
             for (const item of requestedAddons) {
               const addon = rentals.addons.find((a: any) => a.id === item || a.name === item);
               if (addon && (addon.status === 'Active' || !addon.status)) {
-                const addonPrice = Number(addon.priceIDR || 0);
+                const addonIDR = Number(addon.priceIDR || 0);
+                if (addonIDR <= 0 && Number(addon.priceUSD || 0) > 0) {
+                  return res.status(400).json({ error: `Layanan add-on "${addon.name}" memiliki tarif legacy USD tanpa tarif IDR resmi. Transaksi ditolak demi keamanan.` });
+                }
                 if (addon.pricingType === 'Per Day') {
-                  addonsTotal += addonPrice * days;
+                  addonsTotal += addonIDR * days;
                 } else {
-                  addonsTotal += addonPrice;
+                  addonsTotal += addonIDR;
                 }
               }
             }
           }
           rentalBase += addonsTotal;
 
+          // Zone surcharge calculation: Authoritative IDR only; reject legacy USD-only zone rules
+          let zoneSurchargeIDR = 0;
           if (Array.isArray(rentals.zonePricing) && rentals.zonePricing.length > 0) {
             const pickupZone = payload.details?.pickupZone;
             const dropoffZone = payload.details?.dropoffZone;
@@ -2461,7 +2532,12 @@ app.post('/api/bookings', async (req, res) => {
                 z.id === pickupZone || z.id === dropoffZone
               );
               if (zoneRule) {
-                rentalBase += Number(zoneRule.surchargeIDR || zoneRule.priceIDR || 0);
+                const zIDR = Number(zoneRule.surchargeIDR || zoneRule.priceIDR || 0);
+                if (zIDR <= 0 && Number(zoneRule.surchargeUSD || zoneRule.priceUSD || 0) > 0) {
+                  return res.status(400).json({ error: 'Surcharge zona layanan memiliki tarif legacy USD tanpa tarif IDR resmi. Transaksi ditolak demi keamanan.' });
+                }
+                zoneSurchargeIDR = zIDR;
+                rentalBase += zoneSurchargeIDR;
               }
             }
           }
@@ -2469,6 +2545,16 @@ app.post('/api/bookings', async (req, res) => {
           matchedServiceId = vehicle.id;
           resolvedTitle = `Car Rental: ${vehicle.name}`;
           baseAmount = rentalBase;
+          rentalBreakdown = {
+            days,
+            dailyPriceIDR: dailyPrice,
+            driverMultiplier,
+            effectiveDailyPriceIDR: effectiveDailyPrice,
+            baseRentalIDR: effectiveDailyPrice * days,
+            addonsTotalIDR: addonsTotal,
+            zoneSurchargeIDR,
+            totalBaseAmountIDR: rentalBase
+          };
 
         } else if (isAirport) {
           detectedServiceType = 'airport';
@@ -3043,6 +3129,11 @@ app.post('/api/bookings', async (req, res) => {
             ...(tourSnapshot ? {
               duration: payload.details?.duration || tourSnapshot.duration,
               vehicleName: payload.details?.vehicleName || tourSnapshot.vehicleName
+            } : {}),
+            ...(rentalBreakdown ? {
+              rentalBreakdown,
+              totalPriceIDR: finalBaseAmount,
+              currency: 'IDR'
             } : {}),
             promoCode: verifiedPromoCode,
             discountAmount: verifiedDiscount,

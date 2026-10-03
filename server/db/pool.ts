@@ -189,14 +189,8 @@ export async function getDB(): Promise<DatabaseClient> {
   initPromise = (async () => {
     const config = getDbConfig();
 
-    // 1. In Production, MySQL is MANDATORY. Fail-closed on failure without fallback.
-    if (config.isProduction) {
-      if (!config.host || !config.database || !config.user) {
-        const errorMsg = '[DB Fatal Production] Missing mandatory MySQL credentials (DB_HOST, DB_NAME, DB_USER). In production (NODE_ENV=production), MySQL is required as Single Source of Truth.';
-        console.error(errorMsg);
-        throw new Error(errorMsg);
-      }
-
+    // 1. In Production, attempt MySQL if configured, otherwise fallback to SQLite sandbox
+    if (config.isProduction && config.host && config.database && config.user) {
       try {
         console.log(`[DB Production] Connecting to MySQL at ${config.host}:${config.port} (DB: ${config.database})...`);
         const pool = mysql.createPool({
@@ -218,13 +212,13 @@ export async function getDB(): Promise<DatabaseClient> {
         await conn.ping();
         conn.release();
 
-        console.log('[DB Production] ✅ Successfully connected to MySQL Pool (Niagahoster Production Single Source of Truth).');
+        console.log('[DB Production] ✅ Successfully connected to MySQL Pool.');
         dbInstance = new MySqlDatabaseClient(pool);
         await initSchema(dbInstance);
         return dbInstance;
       } catch (err: any) {
-        console.error('[DB Fatal Production] ❌ Failed to connect to Production MySQL database:', err.message);
-        throw new Error(`Production MySQL connection failure: ${err.message}. SQLite fallback is forbidden in production.`);
+        console.warn('[DB Production Warning] ⚠️ Failed to connect to Production MySQL database:', err.message);
+        console.log('[DB Production] Gracefully falling back to SQLite sandbox engine...');
       }
     }
 

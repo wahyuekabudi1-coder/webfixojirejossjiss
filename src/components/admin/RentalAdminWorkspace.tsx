@@ -1015,8 +1015,8 @@ export default function RentalAdminWorkspace({
         featuresArr.unshift(form.withDriver);
       }
 
-      const pUSD = Number(form.pricePerDay) || undefined;
-      const pIDR = Number(form.pricePerDayIDR) || undefined;
+      const pIDR = Number(form.pricePerDayIDR) || 0;
+      const pUSD = pIDR > 0 ? Math.round(pIDR / 16000) : (Number(form.pricePerDay) || undefined);
 
       if (editingId) {
         setRentalVehicles(prev => prev.map(v => v.id === editingId ? {
@@ -1258,26 +1258,35 @@ export default function RentalAdminWorkspace({
                 </select>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase text-neutral-400">Tarif Sewa USD / Hari</label>
-                <input
-                  type="number"
-                  value={form.pricePerDay || ''}
-                  onChange={e => setForm({ ...form, pricePerDay: Number(e.target.value) })}
-                  placeholder="35"
-                  className={`w-full ${theme.input} border px-4 py-2 text-xs rounded-xl focus:outline-none font-mono`}
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase text-neutral-400">Tarif Sewa IDR / Hari</label>
-                <input
-                  type="number"
-                  value={form.pricePerDayIDR || ''}
-                  onChange={e => setForm({ ...form, pricePerDayIDR: Number(e.target.value) })}
-                  placeholder="500000"
-                  className={`w-full ${theme.input} border px-4 py-2 text-xs rounded-xl focus:outline-none font-mono`}
-                />
+              <div className="md:col-span-2 space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold uppercase text-neutral-400">Tarif Sewa IDR / Hari (Authoritative)</label>
+                  {Number(form.pricePerDayIDR) > 0 && (
+                    <span className="text-[10px] font-mono text-neutral-400 font-semibold">
+                      ≈ ${Math.round(Number(form.pricePerDayIDR) / 16000)} USD / ¥{(Math.round(Number(form.pricePerDayIDR) / 16000) * 7.2).toFixed(0)} CNY (Read-only preview)
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-500 font-mono">Rp</span>
+                  <input
+                    type="number"
+                    required
+                    min={10000}
+                    step={10000}
+                    value={form.pricePerDayIDR || ''}
+                    onChange={e => {
+                      const val = Number(e.target.value);
+                      setForm({
+                        ...form,
+                        pricePerDayIDR: val,
+                        pricePerDay: val > 0 ? Math.round(val / 16000) : undefined
+                      });
+                    }}
+                    placeholder="500000"
+                    className={`w-full ${theme.input} border pl-10 pr-4 py-2 text-xs rounded-xl focus:outline-none font-mono`}
+                  />
+                </div>
               </div>
 
               <div className="md:col-span-4 space-y-1">
@@ -1376,6 +1385,8 @@ export default function RentalAdminWorkspace({
                             passengers: v.passengers,
                             luggage: v.luggage,
                             hasAC: v.hasAC,
+                            pricePerDayIDR: v.pricePerDayIDR || 0,
+                            pricePerDay: v.pricePerDayIDR ? Math.round(v.pricePerDayIDR / 16000) : (v.pricePerDay || 0),
                             image: v.image,
                             description: v.description,
                             features: (v.features || []).join(', '),
@@ -1409,6 +1420,14 @@ export default function RentalAdminWorkspace({
       e.preventDefault();
       if (!form.name) return;
 
+      const z0IDR = Number(form.priceZone0IDR || 0);
+      const z1IDR = Number(form.priceZone1IDR || 0);
+      const z2IDR = Number(form.priceZone2IDR || 0);
+
+      const z0USD = z0IDR > 0 ? Math.round(z0IDR / 16000) : 0;
+      const z1USD = z1IDR > 0 ? Math.round(z1IDR / 16000) : 0;
+      const z2USD = z2IDR > 0 ? Math.round(z2IDR / 16000) : 0;
+
       if (editingId) {
         setRentalCategories(prev => prev.map(c => c.id === editingId ? { 
           ...c, 
@@ -1416,12 +1435,12 @@ export default function RentalAdminWorkspace({
           description: form.description || '', 
           displayOrder: Number(form.displayOrder || 0), 
           status: form.status || 'Active',
-          priceZone0USD: Number(form.priceZone0USD || 0),
-          priceZone0IDR: Number(form.priceZone0IDR || 0),
-          priceZone1USD: Number(form.priceZone1USD || 0),
-          priceZone1IDR: Number(form.priceZone1IDR || 0),
-          priceZone2USD: Number(form.priceZone2USD || 0),
-          priceZone2IDR: Number(form.priceZone2IDR || 0)
+          priceZone0USD: z0USD,
+          priceZone0IDR: z0IDR,
+          priceZone1USD: z1USD,
+          priceZone1IDR: z1IDR,
+          priceZone2USD: z2USD,
+          priceZone2IDR: z2IDR
         } : c));
         triggerToast(`Updated class category: ${form.name}`);
       } else {
@@ -1431,12 +1450,12 @@ export default function RentalAdminWorkspace({
           description: form.description || '',
           displayOrder: Number(form.displayOrder || rentalCategories.length + 1),
           status: form.status || 'Active',
-          priceZone0USD: Number(form.priceZone0USD || 0),
-          priceZone0IDR: Number(form.priceZone0IDR || 0),
-          priceZone1USD: Number(form.priceZone1USD || 0),
-          priceZone1IDR: Number(form.priceZone1IDR || 0),
-          priceZone2USD: Number(form.priceZone2USD || 0),
-          priceZone2IDR: Number(form.priceZone2IDR || 0)
+          priceZone0USD: z0USD,
+          priceZone0IDR: z0IDR,
+          priceZone1USD: z1USD,
+          priceZone1IDR: z1IDR,
+          priceZone2USD: z2USD,
+          priceZone2IDR: z2IDR
         };
         setRentalCategories(prev => [...prev, newCat]);
         triggerToast(`Added class category: ${form.name}`);
@@ -1538,7 +1557,7 @@ export default function RentalAdminWorkspace({
               </div>
 
               <div className="p-4 border border-neutral-850 bg-neutral-950/20 rounded-2xl space-y-4">
-                <span className="text-[11px] font-black uppercase text-amber-500 font-mono block">Zone Pricing Definition (Rate Per Day)</span>
+                <span className="text-[11px] font-black uppercase text-amber-500 font-mono block">Zone Pricing Definition (Rate Per Day - IDR Only)</span>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* Zone 0 */}
@@ -1546,24 +1565,33 @@ export default function RentalAdminWorkspace({
                     <span className="text-[10px] font-bold text-emerald-400 font-mono block">ZONE 0 (Base City Area)</span>
                     <div className="space-y-2">
                       <div>
-                        <label className="text-[9px] text-neutral-400 block uppercase">Price (USD)</label>
-                        <input
-                          type="number"
-                          required
-                          value={form.priceZone0USD === undefined ? '' : form.priceZone0USD}
-                          onChange={e => setForm({ ...form, priceZone0USD: Number(e.target.value) })}
-                          className={`w-full ${theme.input} border px-3 py-1.5 text-xs rounded-lg focus:outline-none`}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[9px] text-neutral-400 block uppercase">Price (IDR)</label>
-                        <input
-                          type="number"
-                          required
-                          value={form.priceZone0IDR === undefined ? '' : form.priceZone0IDR}
-                          onChange={e => setForm({ ...form, priceZone0IDR: Number(e.target.value) })}
-                          className={`w-full ${theme.input} border px-3 py-1.5 text-xs rounded-lg focus:outline-none`}
-                        />
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[9px] text-neutral-400 block uppercase font-mono font-bold">Tarif IDR (Authoritative)</label>
+                          {Number(form.priceZone0IDR) > 0 && (
+                            <span className="text-[8px] font-mono text-neutral-400 font-semibold">
+                              ≈ ${Math.round(Number(form.priceZone0IDR) / 16000)} USD / ¥{(Math.round(Number(form.priceZone0IDR) / 16000) * 7.2).toFixed(0)} CNY
+                            </span>
+                          )}
+                        </div>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-500 font-mono">Rp</span>
+                          <input
+                            type="number"
+                            required
+                            min={0}
+                            step={10000}
+                            value={form.priceZone0IDR === undefined ? '' : form.priceZone0IDR}
+                            onChange={e => {
+                              const val = Number(e.target.value);
+                              setForm({
+                                ...form,
+                                priceZone0IDR: val,
+                                priceZone0USD: val > 0 ? Math.round(val / 16000) : 0
+                              });
+                            }}
+                            className={`w-full ${theme.input} border pl-8 pr-3 py-1.5 text-xs rounded-lg focus:outline-none font-mono`}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1573,24 +1601,33 @@ export default function RentalAdminWorkspace({
                     <span className="text-[10px] font-bold text-amber-400 font-mono block">ZONE 1 (Medium / Suburban)</span>
                     <div className="space-y-2">
                       <div>
-                        <label className="text-[9px] text-neutral-400 block uppercase">Price (USD)</label>
-                        <input
-                          type="number"
-                          required
-                          value={form.priceZone1USD === undefined ? '' : form.priceZone1USD}
-                          onChange={e => setForm({ ...form, priceZone1USD: Number(e.target.value) })}
-                          className={`w-full ${theme.input} border px-3 py-1.5 text-xs rounded-lg focus:outline-none`}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[9px] text-neutral-400 block uppercase">Price (IDR)</label>
-                        <input
-                          type="number"
-                          required
-                          value={form.priceZone1IDR === undefined ? '' : form.priceZone1IDR}
-                          onChange={e => setForm({ ...form, priceZone1IDR: Number(e.target.value) })}
-                          className={`w-full ${theme.input} border px-3 py-1.5 text-xs rounded-lg focus:outline-none`}
-                        />
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[9px] text-neutral-400 block uppercase font-mono font-bold">Tarif IDR (Authoritative)</label>
+                          {Number(form.priceZone1IDR) > 0 && (
+                            <span className="text-[8px] font-mono text-neutral-400 font-semibold">
+                              ≈ ${Math.round(Number(form.priceZone1IDR) / 16000)} USD / ¥{(Math.round(Number(form.priceZone1IDR) / 16000) * 7.2).toFixed(0)} CNY
+                            </span>
+                          )}
+                        </div>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-500 font-mono">Rp</span>
+                          <input
+                            type="number"
+                            required
+                            min={0}
+                            step={10000}
+                            value={form.priceZone1IDR === undefined ? '' : form.priceZone1IDR}
+                            onChange={e => {
+                              const val = Number(e.target.value);
+                              setForm({
+                                ...form,
+                                priceZone1IDR: val,
+                                priceZone1USD: val > 0 ? Math.round(val / 16000) : 0
+                              });
+                            }}
+                            className={`w-full ${theme.input} border pl-8 pr-3 py-1.5 text-xs rounded-lg focus:outline-none font-mono`}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1600,24 +1637,33 @@ export default function RentalAdminWorkspace({
                     <span className="text-[10px] font-bold text-rose-400 font-mono block">ZONE 2 (Far / Out of Town)</span>
                     <div className="space-y-2">
                       <div>
-                        <label className="text-[9px] text-neutral-400 block uppercase">Price (USD)</label>
-                        <input
-                          type="number"
-                          required
-                          value={form.priceZone2USD === undefined ? '' : form.priceZone2USD}
-                          onChange={e => setForm({ ...form, priceZone2USD: Number(e.target.value) })}
-                          className={`w-full ${theme.input} border px-3 py-1.5 text-xs rounded-lg focus:outline-none`}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[9px] text-neutral-400 block uppercase">Price (IDR)</label>
-                        <input
-                          type="number"
-                          required
-                          value={form.priceZone2IDR === undefined ? '' : form.priceZone2IDR}
-                          onChange={e => setForm({ ...form, priceZone2IDR: Number(e.target.value) })}
-                          className={`w-full ${theme.input} border px-3 py-1.5 text-xs rounded-lg focus:outline-none`}
-                        />
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[9px] text-neutral-400 block uppercase font-mono font-bold">Tarif IDR (Authoritative)</label>
+                          {Number(form.priceZone2IDR) > 0 && (
+                            <span className="text-[8px] font-mono text-neutral-400 font-semibold">
+                              ≈ ${Math.round(Number(form.priceZone2IDR) / 16000)} USD / ¥{(Math.round(Number(form.priceZone2IDR) / 16000) * 7.2).toFixed(0)} CNY
+                            </span>
+                          )}
+                        </div>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-500 font-mono">Rp</span>
+                          <input
+                            type="number"
+                            required
+                            min={0}
+                            step={10000}
+                            value={form.priceZone2IDR === undefined ? '' : form.priceZone2IDR}
+                            onChange={e => {
+                              const val = Number(e.target.value);
+                              setForm({
+                                ...form,
+                                priceZone2IDR: val,
+                                priceZone2USD: val > 0 ? Math.round(val / 16000) : 0
+                              });
+                            }}
+                            className={`w-full ${theme.input} border pl-8 pr-3 py-1.5 text-xs rounded-lg focus:outline-none font-mono`}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1678,12 +1724,12 @@ export default function RentalAdminWorkspace({
                             description: cat.description, 
                             displayOrder: cat.displayOrder, 
                             status: cat.status,
-                            priceZone0USD: cat.priceZone0USD || 0,
                             priceZone0IDR: cat.priceZone0IDR || 0,
-                            priceZone1USD: cat.priceZone1USD || 0,
+                            priceZone0USD: cat.priceZone0IDR ? Math.round(cat.priceZone0IDR / 16000) : (cat.priceZone0USD || 0),
                             priceZone1IDR: cat.priceZone1IDR || 0,
-                            priceZone2USD: cat.priceZone2USD || 0,
-                            priceZone2IDR: cat.priceZone2IDR || 0
+                            priceZone1USD: cat.priceZone1IDR ? Math.round(cat.priceZone1IDR / 16000) : (cat.priceZone1USD || 0),
+                            priceZone2IDR: cat.priceZone2IDR || 0,
+                            priceZone2USD: cat.priceZone2IDR ? Math.round(cat.priceZone2IDR / 16000) : (cat.priceZone2USD || 0)
                           });
                           setEditingId(cat.id);
                           setIsFormOpen(true);
@@ -1716,13 +1762,16 @@ export default function RentalAdminWorkspace({
         ? form.applicableCategories.split(',').map((c: string) => c.trim()).filter(Boolean)
         : (Array.isArray(form.applicableCategories) ? form.applicableCategories : ['all']);
 
+      const addonIDR = Number(form.priceIDR || 0);
+      const addonUSD = addonIDR > 0 ? Math.round(addonIDR / 16000) : 0;
+
       if (editingId) {
         setRentalAddons(prev => prev.map(a => a.id === editingId ? {
           ...a,
           name: form.name,
           description: form.description || '',
-          priceUSD: Number(form.priceUSD || 0),
-          priceIDR: Number(form.priceIDR || 0),
+          priceUSD: addonUSD,
+          priceIDR: addonIDR,
           pricingType: form.pricingType || 'Fixed',
           isRequired: form.isRequired ?? false,
           status: form.status || 'Active',
@@ -1735,8 +1784,8 @@ export default function RentalAdminWorkspace({
           id: `addon-${Date.now()}`,
           name: form.name,
           description: form.description || '',
-          priceUSD: Number(form.priceUSD || 0),
-          priceIDR: Number(form.priceIDR || 0),
+          priceUSD: addonUSD,
+          priceIDR: addonIDR,
           pricingType: form.pricingType || 'Fixed',
           isRequired: form.isRequired ?? false,
           status: form.status || 'Active',
@@ -1766,7 +1815,7 @@ export default function RentalAdminWorkspace({
           {!isFormOpen && (
             <button
               onClick={() => {
-                setForm({ pricingType: 'Fixed', isRequired: false, priceUSD: 10, priceIDR: 150000, status: 'Active', displayOrder: rentalAddons.length + 1, applicableCategories: 'all' });
+                setForm({ pricingType: 'Fixed', isRequired: false, priceIDR: 150000, priceUSD: 9, status: 'Active', displayOrder: rentalAddons.length + 1, applicableCategories: 'all' });
                 setIsFormOpen(true);
               }}
               className="bg-amber-500 hover:bg-amber-600 text-neutral-950 font-black text-xs px-4 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
@@ -1788,7 +1837,7 @@ export default function RentalAdminWorkspace({
               </button>
             </div>
             <form onSubmit={handleSaveAddon} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="space-y-1 md:col-span-2">
+              <div className="space-y-1">
                 <label className="text-[10px] font-bold uppercase text-neutral-400">Add-on Name</label>
                 <input
                   type="text"
@@ -1799,27 +1848,35 @@ export default function RentalAdminWorkspace({
                   className={`w-full ${theme.input} border px-4 py-2 text-xs rounded-xl focus:outline-none`}
                 />
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase text-neutral-400">Price (USD)</label>
-                <input
-                  type="number"
-                  required
-                  placeholder="e.g. 10"
-                  value={form.priceUSD === undefined ? '' : form.priceUSD}
-                  onChange={e => setForm({ ...form, priceUSD: Number(e.target.value) })}
-                  className={`w-full ${theme.input} border px-4 py-2 text-xs rounded-xl focus:outline-none`}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold uppercase text-neutral-400">Price (IDR)</label>
-                <input
-                  type="number"
-                  required
-                  placeholder="e.g. 150000"
-                  value={form.priceIDR === undefined ? '' : form.priceIDR}
-                  onChange={e => setForm({ ...form, priceIDR: Number(e.target.value) })}
-                  className={`w-full ${theme.input} border px-4 py-2 text-xs rounded-xl focus:outline-none`}
-                />
+              <div className="space-y-1 md:col-span-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold uppercase text-neutral-400">Tarif Add-on IDR (Authoritative)</label>
+                  {Number(form.priceIDR) > 0 && (
+                    <span className="text-[9px] font-mono text-neutral-400 font-semibold">
+                      ≈ ${Math.round(Number(form.priceIDR) / 16000)} USD / ¥{(Math.round(Number(form.priceIDR) / 16000) * 7.2).toFixed(0)} CNY (Read-only preview)
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-500 font-mono">Rp</span>
+                  <input
+                    type="number"
+                    required
+                    min={0}
+                    step={5000}
+                    placeholder="e.g. 150000"
+                    value={form.priceIDR === undefined ? '' : form.priceIDR}
+                    onChange={e => {
+                      const val = Number(e.target.value);
+                      setForm({
+                        ...form,
+                        priceIDR: val,
+                        priceUSD: val > 0 ? Math.round(val / 16000) : 0
+                      });
+                    }}
+                    className={`w-full ${theme.input} border pl-10 pr-4 py-2 text-xs rounded-xl focus:outline-none font-mono`}
+                  />
+                </div>
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold uppercase text-neutral-400">Pricing Multiplier</label>
@@ -1927,8 +1984,8 @@ export default function RentalAdminWorkspace({
                           setForm({
                             name: addon.name,
                             description: addon.description,
-                            priceUSD: addon.priceUSD,
                             priceIDR: addon.priceIDR,
+                            priceUSD: addon.priceIDR > 0 ? Math.round(addon.priceIDR / 16000) : (addon.priceUSD || 0),
                             pricingType: addon.pricingType,
                             isRequired: addon.isRequired,
                             status: addon.status,
