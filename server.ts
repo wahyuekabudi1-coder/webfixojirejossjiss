@@ -41,8 +41,8 @@ if (fs.existsSync('/app/.dev.env.json')) {
   } catch (e) {}
 }
 
-// AI Studio Dev Server must run on port 3000
-const PORT = 3000;
+// AI Studio Dev Server must run on port 3000, production environments (e.g. Cloud Run) inject PORT
+const PORT = Number(process.env.PORT) || 3000;
 
 // Helper to determine the actual project root directory safely across environments (AI Studio, PM2, Passenger, Hostinger)
 function resolveProjectRoot(): string {
