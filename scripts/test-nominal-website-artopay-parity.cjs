@@ -217,7 +217,7 @@ async function runWebsiteArtoPayParityTest() {
       type: 'tour',
       tourId: 'tour-p5b-1791025346175',
       serviceName: 'Bromo Sunrise Parity Tour',
-      departureDate: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0],
+      departureDate: new Date(Date.now() + 86400000 * (15 + Math.floor(Math.random() * 50))).toISOString().split('T')[0],
       customerName: 'Ahmad Parity',
       customerEmail: 'ahmad.parity@example.com',
       customerPhone: '+6281299998888',

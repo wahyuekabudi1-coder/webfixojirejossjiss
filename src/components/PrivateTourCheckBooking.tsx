@@ -613,12 +613,20 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
 
                 <div className="space-y-2 text-xs mt-3">
                   <div className="flex justify-between py-1">
-                    <span className="text-neutral-500">Harga Dasar Tur:</span>
+                    <span className="text-neutral-500">
+                      {booking.serviceType === 'rental' ? 'Harga Dasar Sewa:' : booking.serviceType === 'taxi' ? 'Harga Dasar Taksi:' : booking.serviceType === 'airport' ? 'Harga Dasar Transfer:' : 'Harga Dasar Tur:'}
+                    </span>
                     <span className="font-mono font-bold text-neutral-900">Rp {(booking.baseAmount || 0).toLocaleString('id-ID')}</span>
                   </div>
+                  {Boolean(booking.discount && Number(booking.discount) > 0) && (
+                    <div className="flex justify-between py-1 border-t border-neutral-100 text-emerald-600 font-semibold">
+                      <span>Diskon Promo {booking.promoCode ? `(${booking.promoCode})` : ''}:</span>
+                      <span className="font-mono">- Rp {Number(booking.discount).toLocaleString('id-ID')}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between py-1 border-t border-neutral-100">
                     <span className="text-neutral-500">Kode Unik Verifikasi:</span>
-                    <span className="font-mono font-bold text-neutral-900">Rp {(booking.uniqueCode || 0).toLocaleString('id-ID')}</span>
+                    <span className="font-mono font-bold text-amber-600">+ Rp {(booking.uniqueCode || 0).toLocaleString('id-ID')}</span>
                   </div>
                   <div className="flex justify-between py-2 border-t border-neutral-200 font-bold text-sm bg-neutral-50 px-2 rounded-lg items-center">
                     <span className="text-neutral-800">Total Pembayaran (ArtoPay IDR):</span>

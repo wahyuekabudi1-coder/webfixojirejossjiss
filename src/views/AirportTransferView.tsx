@@ -255,9 +255,10 @@ export default function AirportTransferView() {
     setPaymentLoading(true);
     setErrorMessage(null);
     try {
-      const payableAmount = Number(confirmedBooking.paymentAmount) || (confirmedBooking.uniqueCode ? confirmedBooking.totalPriceIDR + confirmedBooking.uniqueCode : confirmedBooking.totalPriceIDR);
+      const targetOrderId = confirmedBooking.bookingCode || confirmedBooking.id;
+      const payableAmount = Number(confirmedBooking.paymentAmount) || (Math.max(0, Number(confirmedBooking.baseAmount || confirmedBooking.totalPriceIDR) - Number(confirmedBooking.discount || 0)) + Number(confirmedBooking.uniqueCode || 0));
       await processArtoPayPayment({
-        orderId: confirmedBooking.id,
+        orderId: targetOrderId,
         amount: payableAmount,
         currency: 'IDR',
         onSuccess: (res) => {
@@ -1188,19 +1189,51 @@ export default function AirportTransferView() {
                     </div>
                     <div className="text-left sm:text-right space-y-0.5">
                       <span className="text-[9px] text-neutral-400 font-bold uppercase block tracking-wider font-mono">TOTAL TARIF FINAL (ARTOPAY IDR)</span>
-                      <span className="text-xl sm:text-2xl font-black text-emerald-600 font-mono block">
-                        Rp {(Number(confirmedBooking.paymentAmount) || (Number(confirmedBooking.totalPriceIDR) + Number(confirmedBooking.uniqueCode || 0))).toLocaleString('id-ID')}
+                      {(() => {
+                        const payableAmount = Number(confirmedBooking.paymentAmount) || (Math.max(0, Number(confirmedBooking.baseAmount || confirmedBooking.totalPriceIDR) - Number(confirmedBooking.discount || 0)) + Number(confirmedBooking.uniqueCode || 0));
+                        return (
+                          <>
+                            <span className="text-xl sm:text-2xl font-black text-emerald-600 font-mono block">
+                              Rp {payableAmount.toLocaleString('id-ID')}
+                            </span>
+                            {currency !== 'IDR' && (
+                              <span className="text-[11px] font-mono text-neutral-600 block">
+                                {formatPrice(idrToUSD(payableAmount), payableAmount)} (≈ Rp {payableAmount.toLocaleString('id-ID')} IDR)
+                              </span>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Financial Breakdown Table: Base Price + Discount + Unique Code = Final Payment */}
+                  <div className="bg-neutral-50 p-4 rounded-2xl border border-neutral-150 space-y-2 text-xs">
+                    <div className="flex justify-between items-center text-neutral-600">
+                      <span>Harga Dasar Transfer Bandara:</span>
+                      <span className="font-mono font-bold text-neutral-900">
+                        Rp {Number(confirmedBooking.baseAmount || confirmedBooking.totalPriceIDR).toLocaleString('id-ID')}
                       </span>
-                      {Boolean(confirmedBooking.uniqueCode) && (
-                        <span className="text-[10px] font-mono text-neutral-500 block">
-                          Dasar: Rp {Number(confirmedBooking.baseAmount || confirmedBooking.totalPriceIDR).toLocaleString('id-ID')} + Kode: Rp {Number(confirmedBooking.uniqueCode)}
+                    </div>
+                    {Boolean(confirmedBooking.discount && Number(confirmedBooking.discount) > 0) && (
+                      <div className="flex justify-between items-center text-emerald-600 font-medium border-t border-neutral-200/60 pt-1.5">
+                        <span>Diskon Promo {confirmedBooking.promoCode ? `(${confirmedBooking.promoCode})` : ''}:</span>
+                        <span className="font-mono font-bold">
+                          - Rp {Number(confirmedBooking.discount).toLocaleString('id-ID')}
                         </span>
-                      )}
-                      {currency !== 'IDR' && (
-                        <span className="text-[11px] font-mono text-neutral-600 block">
-                          {formatPrice(idrToUSD(Number(confirmedBooking.paymentAmount) || (Number(confirmedBooking.totalPriceIDR) + Number(confirmedBooking.uniqueCode || 0))), Number(confirmedBooking.paymentAmount) || (Number(confirmedBooking.totalPriceIDR) + Number(confirmedBooking.uniqueCode || 0)))} (≈ Rp {(Number(confirmedBooking.paymentAmount) || (Number(confirmedBooking.totalPriceIDR) + Number(confirmedBooking.uniqueCode || 0))).toLocaleString('id-ID')} IDR)
-                        </span>
-                      )}
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center text-amber-600 font-medium border-t border-neutral-200/60 pt-1.5">
+                      <span>Kode Unik Verifikasi:</span>
+                      <span className="font-mono font-bold">
+                        + Rp {Number(confirmedBooking.uniqueCode || 0).toLocaleString('id-ID')}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center font-bold border-t border-neutral-200 pt-2 text-neutral-900">
+                      <span className="uppercase tracking-wider font-mono text-[11px]">TOTAL PEMBAYARAN FINAL:</span>
+                      <span className="font-mono text-emerald-600 text-sm font-black">
+                        Rp {(Number(confirmedBooking.paymentAmount) || (Math.max(0, Number(confirmedBooking.baseAmount || confirmedBooking.totalPriceIDR) - Number(confirmedBooking.discount || 0)) + Number(confirmedBooking.uniqueCode || 0))).toLocaleString('id-ID')}
+                      </span>
                     </div>
                   </div>
 
@@ -1301,7 +1334,7 @@ export default function AirportTransferView() {
                         </>
                       ) : (
                         <>
-                          <span>Bayar via ArtoPay</span>
+                          <span>Bayar Rp{(Number(confirmedBooking.paymentAmount) || (Math.max(0, Number(confirmedBooking.baseAmount || confirmedBooking.totalPriceIDR) - Number(confirmedBooking.discount || 0)) + Number(confirmedBooking.uniqueCode || 0))).toLocaleString('id-ID')} (ArtoPay)</span>
                           <ArrowRight className="h-3.5 w-3.5" />
                         </>
                       )}

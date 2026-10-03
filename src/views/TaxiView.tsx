@@ -716,9 +716,10 @@ export default function TaxiView() {
     setPaymentError(null);
 
     try {
-      const payableAmount = Number(bookingSuccess.paymentAmount) || (Number(bookingSuccess.totalPriceIDR) + Number(bookingSuccess.uniqueCode || 0));
+      const targetOrderId = bookingSuccess.bookingCode || bookingSuccess.id;
+      const payableAmount = Number(bookingSuccess.paymentAmount) || (Math.max(0, Number(bookingSuccess.baseAmount || bookingSuccess.totalPriceIDR) - Number(bookingSuccess.discount || 0)) + Number(bookingSuccess.uniqueCode || 0));
       await processArtoPayPayment({
-        orderId: bookingSuccess.id,
+        orderId: targetOrderId,
         amount: payableAmount,
         currency: 'IDR',
         onSuccess: (res) => {
@@ -1418,6 +1419,12 @@ export default function TaxiView() {
                       <span>Harga Dasar Taksi:</span>
                       <span className="font-mono">Rp {Number(bookingSuccess.baseAmount || bookingSuccess.totalPriceIDR).toLocaleString('id-ID')}</span>
                     </div>
+                    {Boolean(bookingSuccess.discount && Number(bookingSuccess.discount) > 0) && (
+                      <div className="flex justify-between items-center text-xs text-emerald-600 font-bold">
+                        <span>Diskon Promo {bookingSuccess.promoCode ? `(${bookingSuccess.promoCode})` : ''}:</span>
+                        <span className="font-mono">- Rp {Number(bookingSuccess.discount).toLocaleString('id-ID')}</span>
+                      </div>
+                    )}
                     {Boolean(bookingSuccess.uniqueCode) && (
                       <div className="flex justify-between items-center text-xs text-amber-600 font-bold">
                         <span>Kode Unik Verifikasi:</span>
@@ -1427,14 +1434,21 @@ export default function TaxiView() {
                     <div className="flex justify-between items-center pt-1 font-bold">
                       <span className="text-neutral-800 text-xs">Total Tagihan Final (ArtoPay IDR):</span>
                       <div className="text-right">
-                        <span className="text-base font-black text-amber-600 font-mono block">
-                          Rp {(Number(bookingSuccess.paymentAmount) || (Number(bookingSuccess.totalPriceIDR) + Number(bookingSuccess.uniqueCode || 0))).toLocaleString('id-ID')}
-                        </span>
-                        {currency !== 'IDR' && (
-                          <span className="text-[10px] font-mono text-neutral-500 block">
-                            {formatPrice(idrToUSD(Number(bookingSuccess.paymentAmount) || (Number(bookingSuccess.totalPriceIDR) + Number(bookingSuccess.uniqueCode || 0))), Number(bookingSuccess.paymentAmount) || (Number(bookingSuccess.totalPriceIDR) + Number(bookingSuccess.uniqueCode || 0)))} (≈ Rp {(Number(bookingSuccess.paymentAmount) || (Number(bookingSuccess.totalPriceIDR) + Number(bookingSuccess.uniqueCode || 0))).toLocaleString('id-ID')} IDR)
-                          </span>
-                        )}
+                        {(() => {
+                          const payableAmount = Number(bookingSuccess.paymentAmount) || (Math.max(0, Number(bookingSuccess.baseAmount || bookingSuccess.totalPriceIDR) - Number(bookingSuccess.discount || 0)) + Number(bookingSuccess.uniqueCode || 0));
+                          return (
+                            <>
+                              <span className="text-base font-black text-amber-600 font-mono block">
+                                Rp {payableAmount.toLocaleString('id-ID')}
+                              </span>
+                              {currency !== 'IDR' && (
+                                <span className="text-[10px] font-mono text-neutral-500 block">
+                                  {formatPrice(idrToUSD(payableAmount), payableAmount)} (≈ Rp {payableAmount.toLocaleString('id-ID')} IDR)
+                                </span>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -1468,7 +1482,9 @@ export default function TaxiView() {
                     ) : (
                       <ShieldCheck className="h-4 w-4 text-emerald-400" />
                     )}
-                    <span>Pay Online Securely (ArtoPay)</span>
+                    <span>
+                      Bayar Rp{(Number(bookingSuccess.paymentAmount) || (Math.max(0, Number(bookingSuccess.baseAmount || bookingSuccess.totalPriceIDR) - Number(bookingSuccess.discount || 0)) + Number(bookingSuccess.uniqueCode || 0))).toLocaleString('id-ID')} (ArtoPay)
+                    </span>
                   </button>
                 </div>
 

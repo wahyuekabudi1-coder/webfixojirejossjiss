@@ -3,7 +3,8 @@ import { useApp } from '../AppContext';
 import { 
   Car, MapPin, Calendar, Users, ArrowRight, ShieldCheck, CheckCircle2, Info, Briefcase, Settings, 
   User, Clock, ChevronRight, ChevronLeft, Check, Sparkles, ArrowLeft, MessageSquare, Mail, Globe, 
-  AlertCircle, SlidersHorizontal, ArrowUpDown, Award, FileText, Shield, Building, Plane
+  AlertCircle, SlidersHorizontal, ArrowUpDown, Award, FileText, Shield, Building, Plane,
+  CreditCard, Loader2, Receipt
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import CustomerReviewsSection from '../components/CustomerReviewsSection';
@@ -359,8 +360,12 @@ export default function CarRentalView() {
   })();
   const returnTime = pickupTime;
   
-  const [currentScreen, setCurrentScreen] = useState<'search' | 'results' | 'providers' | 'details' | 'form' | 'review'>('search');
+  const [currentScreen, setCurrentScreen] = useState<'search' | 'results' | 'providers' | 'details' | 'form' | 'review' | 'summary'>('search');
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [summaryBooking, setSummaryBooking] = useState<any | null>(null);
+  const [isPaying, setIsPaying] = useState(false);
+  const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
 
   // Results State
   const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
@@ -693,23 +698,54 @@ export default function CarRentalView() {
     };
 
     try {
+      setIsSubmittingBooking(true);
       const newBooking = await addBooking(bookingPayload);
-      const payableAmount = Number(newBooking.paymentAmount) || (Number(newBooking.totalPriceIDR || finalPrice.idr) + Number(newBooking.uniqueCode || 0));
-      processArtoPayPayment({
-        orderId: newBooking.id,
-        amount: payableAmount,
-        currency: 'IDR',
-        onSuccess: () => {
-          window.location.hash = '#/bookings';
-        },
-        onError: () => {
-          window.location.hash = '#/bookings';
-        }
-      }).catch(() => {
-        window.location.hash = '#/bookings';
-      });
+      setSummaryBooking(newBooking);
+      setCurrentScreen('summary');
+      setTimeout(() => {
+        const el = document.getElementById('rental-summary-screen');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 50);
     } catch (err: any) {
       alert(err.message || 'An error occurred while building your booking.');
+    } finally {
+      setIsSubmittingBooking(false);
+    }
+  };
+
+  const handlePayFromRentalSummary = async () => {
+    if (!summaryBooking) return;
+    setIsPaying(true);
+    setPayError(null);
+    const targetOrderId = summaryBooking.bookingCode || summaryBooking.id;
+    const finalPrice = calculateFinalPrice();
+    const payableAmount = Number(summaryBooking.paymentAmount) || (Math.max(0, Number(summaryBooking.baseAmount || summaryBooking.totalPriceIDR || finalPrice.idr) - Number(summaryBooking.discount || 0)) + Number(summaryBooking.uniqueCode || 0));
+
+    try {
+      await processArtoPayPayment({
+        orderId: targetOrderId,
+        amount: payableAmount,
+        currency: 'IDR',
+        description: summaryBooking.serviceName || `Car Rental: ${selectedVehicle?.name || 'Mobil'}`,
+        customerName: customerName.trim(),
+        customerEmail: customerEmail.toLowerCase().trim(),
+        customerPhone: customerPhone.trim(),
+        onSuccess: () => {
+          setIsPaying(false);
+          window.location.hash = `#/bookings?code=${encodeURIComponent(targetOrderId)}`;
+        },
+        onPending: () => {
+          setIsPaying(false);
+          window.location.hash = `#/bookings?code=${encodeURIComponent(targetOrderId)}`;
+        },
+        onError: (err) => {
+          setIsPaying(false);
+          setPayError(err.message || 'Gagal memproses pembayaran via ArtoPay Gateway.');
+        }
+      });
+    } catch (err: any) {
+      setIsPaying(false);
+      setPayError(err.message || 'Gagal memproses pembayaran via ArtoPay Gateway.');
     }
   };
 
@@ -781,8 +817,8 @@ export default function CarRentalView() {
             <span className={currentScreen === 'form' ? 'text-amber-500 font-extrabold border-b-2 border-amber-500 pb-3 -mb-[14px]' : 'text-neutral-300'}>
               4. Details Form
             </span>
-            <span className={currentScreen === 'review' ? 'text-amber-500 font-extrabold border-b-2 border-amber-500 pb-3 -mb-[14px]' : 'text-neutral-300'}>
-              5. Confirm &amp; Pay
+            <span className={currentScreen === 'review' || currentScreen === 'summary' ? 'text-amber-500 font-extrabold border-b-2 border-amber-500 pb-3 -mb-[14px]' : 'text-neutral-300'}>
+              5. Review &amp; Payment
             </span>
           </div>
         </div>
@@ -1752,13 +1788,206 @@ export default function CarRentalView() {
 
                   <button
                     onClick={handleFinalBooking}
-                    className="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-neutral-950 font-black px-10 py-4 rounded-xl text-xs uppercase tracking-wider transition-all shadow-lg shadow-amber-500/15 flex items-center justify-center gap-2 cursor-pointer font-mono"
+                    disabled={isSubmittingBooking}
+                    className="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-neutral-950 font-black px-10 py-4 rounded-xl text-xs uppercase tracking-wider transition-all shadow-lg shadow-amber-500/15 flex items-center justify-center gap-2 cursor-pointer font-mono disabled:opacity-50"
                   >
-                    <span>Proceed to Pay</span>
-                    <ArrowRight className="h-4 w-4 stroke-[3]" />
+                    {isSubmittingBooking ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin text-neutral-950" />
+                        <span>Menyimpan Pesanan...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Lanjut ke Ringkasan Pembayaran</span>
+                        <ArrowRight className="h-4 w-4 stroke-[3]" />
+                      </>
+                    )}
                   </button>
                 </div>
 
+              </div>
+            </motion.div>
+          )}
+
+          {/* SCREEN: PAYMENT SUMMARY (Ringkasan Pembayaran & ArtoPay) */}
+          {currentScreen === 'summary' && summaryBooking && (
+            <motion.div
+              key="summary-screen"
+              id="rental-summary-screen"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              className="max-w-2xl mx-auto space-y-6"
+            >
+              <div className="text-center space-y-2 py-2">
+                <div className="inline-flex items-center justify-center bg-emerald-500/15 text-emerald-400 p-4 rounded-full relative">
+                  <Receipt className="h-8 w-8 text-emerald-400" />
+                  <Sparkles className="absolute top-1 right-1 h-4 w-4 text-amber-400 animate-pulse" />
+                </div>
+                <h2 className="text-2xl font-black text-white">Ringkasan Pembayaran Sewa Mobil</h2>
+                <p className="text-xs text-neutral-400 max-w-md mx-auto">
+                  Pesanan sewa mobil Anda telah tersimpan. Periksa rincian sebelum melanjutkan ke gerbang pembayaran resmi ArtoPay.
+                </p>
+              </div>
+
+              {/* Digital Voucher Ticket */}
+              <div className="bg-neutral-900 border border-neutral-800 rounded-3xl overflow-hidden shadow-2xl relative">
+                {/* Tickets custom punched edges */}
+                <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-neutral-950 border border-neutral-800" />
+                <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-neutral-950 border border-neutral-800" />
+
+                {/* Ticket Header */}
+                <div className="bg-neutral-950 p-6 border-b border-neutral-850 flex justify-between items-center">
+                  <div className="flex items-center gap-2.5">
+                    <span className="p-2 bg-amber-500/10 text-amber-500 rounded-lg">
+                      <ShieldCheck className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <h4 className="text-xs font-black text-white uppercase tracking-wider font-mono">
+                        {summaryBooking.serviceName || 'Car Rental Reservation'}
+                      </h4>
+                      <p className="text-[9px] text-neutral-500 uppercase font-bold font-mono">
+                        RESERVATION ID: <strong className="text-white">{summaryBooking.bookingCode || summaryBooking.id}</strong>
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] bg-amber-500/15 text-amber-400 border border-amber-500/35 px-3 py-1 rounded-full uppercase font-mono font-black tracking-widest">
+                    {summaryBooking.status || 'Pending Payment'}
+                  </span>
+                </div>
+
+                <div className="p-6 sm:p-8 space-y-5 text-xs text-left">
+                  {/* Reservation details */}
+                  <div className="grid grid-cols-2 gap-y-3 gap-x-4 border-b border-neutral-800 pb-4">
+                    <div>
+                      <span className="text-neutral-500 block text-[10px]">Lead Renter</span>
+                      <span className="text-white font-bold">{summaryBooking.customerName || customerName}</span>
+                    </div>
+                    <div>
+                      <span className="text-neutral-500 block text-[10px]">WhatsApp Contact</span>
+                      <span className="text-white font-bold font-mono">{summaryBooking.customerPhone || customerPhone}</span>
+                    </div>
+                    <div>
+                      <span className="text-neutral-500 block text-[10px]">Armada &amp; Layanan</span>
+                      <span className="text-white font-bold">{selectedVehicle?.name || 'Mobil'} ({serviceType === 'with_driver' ? 'Dengan Supir' : 'Lepas Kunci'})</span>
+                    </div>
+                    <div>
+                      <span className="text-neutral-500 block text-[10px]">Durasi Sewa</span>
+                      <span className="text-white font-bold">{durationDays} Hari ({pickupDate} s/d {returnDate})</span>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-neutral-500 block text-[10px]">Lokasi Penjemputan</span>
+                      <span className="text-neutral-200 font-medium">{pickupLocation} @ {pickupTime} {pickupDetail ? `(${pickupDetail})` : ''}</span>
+                    </div>
+                  </div>
+
+                  {/* Standard Financial Breakdown Box: Base Price + Discount + Unique Code = Final Payment */}
+                  <div className="bg-neutral-950 p-4 rounded-2xl border border-neutral-800 space-y-2 text-xs">
+                    <div className="flex justify-between items-center text-neutral-400">
+                      <span>Harga Dasar Sewa Mobil:</span>
+                      <span className="font-mono font-bold text-white">
+                        Rp {Number(summaryBooking.baseAmount || summaryBooking.totalPriceIDR || calculateFinalPrice().idr).toLocaleString('id-ID')}
+                      </span>
+                    </div>
+
+                    {Boolean(summaryBooking.discount && Number(summaryBooking.discount) > 0) && (
+                      <div className="flex justify-between items-center text-emerald-400 font-medium border-t border-neutral-850 pt-1.5">
+                        <span>Diskon Promo {summaryBooking.promoCode ? `(${summaryBooking.promoCode})` : ''}:</span>
+                        <span className="font-mono font-bold">
+                          - Rp {Number(summaryBooking.discount).toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center text-amber-400 font-medium border-t border-neutral-850 pt-1.5">
+                      <span>Kode Unik Verifikasi:</span>
+                      <span className="font-mono font-bold">
+                        + Rp {Number(summaryBooking.uniqueCode || 0).toLocaleString('id-ID')}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center font-bold border-t border-neutral-800 pt-2.5">
+                      <span className="text-white uppercase tracking-wider font-mono text-[11px]">TOTAL PEMBAYARAN FINAL:</span>
+                      <div className="text-right">
+                        {(() => {
+                          const payableAmount = Number(summaryBooking.paymentAmount) || (Math.max(0, Number(summaryBooking.baseAmount || summaryBooking.totalPriceIDR || calculateFinalPrice().idr) - Number(summaryBooking.discount || 0)) + Number(summaryBooking.uniqueCode || 0));
+                          return (
+                            <>
+                              <span className="text-xl font-black text-amber-500 font-mono block">
+                                Rp {payableAmount.toLocaleString('id-ID')}
+                              </span>
+                              {currency !== 'IDR' && (
+                                <span className="text-[10px] font-mono text-emerald-400 block">
+                                  {formatPrice(idrToUSD(payableAmount), payableAmount)} (≈ Rp {payableAmount.toLocaleString('id-ID')} IDR)
+                                </span>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] text-neutral-500 text-center leading-relaxed">
+                    Kode unik dan total pembayaran final berasal dari nilai booking yang sudah tersimpan resmi di database.
+                  </p>
+
+                  {payError && (
+                    <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-300 text-xs rounded-xl font-bold">
+                      {payError}
+                    </div>
+                  )}
+
+                  {/* ArtoPay Action Button */}
+                  <div className="pt-2 space-y-3">
+                    {(() => {
+                      const payableAmount = Number(summaryBooking.paymentAmount) || (Math.max(0, Number(summaryBooking.baseAmount || summaryBooking.totalPriceIDR || calculateFinalPrice().idr) - Number(summaryBooking.discount || 0)) + Number(summaryBooking.uniqueCode || 0));
+                      return (
+                        <button
+                          id="btn-pay-summary-artopay"
+                          onClick={handlePayFromRentalSummary}
+                          disabled={isPaying}
+                          className={`w-full bg-[#315B4F] hover:bg-[#203c34] text-white font-display font-black py-4 px-6 rounded-2xl flex items-center justify-center gap-2 shadow-xl hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer border border-[#467b6b] text-base ${
+                            isPaying ? 'opacity-70 cursor-not-allowed' : ''
+                          }`}
+                        >
+                          {isPaying ? (
+                            <>
+                              <Loader2 className="h-5 w-5 text-[#D6B16D] animate-spin" />
+                              <span>Menghubungkan ke ArtoPay...</span>
+                            </>
+                          ) : (
+                            <>
+                              <CreditCard className="h-5 w-5 text-[#D6B16D]" />
+                              <span>Bayar Rp{payableAmount.toLocaleString('id-ID')} (ArtoPay)</span>
+                              <ArrowRight className="h-4 w-4 text-white" />
+                            </>
+                          )}
+                        </button>
+                      );
+                    })()}
+
+                    <div className="flex justify-between items-center text-xs text-neutral-400 px-1 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setCurrentScreen('form')}
+                        className="hover:text-white transition-colors cursor-pointer"
+                      >
+                        ← Ubah Form Data
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          window.location.hash = `#/bookings?code=${encodeURIComponent(summaryBooking.bookingCode || summaryBooking.id || '')}`;
+                        }}
+                        className="hover:text-amber-400 transition-colors cursor-pointer"
+                      >
+                        Cek Status Reservasi Nanti →
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
               </div>
             </motion.div>
           )}

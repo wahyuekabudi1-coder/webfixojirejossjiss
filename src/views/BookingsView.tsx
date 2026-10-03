@@ -242,14 +242,15 @@ export default function BookingsView() {
   const handlePayWithArtoPay = async (booking: any) => {
     setPaymentLoadingId(booking.id);
     try {
-      const payableAmount = booking.paymentAmount || (booking.uniqueCode ? (booking.totalPriceIDR + booking.uniqueCode) : booking.totalPriceIDR);
+      const targetOrderId = booking.bookingCode || booking.id;
+      const payableAmount = Number(booking.paymentAmount) || (Number(booking.uniqueCode) ? (Number(booking.totalPriceIDR || booking.baseAmount || 0) + Number(booking.uniqueCode)) : Number(booking.totalPriceIDR || booking.baseAmount || 0));
       await processArtoPayPayment({
-        orderId: booking.id,
+        orderId: targetOrderId,
         amount: payableAmount,
         currency: 'IDR',
         onSuccess: async (res) => {
           try {
-            const check = await fetch(`/api/orders/${encodeURIComponent(booking.id)}/payment-status`);
+            const check = await fetch(`/api/orders/${encodeURIComponent(targetOrderId)}/payment-status`);
             if (check.ok) {
               const data = await check.json();
               if (data.found) {
@@ -269,7 +270,7 @@ export default function BookingsView() {
         },
         onPending: async (res) => {
           try {
-            const check = await fetch(`/api/orders/${encodeURIComponent(booking.id)}/payment-status`);
+            const check = await fetch(`/api/orders/${encodeURIComponent(targetOrderId)}/payment-status`);
             if (check.ok) {
               const data = await check.json();
               if (data.found) {
@@ -669,9 +670,12 @@ export default function BookingsView() {
                         );
                       })()}
                       {booking.uniqueCode ? (
-                        <div className="text-[9px] font-mono text-neutral-400 pt-0.5">
-                          <span>Dasar: Rp {(booking.baseAmount || booking.totalPriceIDR).toLocaleString('id-ID')}</span>
-                          <span className="text-amber-400 font-bold ml-1">+ Kode: {booking.uniqueCode}</span>
+                        <div className="text-[9px] font-mono text-neutral-400 pt-0.5 space-y-0.5">
+                          <div>Dasar: Rp {(booking.baseAmount || booking.totalPriceIDR).toLocaleString('id-ID')}</div>
+                          {Boolean(booking.discount && Number(booking.discount) > 0) && (
+                            <div className="text-emerald-400 font-bold">Diskon: - Rp {Number(booking.discount).toLocaleString('id-ID')}</div>
+                          )}
+                          <div className="text-amber-400 font-bold">+ Kode: Rp {booking.uniqueCode}</div>
                         </div>
                       ) : null}
                       

@@ -3392,8 +3392,38 @@ app.get([
     const participantsCount = booking.participantsCount || booking.details?.guests || booking.details?.passengers || participantsNames.length || 1;
 
     const baseAmount = booking.baseAmount || booking.totalPriceIDR || booking.totalPrice || 0;
-    const uniqueCode = booking.uniqueCode || 0;
-    const paymentAmount = booking.paymentAmount || (baseAmount + uniqueCode);
+    const discount = Math.max(0, Math.round(Number(
+      booking.discount !== undefined && booking.discount !== null
+        ? booking.discount
+        : (booking.details?.verifiedDiscount ?? booking.details?.discountAmount ?? 0)
+    )));
+    const promoCode = booking.promoCode || booking.details?.promoCode || null;
+    let uniqueCode = Number(booking.uniqueCode || 0);
+    let paymentAmount = Number(booking.paymentAmount || 0);
+
+    // CRITICAL: Unique code and finalPaymentAmount must be generated and locked ONCE when booking/summary is first created.
+    // If booking already has locked values, NEVER regenerate/recalculate on refresh, back, or reopen!
+    if ((!uniqueCode || uniqueCode < 1 || uniqueCode > 99 || !paymentAmount) && baseAmount > 0) {
+      const allBookings = await bookingsRepo.getAll();
+      uniqueCode = generateUniquePaymentCode(allBookings.filter(b => b.id !== booking.id));
+      const payableBase = Math.max(0, baseAmount - discount);
+      paymentAmount = payableBase + uniqueCode;
+      booking.uniqueCode = uniqueCode;
+      booking.paymentAmount = paymentAmount;
+      booking.baseAmount = baseAmount;
+      booking.discount = discount;
+      await bookingsRepo.update(booking.id, {
+        baseAmount,
+        discount,
+        uniqueCode,
+        paymentAmount
+      }).catch(err => console.warn('Failed to lock unique code on summary check:', err));
+    } else if (!paymentAmount && baseAmount > 0 && uniqueCode > 0) {
+      const payableBase = Math.max(0, baseAmount - discount);
+      paymentAmount = payableBase + uniqueCode;
+      booking.paymentAmount = paymentAmount;
+      await bookingsRepo.update(booking.id, { paymentAmount }).catch(() => {});
+    }
 
     // Critical Fix #1: Gate Access - canDownloadFinalSummary is strictly unlocked ONLY when booking is Confirmed AND Paid
     const isConfirmed = bookingStatus === 'Confirmed' || bookingStatus === 'Completed';
@@ -3431,8 +3461,13 @@ app.get([
       pickupLocation: booking.details?.pickupLocation || booking.participantData?.pickupLocation || (isShared ? 'Meeting Point Open Trip' : 'Hotel Lobby / Meeting Point'),
       dropoffLocation: booking.details?.dropoffLocation || booking.participantData?.dropoffLocation || '',
       baseAmount,
+      discount,
+      promoCode,
       uniqueCode,
       paymentAmount,
+      finalPaymentAmount: paymentAmount,
+      totalPrice: Math.max(0, baseAmount - discount),
+      totalPriceIDR: Math.max(0, baseAmount - discount),
       currency: 'IDR',
       paymentStatus,
       bookingStatus,
@@ -5132,10 +5167,13 @@ app.post(['/api/artopay/payment-intent', '/artopay/payment-intent', '/api/paymen
 
     let uniqueCode = Number(existingOrder.uniqueCode || 0);
     let paymentAmount = Number(existingOrder.paymentAmount || 0);
-    const expectedPaymentAmount = finalPayableBase + uniqueCode;
 
-    // If booking doesn't have uniqueCode or valid paymentAmount, or if uniqueCode is out of 1-99 range:
-    if (!uniqueCode || uniqueCode < 1 || uniqueCode > 99 || !paymentAmount || paymentAmount !== expectedPaymentAmount) {
+    // CRITICAL: Unique code must be generated and locked ONCE when booking/payment summary is first created.
+    // If booking already has a locked uniqueCode (1-99) and paymentAmount, NEVER regenerate it on retry!
+    if (uniqueCode >= 1 && uniqueCode <= 99 && paymentAmount > 0) {
+      // Locked: Use existing locked uniqueCode and paymentAmount!
+    } else {
+      // First time initialization if missing:
       if (!uniqueCode || uniqueCode < 1 || uniqueCode > 99) {
         const allBookings = await bookingsRepo.getAll();
         uniqueCode = generateUniquePaymentCode(allBookings.filter(b => b.id !== existingOrder.id));
@@ -5947,8 +5985,15 @@ app.get(['/api/orders/:orderId/payment-status', '/api/artopay/status/:orderId'],
       orderStatus: booking.status || 'Pending',
       bookingStatus: booking.status || 'Pending',
       baseAmount: booking.baseAmount || booking.totalPriceIDR || booking.totalPrice || 0,
+      discount: Math.max(0, Math.round(Number(
+        booking.discount !== undefined && booking.discount !== null
+          ? booking.discount
+          : (booking.details?.verifiedDiscount ?? booking.details?.discountAmount ?? 0)
+      ))),
+      promoCode: booking.promoCode || booking.details?.promoCode || null,
       uniqueCode: booking.uniqueCode || 0,
       paymentAmount: booking.paymentAmount || (booking.uniqueCode ? ((booking.baseAmount || booking.totalPriceIDR || 0) + booking.uniqueCode) : (booking.totalPriceIDR || booking.totalPrice || 0)),
+      finalPaymentAmount: booking.paymentAmount || (booking.uniqueCode ? ((booking.baseAmount || booking.totalPriceIDR || 0) + booking.uniqueCode) : (booking.totalPriceIDR || booking.totalPrice || 0)),
       paidAt: booking.paidAt || null,
       currency: 'IDR',
       canDownloadInvoice: booking.paymentStatus === 'Paid' && (booking.status === 'Confirmed' || booking.status === 'Completed'),

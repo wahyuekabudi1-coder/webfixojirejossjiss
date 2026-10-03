@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../AppContext';
-import { X, ShieldCheck, CheckCircle2, Star, Sparkles, User, Mail, Phone, Calendar, ArrowRight, ChevronRight, Fuel, Briefcase, CreditCard, Loader2, Globe } from 'lucide-react';
+import { X, ShieldCheck, CheckCircle2, Star, Sparkles, User, Mail, Phone, Calendar, ArrowRight, ChevronRight, Fuel, Briefcase, CreditCard, Loader2, Globe, Receipt } from 'lucide-react';
 import { VEHICLES } from '../data';
 import { motion, AnimatePresence } from 'motion/react';
 import { processArtoPayPayment } from '../lib/artopay';
@@ -207,43 +207,57 @@ export default function CheckoutModal({
         } catch {}
       }
 
-      // Trigger ArtoPay Payment Gateway: Must pass authoritative final payment amount (base + uniqueCode)
-      try {
-        const payableAmountIDR = Number(newBooking?.paymentAmount) || (Number(newBooking?.totalPriceIDR || finalPrice.idr) + Number(newBooking?.uniqueCode || 0));
-        await processArtoPayPayment({
-          orderId: newBooking.id,
-          amount: payableAmountIDR,
-          currency: 'IDR',
-          description: serviceName,
-          customerName: customerName.trim(),
-          customerEmail: customerEmail.toLowerCase().trim(),
-          customerPhone: customerPhone.trim(),
-          onSuccess: (res) => {
-            console.log('ArtoPay Payment Completed Event:', res);
-            setIsSubmitting(false);
-            onClose();
-            window.location.hash = `#/bookings?code=${encodeURIComponent(newBooking.id)}`;
-          },
-          onPending: (res) => {
-            console.log('ArtoPay Payment Pending Event:', res);
-            setIsSubmitting(false);
-            onClose();
-            window.location.hash = `#/bookings?code=${encodeURIComponent(newBooking.id)}`;
-          },
-          onError: (err) => {
-            console.error('ArtoPay Payment Error:', err);
-            setIsSubmitting(false);
-            setErrorMessage(err.message || 'Gagal menghubungkan ke ArtoPay Gateway. Silakan coba lagi.');
-          }
-        });
-      } catch (payErr: any) {
-        console.error('ArtoPay checkout trigger error:', payErr);
-        setIsSubmitting(false);
-        setErrorMessage(payErr.message || 'Gagal memproses pembayaran via ArtoPay Gateway.');
-      }
+      setIsSubmitting(false);
+      // Flow requirement: isi form → Payment Summary → ArtoPay
+      setStep(2);
     } catch (err: any) {
       setIsSubmitting(false);
       setErrorMessage(err.message || 'Terjadi kesalahan saat memproses reservasi Anda.');
+    }
+  };
+
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
+
+  // Trigger ArtoPay explicitly from Payment Summary
+  const handleTriggerArtoPayFromSummary = async () => {
+    if (!confirmedBooking) return;
+    setIsSubmittingPayment(true);
+    setErrorMessage(null);
+
+    const targetOrderId = confirmedBooking.bookingCode || confirmedBooking.id;
+    const payableAmountIDR = Number(confirmedBooking.paymentAmount) || (Number(confirmedBooking.totalPriceIDR || finalPrice.idr) + Number(confirmedBooking.uniqueCode || 0));
+
+    try {
+      await processArtoPayPayment({
+        orderId: targetOrderId,
+        amount: payableAmountIDR,
+        currency: 'IDR',
+        description: serviceName,
+        customerName: customerName.trim(),
+        customerEmail: customerEmail.toLowerCase().trim(),
+        customerPhone: customerPhone.trim(),
+        onSuccess: (res) => {
+          console.log('ArtoPay Payment Completed Event:', res);
+          setIsSubmittingPayment(false);
+          onClose();
+          window.location.hash = `#/bookings?code=${encodeURIComponent(targetOrderId)}`;
+        },
+        onPending: (res) => {
+          console.log('ArtoPay Payment Pending Event:', res);
+          setIsSubmittingPayment(false);
+          onClose();
+          window.location.hash = `#/bookings?code=${encodeURIComponent(targetOrderId)}`;
+        },
+        onError: (err) => {
+          console.error('ArtoPay Payment Error:', err);
+          setIsSubmittingPayment(false);
+          setErrorMessage(err.message || 'Gagal menghubungkan ke ArtoPay Gateway. Silakan coba lagi.');
+        }
+      });
+    } catch (payErr: any) {
+      console.error('ArtoPay checkout trigger error:', payErr);
+      setIsSubmittingPayment(false);
+      setErrorMessage(payErr.message || 'Gagal memproses pembayaran via ArtoPay Gateway.');
     }
   };
 
@@ -700,12 +714,12 @@ export default function CheckoutModal({
                       {isSubmitting ? (
                         <>
                           <Loader2 className="h-4.5 w-4.5 text-[#D6B16D] animate-spin" />
-                          <span>Menyiapkan Pembayaran ArtoPay...</span>
+                          <span>Menyimpan Pesanan...</span>
                         </>
                       ) : (
                         <>
-                          <CreditCard className="h-4.5 w-4.5 text-[#D6B16D]" />
-                          <span>Bayar via ArtoPay Gateway</span>
+                          <Receipt className="h-4.5 w-4.5 text-[#D6B16D]" />
+                          <span>Lanjut ke Ringkasan Pembayaran</span>
                           <ArrowRight className="h-4 w-4 text-white" />
                         </>
                       )}
@@ -715,27 +729,26 @@ export default function CheckoutModal({
                 </form>
               </motion.div>
             ) : (
-              /* Step 2: Confirmation Success */
+              /* Step 2: Payment Summary Screen */
               <motion.div
                 key="step2"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="text-center py-8 space-y-6"
+                className="py-4 space-y-6"
               >
-                <div className="inline-flex items-center justify-center bg-emerald-500/15 text-emerald-400 p-5 rounded-full relative">
-                  <CheckCircle2 className="h-12 w-12" />
-                  <Sparkles className="absolute top-1.5 right-1.5 h-5 w-5 text-amber-400 animate-pulse" />
-                </div>
-
-                <div className="space-y-2">
-                  <h4 className="text-2xl font-black text-white">Booking Confirmed!</h4>
-                  <p className="text-sm text-neutral-400">
-                    Your luxury ride is secured. A confirmation is dispatched to <span className="text-white font-medium">{customerEmail}</span> and WhatsApp.
+                <div className="text-center space-y-2">
+                  <div className="inline-flex items-center justify-center bg-emerald-500/15 text-emerald-400 p-4 rounded-full relative">
+                    <Receipt className="h-8 w-8 text-emerald-400" />
+                    <Sparkles className="absolute top-1 right-1 h-4 w-4 text-amber-400 animate-pulse" />
+                  </div>
+                  <h4 className="text-2xl font-black text-white">Ringkasan Pembayaran</h4>
+                  <p className="text-xs text-neutral-400 max-w-md mx-auto">
+                    Pesanan Anda telah disimpan. Periksa rincian sebelum melanjutkan ke gerbang pembayaran resmi ArtoPay.
                   </p>
                 </div>
 
                 {/* Digital Ticket display */}
-                <div className="bg-[#182e28] border border-[#315B4F] rounded-2xl p-6 text-left max-w-md mx-auto relative overflow-hidden">
+                <div className="bg-[#182e28] border border-[#315B4F] rounded-2xl p-6 text-left max-w-md mx-auto relative overflow-hidden shadow-2xl">
                   {/* Decorative Ticket Cuts */}
                   <div className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-8 bg-[#203c34] rounded-r-full border-r border-[#315B4F]" />
                   <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-8 bg-[#203c34] rounded-l-full border-l border-[#315B4F]" />
@@ -747,7 +760,7 @@ export default function CheckoutModal({
                     </div>
                     <div className="text-right">
                       <span className="text-[9px] text-neutral-500 font-mono block">RESERVATION ID</span>
-                      <span className="text-xs font-mono font-bold text-white">{confirmedBooking?.id}</span>
+                      <span className="text-xs font-mono font-bold text-white">{confirmedBooking?.bookingCode || confirmedBooking?.id}</span>
                     </div>
                   </div>
 
@@ -790,27 +803,37 @@ export default function CheckoutModal({
                     )}
                   </div>
 
-                  <div className="bg-white/5 p-4 rounded-xl space-y-2 text-xs">
-                    <div className="flex items-center justify-between text-neutral-400">
-                      <span>Harga Dasar Layanan (Base Fare):</span>
-                      <span className="font-mono text-white font-medium">Rp {(confirmedBooking?.baseAmount || finalPrice.idr).toLocaleString('id-ID')}</span>
+                  <div className="bg-white/5 p-4 rounded-xl space-y-2 text-xs border border-white/10">
+                    <div className="flex items-center justify-between text-neutral-300">
+                      <span>Harga Trip (Base Fare):</span>
+                      <span className="font-mono text-white font-bold">
+                        Rp {Number(confirmedBooking?.baseAmount || confirmedBooking?.totalPriceIDR || finalPrice.idr).toLocaleString('id-ID')}
+                      </span>
                     </div>
-                    {Boolean(confirmedBooking?.uniqueCode) && (
-                      <div className="flex items-center justify-between text-neutral-400 border-t border-white/5 pt-1.5">
-                        <span>Kode Unik Verifikasi:</span>
-                        <span className="font-mono text-amber-400 font-bold">+ Rp {Number(confirmedBooking.uniqueCode).toLocaleString('id-ID')}</span>
+                    {Boolean(confirmedBooking?.discount && Number(confirmedBooking?.discount) > 0) && (
+                      <div className="flex items-center justify-between text-emerald-400 border-t border-white/5 pt-1.5 font-medium">
+                        <span>Diskon Promo {confirmedBooking.promoCode ? `(${confirmedBooking.promoCode})` : ''}:</span>
+                        <span className="font-mono font-bold">
+                          - Rp {Number(confirmedBooking.discount).toLocaleString('id-ID')}
+                        </span>
                       </div>
                     )}
+                    <div className="flex items-center justify-between text-neutral-300 border-t border-white/5 pt-1.5">
+                      <span>Kode Unik:</span>
+                      <span className="font-mono text-amber-400 font-bold">
+                        + Rp {Number(confirmedBooking?.uniqueCode || 0).toLocaleString('id-ID')}
+                      </span>
+                    </div>
                     <div className="flex items-center justify-between pt-2 border-t border-white/10 font-bold">
-                      <span className="text-white">Total Tagihan Final (ArtoPay IDR):</span>
+                      <span className="text-white uppercase tracking-wider font-mono text-[11px]">TOTAL PEMBAYARAN FINAL:</span>
                       <div className="text-right">
                         {(() => {
-                          const finalPayable = confirmedBooking?.paymentAmount || (Number(confirmedBooking?.totalPriceIDR || finalPrice.idr) + Number(confirmedBooking?.uniqueCode || 0));
+                          const finalPayable = Number(confirmedBooking?.paymentAmount) || (Math.max(0, Number(confirmedBooking?.baseAmount || confirmedBooking?.totalPriceIDR || finalPrice.idr) - Number(confirmedBooking?.discount || 0)) + Number(confirmedBooking?.uniqueCode || 0));
                           const finalUSD = idrToUSD(finalPayable);
                           if (currency !== 'IDR') {
                             return (
                               <>
-                                <span className="font-mono font-black text-amber-400 text-sm block">
+                                <span className="font-mono font-black text-amber-400 text-base block">
                                   {formatPrice(finalUSD, finalPayable)}
                                 </span>
                                 <span className="text-[10px] font-mono text-emerald-400 font-semibold block">
@@ -820,7 +843,7 @@ export default function CheckoutModal({
                             );
                           }
                           return (
-                            <span className="font-mono font-black text-amber-400 text-sm block">
+                            <span className="font-mono font-black text-amber-400 text-base block">
                               Rp {finalPayable.toLocaleString('id-ID')}
                             </span>
                           );
@@ -828,25 +851,66 @@ export default function CheckoutModal({
                       </div>
                     </div>
                   </div>
+
+                  <p className="text-[10px] text-neutral-400 mt-3 text-center">
+                    Kode unik dan total pembayaran final berasal dari nilai booking yang sudah tersimpan di database.
+                  </p>
                 </div>
 
-                <div className="flex justify-center space-x-4 pt-4">
-                  <button
-                    onClick={() => {
-                      onClose();
-                      // Set page to bookings via click
-                      window.location.hash = '#/bookings';
-                    }}
-                    className="bg-white/5 border border-white/10 hover:bg-white/10 text-white font-semibold px-6 py-3 rounded-xl text-sm transition-all"
-                  >
-                    Manage Reservation Itinerary
-                  </button>
-                  <button
-                    onClick={onClose}
-                    className="bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold px-6 py-3 rounded-xl text-sm shadow-lg shadow-amber-500/10 transition-all"
-                  >
-                    Done
-                  </button>
+                {errorMessage && (
+                  <div className="max-w-md mx-auto p-3.5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300 text-xs">
+                    {errorMessage}
+                  </div>
+                )}
+
+                {/* Big Clear Payment Button */}
+                <div className="max-w-md mx-auto space-y-3 pt-1">
+                  {(() => {
+                    const finalPayable = Number(confirmedBooking?.paymentAmount) || (Number(confirmedBooking?.totalPriceIDR || finalPrice.idr) + Number(confirmedBooking?.uniqueCode || 0));
+                    return (
+                      <button
+                        id="btn-pay-summary-artopay"
+                        onClick={handleTriggerArtoPayFromSummary}
+                        disabled={isSubmittingPayment}
+                        className={`w-full bg-[#315B4F] hover:bg-[#203c34] text-white font-display font-black py-4 px-6 rounded-2xl flex items-center justify-center gap-2 shadow-xl hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer border border-[#467b6b] text-base ${
+                          isSubmittingPayment ? 'opacity-70 cursor-not-allowed' : ''
+                        }`}
+                      >
+                        {isSubmittingPayment ? (
+                          <>
+                            <Loader2 className="h-5 w-5 text-[#D6B16D] animate-spin" />
+                            <span>Menghubungkan ke ArtoPay...</span>
+                          </>
+                        ) : (
+                          <>
+                            <CreditCard className="h-5 w-5 text-[#D6B16D]" />
+                            <span>Bayar Rp{finalPayable.toLocaleString('id-ID')}</span>
+                            <ArrowRight className="h-4 w-4 text-white" />
+                          </>
+                        )}
+                      </button>
+                    );
+                  })()}
+
+                  <div className="flex justify-between items-center text-xs text-neutral-400 px-1 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setStep(1)}
+                      className="hover:text-white transition-colors cursor-pointer"
+                    >
+                      ← Ubah Form Data
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        window.location.hash = `#/bookings?code=${encodeURIComponent(confirmedBooking?.bookingCode || confirmedBooking?.id || '')}`;
+                      }}
+                      className="hover:text-amber-400 transition-colors cursor-pointer"
+                    >
+                      Cek Status Reservasi →
+                    </button>
+                  </div>
                 </div>
 
               </motion.div>

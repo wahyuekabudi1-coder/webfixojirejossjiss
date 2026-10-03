@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import { Trip, Batch, Booking } from "../types";
 import { 
   ChevronLeft, Sparkles, ShieldCheck, Send, MapPin, Clock, Globe, Lock, Check,
-  ArrowRight, CheckCircle2, User, Phone, Mail, Compass
+  ArrowRight, CheckCircle2, User, Phone, Mail, Compass, CreditCard, Loader2, Receipt
 } from "lucide-react";
 import { createBooking } from "../api";
 import { useLanguageCurrency } from "../LanguageCurrencyContext";
@@ -82,6 +82,9 @@ export default function BookingForm({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [appliedPromo, setAppliedPromo] = useState<PromoValidationResult | null>(null);
+
+  const [summaryBooking, setSummaryBooking] = useState<any | null>(null);
+  const [payLoading, setPayLoading] = useState(false);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
@@ -233,57 +236,209 @@ export default function BookingForm({
         } catch {}
       }
 
-      // Trigger OJIRE Payment Gateway directly with exact IDR amount
-      try {
-        const finalPayableIDR = Number(result.paymentAmount) || (Number(result.totalPriceIDR || pricingBreakdown.totalPriceIDR) + Number(result.uniqueCode || 0));
-        await processArtoPayPayment({
-          orderId: result.bookingCode || result.id,
-          amount: finalPayableIDR,
-          currency: 'IDR',
-          description: isPrivate 
-            ? `Private Tour: ${trip.title} (${selectedDepartureDate}, ${numParticipants} Pax)` 
-            : `Open Trip: ${trip.title} (${selectedDepartureDate}, ${numParticipants} Pax)`,
-          customerName: name.trim(),
-          customerEmail: email.toLowerCase().trim(),
-          customerPhone: whatsapp.trim(),
-          metadata: {
-            bookingId: result.id,
-            bookingCode: result.bookingCode,
-            tourId: trip.id,
-            tourName: trip.title,
-            travelDate: selectedDepartureDate,
-            nationality: currentNationality,
-            pax: numParticipants,
-            amountUSD: pricingBreakdown.totalPriceUSD,
-            amountIDR: pricingBreakdown.totalPriceIDR,
-            amount: pricingBreakdown.paymentAmountIDR,
-            currency: 'IDR',
-            pickupLocation: pickupLocation.trim(),
-            specialRequests: specialRequests.trim()
-          },
-          onSuccess: (payRes) => {
-            console.log("OJIRE Payment Completed:", payRes);
-            onSuccess(result);
-          },
-          onPending: (payRes) => {
-            console.log("OJIRE Payment Pending:", payRes);
-            onSuccess(result);
-          },
-          onError: (payErr) => {
-            console.error("OJIRE Payment Gateway Error:", payErr);
-            setErrorMsg(payErr.message || t("Gagal menghubungkan ke Payment Gateway OJIRE. Silakan coba kembali atau periksa koneksi internet."));
-          }
-        });
-      } catch (payError: any) {
-        console.error("OJIRE checkout trigger exception:", payError);
-        setErrorMsg(payError.message || t("Gagal memproses transaksi Payment Gateway OJIRE."));
-      }
+      setSummaryBooking(result);
+      setLoading(false);
+      setTimeout(() => {
+        const el = document.getElementById('booking-summary-module');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 50);
     } catch (e: any) {
       setErrorMsg(e.message || t("Failed to submit booking registration. Please verify connection and try again."));
-    } finally {
       setLoading(false);
     }
   };
+
+  const handlePayFromSummary = async () => {
+    if (!summaryBooking) return;
+    setPayLoading(true);
+    setErrorMsg("");
+
+    const targetOrderId = summaryBooking.bookingCode || summaryBooking.id;
+    const finalPayableIDR = Number(summaryBooking.paymentAmount) || (Number(summaryBooking.totalPriceIDR || pricingBreakdown.totalPriceIDR) + Number(summaryBooking.uniqueCode || 0));
+
+    try {
+      await processArtoPayPayment({
+        orderId: targetOrderId,
+        amount: finalPayableIDR,
+        currency: 'IDR',
+        description: isPrivate 
+          ? `Private Tour: ${trip.title} (${selectedDepartureDate}, ${numParticipants} Pax)` 
+          : `Open Trip: ${trip.title} (${selectedDepartureDate}, ${numParticipants} Pax)`,
+        customerName: name.trim(),
+        customerEmail: email.toLowerCase().trim(),
+        customerPhone: whatsapp.trim(),
+        metadata: {
+          bookingId: summaryBooking.id,
+          bookingCode: summaryBooking.bookingCode,
+          tourId: trip.id,
+          tourName: trip.title,
+          travelDate: selectedDepartureDate,
+          nationality: currentNationality,
+          pax: numParticipants,
+          amountUSD: pricingBreakdown.totalPriceUSD,
+          amountIDR: pricingBreakdown.totalPriceIDR,
+          amount: finalPayableIDR,
+          currency: 'IDR',
+          pickupLocation: pickupLocation.trim(),
+          specialRequests: specialRequests.trim()
+        },
+        onSuccess: (payRes) => {
+          console.log("ArtoPay Payment Completed:", payRes);
+          setPayLoading(false);
+          onSuccess(summaryBooking);
+        },
+        onPending: (payRes) => {
+          console.log("ArtoPay Payment Pending:", payRes);
+          setPayLoading(false);
+          onSuccess(summaryBooking);
+        },
+        onError: (payErr) => {
+          console.error("ArtoPay Payment Gateway Error:", payErr);
+          setPayLoading(false);
+          setErrorMsg(payErr.message || t("Gagal menghubungkan ke ArtoPay Gateway. Silakan coba kembali atau periksa koneksi internet."));
+        }
+      });
+    } catch (payError: any) {
+      console.error("ArtoPay checkout trigger exception:", payError);
+      setPayLoading(false);
+      setErrorMsg(payError.message || t("Gagal memproses transaksi ArtoPay Gateway."));
+    }
+  };
+
+  if (summaryBooking) {
+    const finalAmountIDR = Number(summaryBooking.paymentAmount) || (Math.max(0, Number(summaryBooking.baseAmount || summaryBooking.totalPriceIDR || pricingBreakdown.totalPriceIDR) - Number(summaryBooking.discount || 0)) + Number(summaryBooking.uniqueCode || 0));
+    return (
+      <div className="space-y-6 pb-16 animate-fade-in max-w-xl mx-auto" id="booking-summary-module">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setSummaryBooking(null)}
+            className="inline-flex items-center space-x-2 text-gray-700 hover:text-[#315B4F] text-xs font-bold transition-all cursor-pointer bg-white px-3.5 py-2 rounded-xl border border-gray-200 shadow-2xs hover:shadow-xs"
+          >
+            <ChevronLeft className="w-4 h-4 text-[#315B4F]" />
+            <span>← Ubah Form Data</span>
+          </button>
+          <span className="text-[11px] font-mono text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 font-bold">
+            Status: Menunggu Pembayaran
+          </span>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-3xl p-6 sm:p-8 shadow-xl text-left space-y-6">
+          <div className="text-center space-y-1 pb-2 border-b border-gray-100">
+            <div className="inline-flex items-center justify-center bg-emerald-50 text-emerald-600 p-3 rounded-2xl mb-1">
+              <Receipt className="w-7 h-7" />
+            </div>
+            <h3 className="text-xl font-display font-black text-gray-900">Ringkasan Pembayaran</h3>
+            <p className="text-xs text-gray-500 font-mono">
+              ID RESERVASI: <strong className="text-gray-900">{summaryBooking.bookingCode || summaryBooking.id}</strong>
+            </p>
+          </div>
+
+          <div className="bg-gray-50 p-4 rounded-2xl border border-gray-150 text-xs space-y-2.5">
+            <div className="flex justify-between items-center text-gray-600">
+              <span>Paket Trip:</span>
+              <span className="font-bold text-gray-900 text-right">{trip.title}</span>
+            </div>
+            <div className="flex justify-between items-center text-gray-600">
+              <span>Tamu Utama:</span>
+              <span className="font-bold text-gray-900">{name}</span>
+            </div>
+            <div className="flex justify-between items-center text-gray-600">
+              <span>Tanggal Keberangkatan:</span>
+              <span className="font-bold text-gray-900 font-mono">{selectedDepartureDate}</span>
+            </div>
+            <div className="flex justify-between items-center text-gray-600">
+              <span>Jumlah Peserta:</span>
+              <span className="font-bold text-gray-900">{numParticipants} Orang ({currentNationality})</span>
+            </div>
+          </div>
+
+          <div className="bg-emerald-950 text-white p-5 rounded-2xl space-y-3 shadow-inner">
+            <div className="flex justify-between items-center text-xs text-emerald-200">
+              <span>Harga Trip (Base Fare):</span>
+              <span className="font-mono text-white font-bold">
+                Rp {Number(summaryBooking.baseAmount || summaryBooking.totalPriceIDR || pricingBreakdown.totalPriceIDR).toLocaleString('id-ID')}
+              </span>
+            </div>
+            {Boolean(summaryBooking?.discount && Number(summaryBooking?.discount) > 0) && (
+              <div className="flex justify-between items-center text-xs text-emerald-300 border-t border-emerald-900/60 pt-2 font-medium">
+                <span>Diskon Promo {summaryBooking.promoCode ? `(${summaryBooking.promoCode})` : ''}:</span>
+                <span className="font-mono font-bold">
+                  - Rp {Number(summaryBooking.discount).toLocaleString('id-ID')}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between items-center text-xs text-emerald-200 border-t border-emerald-900/60 pt-2">
+              <span>Kode Unik:</span>
+              <span className="font-mono text-amber-300 font-bold">
+                + Rp {Number(summaryBooking.uniqueCode || 0).toLocaleString('id-ID')}
+              </span>
+            </div>
+            <div className="flex justify-between items-center border-t border-emerald-800/80 pt-3 font-bold">
+              <span className="text-xs uppercase tracking-wider font-mono text-emerald-100">TOTAL PEMBAYARAN FINAL:</span>
+              <div className="text-right">
+                <span className="text-lg font-black text-amber-400 font-mono block">
+                  Rp {finalAmountIDR.toLocaleString('id-ID')}
+                </span>
+                {currency !== 'IDR' && (
+                  <span className="text-[10px] font-mono text-emerald-300 block">
+                    {totalPriceFormatted} (≈ Rp {finalAmountIDR.toLocaleString('id-ID')} IDR)
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <p className="text-[11px] text-gray-500 text-center leading-relaxed">
+            Kode unik dan total pembayaran final berasal dari nilai booking yang sudah tersimpan di database untuk verifikasi otomatis.
+          </p>
+
+          {errorMsg && (
+            <div className="p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl font-bold">
+              {errorMsg}
+            </div>
+          )}
+
+          <div className="space-y-3 pt-2">
+            <button
+              id="btn-pay-summary-artopay"
+              onClick={handlePayFromSummary}
+              disabled={payLoading}
+              className={`w-full py-4 px-6 rounded-2xl text-white font-display font-black text-base uppercase tracking-wider transition-all shadow-xl flex items-center justify-center gap-2 cursor-pointer ${
+                payLoading
+                  ? "bg-gray-400 cursor-not-allowed opacity-80"
+                  : "bg-[#315B4F] hover:bg-[#203c34] active:scale-[0.99] shadow-[#315B4F]/25 hover:shadow-2xl"
+              }`}
+            >
+              {payLoading ? (
+                <>
+                  <Loader2 className="w-5 h-5 text-[#D6B16D] animate-spin" />
+                  <span>Menghubungkan ke ArtoPay...</span>
+                </>
+              ) : (
+                <>
+                  <CreditCard className="w-5 h-5 text-[#D6B16D]" />
+                  <span>Bayar Rp{finalAmountIDR.toLocaleString('id-ID')}</span>
+                  <ArrowRight className="w-4 h-4 text-white" />
+                </>
+              )}
+            </button>
+
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.hash = `#/bookings?code=${encodeURIComponent(summaryBooking.bookingCode || summaryBooking.id || '')}`;
+                }}
+                className="text-xs text-gray-500 hover:text-emerald-700 font-medium transition-colors cursor-pointer"
+              >
+                Cek Status Pemesanan Nanti →
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 pb-16 animate-fade-in" id="booking-registration-module">
@@ -728,20 +883,20 @@ export default function BookingForm({
                 }`}
               >
                 <div className="flex items-center justify-center gap-2">
-                  <Lock className="w-4 h-4 text-[#D6B16D]" />
+                  <Receipt className="w-4 h-4 text-[#D6B16D]" />
                   <span>
-                    {loading ? "Menghubungkan ke OJIRE..." : "LANJUT KE PEMBAYARAN"}
+                    {loading ? "Menyimpan Pesanan..." : "LANJUT KE RINGKASAN PEMBAYARAN"}
                   </span>
                   <ArrowRight className="w-4 h-4" />
                 </div>
                 <span className="text-[11px] text-amber-300 font-mono font-semibold tracking-wide">
-                  TOTAL: {totalPriceFormatted} {currency !== 'IDR' ? `(≈ Rp ${pricingBreakdown.totalPriceIDR.toLocaleString('id-ID')} IDR)` : ''}
+                  ESTIMASI TOTAL: {totalPriceFormatted} {currency !== 'IDR' ? `(≈ Rp ${pricingBreakdown.totalPriceIDR.toLocaleString('id-ID')} IDR)` : ''}
                 </span>
               </button>
 
               <div className="flex items-center justify-center gap-2 text-[11px] text-gray-500 text-center">
                 <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Pilihan metode pembayaran (QRIS, Virtual Account, Kartu Kredit) akan dipilih langsung secara aman di Payment Gateway OJIRE.</span>
+                <span>Ringkasan rincian biaya, kode unik verifikasi, dan total pembayaran final akan ditampilkan sebelum lanjut ke ArtoPay Gateway.</span>
               </div>
             </div>
           </form>
