@@ -12,6 +12,7 @@ import CustomerReviewsSection from '../components/CustomerReviewsSection';
 import Breadcrumbs from '../components/Breadcrumbs';
 import ServiceNavTabs from '../components/ServiceNavTabs';
 import PromoCodeInput, { PromoValidationResult } from '../components/PromoCodeInput';
+import { idrToUSD } from '../utils/pricingUtils';
 
 // Predefined node coordinates for matching admin configured tariffs
 const cityCoordinates: Record<string, { lat: number, lon: number }> = {
@@ -102,6 +103,7 @@ const POPULAR_ROUTES = [
 
 export default function TaxiView() {
   const { 
+    currency,
     airportRoutes, 
     formatPrice, 
     addBooking, 
@@ -1430,7 +1432,7 @@ export default function TaxiView() {
                         </span>
                         {currency !== 'IDR' && (
                           <span className="text-[10px] font-mono text-neutral-500 block">
-                            ({formatPrice(bookingSuccess.totalPrice, bookingSuccess.totalPriceIDR)})
+                            {formatPrice(idrToUSD(Number(bookingSuccess.paymentAmount) || (Number(bookingSuccess.totalPriceIDR) + Number(bookingSuccess.uniqueCode || 0))), Number(bookingSuccess.paymentAmount) || (Number(bookingSuccess.totalPriceIDR) + Number(bookingSuccess.uniqueCode || 0)))} (≈ Rp {(Number(bookingSuccess.paymentAmount) || (Number(bookingSuccess.totalPriceIDR) + Number(bookingSuccess.uniqueCode || 0))).toLocaleString('id-ID')} IDR)
                           </span>
                         )}
                       </div>

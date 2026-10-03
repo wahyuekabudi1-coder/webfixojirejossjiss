@@ -6034,7 +6034,7 @@ async function startServer() {
     process.exit(1);
   }
 
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
     // Development Mode: Use Vite Dev Server Middleware
     console.log('Running in Development mode. Mounting Vite Dev Server Middleware...');
 

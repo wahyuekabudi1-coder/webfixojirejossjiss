@@ -676,9 +676,20 @@ export default function CheckoutModal({
 
                   {/* Submission segment */}
                   <div className="pt-4 border-t border-white/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <p className="text-[11px] text-neutral-400 leading-relaxed max-w-sm">
-                      Dengan melanjutkan, pesanan Anda akan diproses dan diteruskan ke gerbang pembayaran aman <strong className="text-[#D6B16D]">ArtoPay Payment Gateway</strong> (QRIS, Transfer Bank, e-Wallet, Kartu Kredit).
-                    </p>
+                    <div>
+                      <p className="text-[11px] text-neutral-400 leading-relaxed max-w-sm">
+                        Dengan melanjutkan, pesanan Anda akan diteruskan ke gerbang pembayaran aman <strong className="text-[#D6B16D]">ArtoPay Payment Gateway</strong> (QRIS, Transfer Bank, e-Wallet, Kartu Kredit).
+                      </p>
+                      {currency !== 'IDR' ? (
+                        <p className="text-xs text-emerald-400 font-mono font-semibold mt-1">
+                          Nominal Checkout: <strong className="text-amber-400">{formatPrice(finalPrice.usd, finalPrice.idr)}</strong> (≈ Rp {finalPrice.idr.toLocaleString('id-ID')} IDR)
+                        </p>
+                      ) : (
+                        <p className="text-xs text-amber-400 font-mono font-semibold mt-1">
+                          Nominal Checkout: <strong>Rp {finalPrice.idr.toLocaleString('id-ID')} IDR</strong>
+                        </p>
+                      )}
+                    </div>
                     <button
                       type="submit"
                       disabled={isSubmitting}

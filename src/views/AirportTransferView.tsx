@@ -12,9 +12,11 @@ import CustomerReviewsSection from '../components/CustomerReviewsSection';
 import Breadcrumbs from '../components/Breadcrumbs';
 import ServiceNavTabs from '../components/ServiceNavTabs';
 import PromoCodeInput, { PromoValidationResult } from '../components/PromoCodeInput';
+import { idrToUSD } from '../utils/pricingUtils';
 
 export default function AirportTransferView() {
   const { 
+    currency,
     formatPrice, 
     airportRoutes, 
     addBooking, 
@@ -1196,7 +1198,7 @@ export default function AirportTransferView() {
                       )}
                       {currency !== 'IDR' && (
                         <span className="text-[11px] font-mono text-neutral-600 block">
-                          ({formatPrice(confirmedBooking.totalPrice, confirmedBooking.totalPriceIDR)})
+                          {formatPrice(idrToUSD(Number(confirmedBooking.paymentAmount) || (Number(confirmedBooking.totalPriceIDR) + Number(confirmedBooking.uniqueCode || 0))), Number(confirmedBooking.paymentAmount) || (Number(confirmedBooking.totalPriceIDR) + Number(confirmedBooking.uniqueCode || 0)))} (≈ Rp {(Number(confirmedBooking.paymentAmount) || (Number(confirmedBooking.totalPriceIDR) + Number(confirmedBooking.uniqueCode || 0))).toLocaleString('id-ID')} IDR)
                         </span>
                       )}
                     </div>

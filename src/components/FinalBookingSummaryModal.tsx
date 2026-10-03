@@ -377,7 +377,7 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
                 <span className="font-mono font-black text-emerald-800 text-base" id="summary-total-paid">Rp {formattedTotal}</span>
                 {currency !== 'IDR' && (
                   <span className="text-[10px] font-mono text-emerald-700 block mt-0.5 font-semibold">
-                    {formatPrice(idrToUSD(data.payment.totalPaid), data.payment.totalPaid)} (ArtoPay IDR)
+                    {formatPrice(idrToUSD(data.payment.totalPaid), data.payment.totalPaid)} (≈ Rp {formattedTotal} IDR)
                   </span>
                 )}
               </div>

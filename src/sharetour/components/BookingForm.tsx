@@ -235,9 +235,10 @@ export default function BookingForm({
 
       // Trigger OJIRE Payment Gateway directly with exact IDR amount
       try {
+        const finalPayableIDR = Number(result.paymentAmount) || (Number(result.totalPriceIDR || pricingBreakdown.totalPriceIDR) + Number(result.uniqueCode || 0));
         await processArtoPayPayment({
           orderId: result.bookingCode || result.id,
-          amount: result.paymentAmount || result.totalPriceIDR || pricingBreakdown.paymentAmountIDR,
+          amount: finalPayableIDR,
           currency: 'IDR',
           description: isPrivate 
             ? `Private Tour: ${trip.title} (${selectedDepartureDate}, ${numParticipants} Pax)` 

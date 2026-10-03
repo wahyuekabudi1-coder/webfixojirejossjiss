@@ -65,6 +65,7 @@ interface PrivateTourCheckBookingProps {
 }
 
 export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: PrivateTourCheckBookingProps) {
+  const { currency, formatPrice } = useApp();
   const [searchCode, setSearchCode] = useState(initialCode);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -619,9 +620,24 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                     <span className="text-neutral-500">Kode Unik Verifikasi:</span>
                     <span className="font-mono font-bold text-neutral-900">Rp {(booking.uniqueCode || 0).toLocaleString('id-ID')}</span>
                   </div>
-                  <div className="flex justify-between py-2 border-t border-neutral-200 font-bold text-sm bg-neutral-50 px-2 rounded-lg">
+                  <div className="flex justify-between py-2 border-t border-neutral-200 font-bold text-sm bg-neutral-50 px-2 rounded-lg items-center">
                     <span className="text-neutral-800">Total Pembayaran (ArtoPay IDR):</span>
-                    <span className="font-mono text-emerald-700">Rp {(booking.paymentAmount || 0).toLocaleString('id-ID')}</span>
+                    <div className="text-right">
+                      {currency !== 'IDR' ? (
+                        <>
+                          <span className="font-mono text-emerald-700 font-black block">
+                            {formatPrice(idrToUSD(booking.paymentAmount || 0), booking.paymentAmount || 0)}
+                          </span>
+                          <span className="text-[10px] font-mono text-neutral-500 font-semibold block">
+                            (≈ Rp {(booking.paymentAmount || 0).toLocaleString('id-ID')} IDR)
+                          </span>
+                        </>
+                      ) : (
+                        <span className="font-mono text-emerald-700 font-black">
+                          Rp {(booking.paymentAmount || 0).toLocaleString('id-ID')}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="pt-2 flex items-center justify-between text-[11px] text-neutral-500">
@@ -709,7 +725,9 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                     className="w-full py-2.5 px-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-neutral-950 font-black text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
                   >
                     <CreditCard className="h-4 w-4" />
-                    <span>Bayar Rp {(booking.paymentAmount || 0).toLocaleString('id-ID')} (ArtoPay)</span>
+                    <span>
+                      Bayar {currency !== 'IDR' ? `${formatPrice(idrToUSD(booking.paymentAmount || 0), booking.paymentAmount || 0)} (Rp ${(booking.paymentAmount || 0).toLocaleString('id-ID')})` : `Rp ${(booking.paymentAmount || 0).toLocaleString('id-ID')}`} (ArtoPay)
+                    </span>
                   </button>
                 )}
 

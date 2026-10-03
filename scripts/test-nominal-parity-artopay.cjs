@@ -107,6 +107,26 @@ async function runNominalParitySuite() {
   let serverProc = null;
   const capturedRequests = [];
 
+  const cleanup = () => {
+    if (serverProc) {
+      try { serverProc.kill('SIGKILL'); } catch (e) {}
+      serverProc = null;
+    }
+    if (mockGateway) {
+      try { mockGateway.close(); } catch (e) {}
+      mockGateway = null;
+    }
+  };
+
+  process.on('exit', cleanup);
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
+  process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+    cleanup();
+    process.exit(1);
+  });
+
   try {
     // -------------------------------------------------------------------------
     // STEP 1: Spin up Mock ArtoPay Gateway to capture outbound network requests
@@ -154,6 +174,7 @@ async function runNominalParitySuite() {
     console.log('\n--- STEP 2: Start Test Server ---');
     const env = {
       ...process.env,
+      NODE_ENV: 'test',
       PORT: String(TEST_SERVER_PORT),
       ARTOPAY_SECRET_KEY: 'sk_test_nominal_parity_secret_key',
       ARTOPAY_PUBLIC_KEY: 'pk_test_nominal_parity_public_key',
