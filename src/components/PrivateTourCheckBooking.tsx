@@ -21,6 +21,8 @@ import {
   Sparkles
 } from 'lucide-react';
 import FinalBookingSummaryModal, { FinalSummaryData } from './FinalBookingSummaryModal';
+import { useApp } from '../AppContext';
+import { idrToUSD } from '../utils/pricingUtils';
 
 interface PrivateTourBookingResult {
   found: boolean;
@@ -618,7 +620,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                     <span className="font-mono font-bold text-neutral-900">Rp {(booking.uniqueCode || 0).toLocaleString('id-ID')}</span>
                   </div>
                   <div className="flex justify-between py-2 border-t border-neutral-200 font-bold text-sm bg-neutral-50 px-2 rounded-lg">
-                    <span className="text-neutral-800">Total Pembayaran:</span>
+                    <span className="text-neutral-800">Total Pembayaran (ArtoPay IDR):</span>
                     <span className="font-mono text-emerald-700">Rp {(booking.paymentAmount || 0).toLocaleString('id-ID')}</span>
                   </div>
 
@@ -707,7 +709,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                     className="w-full py-2.5 px-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-neutral-950 font-black text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
                   >
                     <CreditCard className="h-4 w-4" />
-                    <span>Bayar Sekarang (ArtoPay)</span>
+                    <span>Bayar Rp {(booking.paymentAmount || 0).toLocaleString('id-ID')} (ArtoPay)</span>
                   </button>
                 )}
 

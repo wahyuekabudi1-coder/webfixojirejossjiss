@@ -659,7 +659,7 @@ export default function TaxiView() {
   };
 
   // Submit Booking handler
-  const handleConfirmBooking = (e: React.FormEvent) => {
+  const handleConfirmBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pickupCoords || !destCoords) {
       alert("Please select complete pickup and destination addresses.");
@@ -695,7 +695,7 @@ export default function TaxiView() {
     };
 
     try {
-      const newBooking = addBooking(bookingPayload);
+      const newBooking = await addBooking(bookingPayload);
       setBookingSuccess(newBooking);
       // Scroll to summary screen
       setTimeout(() => {
@@ -714,9 +714,10 @@ export default function TaxiView() {
     setPaymentError(null);
 
     try {
+      const payableAmount = Number(bookingSuccess.paymentAmount) || (Number(bookingSuccess.totalPriceIDR) + Number(bookingSuccess.uniqueCode || 0));
       await processArtoPayPayment({
         orderId: bookingSuccess.id,
-        amount: bookingSuccess.totalPriceIDR,
+        amount: payableAmount,
         currency: 'IDR',
         onSuccess: (res) => {
           console.log('ArtoPay payment event completed:', res);
@@ -1410,11 +1411,30 @@ export default function TaxiView() {
                       <span className="text-neutral-800 font-bold font-mono uppercase">{flightNumber}</span>
                     </div>
                   )}
-                  <div className="flex justify-between items-center pt-1">
-                    <span className="text-neutral-500 font-bold">Total Zone price</span>
-                    <span className="text-base font-black text-amber-600 font-mono">
-                      {formatPrice(bookingSuccess.totalPrice, bookingSuccess.totalPriceIDR)}
-                    </span>
+                  <div className="pt-2 border-t border-dashed border-neutral-200 space-y-1">
+                    <div className="flex justify-between items-center text-xs text-neutral-500">
+                      <span>Harga Dasar Taksi:</span>
+                      <span className="font-mono">Rp {Number(bookingSuccess.baseAmount || bookingSuccess.totalPriceIDR).toLocaleString('id-ID')}</span>
+                    </div>
+                    {Boolean(bookingSuccess.uniqueCode) && (
+                      <div className="flex justify-between items-center text-xs text-amber-600 font-bold">
+                        <span>Kode Unik Verifikasi:</span>
+                        <span className="font-mono">+ Rp {Number(bookingSuccess.uniqueCode)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center pt-1 font-bold">
+                      <span className="text-neutral-800 text-xs">Total Tagihan Final (ArtoPay IDR):</span>
+                      <div className="text-right">
+                        <span className="text-base font-black text-amber-600 font-mono block">
+                          Rp {(Number(bookingSuccess.paymentAmount) || (Number(bookingSuccess.totalPriceIDR) + Number(bookingSuccess.uniqueCode || 0))).toLocaleString('id-ID')}
+                        </span>
+                        {currency !== 'IDR' && (
+                          <span className="text-[10px] font-mono text-neutral-500 block">
+                            ({formatPrice(bookingSuccess.totalPrice, bookingSuccess.totalPriceIDR)})
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
 

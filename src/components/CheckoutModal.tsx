@@ -26,7 +26,7 @@ export default function CheckoutModal({
   basePriceIDR,
   initialDetails
 }: CheckoutModalProps) {
-  const { addBooking, formatPrice, bookings, schedules, serviceLimits } = useApp();
+  const { addBooking, formatPrice, bookings, schedules, serviceLimits, currency } = useApp();
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedVehicle, setSelectedVehicle] = useState(VEHICLES[1]); // Innova default
   const [customerName, setCustomerName] = useState('');
@@ -193,7 +193,7 @@ export default function CheckoutModal({
     };
 
     try {
-      const newBooking = addBooking(bookingPayload);
+      const newBooking = await addBooking(bookingPayload);
       setConfirmedBooking(newBooking);
 
       if (newBooking && (newBooking.bookingCode || newBooking.id)) {
@@ -207,11 +207,12 @@ export default function CheckoutModal({
         } catch {}
       }
 
-      // Trigger ArtoPay Payment Gateway
+      // Trigger ArtoPay Payment Gateway: Must pass authoritative final payment amount (base + uniqueCode)
       try {
+        const payableAmountIDR = Number(newBooking?.paymentAmount) || (Number(newBooking?.totalPriceIDR || finalPrice.idr) + Number(newBooking?.uniqueCode || 0));
         await processArtoPayPayment({
           orderId: newBooking.id,
-          amount: finalPrice.idr,
+          amount: payableAmountIDR,
           currency: 'IDR',
           description: serviceName,
           customerName: customerName.trim(),
@@ -336,6 +337,11 @@ export default function CheckoutModal({
                       <div className="text-2xl font-black text-amber-400">
                         {formatPrice(finalPrice.usd, finalPrice.idr)}
                       </div>
+                      {currency !== 'IDR' && (
+                        <div className="text-xs text-emerald-400 font-mono font-semibold">
+                          ≈ Rp {finalPrice.idr.toLocaleString('id-ID')} IDR
+                        </div>
+                      )}
                       <div className="text-[10px] text-neutral-500">All-Inclusive Fixed Pricing</div>
                     </div>
                   </div>
@@ -773,11 +779,43 @@ export default function CheckoutModal({
                     )}
                   </div>
 
-                  <div className="bg-white/5 p-3 rounded-xl flex items-center justify-between text-xs">
-                    <span className="text-neutral-400">Total Price Paid (On-Site)</span>
-                    <span className="font-mono font-black text-amber-400">
-                      {formatPrice(finalPrice.usd, finalPrice.idr)}
-                    </span>
+                  <div className="bg-white/5 p-4 rounded-xl space-y-2 text-xs">
+                    <div className="flex items-center justify-between text-neutral-400">
+                      <span>Harga Dasar Layanan (Base Fare):</span>
+                      <span className="font-mono text-white font-medium">Rp {(confirmedBooking?.baseAmount || finalPrice.idr).toLocaleString('id-ID')}</span>
+                    </div>
+                    {Boolean(confirmedBooking?.uniqueCode) && (
+                      <div className="flex items-center justify-between text-neutral-400 border-t border-white/5 pt-1.5">
+                        <span>Kode Unik Verifikasi:</span>
+                        <span className="font-mono text-amber-400 font-bold">+ Rp {Number(confirmedBooking.uniqueCode).toLocaleString('id-ID')}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between pt-2 border-t border-white/10 font-bold">
+                      <span className="text-white">Total Tagihan Final (ArtoPay IDR):</span>
+                      <div className="text-right">
+                        {(() => {
+                          const finalPayable = confirmedBooking?.paymentAmount || (Number(confirmedBooking?.totalPriceIDR || finalPrice.idr) + Number(confirmedBooking?.uniqueCode || 0));
+                          const finalUSD = idrToUSD(finalPayable);
+                          if (currency !== 'IDR') {
+                            return (
+                              <>
+                                <span className="font-mono font-black text-amber-400 text-sm block">
+                                  {formatPrice(finalUSD, finalPayable)}
+                                </span>
+                                <span className="text-[10px] font-mono text-emerald-400 font-semibold block">
+                                  ≈ Rp {finalPayable.toLocaleString('id-ID')} IDR
+                                </span>
+                              </>
+                            );
+                          }
+                          return (
+                            <span className="font-mono font-black text-amber-400 text-sm block">
+                              Rp {finalPayable.toLocaleString('id-ID')}
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    </div>
                   </div>
                 </div>
 

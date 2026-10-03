@@ -734,7 +734,7 @@ export default function BookingForm({
                   <ArrowRight className="w-4 h-4" />
                 </div>
                 <span className="text-[11px] text-amber-300 font-mono font-semibold tracking-wide">
-                  TOTAL: {totalPriceFormatted}
+                  TOTAL: {totalPriceFormatted} {currency !== 'IDR' ? `(≈ Rp ${pricingBreakdown.totalPriceIDR.toLocaleString('id-ID')} IDR)` : ''}
                 </span>
               </button>
 

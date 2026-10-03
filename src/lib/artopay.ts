@@ -75,7 +75,7 @@ export async function processArtoPayPayment({
       body: JSON.stringify({
         orderId: String(orderId),
         amount: validAmount,
-        currency,
+        currency: 'IDR',
         description: description || `Payment for order ${orderId}`,
         customerId,
         customerName,

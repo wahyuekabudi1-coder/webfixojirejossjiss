@@ -626,7 +626,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const addBooking = (bookingData: Omit<Booking, 'id' | 'bookingDate' | 'status'>): Booking => {
+  const addBooking = async (bookingData: Omit<Booking, 'id' | 'bookingDate' | 'status'>): Promise<Booking> => {
     const targetDate = bookingData.details?.date;
     // Private Trips (type === 'tour') are free from calendar batch/availability restrictions
     if (targetDate && bookingData.type !== 'tour') {
@@ -651,7 +651,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const now = new Date();
     const bookingDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     
-    const newBooking: Booking = {
+    let resolvedBooking: Booking = {
       ...bookingData,
       id,
       bookingDate,
@@ -659,48 +659,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       paymentStatus: 'Pending'
     };
 
-    const updated = [newBooking, ...bookings];
+    const updated = [resolvedBooking, ...bookings];
     setBookings(updated);
     addLog(`New booking ${id} received for ${bookingData.serviceName} (Status: Pending Payment)`);
 
     // Post to server DB for ArtoPay webhook tracking and persistent storage
-    fetch('/api/bookings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id,
-        bookingCode: id,
-        bookingType: 'private',
-        tourBookingType: 'private',
-        type: bookingData.type,
-        serviceName: bookingData.serviceName,
-        tripId: bookingData.details?.tourId || (bookingData.details as any)?.tripId || (bookingData as any).tripId || (bookingData as any).tourId || (bookingData.type === 'tour' ? 'tour-private' : ''),
-        tourId: bookingData.details?.tourId || (bookingData.details as any)?.tripId || (bookingData as any).tourId || (bookingData as any).tripId || '',
-        departureDate: bookingData.details?.date || '',
-        customerName: bookingData.customerName,
-        fullName: bookingData.customerName,
-        customerEmail: bookingData.customerEmail,
-        email: bookingData.customerEmail,
-        customerPhone: bookingData.customerPhone,
-        phone: bookingData.customerPhone,
-        totalPrice: bookingData.totalPrice,
-        totalPriceIDR: bookingData.totalPriceIDR || bookingData.totalPrice,
-        status: 'Pending',
-        paymentStatus: 'Pending',
-        details: bookingData.details || {}
-      })
-    })
-    .then(async res => {
+    try {
+      const res = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          bookingCode: id,
+          bookingType: 'private',
+          tourBookingType: 'private',
+          type: bookingData.type,
+          serviceName: bookingData.serviceName,
+          tripId: bookingData.details?.tourId || (bookingData.details as any)?.tripId || (bookingData as any).tripId || (bookingData as any).tourId || (bookingData.type === 'tour' ? 'tour-private' : ''),
+          tourId: bookingData.details?.tourId || (bookingData.details as any)?.tripId || (bookingData as any).tourId || (bookingData as any).tripId || '',
+          departureDate: bookingData.details?.date || '',
+          customerName: bookingData.customerName,
+          fullName: bookingData.customerName,
+          customerEmail: bookingData.customerEmail,
+          email: bookingData.customerEmail,
+          customerPhone: bookingData.customerPhone,
+          phone: bookingData.customerPhone,
+          totalPrice: bookingData.totalPrice,
+          totalPriceIDR: bookingData.totalPriceIDR || bookingData.totalPrice,
+          status: 'Pending',
+          paymentStatus: 'Pending',
+          details: bookingData.details || {}
+        })
+      });
       if (res.ok) {
         const saved = await res.json();
         setBookings(prev => [saved, ...prev.filter(b => b.id !== id && b.id !== saved.id)]);
+        resolvedBooking = { ...resolvedBooking, ...saved };
       }
-    })
-    .catch(err => {
+    } catch (err) {
       console.warn('Server booking sync warning:', err);
-    });
+    }
 
-    return newBooking;
+    return resolvedBooking;
   };
 
   const updateBookingStatus = async (

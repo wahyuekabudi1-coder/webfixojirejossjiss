@@ -31,7 +31,11 @@ export default function BookingSuccess({ booking: initialBooking, onNavigateToTr
   });
   const [simulating, setSimulating] = useState(false);
   const [simulateSuccess, setSimulateSuccess] = useState("");
-  const { t, formatPrice } = useLanguageCurrency();
+  const { t, formatPrice, currency } = useLanguageCurrency();
+
+  const baseAmt = Math.round(Number(booking.baseAmount || booking.totalPriceIDR || booking.totalPrice || 0));
+  const uCode = Number(booking.uniqueCode || 0);
+  const amountInIDR = Math.round(Number(booking.paymentAmount || (baseAmt + uCode)));
 
   useEffect(() => {
     fetch('/api/artopay/config')
@@ -56,8 +60,6 @@ export default function BookingSuccess({ booking: initialBooking, onNavigateToTr
 
     try {
       const orderId = booking.bookingCode || booking.id || `SJ-${Math.floor(100000 + Math.random() * 900000)}`;
-      // Transaction amount is strictly in IDR
-      const amountInIDR = Math.round(Number(booking.paymentAmount || booking.totalPriceIDR || booking.totalPrice || 0));
 
       await processArtoPayPayment({
         orderId,
@@ -246,9 +248,44 @@ export default function BookingSuccess({ booking: initialBooking, onNavigateToTr
               </span>
             </div>
           )}
-          <div className="col-span-2 pt-2 border-t border-emerald-900/10 flex justify-between items-end">
-            <span className="text-xs uppercase text-gray-400 font-semibold font-mono">{t("Total Net Cost")}</span>
-            <span className="text-base font-display font-bold text-[#315B4F]">{formatPrice(booking.totalPrice)}</span>
+          {/* Detailed Pricing Breakdown: Base + Unique Code = Final Payment */}
+          <div className="col-span-2 pt-3 border-t border-emerald-900/10 space-y-1.5">
+            <div className="flex justify-between items-center text-xs text-gray-500">
+              <span>{t("Harga Dasar (Base Fare)")}:</span>
+              <span className="font-mono font-semibold text-gray-800">
+                Rp {baseAmt.toLocaleString('id-ID')}
+              </span>
+            </div>
+            {Boolean(uCode) && (
+              <div className="flex justify-between items-center text-xs text-amber-700">
+                <span>{t("Kode Unik Verifikasi")}:</span>
+                <span className="font-mono font-bold text-amber-600">
+                  + Rp {uCode.toLocaleString('id-ID')}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between items-end pt-2 border-t border-gray-100">
+              <div>
+                <span className="text-xs uppercase text-gray-400 font-semibold font-mono block">
+                  {t("Total Tagihan Final")}
+                </span>
+                {currency !== 'IDR' && (
+                  <span className="text-[11px] font-mono text-gray-500">
+                    {formatPrice(booking.totalPrice)}
+                  </span>
+                )}
+              </div>
+              <div className="text-right">
+                <span className="text-lg font-display font-extrabold text-[#315B4F]">
+                  Rp {amountInIDR.toLocaleString('id-ID')}
+                </span>
+                {currency !== 'IDR' && (
+                  <span className="text-[10px] text-emerald-600 font-mono block">
+                    (Final Tagihan IDR)
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -303,7 +340,7 @@ export default function BookingSuccess({ booking: initialBooking, onNavigateToTr
           ) : (
             <>
               <CreditCard className="w-4 h-4 text-slate-950" />
-              <span>{t("Bayar via ArtoPay")} ({booking.bookingCode})</span>
+              <span>{t("Bayar Rp")} {amountInIDR.toLocaleString('id-ID')} {t("via ArtoPay")}</span>
             </>
           )}
         </button>

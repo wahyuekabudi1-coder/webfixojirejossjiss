@@ -644,7 +644,7 @@ export default function CarRentalView() {
     setCurrentScreen('review');
   };
 
-  const handleFinalBooking = () => {
+  const handleFinalBooking = async () => {
     const finalPrice = calculateFinalPrice();
     const addOnList = selectedAddOns.map(id => {
       const item = getDynamicAddons().find(a => a.id === id);
@@ -693,10 +693,11 @@ export default function CarRentalView() {
     };
 
     try {
-      const newBooking = addBooking(bookingPayload);
+      const newBooking = await addBooking(bookingPayload);
+      const payableAmount = Number(newBooking.paymentAmount) || (Number(newBooking.totalPriceIDR || finalPrice.idr) + Number(newBooking.uniqueCode || 0));
       processArtoPayPayment({
         orderId: newBooking.id,
-        amount: finalPrice.idr,
+        amount: payableAmount,
         currency: 'IDR',
         onSuccess: () => {
           window.location.hash = '#/bookings';

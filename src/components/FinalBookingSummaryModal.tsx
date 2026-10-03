@@ -1,4 +1,6 @@
 import React from 'react';
+import { useApp } from '../AppContext';
+import { idrToUSD } from '../utils/pricingUtils';
 import { 
   X, 
   Printer, 
@@ -74,6 +76,7 @@ interface FinalBookingSummaryModalProps {
 }
 
 export default function FinalBookingSummaryModal({ isOpen, onClose, data }: FinalBookingSummaryModalProps) {
+  const { currency, formatPrice } = useApp();
   if (!isOpen || !data) return null;
 
   const handleDownloadActualPdf = () => {
@@ -372,6 +375,11 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
               <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-200">
                 <span className="text-emerald-700 block text-[10px] font-bold">Total Pembayaran Lunas</span>
                 <span className="font-mono font-black text-emerald-800 text-base" id="summary-total-paid">Rp {formattedTotal}</span>
+                {currency !== 'IDR' && (
+                  <span className="text-[10px] font-mono text-emerald-700 block mt-0.5 font-semibold">
+                    {formatPrice(idrToUSD(data.payment.totalPaid), data.payment.totalPaid)} (ArtoPay IDR)
+                  </span>
+                )}
               </div>
             </div>
 

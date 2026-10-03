@@ -300,23 +300,7 @@
     "whatsapp": "+62 852-1234-7289",
     "email": "sawahjayagroup@gmail.com"
   },
-  "adminSessions": [
-    {
-      "token": "security-test-admin-token-1790824903835",
-      "createdAt": "2026-10-01T03:21:43.835Z",
-      "expiresAt": 1790828503835
-    },
-    {
-      "token": "security-test-admin-token-1790824923196",
-      "createdAt": "2026-10-01T03:22:03.196Z",
-      "expiresAt": 1790828523196
-    },
-    {
-      "token": "security-test-admin-token-1790824938534",
-      "createdAt": "2026-10-01T03:22:18.534Z",
-      "expiresAt": 1790828538535
-    }
-  ],
+  "adminSessions": [],
   "tripsRevision": 5,
   "tripsUpdatedAt": "2026-09-24T10:50:44.797Z"
 }

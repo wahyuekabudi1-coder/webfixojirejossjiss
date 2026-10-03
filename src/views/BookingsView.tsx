@@ -23,11 +23,12 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { processArtoPayPayment } from '../lib/artopay';
+import { idrToUSD } from '../utils/pricingUtils';
 import Breadcrumbs from '../components/Breadcrumbs';
 import PrivateTourCheckBooking from '../components/PrivateTourCheckBooking';
 
 export default function BookingsView() {
-  const { bookings, formatPrice, setPage } = useApp();
+  const { bookings, formatPrice, setPage, currency } = useApp();
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [localBookings, setLocalBookings] = useState(bookings);
   const [paymentLoadingId, setPaymentLoadingId] = useState<string | null>(null);
@@ -645,12 +646,28 @@ export default function BookingsView() {
                     </div>
 
                     <div className="space-y-1">
-                      <span className="text-[10px] text-neutral-500 block uppercase font-mono tracking-wider">TOTAL TAGIHAN</span>
-                      <span className="text-lg font-black text-amber-400 block leading-tight">
-                        {booking.paymentAmount 
-                          ? `Rp ${booking.paymentAmount.toLocaleString('id-ID')}`
-                          : formatPrice(booking.totalPrice, booking.totalPriceIDR)}
-                      </span>
+                      <span className="text-[10px] text-neutral-500 block uppercase font-mono tracking-wider">TOTAL TAGIHAN FINAL (ARTOPAY)</span>
+                      {(() => {
+                        const finalPayable = Number(booking.paymentAmount) || (booking.uniqueCode ? (Number(booking.totalPriceIDR) + Number(booking.uniqueCode)) : Number(booking.totalPriceIDR || booking.totalPrice || 0));
+                        const finalUSD = idrToUSD(finalPayable);
+                        if (currency !== 'IDR') {
+                          return (
+                            <div>
+                              <span className="text-lg font-black text-amber-400 block leading-tight font-mono">
+                                {formatPrice(finalUSD, finalPayable)}
+                              </span>
+                              <span className="text-[10px] font-mono text-emerald-400 block font-semibold">
+                                ≈ Rp {finalPayable.toLocaleString('id-ID')} IDR
+                              </span>
+                            </div>
+                          );
+                        }
+                        return (
+                          <span className="text-lg font-black text-amber-400 block leading-tight font-mono">
+                            Rp {finalPayable.toLocaleString('id-ID')}
+                          </span>
+                        );
+                      })()}
                       {booking.uniqueCode ? (
                         <div className="text-[9px] font-mono text-neutral-400 pt-0.5">
                           <span>Dasar: Rp {(booking.baseAmount || booking.totalPriceIDR).toLocaleString('id-ID')}</span>

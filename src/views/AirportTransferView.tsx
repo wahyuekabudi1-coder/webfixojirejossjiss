@@ -159,7 +159,7 @@ export default function AirportTransferView() {
     }, 100);
   };
 
-  const handleBookingDetailSubmit = (e: React.FormEvent) => {
+  const handleBookingDetailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerName.trim() || !customerEmail.trim() || !customerPhone.trim()) {
       setErrorMessage('Harap lengkapi semua data kontak.');
@@ -234,7 +234,7 @@ export default function AirportTransferView() {
     };
 
     try {
-      const newBooking = addBooking(bookingPayload);
+      const newBooking = await addBooking(bookingPayload);
       setConfirmedBooking(newBooking);
       setActiveStep(3);
 
@@ -253,9 +253,10 @@ export default function AirportTransferView() {
     setPaymentLoading(true);
     setErrorMessage(null);
     try {
+      const payableAmount = Number(confirmedBooking.paymentAmount) || (confirmedBooking.uniqueCode ? confirmedBooking.totalPriceIDR + confirmedBooking.uniqueCode : confirmedBooking.totalPriceIDR);
       await processArtoPayPayment({
         orderId: confirmedBooking.id,
-        amount: confirmedBooking.totalPriceIDR,
+        amount: payableAmount,
         currency: 'IDR',
         onSuccess: (res) => {
           console.log('ArtoPay payment event completed:', res);
@@ -1183,11 +1184,21 @@ export default function AirportTransferView() {
                         {confirmedBooking.id}
                       </span>
                     </div>
-                    <div className="text-left sm:text-right">
-                      <span className="text-[9px] text-neutral-400 font-bold uppercase block tracking-wider font-mono">TOTAL TARIF</span>
-                      <span className="text-xl sm:text-2xl font-black text-emerald-600 font-mono">
-                        {formatPrice(confirmedBooking.totalPrice, confirmedBooking.totalPriceIDR)}
+                    <div className="text-left sm:text-right space-y-0.5">
+                      <span className="text-[9px] text-neutral-400 font-bold uppercase block tracking-wider font-mono">TOTAL TARIF FINAL (ARTOPAY IDR)</span>
+                      <span className="text-xl sm:text-2xl font-black text-emerald-600 font-mono block">
+                        Rp {(Number(confirmedBooking.paymentAmount) || (Number(confirmedBooking.totalPriceIDR) + Number(confirmedBooking.uniqueCode || 0))).toLocaleString('id-ID')}
                       </span>
+                      {Boolean(confirmedBooking.uniqueCode) && (
+                        <span className="text-[10px] font-mono text-neutral-500 block">
+                          Dasar: Rp {Number(confirmedBooking.baseAmount || confirmedBooking.totalPriceIDR).toLocaleString('id-ID')} + Kode: Rp {Number(confirmedBooking.uniqueCode)}
+                        </span>
+                      )}
+                      {currency !== 'IDR' && (
+                        <span className="text-[11px] font-mono text-neutral-600 block">
+                          ({formatPrice(confirmedBooking.totalPrice, confirmedBooking.totalPriceIDR)})
+                        </span>
+                      )}
                     </div>
                   </div>
 
