@@ -132,6 +132,7 @@ export interface Booking {
   baseAmount?: number;
   uniqueCode?: number;
   paymentAmount?: number;
+  promoCode?: string;
   customerName?: string;
   customerEmail?: string;
   customerPhone?: string;

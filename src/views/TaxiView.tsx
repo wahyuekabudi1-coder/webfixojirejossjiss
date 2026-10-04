@@ -101,6 +101,38 @@ const POPULAR_ROUTES = [
   }
 ];
 
+// Client helpers for Taxi payment parity
+export function getTaxiFinalAmount(b: any): number {
+  if (!b) return 0;
+  if (b.paymentAmount !== undefined && b.paymentAmount !== null && Number(b.paymentAmount) > 0) {
+    return Number(b.paymentAmount);
+  }
+  const disc = Math.max(0, Number(
+    b.discount !== undefined && b.discount !== null
+      ? b.discount
+      : (b.details?.verifiedDiscount ?? b.details?.discountAmount ?? 0)
+  ));
+  const base = Number(b.baseAmount) > 0
+    ? Number(b.baseAmount)
+    : (Number(b.totalPriceIDR || b.totalPrice || 0) + (Number(b.baseAmount) === 0 && disc > 0 ? disc : 0));
+  const payableBase = Math.max(0, base - disc);
+  const uCode = Math.max(0, Number(b.uniqueCode || 0));
+  return payableBase + uCode;
+}
+
+export function getTaxiBaseAmount(b: any): number {
+  if (!b) return 0;
+  const disc = Math.max(0, Number(
+    b.discount !== undefined && b.discount !== null
+      ? b.discount
+      : (b.details?.verifiedDiscount ?? b.details?.discountAmount ?? 0)
+  ));
+  if (b.baseAmount !== undefined && b.baseAmount !== null && Number(b.baseAmount) > 0) {
+    return Number(b.baseAmount);
+  }
+  return Number(b.totalPriceIDR || b.totalPrice || 0) + disc;
+}
+
 export default function TaxiView() {
   const { 
     currency,
@@ -477,41 +509,35 @@ export default function TaxiView() {
 
   const matchedRoute = getMatchedTariff();
 
-  // Dynamic Excel-driven pricing engine with coordinate mapping and airport/area rules
-  const getDynamicPriceForVehicle = (car: any) => {
-    if (!pickupCoords || !destCoords) return { usd: 30, idr: 450000 };
-
+  // Route & Area resolution helper for Taxi
+  const getTaxiRouteContext = (car: any) => {
     let vType: 'Standard' | 'Family' | 'Premium' | 'Van' = 'Standard';
     if (car.id === 'avanza') vType = 'Standard';
     else if (car.id === 'innova') vType = 'Family';
     else if (car.id === 'alphard' || car.id === 'premium') vType = 'Premium';
     else if (car.id === 'hiace-commuter' || car.id === 'hiace-premio' || car.id === 'van') vType = 'Van';
 
-    if (!taxiMasterAreas || taxiMasterAreas.length === 0 || !taxiPricingRules || taxiPricingRules.length === 0) {
-      // Fallback if master data is empty
-      let mult = 1.0;
-      if (vType === 'Standard') mult = 0.9;
-      if (vType === 'Family') mult = 1.0;
-      if (vType === 'Premium') mult = 1.5;
-      if (vType === 'Van') mult = 1.8;
-      return {
-        usd: Math.round((matchedRoute?.priceUSD || 30) * mult),
-        idr: Math.round((matchedRoute?.priceIDR || 450000) * mult)
-      };
+    let mult = 1.0;
+    if (vType === 'Standard') mult = 0.9;
+    if (vType === 'Family') mult = 1.0;
+    if (vType === 'Premium') mult = 1.5;
+    if (vType === 'Van') mult = 1.8;
+
+    let pickupAreaId = '';
+    let destAreaId = '';
+
+    if (pickupCoords && taxiMasterDestinations && taxiMasterDestinations.length > 0) {
+      let minPickupDestDist = Infinity;
+      taxiMasterDestinations.forEach(d => {
+        const dist = getDistanceKM(pickupCoords.lat, pickupCoords.lon, d.lat, d.lon);
+        if (dist < minPickupDestDist) {
+          minPickupDestDist = dist;
+          if (dist < 5) pickupAreaId = d.area_id;
+        }
+      });
     }
 
-    // Resolve closest destination (within 5km of a predefined destination place)
-    let pickupAreaId = '';
-    let minPickupDestDist = Infinity;
-    (taxiMasterDestinations || []).forEach(d => {
-      const dist = getDistanceKM(pickupCoords.lat, pickupCoords.lon, d.lat, d.lon);
-      if (dist < minPickupDestDist) {
-        minPickupDestDist = dist;
-        if (dist < 5) pickupAreaId = d.area_id;
-      }
-    });
-
-    if (!pickupAreaId) {
+    if (!pickupAreaId && pickupCoords && taxiMasterAreas && taxiMasterAreas.length > 0) {
       let closestArea = taxiMasterAreas[0];
       let minAreaDist = Infinity;
       taxiMasterAreas.forEach(a => {
@@ -524,17 +550,18 @@ export default function TaxiView() {
       pickupAreaId = closestArea.id;
     }
 
-    let destAreaId = '';
-    let minDestDestDist = Infinity;
-    (taxiMasterDestinations || []).forEach(d => {
-      const dist = getDistanceKM(destCoords.lat, destCoords.lon, d.lat, d.lon);
-      if (dist < minDestDestDist) {
-        minDestDestDist = dist;
-        if (dist < 5) destAreaId = d.area_id;
-      }
-    });
+    if (destCoords && taxiMasterDestinations && taxiMasterDestinations.length > 0) {
+      let minDestDestDist = Infinity;
+      taxiMasterDestinations.forEach(d => {
+        const dist = getDistanceKM(destCoords.lat, destCoords.lon, d.lat, d.lon);
+        if (dist < minDestDestDist) {
+          minDestDestDist = dist;
+          if (dist < 5) destAreaId = d.area_id;
+        }
+      });
+    }
 
-    if (!destAreaId) {
+    if (!destAreaId && destCoords && taxiMasterAreas && taxiMasterAreas.length > 0) {
       let closestArea = taxiMasterAreas[0];
       let minAreaDist = Infinity;
       taxiMasterAreas.forEach(a => {
@@ -547,30 +574,60 @@ export default function TaxiView() {
       destAreaId = closestArea.id;
     }
 
-    // Find custom Pricing Rule
-    const rule = taxiPricingRules.find(r => 
-      ((r.source_id === pickupAreaId && r.destination_id === destAreaId) ||
-       (r.source_id === destAreaId && r.destination_id === pickupAreaId)) &&
-      r.vehicle_type === vType &&
-      r.status === 'Active'
-    );
+    // Match rule: 1) vehicle_type specific, 2) general route rule (no vehicle_type or all)
+    let matchingRule = null;
+    if (pickupAreaId && destAreaId && taxiPricingRules && taxiPricingRules.length > 0) {
+      matchingRule = taxiPricingRules.find(r => 
+        ((r.source_id === pickupAreaId && r.destination_id === destAreaId) ||
+         (r.source_id === destAreaId && r.destination_id === pickupAreaId)) &&
+        (r.status === 'Active' || !r.status) &&
+        r.vehicle_type?.toLowerCase() === vType.toLowerCase()
+      );
+
+      if (!matchingRule) {
+        matchingRule = taxiPricingRules.find(r => 
+          ((r.source_id === pickupAreaId && r.destination_id === destAreaId) ||
+           (r.source_id === destAreaId && r.destination_id === pickupAreaId)) &&
+          (r.status === 'Active' || !r.status) &&
+          (!r.vehicle_type || r.vehicle_type.toLowerCase() === 'all')
+        );
+      }
+    }
+
+    return { vType, mult, pickupAreaId, destAreaId, matchingRule };
+  };
+
+  // Dynamic Excel-driven pricing engine with coordinate mapping and airport/area rules
+  const getDynamicPriceForVehicle = (car: any) => {
+    if (!pickupCoords || !destCoords) return { usd: 30, idr: 450000 };
+
+    const { vType, mult, pickupAreaId, destAreaId, matchingRule } = getTaxiRouteContext(car);
+
+    if (!taxiMasterAreas || taxiMasterAreas.length === 0 || !taxiPricingRules || taxiPricingRules.length === 0) {
+      // Fallback if master data is empty
+      return {
+        usd: Math.round((matchedRoute?.priceUSD || 30) * mult),
+        idr: Math.round((matchedRoute?.priceIDR || 450000) * mult)
+      };
+    }
 
     let baseUSD = 30;
     let baseIDR = 450000;
 
-    if (rule) {
-      baseIDR = Number(rule.price_idr || 0);
-      baseUSD = Number(rule.price_usd || Math.round(baseIDR / 16000));
+    if (matchingRule) {
+      let rIDR = Number(matchingRule.price_idr || 0);
+      let rUSD = Number(matchingRule.price_usd || Math.round(rIDR / 16000));
+      // If rule doesn't specify vehicle_type, scale by vehicle multiplier
+      if (!matchingRule.vehicle_type || matchingRule.vehicle_type.toLowerCase() === 'all') {
+        rIDR = Math.round(rIDR * mult);
+        rUSD = Math.round(rUSD * mult);
+      }
+      baseIDR = rIDR;
+      baseUSD = rUSD;
     } else {
       const distKm = distance || 25;
       baseUSD = Math.max(15, Math.round(10 + distKm * 0.45));
       baseIDR = Math.max(220000, Math.round(150000 + distKm * 6800));
-
-      let mult = 1.0;
-      if (vType === 'Standard') mult = 0.9;
-      if (vType === 'Family') mult = 1.0;
-      if (vType === 'Premium') mult = 1.5;
-      if (vType === 'Van') mult = 1.8;
       baseUSD = Math.round(baseUSD * mult);
       baseIDR = Math.round(baseIDR * mult);
     }
@@ -596,50 +653,7 @@ export default function TaxiView() {
   const getServiceRouteName = () => {
     if (!pickupCoords || !destCoords) return 'Route';
     if (taxiMasterAreas && taxiMasterAreas.length > 0) {
-      let pickupAreaId = '';
-      let minPickupDestDist = Infinity;
-      (taxiMasterDestinations || []).forEach(d => {
-        const dist = getDistanceKM(pickupCoords.lat, pickupCoords.lon, d.lat, d.lon);
-        if (dist < minPickupDestDist) {
-          minPickupDestDist = dist;
-          if (dist < 5) pickupAreaId = d.area_id;
-        }
-      });
-      if (!pickupAreaId) {
-        let closestArea = taxiMasterAreas[0];
-        let minAreaDist = Infinity;
-        taxiMasterAreas.forEach(a => {
-          const dist = getDistanceKM(pickupCoords.lat, pickupCoords.lon, a.lat, a.lon);
-          if (dist < minAreaDist) {
-            minAreaDist = dist;
-            closestArea = a;
-          }
-        });
-        pickupAreaId = closestArea.id;
-      }
-
-      let destAreaId = '';
-      let minDestDestDist = Infinity;
-      (taxiMasterDestinations || []).forEach(d => {
-        const dist = getDistanceKM(destCoords.lat, destCoords.lon, d.lat, d.lon);
-        if (dist < minDestDestDist) {
-          minDestDestDist = dist;
-          if (dist < 5) destAreaId = d.area_id;
-        }
-      });
-      if (!destAreaId) {
-        let closestArea = taxiMasterAreas[0];
-        let minAreaDist = Infinity;
-        taxiMasterAreas.forEach(a => {
-          const dist = getDistanceKM(destCoords.lat, destCoords.lon, a.lat, a.lon);
-          if (dist < minAreaDist) {
-            minAreaDist = dist;
-            closestArea = a;
-          }
-        });
-        destAreaId = closestArea.id;
-      }
-
+      const { pickupAreaId, destAreaId } = getTaxiRouteContext(selectedVehicle);
       const pName = taxiMasterAreas.find(a => a.id === pickupAreaId)?.name || 'Zone';
       const dName = taxiMasterAreas.find(a => a.id === destAreaId)?.name || 'Zone';
       return `${pName} ⇄ ${dName}`;
@@ -672,9 +686,33 @@ export default function TaxiView() {
       return;
     }
 
+    const { pickupAreaId, destAreaId, matchingRule, vType } = getTaxiRouteContext(selectedVehicle);
+
     const bookingPayload = {
       type: 'taxi' as const,
+      serviceType: 'taxi' as const,
+      serviceId: matchingRule?.id || 'taxi-transfer',
+      ruleId: matchingRule?.id,
+      source_id: pickupAreaId,
+      destination_id: destAreaId,
+      pickupAreaId,
+      destAreaId,
+      pickup: pickupInput,
+      destination: destInput,
+      pickupLocation: pickupInput,
+      vehicleId: selectedVehicle.id,
+      vehicleName: selectedVehicle.name,
+      vehicleType: vType,
+      flightNumber: flightNumber || undefined,
+      promoCode: appliedPromo?.code || undefined,
+      discount: appliedPromo?.discount || 0,
+      baseAmount: currentPrice.idr,
+      totalPrice: currentPrice.usd,
+      totalPriceIDR: currentPrice.idr,
       serviceName: `Private Taxi: ${getServiceRouteName()} (${selectedVehicle.name})`,
+      customerName,
+      customerEmail,
+      customerPhone,
       details: {
         pickupLocation: pickupInput,
         destination: destInput,
@@ -683,17 +721,18 @@ export default function TaxiView() {
         guests: selectedVehicle.passengers,
         vehicleId: selectedVehicle.id,
         vehicleName: selectedVehicle.name,
+        vehicleType: vType,
         flightNumber: flightNumber,
         cityAddress: pickupInput,
         extraNotes: extraNotes,
         promoCode: appliedPromo?.code || undefined,
-        discountAmount: appliedPromo?.discount || 0
-      },
-      totalPrice: currentPrice.usd,
-      totalPriceIDR: currentPrice.idr,
-      customerName,
-      customerEmail,
-      customerPhone
+        discountAmount: appliedPromo?.discount || 0,
+        pickupAreaId,
+        destAreaId,
+        source_id: pickupAreaId,
+        destination_id: destAreaId,
+        ruleId: matchingRule?.id
+      }
     };
 
     try {
@@ -717,7 +756,7 @@ export default function TaxiView() {
 
     try {
       const targetOrderId = bookingSuccess.bookingCode || bookingSuccess.id;
-      const payableAmount = Number(bookingSuccess.paymentAmount) || (Math.max(0, Number(bookingSuccess.baseAmount || bookingSuccess.totalPriceIDR) - Number(bookingSuccess.discount || 0)) + Number(bookingSuccess.uniqueCode || 0));
+      const payableAmount = getTaxiFinalAmount(bookingSuccess);
       await processArtoPayPayment({
         orderId: targetOrderId,
         amount: payableAmount,
@@ -746,10 +785,11 @@ export default function TaxiView() {
   const handleWhatsAppConfirm = () => {
     if (!bookingSuccess) return;
 
+    const finalAmount = getTaxiFinalAmount(bookingSuccess);
     const msg = `Halo SawahJaya Trans, saya ingin mengonfirmasi pesanan Private Taxi:\n\n` +
-      `📌 *ID Booking:* ${bookingSuccess.id}\n` +
-      `👤 *Nama:* ${bookingSuccess.customerName}\n` +
-      `📞 *WhatsApp:* ${bookingSuccess.customerPhone}\n` +
+      `📌 *ID Booking:* ${bookingSuccess.bookingCode || bookingSuccess.id}\n` +
+      `👤 *Nama:* ${bookingSuccess.customerName || bookingSuccess.fullName}\n` +
+      `📞 *WhatsApp:* ${bookingSuccess.customerPhone || bookingSuccess.phone}\n` +
       `🚗 *Armada:* ${selectedVehicle.name}\n` +
       `📍 *Penjemputan:* ${pickupInput}\n` +
       `🏁 *Tujuan:* ${destInput}\n` +
@@ -757,7 +797,7 @@ export default function TaxiView() {
       `✈️ *No. Penerbangan:* ${flightNumber || '-'}\n` +
       `ℹ️ *Catatan:* ${extraNotes || '-'}\n` +
       `📏 *Jarak Info:* ${distance ? `${distance} km` : '-'}\n` +
-      `💰 *Total Tarif:* ${formatPrice(currentPrice.usd, currentPrice.idr)} (Fixed Zone Tariff)\n\n` +
+      `💰 *Total Tarif Final:* Rp ${finalAmount.toLocaleString('id-ID')} (Fixed Zone Fare)\n\n` +
       `Mohon dibantu konfirmasi penjemputan armada privat kami, terima kasih!`;
 
     window.open(`https://wa.me/6285212347289?text=${encodeURIComponent(msg)}`, '_blank', 'noreferrer,noopener');
@@ -1417,12 +1457,12 @@ export default function TaxiView() {
                   <div className="pt-2 border-t border-dashed border-neutral-200 space-y-1">
                     <div className="flex justify-between items-center text-xs text-neutral-500">
                       <span>Harga Dasar Taksi:</span>
-                      <span className="font-mono">Rp {Number(bookingSuccess.baseAmount || bookingSuccess.totalPriceIDR).toLocaleString('id-ID')}</span>
+                      <span className="font-mono">Rp {getTaxiBaseAmount(bookingSuccess).toLocaleString('id-ID')}</span>
                     </div>
-                    {Boolean(bookingSuccess.discount && Number(bookingSuccess.discount) > 0) && (
+                    {Boolean((bookingSuccess.discount && Number(bookingSuccess.discount) > 0) || (bookingSuccess.details?.discountAmount && Number(bookingSuccess.details?.discountAmount) > 0)) && (
                       <div className="flex justify-between items-center text-xs text-emerald-600 font-bold">
-                        <span>Diskon Promo {bookingSuccess.promoCode ? `(${bookingSuccess.promoCode})` : ''}:</span>
-                        <span className="font-mono">- Rp {Number(bookingSuccess.discount).toLocaleString('id-ID')}</span>
+                        <span>Diskon Promo {bookingSuccess.promoCode || bookingSuccess.details?.promoCode ? `(${bookingSuccess.promoCode || bookingSuccess.details?.promoCode})` : ''}:</span>
+                        <span className="font-mono">- Rp {Math.max(0, Number(bookingSuccess.discount ?? bookingSuccess.details?.discountAmount ?? 0)).toLocaleString('id-ID')}</span>
                       </div>
                     )}
                     {Boolean(bookingSuccess.uniqueCode) && (
@@ -1435,7 +1475,7 @@ export default function TaxiView() {
                       <span className="text-neutral-800 text-xs">Total Tagihan Final (ArtoPay IDR):</span>
                       <div className="text-right">
                         {(() => {
-                          const payableAmount = Number(bookingSuccess.paymentAmount) || (Math.max(0, Number(bookingSuccess.baseAmount || bookingSuccess.totalPriceIDR) - Number(bookingSuccess.discount || 0)) + Number(bookingSuccess.uniqueCode || 0));
+                          const payableAmount = getTaxiFinalAmount(bookingSuccess);
                           return (
                             <>
                               <span className="text-base font-black text-amber-600 font-mono block">
@@ -1483,7 +1523,7 @@ export default function TaxiView() {
                       <ShieldCheck className="h-4 w-4 text-emerald-400" />
                     )}
                     <span>
-                      Bayar Rp{(Number(bookingSuccess.paymentAmount) || (Math.max(0, Number(bookingSuccess.baseAmount || bookingSuccess.totalPriceIDR) - Number(bookingSuccess.discount || 0)) + Number(bookingSuccess.uniqueCode || 0))).toLocaleString('id-ID')} (ArtoPay)
+                      Bayar Rp{getTaxiFinalAmount(bookingSuccess).toLocaleString('id-ID')} (ArtoPay)
                     </span>
                   </button>
                 </div>

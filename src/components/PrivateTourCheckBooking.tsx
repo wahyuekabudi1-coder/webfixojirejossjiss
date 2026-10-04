@@ -616,7 +616,15 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                     <span className="text-neutral-500">
                       {booking.serviceType === 'rental' ? 'Harga Dasar Sewa:' : booking.serviceType === 'taxi' ? 'Harga Dasar Taksi:' : booking.serviceType === 'airport' ? 'Harga Dasar Transfer:' : 'Harga Dasar Tur:'}
                     </span>
-                    <span className="font-mono font-bold text-neutral-900">Rp {(booking.baseAmount || 0).toLocaleString('id-ID')}</span>
+                    <span className="font-mono font-bold text-neutral-900">
+                      Rp {(
+                        Number(booking.baseAmount) > 0
+                          ? Number(booking.baseAmount)
+                          : (Number(booking.totalPriceIDR) > 0 && Number(booking.discount) > 0
+                              ? Number(booking.totalPriceIDR) + Number(booking.discount)
+                              : Number(booking.totalPriceIDR || 0))
+                      ).toLocaleString('id-ID')}
+                    </span>
                   </div>
                   {Boolean(booking.discount && Number(booking.discount) > 0) && (
                     <div className="flex justify-between py-1 border-t border-neutral-100 text-emerald-600 font-semibold">

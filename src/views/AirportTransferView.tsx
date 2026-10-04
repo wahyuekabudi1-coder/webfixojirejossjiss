@@ -204,10 +204,34 @@ export default function AirportTransferView() {
       ? `${cityAddress}, ${cityText}` 
       : airportName;
 
+    const matchingRoute = publishedRoutes.find(
+      r => r.airport === selectedAirport && r.city === destinationCity
+    );
+
     const bookingPayload = {
       type: 'airport' as const,
+      serviceType: 'airport' as const,
+      serviceId: matchingRoute?.id,
+      routeId: matchingRoute?.id,
+      airport: selectedAirport,
+      city: destinationCity,
+      destinationCity,
+      vehicleId: selectedVehicle.id,
+      vehicleName: selectedVehicle.name,
+      routeType,
+      childSeat,
+      meetAndGreet,
+      promoCode: appliedPromo?.code || undefined,
+      promo_code: appliedPromo?.code || undefined,
+      discount: appliedPromo?.discount || 0,
+      discountAmount: appliedPromo?.discount || 0,
       serviceName,
+      baseAmount: vehiclePrice.idr,
       details: {
+        routeId: matchingRoute?.id,
+        airport: selectedAirport,
+        city: destinationCity,
+        destinationCity,
         pickupLocation,
         destination: destinationText,
         date: pickupDate || '2026-07-15',
@@ -227,6 +251,7 @@ export default function AirportTransferView() {
         returnFlightNumber: routeType === 'Round Trip' ? returnFlightNumber : undefined,
         promoCode: appliedPromo?.code || undefined,
         discountAmount: appliedPromo?.discount || 0,
+        verifiedDiscount: appliedPromo?.discount || 0,
       },
       totalPrice: vehiclePrice.usd,
       totalPriceIDR: vehiclePrice.idr,
@@ -250,13 +275,44 @@ export default function AirportTransferView() {
     }
   };
 
+  const getTransferFinalAmount = (b: any): number => {
+    if (!b) return 0;
+    if (b.paymentAmount !== undefined && b.paymentAmount !== null && Number(b.paymentAmount) > 0) {
+      return Number(b.paymentAmount);
+    }
+    const disc = Math.max(0, Number(
+      b.discount !== undefined && b.discount !== null
+        ? b.discount
+        : (b.details?.verifiedDiscount ?? b.details?.discountAmount ?? 0)
+    ));
+    const base = Number(b.baseAmount) > 0
+      ? Number(b.baseAmount)
+      : (Number(b.totalPriceIDR || b.totalPrice || 0) + (Number(b.baseAmount) === 0 && disc > 0 ? disc : 0));
+    const payableBase = Math.max(0, base - disc);
+    const uCode = Math.max(0, Number(b.uniqueCode || 0));
+    return payableBase + uCode;
+  };
+
+  const getTransferBaseAmount = (b: any): number => {
+    if (!b) return 0;
+    const disc = Math.max(0, Number(
+      b.discount !== undefined && b.discount !== null
+        ? b.discount
+        : (b.details?.verifiedDiscount ?? b.details?.discountAmount ?? 0)
+    ));
+    if (b.baseAmount !== undefined && b.baseAmount !== null && Number(b.baseAmount) > 0) {
+      return Number(b.baseAmount);
+    }
+    return Number(b.totalPriceIDR || b.totalPrice || 0) + disc;
+  };
+
   const handlePayWithArtoPayInline = async () => {
     if (!confirmedBooking) return;
     setPaymentLoading(true);
     setErrorMessage(null);
     try {
       const targetOrderId = confirmedBooking.bookingCode || confirmedBooking.id;
-      const payableAmount = Number(confirmedBooking.paymentAmount) || (Math.max(0, Number(confirmedBooking.baseAmount || confirmedBooking.totalPriceIDR) - Number(confirmedBooking.discount || 0)) + Number(confirmedBooking.uniqueCode || 0));
+      const payableAmount = getTransferFinalAmount(confirmedBooking);
       await processArtoPayPayment({
         orderId: targetOrderId,
         amount: payableAmount,
@@ -283,9 +339,9 @@ export default function AirportTransferView() {
 
   const handleWhatsAppConfirmInline = () => {
     if (!confirmedBooking) return;
-    const vehiclePrice = getVehiclePrice(selectedVehicle);
+    const finalTotalIDR = getTransferFinalAmount(confirmedBooking);
     const text = `Halo SawahJaya Trans, saya ingin mengonfirmasi booking Airport Transfer:\n\n` +
-      `📌 *ID Booking:* ${confirmedBooking.id}\n` +
+      `📌 *ID Booking:* ${confirmedBooking.bookingCode || confirmedBooking.id}\n` +
       `👤 *Nama:* ${confirmedBooking.customerName}\n` +
       `📞 *WhatsApp:* ${confirmedBooking.customerPhone}\n` +
       `🚗 *Armada:* ${selectedVehicle.name}\n` +
@@ -295,7 +351,7 @@ export default function AirportTransferView() {
       `${routeType === 'Round Trip' ? `🔄 *Jadwal Kembali:* ${returnDate} pukul ${returnTime} (${returnFlightNumber || '-'})\n` : ''}` +
       `✈️ *No. Penerbangan:* ${flightNumber || '-'}\n` +
       `👥 *Pax:* ${passengers} orang | *Bagasi:* ${luggage} koper\n` +
-      `💰 *Total Tarif:* ${formatPrice(vehiclePrice.usd, vehiclePrice.idr)} (All-in Nett)\n\n` +
+      `💰 *Total Tarif Final:* Rp ${finalTotalIDR.toLocaleString('id-ID')} (All-in Nett)\n\n` +
       `Mohon segera diproses penjemputan kami, terima kasih!`;
       
     const encoded = encodeURIComponent(text);
@@ -1190,7 +1246,7 @@ export default function AirportTransferView() {
                     <div className="text-left sm:text-right space-y-0.5">
                       <span className="text-[9px] text-neutral-400 font-bold uppercase block tracking-wider font-mono">TOTAL TARIF FINAL (ARTOPAY IDR)</span>
                       {(() => {
-                        const payableAmount = Number(confirmedBooking.paymentAmount) || (Math.max(0, Number(confirmedBooking.baseAmount || confirmedBooking.totalPriceIDR) - Number(confirmedBooking.discount || 0)) + Number(confirmedBooking.uniqueCode || 0));
+                        const payableAmount = getTransferFinalAmount(confirmedBooking);
                         return (
                           <>
                             <span className="text-xl sm:text-2xl font-black text-emerald-600 font-mono block">
@@ -1212,14 +1268,18 @@ export default function AirportTransferView() {
                     <div className="flex justify-between items-center text-neutral-600">
                       <span>Harga Dasar Transfer Bandara:</span>
                       <span className="font-mono font-bold text-neutral-900">
-                        Rp {Number(confirmedBooking.baseAmount || confirmedBooking.totalPriceIDR).toLocaleString('id-ID')}
+                        Rp {getTransferBaseAmount(confirmedBooking).toLocaleString('id-ID')}
                       </span>
                     </div>
-                    {Boolean(confirmedBooking.discount && Number(confirmedBooking.discount) > 0) && (
+                    {Boolean(
+                      (confirmedBooking.discount && Number(confirmedBooking.discount) > 0) ||
+                      (confirmedBooking.details?.verifiedDiscount && Number(confirmedBooking.details.verifiedDiscount) > 0) ||
+                      (confirmedBooking.details?.discountAmount && Number(confirmedBooking.details.discountAmount) > 0)
+                    ) && (
                       <div className="flex justify-between items-center text-emerald-600 font-medium border-t border-neutral-200/60 pt-1.5">
-                        <span>Diskon Promo {confirmedBooking.promoCode ? `(${confirmedBooking.promoCode})` : ''}:</span>
+                        <span>Diskon Promo {confirmedBooking.promoCode || confirmedBooking.details?.promoCode ? `(${confirmedBooking.promoCode || confirmedBooking.details?.promoCode})` : ''}:</span>
                         <span className="font-mono font-bold">
-                          - Rp {Number(confirmedBooking.discount).toLocaleString('id-ID')}
+                          - Rp {Number(confirmedBooking.discount || confirmedBooking.details?.verifiedDiscount || confirmedBooking.details?.discountAmount || 0).toLocaleString('id-ID')}
                         </span>
                       </div>
                     )}
@@ -1232,7 +1292,7 @@ export default function AirportTransferView() {
                     <div className="flex justify-between items-center font-bold border-t border-neutral-200 pt-2 text-neutral-900">
                       <span className="uppercase tracking-wider font-mono text-[11px]">TOTAL PEMBAYARAN FINAL:</span>
                       <span className="font-mono text-emerald-600 text-sm font-black">
-                        Rp {(Number(confirmedBooking.paymentAmount) || (Math.max(0, Number(confirmedBooking.baseAmount || confirmedBooking.totalPriceIDR) - Number(confirmedBooking.discount || 0)) + Number(confirmedBooking.uniqueCode || 0))).toLocaleString('id-ID')}
+                        Rp {getTransferFinalAmount(confirmedBooking).toLocaleString('id-ID')}
                       </span>
                     </div>
                   </div>
@@ -1334,7 +1394,7 @@ export default function AirportTransferView() {
                         </>
                       ) : (
                         <>
-                          <span>Bayar Rp{(Number(confirmedBooking.paymentAmount) || (Math.max(0, Number(confirmedBooking.baseAmount || confirmedBooking.totalPriceIDR) - Number(confirmedBooking.discount || 0)) + Number(confirmedBooking.uniqueCode || 0))).toLocaleString('id-ID')} (ArtoPay)</span>
+                          <span>Bayar Rp{getTransferFinalAmount(confirmedBooking).toLocaleString('id-ID')} (ArtoPay)</span>
                           <ArrowRight className="h-3.5 w-3.5" />
                         </>
                       )}

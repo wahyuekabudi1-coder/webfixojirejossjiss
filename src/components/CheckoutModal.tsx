@@ -218,6 +218,31 @@ export default function CheckoutModal({
 
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
 
+  const getModalFinalPayable = (b: any): number => {
+    if (!b) return finalPrice.idr;
+    if (b.paymentAmount !== undefined && b.paymentAmount !== null && Number(b.paymentAmount) > 0) {
+      return Number(b.paymentAmount);
+    }
+    const disc = Math.max(0, Number(b.discount || 0));
+    const base = Number(b.baseAmount) > 0
+      ? Number(b.baseAmount)
+      : (Number(b.totalPriceIDR) > 0 && disc > 0
+          ? Number(b.totalPriceIDR) + disc
+          : Number(b.totalPriceIDR || finalPrice.idr));
+    const unique = Number(b.uniqueCode || 0);
+    return Math.max(0, base - disc) + unique;
+  };
+
+  const getModalBaseAmount = (b: any): number => {
+    if (!b) return finalPrice.idr;
+    const disc = Math.max(0, Number(b.discount || 0));
+    return Number(b.baseAmount) > 0
+      ? Number(b.baseAmount)
+      : (Number(b.totalPriceIDR) > 0 && disc > 0
+          ? Number(b.totalPriceIDR) + disc
+          : Number(b.totalPriceIDR || finalPrice.idr));
+  };
+
   // Trigger ArtoPay explicitly from Payment Summary
   const handleTriggerArtoPayFromSummary = async () => {
     if (!confirmedBooking) return;
@@ -225,7 +250,7 @@ export default function CheckoutModal({
     setErrorMessage(null);
 
     const targetOrderId = confirmedBooking.bookingCode || confirmedBooking.id;
-    const payableAmountIDR = Number(confirmedBooking.paymentAmount) || (Number(confirmedBooking.totalPriceIDR || finalPrice.idr) + Number(confirmedBooking.uniqueCode || 0));
+    const payableAmountIDR = getModalFinalPayable(confirmedBooking);
 
     try {
       await processArtoPayPayment({
@@ -807,7 +832,7 @@ export default function CheckoutModal({
                     <div className="flex items-center justify-between text-neutral-300">
                       <span>Harga Trip (Base Fare):</span>
                       <span className="font-mono text-white font-bold">
-                        Rp {Number(confirmedBooking?.baseAmount || confirmedBooking?.totalPriceIDR || finalPrice.idr).toLocaleString('id-ID')}
+                        Rp {getModalBaseAmount(confirmedBooking).toLocaleString('id-ID')}
                       </span>
                     </div>
                     {Boolean(confirmedBooking?.discount && Number(confirmedBooking?.discount) > 0) && (
@@ -828,7 +853,7 @@ export default function CheckoutModal({
                       <span className="text-white uppercase tracking-wider font-mono text-[11px]">TOTAL PEMBAYARAN FINAL:</span>
                       <div className="text-right">
                         {(() => {
-                          const finalPayable = Number(confirmedBooking?.paymentAmount) || (Math.max(0, Number(confirmedBooking?.baseAmount || confirmedBooking?.totalPriceIDR || finalPrice.idr) - Number(confirmedBooking?.discount || 0)) + Number(confirmedBooking?.uniqueCode || 0));
+                          const finalPayable = getModalFinalPayable(confirmedBooking);
                           const finalUSD = idrToUSD(finalPayable);
                           if (currency !== 'IDR') {
                             return (
@@ -866,7 +891,7 @@ export default function CheckoutModal({
                 {/* Big Clear Payment Button */}
                 <div className="max-w-md mx-auto space-y-3 pt-1">
                   {(() => {
-                    const finalPayable = Number(confirmedBooking?.paymentAmount) || (Number(confirmedBooking?.totalPriceIDR || finalPrice.idr) + Number(confirmedBooking?.uniqueCode || 0));
+                    const finalPayable = getModalFinalPayable(confirmedBooking);
                     return (
                       <button
                         id="btn-pay-summary-artopay"

@@ -2564,21 +2564,36 @@ app.post('/api/bookings', async (req, res) => {
 
           let route: any = routeId ? routes.find((r: any) => r.id === routeId) : null;
 
-          if (!route) {
-            const airportCode = String(payload.airport || payload.details?.airport || '').trim().toUpperCase();
-            const dest = String(payload.destination || payload.details?.destination || payload.details?.cityAddress || '').trim().toLowerCase();
-            if (airportCode || dest) {
-              route = routes.find((r: any) => {
-                const matchAirport = !airportCode || r.airport?.toUpperCase() === airportCode;
-                const matchDest = !dest || r.city?.toLowerCase().includes(dest) || dest.includes(r.city?.toLowerCase());
-                return matchAirport && matchDest;
-              });
-            }
+          const airportCode = String(payload.airport || payload.details?.airport || '').trim().toUpperCase();
+          const dest = String(
+            payload.destinationCity || 
+            payload.city || 
+            payload.details?.destinationCity || 
+            payload.details?.city || 
+            payload.destination || 
+            payload.details?.destination || 
+            payload.details?.cityAddress || 
+            payload.pickupLocation || 
+            payload.details?.pickupLocation || 
+            ''
+          ).trim().toLowerCase();
+
+          if (!route && (airportCode || dest)) {
+            route = routes.find((r: any) => {
+              const matchAirport = !airportCode || r.airport?.toUpperCase() === airportCode;
+              const matchDest = !dest || r.city?.toLowerCase().includes(dest) || dest.includes(r.city?.toLowerCase());
+              return matchAirport && matchDest;
+            });
           }
 
-          if (!route && routeId) {
+          if (!route) {
             const builderTransfers = await transportRepo.getAirportTransfers();
-            const bItem = builderTransfers.find((b: any) => b.id === routeId);
+            const bItem = builderTransfers.find((b: any) => {
+              if (routeId && b.id === routeId) return true;
+              const matchAirport = !airportCode || String(b.airportName || '').toUpperCase().includes(airportCode);
+              const matchDest = !dest || String(b.destinationArea || '').toLowerCase().includes(dest) || dest.includes(String(b.destinationArea || '').toLowerCase());
+              return matchAirport && matchDest;
+            });
             if (bItem) {
               route = {
                 id: bItem.id,
@@ -2591,8 +2606,22 @@ app.post('/api/bookings', async (req, res) => {
             }
           }
 
+          const clientBaseInput = Math.round(Number(payload.baseAmount || payload.totalPriceIDR || 0));
+
           if (!route) {
-            return res.status(404).json({ error: 'Rute transfer bandara tidak ditemukan di database backend.' });
+            if (clientBaseInput > 0) {
+              // Graceful fallback to client calculated base fare if custom route
+              route = {
+                id: 'custom-airport-route',
+                airport: airportCode || 'Airport',
+                city: dest || 'City',
+                priceIDR: clientBaseInput,
+                priceUSD: Math.round(clientBaseInput / 16000),
+                status: 'Published'
+              };
+            } else {
+              return res.status(404).json({ error: 'Rute transfer bandara tidak ditemukan di database backend.' });
+            }
           }
 
           const routeStatus = String(route.status || '');
@@ -2609,6 +2638,9 @@ app.post('/api/bookings', async (req, res) => {
           }
 
           let routePrice = Number(route.priceIDR || 0);
+          if (routePrice <= 0 && clientBaseInput > 0) {
+            routePrice = clientBaseInput;
+          }
           if (routePrice <= 0) {
             return res.status(400).json({ error: 'Tarif rute bandara di database backend tidak valid atau belum terkonfigurasi dalam IDR.' });
           }
@@ -2629,9 +2661,9 @@ app.post('/api/bookings', async (req, res) => {
           }
 
           let surcharge = 0;
-          const airportCode = route.airport || payload.airport || payload.details?.airport;
-          if (airportCode && Array.isArray(airportTransfers.airports)) {
-            const airportObj = airportTransfers.airports.find((a: any) => a.code?.toUpperCase() === String(airportCode).toUpperCase());
+          const matchedAirportCode = route.airport || payload.airport || payload.details?.airport;
+          if (matchedAirportCode && Array.isArray(airportTransfers.airports)) {
+            const airportObj = airportTransfers.airports.find((a: any) => a.code?.toUpperCase() === String(matchedAirportCode).toUpperCase());
             if (airportObj) {
               if ((airportObj.surchargeIDR === undefined || airportObj.surchargeIDR === null || Number(airportObj.surchargeIDR) < 0) && Number(airportObj.surchargeUSD) > 0) {
                 return res.status(400).json({
@@ -2642,7 +2674,6 @@ app.post('/api/bookings', async (req, res) => {
               surcharge = Number(airportObj.surchargeIDR || 0);
             }
           }
-          baseRateIDR += surcharge;
 
           // Authoritative Vehicle Multiplier Resolution (from AirportTransferView.tsx & data.ts fleet)
           const vehicleIdInput = String(payload.vehicleId || payload.details?.vehicleId || '').trim().toLowerCase();
@@ -2673,7 +2704,17 @@ app.post('/api/bookings', async (req, res) => {
             resolvedVehicleName = 'Toyota Innova Reborn';
           }
 
-          const finalBaseAmount = Math.round(baseRateIDR * vehicleMultiplier);
+          const rawBaseIDR = Math.round(baseRateIDR * vehicleMultiplier);
+          const rawWithSurcharge = Math.round((baseRateIDR + surcharge) * vehicleMultiplier);
+
+          let finalBaseAmount = rawBaseIDR;
+          if (clientBaseInput === rawWithSurcharge) {
+            finalBaseAmount = rawWithSurcharge;
+          } else if (clientBaseInput === rawBaseIDR) {
+            finalBaseAmount = rawBaseIDR;
+          } else if (surcharge > 0 && !clientBaseInput) {
+            finalBaseAmount = rawWithSurcharge;
+          }
 
           matchedServiceId = route.id;
           resolvedTitle = `Airport Transfer: ${route.airport || 'Airport'} ⇄ ${route.city || 'City'} (${resolvedVehicleName})`;
@@ -2780,9 +2821,16 @@ app.post('/api/bookings', async (req, res) => {
           }
 
           // Check builder custom routes if not found in pricingRules
-          if (!rule && ruleId) {
+          if (!rule) {
             const builderRoutes = await transportRepo.getTaxiRoutes();
-            const bRoute = (Array.isArray(builderRoutes) ? builderRoutes : []).find((r: any) => r.id === ruleId);
+            const allCustomRoutes = [...(Array.isArray(builderRoutes) ? builderRoutes : []), ...(taxiServices.routes || [])];
+            const bRoute = allCustomRoutes.find((r: any) => 
+              (ruleId && r.id === ruleId) ||
+              (r.pickupCity && r.destinationCity && (
+                (pickup.includes(r.pickupCity.toLowerCase()) && dest.includes(r.destinationCity.toLowerCase())) ||
+                (pickup.includes(r.destinationCity.toLowerCase()) && dest.includes(r.pickupCity.toLowerCase()))
+              ))
+            );
             if (bRoute) {
               rule = {
                 id: bRoute.id,
@@ -2792,6 +2840,21 @@ app.post('/api/bookings', async (req, res) => {
                 price_idr: Number(bRoute.priceIDR ?? bRoute.price_idr ?? 0),
                 price_usd: Number(bRoute.price ?? bRoute.priceUSD ?? bRoute.price_usd ?? 0),
                 status: bRoute.status || 'Active'
+              };
+            }
+          }
+
+          // Fallback for custom distance-based routes if client provided valid base IDR
+          if (!rule) {
+            const clientBase = Math.round(Number(payload.baseAmount || payload.totalPriceIDR || payload.details?.totalPriceIDR || 0));
+            if (clientBase > 0) {
+              rule = {
+                id: 'taxi-transfer-custom',
+                source_id: srcAreaId || 'Custom Pickup',
+                destination_id: dstAreaId || 'Custom Destination',
+                vehicle_type: vType,
+                price_idr: clientBase,
+                status: 'Active'
               };
             }
           }
@@ -2822,7 +2885,7 @@ app.post('/api/bookings', async (req, res) => {
 
           // If the rule has an explicit matching vehicle_type, rule.price_idr is used directly.
           // If the rule does NOT have vehicle_type specified, apply canonical vehicle multiplier from TaxiView.tsx.
-          if (!rule.vehicle_type) {
+          if (!rule.vehicle_type || rule.vehicle_type.toLowerCase() === 'all') {
             basePrice = Math.round(basePrice * vehicleMultiplier);
           }
 
@@ -2859,7 +2922,7 @@ app.post('/api/bookings', async (req, res) => {
           const finalTaxiBase = basePrice + areaSurchargeTotal;
 
           matchedServiceId = rule.id;
-          resolvedTitle = `Private Taxi Transfer (${vehicleName})`;
+          resolvedTitle = payload.serviceName || `Private Taxi Transfer (${vehicleName})`;
           baseAmount = finalTaxiBase;
 
         } else {
@@ -3391,12 +3454,16 @@ app.get([
 
     const participantsCount = booking.participantsCount || booking.details?.guests || booking.details?.passengers || participantsNames.length || 1;
 
-    const baseAmount = booking.baseAmount || booking.totalPriceIDR || booking.totalPrice || 0;
     const discount = Math.max(0, Math.round(Number(
       booking.discount !== undefined && booking.discount !== null
         ? booking.discount
         : (booking.details?.verifiedDiscount ?? booking.details?.discountAmount ?? 0)
     )));
+    let baseAmount = Number(booking.baseAmount || 0);
+    if (!baseAmount || baseAmount <= 0) {
+      const netBase = Number(booking.totalPriceIDR || booking.totalPrice || 0);
+      baseAmount = netBase > 0 ? (netBase + discount) : 0;
+    }
     const promoCode = booking.promoCode || booking.details?.promoCode || null;
     let uniqueCode = Number(booking.uniqueCode || 0);
     let paymentAmount = Number(booking.paymentAmount || 0);
@@ -3554,9 +3621,20 @@ app.get([
       itinerary: booking.details?.itinerary || []
     };
 
-    const baseAmount = booking.baseAmount || booking.totalPriceIDR || booking.totalPrice || 0;
-    const uniqueCode = booking.uniqueCode || 0;
-    const paymentAmount = booking.paymentAmount || (baseAmount + uniqueCode);
+    const discount = Math.max(0, Math.round(Number(
+      booking.discount !== undefined && booking.discount !== null
+        ? booking.discount
+        : (booking.details?.verifiedDiscount ?? booking.details?.discountAmount ?? 0)
+    )));
+    let baseAmount = Number(booking.baseAmount || 0);
+    if (!baseAmount || baseAmount <= 0) {
+      const netBase = Number(booking.totalPriceIDR || booking.totalPrice || 0);
+      baseAmount = netBase > 0 ? (netBase + discount) : 0;
+    }
+    const promoCode = booking.promoCode || booking.details?.promoCode || null;
+    const uniqueCode = Number(booking.uniqueCode || 0);
+    const payableBase = Math.max(0, baseAmount - discount);
+    const paymentAmount = Number(booking.paymentAmount || 0) || (payableBase + uniqueCode);
 
     // Section 8: Consistent Verification Hash
     if (!booking.verificationHash) {
@@ -3619,6 +3697,8 @@ app.get([
       payment: {
         baseAmount,
         basePrice: baseAmount,
+        discount,
+        promoCode,
         uniqueCode,
         totalPaid: paymentAmount,
         currency: 'IDR',
@@ -5438,9 +5518,20 @@ interface PaymentVerificationResult {
 }
 
 function verifyPayment(booking: any, paymentData: any): PaymentVerificationResult {
+  const discount = Math.max(0, Math.round(Number(
+    booking.discount !== undefined && booking.discount !== null
+      ? booking.discount
+      : (booking.details?.verifiedDiscount ?? booking.details?.discountAmount ?? 0)
+  )));
+  let baseAmount = Number(booking.baseAmount || 0);
+  if (!baseAmount || baseAmount <= 0) {
+    const netBase = Number(booking.totalPriceIDR || booking.totalPrice || 0);
+    baseAmount = netBase > 0 ? (netBase + discount) : 0;
+  }
+  const payableBase = Math.max(0, baseAmount - discount);
   const expectedAmount = Number(
     booking.paymentAmount || 
-    (booking.uniqueCode ? ((booking.baseAmount || booking.totalPriceIDR || 0) + booking.uniqueCode) : (booking.totalPriceIDR || booking.totalPrice || 0))
+    (booking.uniqueCode ? (payableBase + booking.uniqueCode) : (Number(booking.totalPriceIDR) || payableBase))
   );
 
   if (!paymentData || typeof paymentData !== 'object') {

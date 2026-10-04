@@ -248,13 +248,33 @@ export default function BookingForm({
     }
   };
 
+  const getSummaryFinalAmount = (b: any): number => {
+    if (!b) return 0;
+    if (b.paymentAmount !== undefined && b.paymentAmount !== null && Number(b.paymentAmount) > 0) {
+      return Number(b.paymentAmount);
+    }
+    const disc = Math.max(0, Number(b.discount || 0));
+    const base = Number(b.baseAmount) > 0
+      ? Number(b.baseAmount)
+      : (Number(b.totalPriceIDR) > 0 && disc > 0
+          ? Number(b.totalPriceIDR) + disc
+          : Number(b.totalPriceIDR || pricingBreakdown.totalPriceIDR || 0));
+    const unique = Number(b.uniqueCode || 0);
+    return Math.max(0, base - disc) + unique;
+  };
+
   const handlePayFromSummary = async () => {
     if (!summaryBooking) return;
     setPayLoading(true);
     setErrorMsg("");
 
     const targetOrderId = summaryBooking.bookingCode || summaryBooking.id;
-    const finalPayableIDR = Number(summaryBooking.paymentAmount) || (Number(summaryBooking.totalPriceIDR || pricingBreakdown.totalPriceIDR) + Number(summaryBooking.uniqueCode || 0));
+    const finalPayableIDR = getSummaryFinalAmount(summaryBooking);
+    const summaryBase = Number(summaryBooking.baseAmount) > 0
+      ? Number(summaryBooking.baseAmount)
+      : (Number(summaryBooking.totalPriceIDR) > 0 && Number(summaryBooking.discount) > 0
+          ? Number(summaryBooking.totalPriceIDR) + Number(summaryBooking.discount)
+          : Number(summaryBooking.totalPriceIDR || pricingBreakdown.totalPriceIDR || 0));
 
     try {
       await processArtoPayPayment({
@@ -277,6 +297,10 @@ export default function BookingForm({
           pax: numParticipants,
           amountUSD: pricingBreakdown.totalPriceUSD,
           amountIDR: pricingBreakdown.totalPriceIDR,
+          baseAmount: summaryBase,
+          discount: Number(summaryBooking.discount || 0),
+          uniqueCode: Number(summaryBooking.uniqueCode || 0),
+          paymentAmount: finalPayableIDR,
           amount: finalPayableIDR,
           currency: 'IDR',
           pickupLocation: pickupLocation.trim(),
@@ -306,7 +330,7 @@ export default function BookingForm({
   };
 
   if (summaryBooking) {
-    const finalAmountIDR = Number(summaryBooking.paymentAmount) || (Math.max(0, Number(summaryBooking.baseAmount || summaryBooking.totalPriceIDR || pricingBreakdown.totalPriceIDR) - Number(summaryBooking.discount || 0)) + Number(summaryBooking.uniqueCode || 0));
+    const finalAmountIDR = getSummaryFinalAmount(summaryBooking);
     return (
       <div className="space-y-6 pb-16 animate-fade-in max-w-xl mx-auto" id="booking-summary-module">
         <div className="flex items-center justify-between">
@@ -356,7 +380,13 @@ export default function BookingForm({
             <div className="flex justify-between items-center text-xs text-emerald-200">
               <span>Harga Trip (Base Fare):</span>
               <span className="font-mono text-white font-bold">
-                Rp {Number(summaryBooking.baseAmount || summaryBooking.totalPriceIDR || pricingBreakdown.totalPriceIDR).toLocaleString('id-ID')}
+                Rp {(
+                  Number(summaryBooking.baseAmount) > 0
+                    ? Number(summaryBooking.baseAmount)
+                    : (Number(summaryBooking.totalPriceIDR) > 0 && Number(summaryBooking.discount) > 0
+                        ? Number(summaryBooking.totalPriceIDR) + Number(summaryBooking.discount)
+                        : Number(summaryBooking.totalPriceIDR || pricingBreakdown.totalPriceIDR || 0))
+                ).toLocaleString('id-ID')}
               </span>
             </div>
             {Boolean(summaryBooking?.discount && Number(summaryBooking?.discount) > 0) && (
@@ -381,7 +411,7 @@ export default function BookingForm({
                 </span>
                 {currency !== 'IDR' && (
                   <span className="text-[10px] font-mono text-emerald-300 block">
-                    {totalPriceFormatted} (≈ Rp {finalAmountIDR.toLocaleString('id-ID')} IDR)
+                    {formatCurrencyAmount(finalAmountIDR, currency)} (≈ Rp {finalAmountIDR.toLocaleString('id-ID')} IDR)
                   </span>
                 )}
               </div>

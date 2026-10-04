@@ -33,9 +33,10 @@ export default function BookingSuccess({ booking: initialBooking, onNavigateToTr
   const [simulateSuccess, setSimulateSuccess] = useState("");
   const { t, formatPrice, currency } = useLanguageCurrency();
 
-  const baseAmt = Math.round(Number(booking.baseAmount || booking.totalPriceIDR || booking.totalPrice || 0));
+  const baseAmt = Math.round(Number(booking.baseAmount || (booking.totalPriceIDR ? Number(booking.totalPriceIDR) + Number(booking.discount || 0) : booking.totalPrice || 0)));
+  const disc = Math.round(Number(booking.discount || (booking.details?.discountAmount ?? 0)));
   const uCode = Number(booking.uniqueCode || 0);
-  const amountInIDR = Math.round(Number(booking.paymentAmount || (baseAmt + uCode)));
+  const amountInIDR = Math.round(Number(booking.paymentAmount || (Math.max(0, baseAmt - disc) + uCode)));
 
   useEffect(() => {
     fetch('/api/artopay/config')
@@ -256,6 +257,14 @@ export default function BookingSuccess({ booking: initialBooking, onNavigateToTr
                 Rp {baseAmt.toLocaleString('id-ID')}
               </span>
             </div>
+            {Boolean(disc && disc > 0) && (
+              <div className="flex justify-between items-center text-xs text-emerald-600 font-medium">
+                <span>{t("Diskon Promo")}:</span>
+                <span className="font-mono font-bold">
+                  - Rp {disc.toLocaleString('id-ID')}
+                </span>
+              </div>
+            )}
             {Boolean(uCode) && (
               <div className="flex justify-between items-center text-xs text-amber-700">
                 <span>{t("Kode Unik Verifikasi")}:</span>

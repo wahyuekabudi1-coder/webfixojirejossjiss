@@ -12,6 +12,7 @@ import Breadcrumbs from '../components/Breadcrumbs';
 import ServiceNavTabs from '../components/ServiceNavTabs';
 import { processArtoPayPayment } from '../lib/artopay';
 import PromoCodeInput, { PromoValidationResult } from '../components/PromoCodeInput';
+import { idrToUSD } from '../utils/pricingUtils';
 
 interface LocationItem {
   name: string;
@@ -314,6 +315,7 @@ function InteractiveCalendar({
 
 export default function CarRentalView() {
   const { 
+    currency,
     formatPrice, 
     addBooking,
     rentalCities,

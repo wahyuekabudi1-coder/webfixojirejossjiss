@@ -243,7 +243,14 @@ export default function BookingsView() {
     setPaymentLoadingId(booking.id);
     try {
       const targetOrderId = booking.bookingCode || booking.id;
-      const payableAmount = Number(booking.paymentAmount) || (Number(booking.uniqueCode) ? (Number(booking.totalPriceIDR || booking.baseAmount || 0) + Number(booking.uniqueCode)) : Number(booking.totalPriceIDR || booking.baseAmount || 0));
+      const disc = Math.max(0, Number(booking.discount || 0));
+      const base = Number(booking.baseAmount) > 0 
+        ? Number(booking.baseAmount) 
+        : (Number(booking.totalPriceIDR) > 0 && disc > 0 
+            ? Number(booking.totalPriceIDR) + disc 
+            : Number(booking.totalPriceIDR || 0));
+      const unique = Number(booking.uniqueCode || 0);
+      const payableAmount = Number(booking.paymentAmount) || (Math.max(0, base - disc) + unique);
       await processArtoPayPayment({
         orderId: targetOrderId,
         amount: payableAmount,
@@ -649,7 +656,12 @@ export default function BookingsView() {
                     <div className="space-y-1">
                       <span className="text-[10px] text-neutral-500 block uppercase font-mono tracking-wider">TOTAL TAGIHAN FINAL (ARTOPAY)</span>
                       {(() => {
-                        const finalPayable = Number(booking.paymentAmount) || (booking.uniqueCode ? (Number(booking.totalPriceIDR) + Number(booking.uniqueCode)) : Number(booking.totalPriceIDR || booking.totalPrice || 0));
+                        const disc = Math.max(0, Number(booking.discount || 0));
+                        const base = Number(booking.baseAmount) > 0 
+                          ? Number(booking.baseAmount) 
+                          : (Number(booking.totalPriceIDR || 0) + disc);
+                        const unique = Number(booking.uniqueCode || 0);
+                        const finalPayable = Number(booking.paymentAmount) || (Math.max(0, base - disc) + unique);
                         const finalUSD = idrToUSD(finalPayable);
                         if (currency !== 'IDR') {
                           return (
@@ -671,7 +683,13 @@ export default function BookingsView() {
                       })()}
                       {booking.uniqueCode ? (
                         <div className="text-[9px] font-mono text-neutral-400 pt-0.5 space-y-0.5">
-                          <div>Dasar: Rp {(booking.baseAmount || booking.totalPriceIDR).toLocaleString('id-ID')}</div>
+                          <div>
+                            Dasar: Rp {(
+                              Number(booking.baseAmount) > 0
+                                ? Number(booking.baseAmount)
+                                : (Number(booking.totalPriceIDR || 0) + Math.max(0, Number(booking.discount || 0)))
+                            ).toLocaleString('id-ID')}
+                          </div>
                           {Boolean(booking.discount && Number(booking.discount) > 0) && (
                             <div className="text-emerald-400 font-bold">Diskon: - Rp {Number(booking.discount).toLocaleString('id-ID')}</div>
                           )}
