@@ -28,7 +28,7 @@ import Breadcrumbs from '../components/Breadcrumbs';
 import PrivateTourCheckBooking from '../components/PrivateTourCheckBooking';
 
 export default function BookingsView() {
-  const { bookings, formatPrice, setPage, currency } = useApp();
+  const { bookings, formatPrice, setPage, currency, refreshBookings } = useApp();
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [localBookings, setLocalBookings] = useState(bookings);
   const [paymentLoadingId, setPaymentLoadingId] = useState<string | null>(null);
@@ -36,7 +36,12 @@ export default function BookingsView() {
   const [selectedCode, setSelectedCode] = useState<string>('');
 
   // Sandbox Test Payment state (Active in Sandbox / Development only)
-  const [isSandbox, setIsSandbox] = useState(false);
+  const [isSandbox, setIsSandbox] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const isDev = Boolean((import.meta as any).env?.DEV);
+    const host = window.location.hostname;
+    return isDev || host === 'localhost' || host === '127.0.0.1' || host.includes('.run.app') || host.includes('ai.studio');
+  });
   const [simulatingId, setSimulatingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -315,7 +320,7 @@ export default function BookingsView() {
       const res = await fetch('/api/artopay/simulate-webhook', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId: code })
+        body: JSON.stringify({ orderId: code, bookingId: booking.id, bookingCode: booking.bookingCode })
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -333,6 +338,24 @@ export default function BookingsView() {
           );
         } else {
           updateBookingPaymentStatus(booking.id, 'Paid', 'Pending Confirmation');
+        }
+
+        if (typeof refreshBookings === 'function') {
+          await refreshBookings().catch(() => {});
+        }
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('sj_booking_updated', {
+            detail: { bookingCode: code, id: booking.id, paymentStatus: 'Paid' }
+          }));
+          try {
+            localStorage.setItem('sj_last_webhook_event', JSON.stringify({
+              timestamp: Date.now(),
+              bookingCode: code,
+              id: booking.id,
+              paymentStatus: 'Paid'
+            }));
+          } catch {}
         }
       } else {
         alert(data.error || 'Simulasi pembayaran gagal.');
@@ -616,7 +639,7 @@ export default function BookingsView() {
                           ) : (
                             <>
                               <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-                              <span>Simulate Payment Success</span>
+                              <span>Simulasi Pembayaran Sukses</span>
                             </>
                           )}
                         </button>

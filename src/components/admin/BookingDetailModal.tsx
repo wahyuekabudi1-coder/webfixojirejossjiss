@@ -85,7 +85,8 @@ export default function BookingDetailModal({
   const isCancelled = (booking.bookingStatus || '').toLowerCase() === 'cancelled';
   const isPendingConfirmation = 
     (booking.bookingStatus || '').toLowerCase().includes('pending confirmation') || 
-    (booking.bookingStatus === 'Pending' && isPaid);
+    (booking.bookingStatus === 'Pending' && isPaid) ||
+    (isPaid && !isConfirmed && !isCompleted && !isCancelled);
 
   const getServiceBadge = (type: string) => {
     switch (type) {

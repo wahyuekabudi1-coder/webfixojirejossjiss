@@ -651,6 +651,34 @@ export default function CarRentalView() {
     setCurrentScreen('review');
   };
 
+  const getRentalFinalPayable = (b: any): number => {
+    if (!b) {
+      const disc = Math.max(0, Number(appliedPromo?.discount || 0));
+      return Math.max(0, calculateFinalPrice().idr - disc);
+    }
+    if (b.paymentAmount !== undefined && b.paymentAmount !== null && Number(b.paymentAmount) > 0) {
+      return Number(b.paymentAmount);
+    }
+    const disc = Math.max(0, Number(b.discount ?? (appliedPromo ? appliedPromo.discount : 0)));
+    const base = Number(b.baseAmount) > 0
+      ? Number(b.baseAmount)
+      : (Number(b.totalPriceIDR) > 0 && disc > 0
+          ? Number(b.totalPriceIDR) + disc
+          : Number(b.totalPriceIDR || calculateFinalPrice().idr));
+    const unique = Number(b.uniqueCode || 0);
+    return Math.max(0, base - disc) + unique;
+  };
+
+  const getRentalBaseAmount = (b: any): number => {
+    if (!b) return calculateFinalPrice().idr;
+    const disc = Math.max(0, Number(b.discount ?? (appliedPromo ? appliedPromo.discount : 0)));
+    return Number(b.baseAmount) > 0
+      ? Number(b.baseAmount)
+      : (Number(b.totalPriceIDR) > 0 && disc > 0
+          ? Number(b.totalPriceIDR) + disc
+          : Number(b.totalPriceIDR || calculateFinalPrice().idr));
+  };
+
   const handleFinalBooking = async () => {
     const finalPrice = calculateFinalPrice();
     const addOnList = selectedAddOns.map(id => {
@@ -660,6 +688,7 @@ export default function CarRentalView() {
 
     const bookingPayload = {
       type: 'rental' as const,
+      serviceType: 'rental' as const,
       serviceName: `Car Rental: ${selectedVehicle.name} - ${selectedProvider.name}`,
       details: {
         pickupLocation,
@@ -677,8 +706,8 @@ export default function CarRentalView() {
         operationalCity: selectedRegion,
         pickupArea: pickupLocation,
         dropoffArea: dropoffLocation,
-        pickupZone: 'Zone 1',
-        dropoffZone: 'Zone 1',
+        pickupZone: selectedZone,
+        dropoffZone: selectedZone,
         selectedAddons: addOnList,
         pricingBreakdown: {
           basePriceUSD: selectedProvider.priceUSD,
@@ -692,8 +721,11 @@ export default function CarRentalView() {
         promoCode: appliedPromo?.code || undefined,
         discountAmount: appliedPromo?.discount || 0
       },
+      baseAmount: finalPrice.idr,
       totalPrice: finalPrice.usd,
       totalPriceIDR: finalPrice.idr,
+      promoCode: appliedPromo?.code || undefined,
+      discount: appliedPromo?.discount || 0,
       customerName,
       customerEmail,
       customerPhone
@@ -720,8 +752,7 @@ export default function CarRentalView() {
     setIsPaying(true);
     setPayError(null);
     const targetOrderId = summaryBooking.bookingCode || summaryBooking.id;
-    const finalPrice = calculateFinalPrice();
-    const payableAmount = Number(summaryBooking.paymentAmount) || (Math.max(0, Number(summaryBooking.baseAmount || summaryBooking.totalPriceIDR || finalPrice.idr) - Number(summaryBooking.discount || 0)) + Number(summaryBooking.uniqueCode || 0));
+    const payableAmount = getRentalFinalPayable(summaryBooking);
 
     try {
       await processArtoPayPayment({
@@ -1761,13 +1792,24 @@ export default function CarRentalView() {
                       />
                     </div>
 
+                    {appliedPromo && Number(appliedPromo.discount) > 0 && (
+                      <div className="flex justify-between text-xs text-emerald-400 font-medium pt-1">
+                        <span>Diskon Promo {appliedPromo.code ? `(${appliedPromo.code})` : ''}:</span>
+                        <span className="font-mono">- {formatPrice(idrToUSD(appliedPromo.discount), appliedPromo.discount)}</span>
+                      </div>
+                    )}
+
                     <div className="h-px bg-neutral-800" />
 
                     <div className="flex justify-between items-center pt-2">
                       <div>
                         <span className="text-[10px] text-neutral-500 font-black uppercase block font-mono">Grand Total Payable</span>
                         <span className="text-2xl font-black text-amber-500 font-mono">
-                          {formatPrice(calculateFinalPrice().usd, calculateFinalPrice().idr)}
+                          {(() => {
+                            const discIDR = appliedPromo ? Number(appliedPromo.discount || 0) : 0;
+                            const finalNetIDR = Math.max(0, calculateFinalPrice().idr - discIDR);
+                            return formatPrice(idrToUSD(finalNetIDR), finalNetIDR);
+                          })()}
                         </span>
                       </div>
                       <span className="text-[9px] text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl uppercase tracking-wider font-mono">
@@ -1888,15 +1930,18 @@ export default function CarRentalView() {
                     <div className="flex justify-between items-center text-neutral-400">
                       <span>Harga Dasar Sewa Mobil:</span>
                       <span className="font-mono font-bold text-white">
-                        Rp {Number(summaryBooking.baseAmount || summaryBooking.totalPriceIDR || calculateFinalPrice().idr).toLocaleString('id-ID')}
+                        Rp {getRentalBaseAmount(summaryBooking).toLocaleString('id-ID')}
                       </span>
                     </div>
 
-                    {Boolean(summaryBooking.discount && Number(summaryBooking.discount) > 0) && (
+                    {Boolean(
+                      (summaryBooking.discount && Number(summaryBooking.discount) > 0) ||
+                      (appliedPromo && Number(appliedPromo.discount) > 0)
+                    ) && (
                       <div className="flex justify-between items-center text-emerald-400 font-medium border-t border-neutral-850 pt-1.5">
-                        <span>Diskon Promo {summaryBooking.promoCode ? `(${summaryBooking.promoCode})` : ''}:</span>
+                        <span>Diskon Promo {summaryBooking.promoCode ? `(${summaryBooking.promoCode})` : (appliedPromo?.code ? `(${appliedPromo.code})` : '')}:</span>
                         <span className="font-mono font-bold">
-                          - Rp {Number(summaryBooking.discount).toLocaleString('id-ID')}
+                          - Rp {Number(summaryBooking.discount ?? appliedPromo?.discount ?? 0).toLocaleString('id-ID')}
                         </span>
                       </div>
                     )}
@@ -1912,7 +1957,7 @@ export default function CarRentalView() {
                       <span className="text-white uppercase tracking-wider font-mono text-[11px]">TOTAL PEMBAYARAN FINAL:</span>
                       <div className="text-right">
                         {(() => {
-                          const payableAmount = Number(summaryBooking.paymentAmount) || (Math.max(0, Number(summaryBooking.baseAmount || summaryBooking.totalPriceIDR || calculateFinalPrice().idr) - Number(summaryBooking.discount || 0)) + Number(summaryBooking.uniqueCode || 0));
+                          const payableAmount = getRentalFinalPayable(summaryBooking);
                           return (
                             <>
                               <span className="text-xl font-black text-amber-500 font-mono block">
@@ -1943,7 +1988,7 @@ export default function CarRentalView() {
                   {/* ArtoPay Action Button */}
                   <div className="pt-2 space-y-3">
                     {(() => {
-                      const payableAmount = Number(summaryBooking.paymentAmount) || (Math.max(0, Number(summaryBooking.baseAmount || summaryBooking.totalPriceIDR || calculateFinalPrice().idr) - Number(summaryBooking.discount || 0)) + Number(summaryBooking.uniqueCode || 0));
+                      const payableAmount = getRentalFinalPayable(summaryBooking);
                       return (
                         <button
                           id="btn-pay-summary-artopay"

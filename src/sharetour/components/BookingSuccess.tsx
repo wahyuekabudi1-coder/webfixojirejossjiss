@@ -173,6 +173,20 @@ export default function BookingSuccess({ booking: initialBooking, onNavigateToTr
             status: 'Pending Confirmation' as any
           }));
         }
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('sj_booking_updated', {
+            detail: { bookingCode: booking.bookingCode || booking.id, id: booking.id, paymentStatus: 'Paid' }
+          }));
+          try {
+            localStorage.setItem('sj_last_webhook_event', JSON.stringify({
+              timestamp: Date.now(),
+              bookingCode: booking.bookingCode || booking.id,
+              id: booking.id,
+              paymentStatus: 'Paid'
+            }));
+          } catch {}
+        }
       } else {
         setPayError(data.error || t("Simulasi pembayaran gagal."));
       }
@@ -373,7 +387,7 @@ export default function BookingSuccess({ booking: initialBooking, onNavigateToTr
               ) : (
                 <>
                   <Sparkles className="w-4 h-4 text-amber-400" />
-                  <span>Simulate Payment Success (Sandbox Only)</span>
+                  <span>{t("Simulasi Pembayaran Sukses (Sandbox Testing)")}</span>
                 </>
               )}
             </button>

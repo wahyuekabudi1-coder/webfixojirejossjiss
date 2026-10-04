@@ -65,7 +65,7 @@ interface PrivateTourCheckBookingProps {
 }
 
 export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: PrivateTourCheckBookingProps) {
-  const { currency, formatPrice } = useApp();
+  const { currency, formatPrice, refreshBookings } = useApp();
   const [searchCode, setSearchCode] = useState(initialCode);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,7 +78,12 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
   const [loadingSummary, setLoadingSummary] = useState(false);
 
   // Sandbox Test Payment state (Active in Sandbox / Development only)
-  const [isSandbox, setIsSandbox] = useState(false);
+  const [isSandbox, setIsSandbox] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const isDev = Boolean((import.meta as any).env?.DEV);
+    const host = window.location.hostname;
+    return isDev || host === 'localhost' || host === '127.0.0.1' || host.includes('.run.app') || host.includes('ai.studio');
+  });
   const [isSimulatingPayment, setIsSimulatingPayment] = useState(false);
   const [simulationFeedback, setSimulationFeedback] = useState<string | null>(null);
 
@@ -89,15 +94,15 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
       .then(data => {
         if (data && data.env === 'sandbox') {
           setIsSandbox(true);
-        } else if ((import.meta as any).env?.DEV || (import.meta as any).env?.VITE_ARTOPAY_SANDBOX === 'true' || (import.meta as any).env?.VITE_ARTOPAY_ENV !== 'production') {
-          setIsSandbox(true);
+        } else if (data && data.env === 'production') {
+          const host = typeof window !== 'undefined' ? window.location.hostname : '';
+          const isLocal = host === 'localhost' || host === '127.0.0.1';
+          if (!isLocal) {
+            setIsSandbox(false);
+          }
         }
       })
-      .catch(() => {
-        if ((import.meta as any).env?.DEV || (import.meta as any).env?.VITE_ARTOPAY_SANDBOX === 'true' || (import.meta as any).env?.VITE_ARTOPAY_ENV !== 'production') {
-          setIsSandbox(true);
-        }
-      });
+      .catch(() => {});
   }, []);
 
   // Auto search if initialCode provided or URL has ?code=
@@ -216,16 +221,56 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
     if (!booking) return;
     setIsSimulatingPayment(true);
     setSimulationFeedback(null);
+    const targetCode = (booking.bookingCode || booking.id || '').trim();
     try {
       const res = await fetch('/api/artopay/simulate-webhook', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId: booking.bookingCode || booking.id })
+        body: JSON.stringify({ 
+          orderId: targetCode,
+          bookingCode: booking.bookingCode,
+          bookingId: booking.id
+        })
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setSimulationFeedback('Simulasi pembayaran berhasil! Status: Paid & Pending Confirmation.');
-        await executeSearch(booking.bookingCode || booking.id);
+        setSimulationFeedback('Simulasi pembayaran berhasil! Status: Paid & Menunggu Konfirmasi Admin.');
+        
+        // Optimistically update local booking status
+        setBooking(prev => prev ? {
+          ...prev,
+          paymentStatus: 'Paid',
+          bookingStatus: 'Pending Confirmation'
+        } : null);
+
+        // Re-sync authoritative backend state
+        await executeSearch(targetCode);
+
+        // Synchronize AppContext global bookings
+        if (typeof refreshBookings === 'function') {
+          await refreshBookings().catch(() => {});
+        }
+
+        // Notify Admin Dashboard & other tabs via CustomEvent and localStorage
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('sj_booking_updated', {
+            detail: {
+              bookingCode: booking.bookingCode || booking.id,
+              id: booking.id,
+              paymentStatus: 'Paid',
+              bookingStatus: 'Pending Confirmation'
+            }
+          }));
+          try {
+            localStorage.setItem('sj_last_webhook_event', JSON.stringify({
+              timestamp: Date.now(),
+              bookingCode: booking.bookingCode || booking.id,
+              id: booking.id,
+              paymentStatus: 'Paid',
+              bookingStatus: 'Pending Confirmation'
+            }));
+          } catch {}
+        }
       } else {
         alert(data.error || 'Simulasi pembayaran gagal.');
       }
@@ -766,7 +811,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                       ) : (
                         <>
                           <Sparkles className="h-4 w-4 text-amber-600" />
-                          <span>Simulate Payment Success (Sandbox Only)</span>
+                          <span>Simulasi Pembayaran Sukses (Sandbox Testing)</span>
                         </>
                       )}
                     </button>

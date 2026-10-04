@@ -131,6 +131,7 @@ export default function FinanceView({
         throw new Error(data.error || 'Simulasi gagal');
       }
 
+      window.dispatchEvent(new CustomEvent('sj_booking_updated', { detail: { bookingId: sandboxBookingId.trim() } }));
       triggerToast(`Simulasi Sukses! Booking #${sandboxBookingId} terverifikasi Paid via Sandbox ArtoPay.`);
     } catch (err: any) {
       triggerToast(`Gagal: ${err.message}`);

@@ -734,7 +734,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   ) => {
     const targetBooking = bookings.find(b => b.id === id || b.bookingCode === id);
     const effectivePayment = paymentStatus !== undefined ? paymentStatus : targetBooking?.paymentStatus;
-    if (status === 'Confirmed' && effectivePayment !== 'Paid') {
+    const isPaid = (effectivePayment || '').toLowerCase() === 'paid' || Boolean(targetBooking?.paidAt);
+    if (status === 'Confirmed' && !isPaid) {
       console.warn(`[Admin Security] Blocked confirmation for booking ${id}: paymentStatus is "${effectivePayment}", must be "Paid".`);
       return;
     }
@@ -744,7 +745,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return { 
           ...b, 
           status, 
-          paymentStatus: paymentStatus !== undefined ? paymentStatus : b.paymentStatus 
+          bookingStatus: status,
+          confirmedAt: status === 'Confirmed' ? (b.confirmedAt || new Date().toISOString()) : b.confirmedAt,
+          paymentStatus: paymentStatus !== undefined ? paymentStatus : (isPaid ? 'Paid' : b.paymentStatus) 
         };
       }
       return b;
@@ -770,7 +773,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       if (res.ok) {
         const serverUpdated = await res.json();
-        setBookings(prev => prev.map(b => (b.id === serverUpdated.id || b.bookingCode === serverUpdated.bookingCode) ? { ...b, ...serverUpdated } : b));
+        const resolved = serverUpdated.booking || serverUpdated;
+        setBookings(prev => prev.map(b => 
+          (b.id === id || b.bookingCode === id || b.id === resolved.id || b.bookingCode === resolved.bookingCode) 
+            ? { 
+                ...b, 
+                ...resolved, 
+                status: resolved.status || status, 
+                bookingStatus: resolved.status || status,
+                confirmedAt: resolved.confirmedAt || (status === 'Confirmed' ? (b.confirmedAt || new Date().toISOString()) : b.confirmedAt)
+              } 
+            : b
+        ));
+        window.dispatchEvent(new CustomEvent('sj_booking_updated', { detail: { id, status } }));
       } else {
         console.error('Failed to persist booking status update to server:', await res.text());
         // Refresh authoritative list from server

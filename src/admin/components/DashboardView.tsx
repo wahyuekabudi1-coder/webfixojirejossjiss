@@ -92,16 +92,22 @@ export default function DashboardView({
 
     // 1. Pending Payment: guests who haven't paid yet
     const pendingPaymentList = activeBookings.filter(b => 
-      (b.paymentStatus || '').toLowerCase() !== 'paid'
+      (b.paymentStatus || '').toLowerCase() !== 'paid' &&
+      b.bookingStatus !== 'Confirmed' &&
+      b.bookingStatus !== 'Completed'
     );
     const pendingPaymentCount = pendingPaymentList.length;
     const pendingPaymentAmountIDR = pendingPaymentList.reduce((sum, b) => sum + (b.totalAmountIDR || 0), 0);
 
     // 2. Pending Confirmation: guests who PAID, but admin hasn't confirmed yet (CRITICAL: Paid ≠ Confirmed)
-    const pendingConfirmationList = activeBookings.filter(b => 
-      (b.paymentStatus || '').toLowerCase() === 'paid' && 
-      b.bookingStatus === 'Pending Confirmation'
-    );
+    const pendingConfirmationList = activeBookings.filter(b => {
+      const isPaid = (b.paymentStatus || '').toLowerCase() === 'paid';
+      const isConfirmed = b.bookingStatus === 'Confirmed';
+      const isCompleted = b.bookingStatus === 'Completed';
+      return b.bookingStatus === 'Pending Confirmation' ||
+        (isPaid && !isConfirmed && !isCompleted) ||
+        (b.bookingStatus === 'Pending' && isPaid);
+    });
     const pendingConfirmationCount = pendingConfirmationList.length;
 
     // 3. Paid Today: bookings marked paid today

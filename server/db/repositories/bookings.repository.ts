@@ -150,9 +150,10 @@ export class BookingsRepository {
 
   async getByCode(code: string): Promise<BookingEntity | null> {
     const client = await this.db();
+    const cleanCode = (code || '').trim();
     const rows = await client.query<BookingRow>(
-      'SELECT * FROM bookings WHERE booking_code = ? OR id = ? LIMIT 1',
-      [code, code]
+      'SELECT * FROM bookings WHERE booking_code = ? OR id = ? OR LOWER(booking_code) = LOWER(?) OR LOWER(id) = LOWER(?) LIMIT 1',
+      [cleanCode, cleanCode, cleanCode, cleanCode]
     );
     if (!rows || rows.length === 0) return null;
     return rowToBooking(rows[0]);

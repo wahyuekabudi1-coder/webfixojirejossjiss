@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   ClipboardList, Download, Search, Check, ShieldCheck, 
   AlertTriangle, CheckCircle2, Clock, Filter, Eye, AlertCircle, FileText,
@@ -50,18 +50,33 @@ export default function OrdersView({
   const [bookingStatusFilter, setBookingStatusFilter] = useState<BookingStatusFilter>('all');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
 
+  // When activeTab changes (e.g. from Dashboard or Sidebar to pending_confirmation),
+  // reset conflicting status filters so the tab items are immediately visible
+  useEffect(() => {
+    if (activeTab !== 'all') {
+      setBookingStatusFilter('all');
+      setPaymentStatusFilter('all');
+    }
+  }, [activeTab]);
+
   // Tab counts calculation
   const counts = useMemo(() => {
     return {
       all: bookings.length,
-      pending_payment: bookings.filter(b => 
-        b.bookingStatus === 'Pending Payment' || 
-        (b.paymentStatus !== 'Paid' && b.bookingStatus !== 'Cancelled' && b.bookingStatus !== 'Rejected')
-      ).length,
-      pending_confirmation: bookings.filter(b => 
-        b.bookingStatus === 'Pending Confirmation' || 
-        (b.bookingStatus === 'Pending' && b.paymentStatus === 'Paid')
-      ).length,
+      pending_payment: bookings.filter(b => {
+        const isPaid = (b.paymentStatus || '').toLowerCase() === 'paid';
+        const isCancelled = b.bookingStatus === 'Cancelled' || b.bookingStatus === 'Rejected';
+        return !isPaid && !isCancelled;
+      }).length,
+      pending_confirmation: bookings.filter(b => {
+        const isPaid = (b.paymentStatus || '').toLowerCase() === 'paid';
+        const isConfirmed = b.bookingStatus === 'Confirmed';
+        const isCompleted = b.bookingStatus === 'Completed';
+        const isCancelled = b.bookingStatus === 'Cancelled' || b.bookingStatus === 'Rejected';
+        return b.bookingStatus === 'Pending Confirmation' || 
+          (b.bookingStatus === 'Pending' && isPaid) ||
+          (isPaid && !isConfirmed && !isCompleted && !isCancelled);
+      }).length,
       confirmed: bookings.filter(b => b.bookingStatus === 'Confirmed').length,
       completed: bookings.filter(b => b.bookingStatus === 'Completed').length,
       cancelled: bookings.filter(b => b.bookingStatus === 'Cancelled' || b.bookingStatus === 'Rejected').length
@@ -103,19 +118,27 @@ export default function OrdersView({
   // Master Filter & Sort Logic
   const filteredBookings = useMemo(() => {
     return bookings.filter(item => {
+      const isPaid = (item.paymentStatus || '').toLowerCase() === 'paid';
+      const isConfirmed = item.bookingStatus === 'Confirmed';
+      const isCompleted = item.bookingStatus === 'Completed';
+      const isCancelled = item.bookingStatus === 'Cancelled' || item.bookingStatus === 'Rejected';
+      const isPendingConfirmation = 
+        item.bookingStatus === 'Pending Confirmation' || 
+        (item.bookingStatus === 'Pending' && isPaid) ||
+        (isPaid && !isConfirmed && !isCompleted && !isCancelled);
+
       // 1. Tab Status Filter
       if (activeTab === 'pending_payment') {
-        const isUnpaid = item.paymentStatus !== 'Paid' && item.bookingStatus !== 'Cancelled' && item.bookingStatus !== 'Rejected';
-        if (!isUnpaid && item.bookingStatus !== 'Pending Payment') return false;
+        const isUnpaid = !isPaid && !isCancelled;
+        if (!isUnpaid) return false;
       } else if (activeTab === 'pending_confirmation') {
-        const isWaitConfirm = item.bookingStatus === 'Pending Confirmation' || (item.bookingStatus === 'Pending' && item.paymentStatus === 'Paid');
-        if (!isWaitConfirm) return false;
+        if (!isPendingConfirmation) return false;
       } else if (activeTab === 'confirmed') {
-        if (item.bookingStatus !== 'Confirmed') return false;
+        if (!isConfirmed) return false;
       } else if (activeTab === 'completed') {
-        if (item.bookingStatus !== 'Completed') return false;
+        if (!isCompleted) return false;
       } else if (activeTab === 'cancelled') {
-        if (item.bookingStatus !== 'Cancelled' && item.bookingStatus !== 'Rejected') return false;
+        if (!isCancelled) return false;
       }
 
       // 2. Service Filter
@@ -129,18 +152,17 @@ export default function OrdersView({
 
       // 3. Payment Status Filter (Dropdown)
       if (paymentStatusFilter !== 'all') {
-        const isPaid = (item.paymentStatus || '').toLowerCase() === 'paid';
         if (paymentStatusFilter === 'Paid' && !isPaid) return false;
         if (paymentStatusFilter === 'Pending' && isPaid) return false;
       }
 
       // 4. Booking Status Filter (Dropdown)
       if (bookingStatusFilter !== 'all') {
-        if (bookingStatusFilter === 'Pending Payment' && item.bookingStatus !== 'Pending Payment') return false;
-        if (bookingStatusFilter === 'Pending Confirmation' && item.bookingStatus !== 'Pending Confirmation') return false;
-        if (bookingStatusFilter === 'Confirmed' && item.bookingStatus !== 'Confirmed') return false;
-        if (bookingStatusFilter === 'Completed' && item.bookingStatus !== 'Completed') return false;
-        if (bookingStatusFilter === 'Cancelled' && item.bookingStatus !== 'Cancelled' && item.bookingStatus !== 'Rejected') return false;
+        if (bookingStatusFilter === 'Pending Payment' && (isPaid || isCancelled)) return false;
+        if (bookingStatusFilter === 'Pending Confirmation' && !isPendingConfirmation) return false;
+        if (bookingStatusFilter === 'Confirmed' && !isConfirmed) return false;
+        if (bookingStatusFilter === 'Completed' && !isCompleted) return false;
+        if (bookingStatusFilter === 'Cancelled' && !isCancelled) return false;
       }
 
       // 5. Date Filter (using departureDate / date)
@@ -753,7 +775,7 @@ export default function OrdersView({
                             ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' 
                             : 'bg-amber-500/10 text-amber-400 border border-amber-500/30 animate-pulse'
                         }`}>
-                          {item.paymentStatus || 'Pending'}
+                          {isPaid ? 'Paid' : (item.paymentStatus || 'Pending')}
                         </span>
                       </td>
 
@@ -766,7 +788,7 @@ export default function OrdersView({
                           isPendingConfirmation ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 animate-pulse' :
                           'bg-amber-500/10 text-amber-400 border border-amber-500/30'
                         }`}>
-                          {item.bookingStatus}
+                          {isPendingConfirmation ? 'Pending Confirmation' : item.bookingStatus}
                         </span>
                       </td>
 

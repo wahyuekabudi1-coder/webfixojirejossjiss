@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp } from '../AppContext';
 import { 
   LayoutDashboard, ClipboardList, Layers, Truck, MapPin, Globe, 
@@ -222,10 +222,38 @@ export default function AdminView() {
   };
 
   useEffect(() => {
-    if (isAdminUnlocked) {
+    if (!isAdminUnlocked) return;
+
+    refreshBookings();
+    loadShareTourData();
+
+    // Live polling every 4 seconds to guarantee real-time updates for payments & webhooks
+    const pollInterval = setInterval(() => {
       refreshBookings();
       loadShareTourData();
-    }
+    }, 4000);
+
+    // Cross-component & cross-tab immediate refresh
+    const handleBookingUpdate = () => {
+      refreshBookings();
+      loadShareTourData();
+    };
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'sj_last_webhook_event' || e.key === 'sj_booking_updated') {
+        refreshBookings();
+        loadShareTourData();
+      }
+    };
+
+    window.addEventListener('sj_booking_updated', handleBookingUpdate);
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      clearInterval(pollInterval);
+      window.removeEventListener('sj_booking_updated', handleBookingUpdate);
+      window.removeEventListener('storage', handleStorage);
+    };
   }, [isAdminUnlocked, activeModule]);
 
   // Unified Bookings List across all channels (Strict 5 Services & Official Departure Date)
@@ -245,24 +273,33 @@ export default function AdminView() {
         : (b.type === 'tour' ? 'tour' : b.type === 'airport' ? 'airport' : b.type === 'taxi' ? 'taxi' : 'car-rental');
 
       // Payment Status: Strict Pending / Paid
-      const rawPaymentStatus = (b.paymentStatus || '').trim().toLowerCase();
-      const rawBookingStatus = (b.status || '').trim();
-      let paymentStatus: 'Pending' | 'Paid' = 'Pending';
-      if (rawPaymentStatus === 'paid' || rawBookingStatus === 'Confirmed' || rawBookingStatus === 'Completed') {
-        paymentStatus = 'Paid';
-      } else {
-        paymentStatus = 'Pending';
-      }
+      const rawPaymentStatus = (b.paymentStatus || (b as any).payment_status || '').trim().toLowerCase();
+      const rawBookingStatus = (b.status || (b as any).bookingStatus || (b as any).booking_status || '').trim();
+      const rawBookingLower = rawBookingStatus.toLowerCase();
+
+      const isPaid = 
+        rawPaymentStatus === 'paid' || 
+        rawPaymentStatus === 'settlement' || 
+        rawPaymentStatus === 'success' || 
+        rawPaymentStatus === 'capture' || 
+        rawPaymentStatus === 'lunas' ||
+        rawBookingLower === 'paid' ||
+        rawBookingLower.includes('pending confirmation') ||
+        rawBookingLower === 'confirmed' || 
+        rawBookingLower === 'completed' ||
+        Boolean(b.paidAt || (b as any).paid_at);
+
+      let paymentStatus: 'Pending' | 'Paid' = isPaid ? 'Paid' : 'Pending';
 
       // Booking Status: Strict Pending Payment / Pending Confirmation / Confirmed / Completed / Cancelled
       let bookingStatus: 'Pending Payment' | 'Pending Confirmation' | 'Confirmed' | 'Completed' | 'Cancelled' = 'Pending Payment';
-      if (rawBookingStatus === 'Cancelled' || rawBookingStatus === 'Rejected' || rawBookingStatus === 'Refunded') {
+      if (rawBookingLower === 'cancelled' || rawBookingLower === 'rejected' || rawBookingLower === 'refunded') {
         bookingStatus = 'Cancelled';
-      } else if (rawBookingStatus === 'Completed') {
+      } else if (rawBookingLower === 'completed') {
         bookingStatus = 'Completed';
-      } else if (rawBookingStatus === 'Confirmed') {
+      } else if (rawBookingLower === 'confirmed') {
         bookingStatus = 'Confirmed';
-      } else if (paymentStatus === 'Paid') {
+      } else if (paymentStatus === 'Paid' || rawBookingLower.includes('pending confirmation')) {
         bookingStatus = 'Pending Confirmation';
       } else {
         bookingStatus = 'Pending Payment';
@@ -327,24 +364,33 @@ export default function AdminView() {
       if (sb.id) seenCodes.add(sb.id);
 
       // Payment Status: Strict Pending / Paid
-      const rawPaymentStatus = ((sb as any).paymentStatus || '').trim().toLowerCase();
-      const rawBookingStatus = (sb.status || '').trim();
-      let paymentStatus: 'Pending' | 'Paid' = 'Pending';
-      if (rawPaymentStatus === 'paid' || rawBookingStatus === 'Confirmed' || rawBookingStatus === 'Completed') {
-        paymentStatus = 'Paid';
-      } else {
-        paymentStatus = 'Pending';
-      }
+      const rawPaymentStatus = ((sb as any).paymentStatus || (sb as any).payment_status || '').trim().toLowerCase();
+      const rawBookingStatus = (sb.status || (sb as any).bookingStatus || (sb as any).booking_status || '').trim();
+      const rawBookingLower = rawBookingStatus.toLowerCase();
+
+      const isPaid = 
+        rawPaymentStatus === 'paid' || 
+        rawPaymentStatus === 'settlement' || 
+        rawPaymentStatus === 'success' || 
+        rawPaymentStatus === 'capture' || 
+        rawPaymentStatus === 'lunas' ||
+        rawBookingLower === 'paid' ||
+        rawBookingLower.includes('pending confirmation') ||
+        rawBookingLower === 'confirmed' || 
+        rawBookingLower === 'completed' ||
+        Boolean((sb as any).paidAt || (sb as any).paid_at);
+
+      let paymentStatus: 'Pending' | 'Paid' = isPaid ? 'Paid' : 'Pending';
 
       // Booking Status: Strict Pending Payment / Pending Confirmation / Confirmed / Completed / Cancelled
       let bookingStatus: 'Pending Payment' | 'Pending Confirmation' | 'Confirmed' | 'Completed' | 'Cancelled' = 'Pending Payment';
-      if (rawBookingStatus === 'Cancelled' || rawBookingStatus === 'Rejected' || rawBookingStatus === 'Refunded') {
+      if (rawBookingLower === 'cancelled' || rawBookingLower === 'rejected' || rawBookingLower === 'refunded') {
         bookingStatus = 'Cancelled';
-      } else if (rawBookingStatus === 'Completed') {
+      } else if (rawBookingLower === 'completed') {
         bookingStatus = 'Completed';
-      } else if (rawBookingStatus === 'Confirmed') {
+      } else if (rawBookingLower === 'confirmed') {
         bookingStatus = 'Confirmed';
-      } else if (paymentStatus === 'Paid') {
+      } else if (paymentStatus === 'Paid' || rawBookingLower.includes('pending confirmation')) {
         bookingStatus = 'Pending Confirmation';
       } else {
         bookingStatus = 'Pending Payment';
@@ -396,14 +442,29 @@ export default function AdminView() {
   const pendingConfirmationBookings = useMemo(() => {
     return unifiedBookingsList.filter(b => 
       b.bookingStatus === 'Pending Confirmation' || 
-      (b.bookingStatus === 'Pending' && b.paymentStatus === 'Paid')
+      (b.bookingStatus === 'Pending' && b.paymentStatus === 'Paid') ||
+      (b.paymentStatus === 'Paid' && b.bookingStatus !== 'Confirmed' && b.bookingStatus !== 'Completed' && b.bookingStatus !== 'Cancelled' && b.bookingStatus !== 'Rejected')
     );
   }, [unifiedBookingsList]);
 
+  // Live Admin Notification Trigger on New Paid Booking
+  const prevPendingCountRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (prevPendingCountRef.current !== null && pendingConfirmationBookings.length > prevPendingCountRef.current) {
+      const newest = pendingConfirmationBookings[0];
+      const code = newest?.bookingCode ? `#${newest.bookingCode}` : 'pesanan baru';
+      triggerToast(`🔔 Notifikasi Admin: Pembayaran lunas diterima untuk ${code}. Menunggu konfirmasi admin.`);
+    }
+    prevPendingCountRef.current = pendingConfirmationBookings.length;
+  }, [pendingConfirmationBookings.length]);
+
   const pendingPaymentBookings = useMemo(() => {
     return unifiedBookingsList.filter(b => 
-      b.bookingStatus === 'Pending Payment' || 
-      (b.paymentStatus !== 'Paid' && b.bookingStatus !== 'Cancelled' && b.bookingStatus !== 'Rejected')
+      b.paymentStatus !== 'Paid' && 
+      b.bookingStatus !== 'Cancelled' && 
+      b.bookingStatus !== 'Rejected' &&
+      b.bookingStatus !== 'Confirmed' &&
+      b.bookingStatus !== 'Completed'
     );
   }, [unifiedBookingsList]);
 
@@ -434,7 +495,7 @@ export default function AdminView() {
       triggerToast(`Booking #${item.bookingCode} berhasil dikonfirmasi!`);
     } else {
       try {
-        await updateShareTourBooking(id, { status: 'Confirmed', confirmedAt: new Date().toISOString() });
+        await updateShareTourBooking(id, { status: 'Confirmed', paymentStatus: 'Paid', confirmedAt: new Date().toISOString() });
         await loadShareTourData();
         triggerToast(`Open Trip #${item.bookingCode} berhasil dikonfirmasi!`);
       } catch (err: any) {
@@ -7721,18 +7782,19 @@ export default function AdminView() {
                                   <>
                                     {(item.status === 'Pending' || item.status === 'Pending Confirmation') && (
                                       <button
+                                        disabled={item.paymentStatus !== 'Paid'}
                                         onClick={() => {
                                           if (item.paymentStatus !== 'Paid') {
                                             triggerToast('Gagal: Admin hanya boleh konfirmasi jika status pembayaran sudah "Paid".');
                                             return;
                                           }
-                                          updateBookingStatus(item.id, 'Confirmed');
-                                          triggerToast(`Booking #${item.id.slice(-6)} telah dikonfirmasi`);
+                                          updateBookingStatus(item.id, 'Confirmed', 'Paid');
+                                          triggerToast(`Booking #${item.bookingCode || item.id.slice(-6)} telah dikonfirmasi`);
                                         }}
-                                        className={`p-1.5 rounded-lg border cursor-pointer ${
+                                        className={`p-1.5 rounded-lg border ${
                                           item.paymentStatus === 'Paid'
-                                            ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                                            : 'bg-neutral-800 text-neutral-500 border-neutral-700 opacity-60'
+                                            ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30 cursor-pointer shadow-xs'
+                                            : 'bg-neutral-800 text-neutral-500 border-neutral-700 opacity-60 cursor-not-allowed'
                                         }`}
                                         title={item.paymentStatus === 'Paid' ? 'Konfirmasi Booking' : 'Menunggu Pembayaran (Harus Paid)'}
                                       >
