@@ -103,13 +103,37 @@ export default function BookingsView() {
           const valid = results.filter(r => r && r.found);
           if (valid.length > 0) {
             setLocalBookings(prev => {
-              const prevCodes = new Set(prev.map(p => (p.bookingCode || p.id).toUpperCase()));
-              const toAdd = valid
-                .filter(v => !prevCodes.has((v.bookingCode || v.id).toUpperCase()))
-                .map(v => ({
+              const validMap = new Map(valid.map(v => [(v.bookingCode || v.id).toUpperCase(), v]));
+              
+              // 1. Update existing items in prev with latest authoritative server data
+              const updatedPrev = prev.map(p => {
+                const code = (p.bookingCode || p.id || '').toUpperCase();
+                const serverData = validMap.get(code);
+                if (!serverData) return p;
+                validMap.delete(code); // mark as merged
+                const effAmount = Number(serverData.paymentAmount) || Number(serverData.totalAmountIDR) || Number(serverData.totalPaid) || p.paymentAmount || p.totalAmountIDR || p.totalPriceIDR || 0;
+                return {
+                  ...p,
+                  status: serverData.bookingStatus || serverData.status || p.status,
+                  bookingStatus: serverData.bookingStatus || serverData.status || (p as any).bookingStatus,
+                  paymentStatus: serverData.paymentStatus || p.paymentStatus,
+                  paymentAmount: effAmount,
+                  totalAmountIDR: effAmount,
+                  totalPriceIDR: effAmount,
+                  totalPaid: effAmount,
+                  baseAmount: serverData.baseAmount || p.baseAmount,
+                  uniqueCode: serverData.uniqueCode || p.uniqueCode,
+                  paidAt: serverData.paidAt || p.paidAt
+                };
+              });
+
+              // 2. Add remaining bookings from server not yet in prev
+              const remainingToAdd = Array.from(validMap.values()).map(v => {
+                const effAmount = Number(v.paymentAmount) || Number(v.totalAmountIDR) || Number(v.totalPaid) || Number(v.totalPriceIDR) || 0;
+                return {
                   id: v.id,
                   bookingCode: v.bookingCode,
-                  type: v.isShared || v.bookingType === 'shared' ? 'shared' : 'tour',
+                  type: v.isShared || v.bookingType === 'shared' ? 'shared' : (v.serviceType || 'tour'),
                   serviceName: v.serviceName || v.tripTitle,
                   details: {
                     date: v.departureDate,
@@ -118,16 +142,21 @@ export default function BookingsView() {
                     pickupLocation: v.pickupLocation
                   },
                   totalPrice: v.baseAmount,
-                  totalPriceIDR: v.paymentAmount,
-                  paymentAmount: v.paymentAmount,
+                  totalPriceIDR: effAmount,
+                  totalAmountIDR: effAmount,
+                  paymentAmount: effAmount,
+                  totalPaid: effAmount,
                   uniqueCode: v.uniqueCode,
                   baseAmount: v.baseAmount,
-                  status: v.bookingStatus,
+                  status: v.bookingStatus || v.status,
+                  bookingStatus: v.bookingStatus || v.status,
                   paymentStatus: v.paymentStatus,
                   paidAt: v.paidAt,
                   bookingDate: v.createdAt
-                } as any));
-              return [...toAdd, ...prev];
+                } as any;
+              });
+
+              return [...remainingToAdd, ...updatedPrev];
             });
           }
         });
@@ -144,15 +173,9 @@ export default function BookingsView() {
     });
   }, [bookings]);
 
-  // Poll server payment status for unconfirmed bookings to ensure live sync with ArtoPay Webhook & Admin Confirmation
+  // Poll server payment status for bookings to ensure live sync with ArtoPay Webhook & Admin Confirmation
   useEffect(() => {
-    const unconfirmedItems = localBookings.filter(b => 
-      b.status !== 'Confirmed' && 
-      b.status !== 'Completed' && 
-      b.status !== 'Cancelled' && 
-      b.status !== 'Rejected'
-    );
-    if (unconfirmedItems.length === 0) return;
+    if (localBookings.length === 0) return;
 
     let isMounted = true;
 
@@ -160,34 +183,41 @@ export default function BookingsView() {
       let hasChanges = false;
       const nextBookings = [...localBookings];
 
-      for (const b of unconfirmedItems) {
+      for (const b of localBookings) {
+        if (b.status === 'Cancelled' || b.status === 'Rejected') continue;
         try {
           const checkTarget = b.bookingCode || b.id;
           const res = await fetch(`/api/private-tour/check-booking/${encodeURIComponent(checkTarget)}`);
           if (res.ok) {
             const data = await res.json();
             if (data.found) {
-              const idx = nextBookings.findIndex(item => item.id === b.id || item.bookingCode === b.bookingCode);
+              const idx = nextBookings.findIndex(item => (item.id && item.id === b.id) || (item.bookingCode && item.bookingCode === b.bookingCode));
               if (idx !== -1) {
                 const serverPaymentStatus = data.paymentStatus || nextBookings[idx].paymentStatus;
                 const serverBookingStatus = data.bookingStatus || data.status || nextBookings[idx].status;
-                const serverPaymentAmount = data.paymentAmount || nextBookings[idx].paymentAmount;
+                const serverPaymentAmount = Number(data.paymentAmount) || Number(data.totalAmountIDR) || Number(data.totalPaid) || nextBookings[idx].paymentAmount;
                 const serverUniqueCode = data.uniqueCode || nextBookings[idx].uniqueCode;
                 const serverBaseAmount = data.baseAmount || nextBookings[idx].baseAmount;
 
                 if (
                   nextBookings[idx].paymentStatus !== serverPaymentStatus ||
                   nextBookings[idx].status !== serverBookingStatus ||
-                  nextBookings[idx].paymentAmount !== serverPaymentAmount
+                  (nextBookings[idx] as any).bookingStatus !== serverBookingStatus ||
+                  nextBookings[idx].paymentAmount !== serverPaymentAmount ||
+                  nextBookings[idx].totalAmountIDR !== serverPaymentAmount
                 ) {
                   // Single Source of Truth from backend SQL
                   nextBookings[idx] = { 
                     ...nextBookings[idx], 
                     paymentStatus: serverPaymentStatus, 
                     status: serverBookingStatus,
+                    bookingStatus: serverBookingStatus,
                     baseAmount: serverBaseAmount,
                     uniqueCode: serverUniqueCode,
                     paymentAmount: serverPaymentAmount,
+                    totalPriceIDR: serverPaymentAmount,
+                    totalAmountIDR: serverPaymentAmount,
+                    totalPaid: serverPaymentAmount,
                     paidAt: data.paidAt || nextBookings[idx].paidAt
                   };
                   hasChanges = true;
@@ -445,15 +475,35 @@ export default function BookingsView() {
         ) : (
           <div className="space-y-8">
             {localBookings.map((booking) => {
-              const isPaid = (booking.paymentStatus || '').toLowerCase() === 'paid';
-              const isPending = (booking.paymentStatus || '').toLowerCase() === 'pending' || booking.status === 'Pending Payment' || booking.status === 'Pending Confirmation';
-              const isConfirmedOrCompleted = 
-                booking.status === 'Confirmed' || 
-                booking.status === 'Completed' || 
-                (booking as any).bookingStatus === 'Confirmed' || 
-                (booking as any).bookingStatus === 'Completed' ||
-                (booking.status || '').toLowerCase() === 'confirmed' ||
-                (booking.status || '').toLowerCase() === 'completed';
+              const rawPayment = (booking.paymentStatus || '').trim().toLowerCase();
+              const rawBooking = (booking.bookingStatus || booking.status || '').trim();
+              const rawBookingLower = rawBooking.toLowerCase();
+
+              const isPaid = 
+                rawPayment === 'paid' || 
+                rawPayment === 'settlement' || 
+                rawPayment === 'success' || 
+                rawPayment === 'capture' || 
+                rawPayment === 'lunas' ||
+                rawBookingLower === 'paid' ||
+                rawBookingLower.includes('pending confirmation') ||
+                rawBookingLower === 'confirmed' || 
+                rawBookingLower === 'completed' ||
+                Boolean(booking.paidAt);
+
+              const isConfirmed = rawBookingLower === 'confirmed';
+              const isCompleted = rawBookingLower === 'completed';
+              const isCancelled = rawBookingLower === 'cancelled' || rawBookingLower === 'rejected' || rawBookingLower === 'refunded';
+              const isPendingConfirmation = isPaid && !isConfirmed && !isCompleted && !isCancelled;
+              const isPending = !isPaid && !isCancelled;
+              const isConfirmedOrCompleted = isConfirmed || isCompleted;
+
+              const displayPaymentStatus: 'Paid' | 'Pending' = isPaid ? 'Paid' : 'Pending';
+              const displayBookingStatus: 'Pending Payment' | 'Pending Confirmation' | 'Confirmed' | 'Completed' | 'Cancelled' = 
+                isCancelled ? 'Cancelled' :
+                isCompleted ? 'Completed' :
+                isConfirmed ? 'Confirmed' :
+                isPendingConfirmation ? 'Pending Confirmation' : 'Pending Payment';
               
               return (
                 <div
@@ -479,10 +529,25 @@ export default function BookingsView() {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        {/* System Status */}
-                        <span className="inline-flex items-center gap-1.5 bg-neutral-800 text-neutral-300 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                          {booking.status}
+                        {/* 1. Payment Status Badge (Exact parity with Admin) */}
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold font-mono uppercase tracking-wider border ${
+                          isPaid 
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
+                            : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                        }`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${isPaid ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'}`} />
+                          <span>{displayPaymentStatus}</span>
+                        </span>
+
+                        {/* 2. Booking Status Badge (Exact parity with Admin) */}
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold font-mono uppercase tracking-wider border ${
+                          isConfirmed ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' :
+                          isCompleted ? 'bg-purple-500/10 text-purple-400 border-purple-500/30' :
+                          isCancelled ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' :
+                          isPendingConfirmation ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30 animate-pulse' :
+                          'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                        }`}>
+                          <span>{displayBookingStatus}</span>
                         </span>
                       </div>
                     </div>
@@ -600,10 +665,17 @@ export default function BookingsView() {
                         </button>
                       )}
 
-                      {isPaid && (
+                      {isPaid && isConfirmed && (
                         <span className="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-4 py-2 rounded-xl text-xs font-bold">
                           <ShieldCheck className="h-4 w-4" />
-                          <span>Lunas (Terverifikasi ArtoPay)</span>
+                          <span>Lunas &amp; Terkonfirmasi (Confirmed)</span>
+                        </span>
+                      )}
+
+                      {isPaid && !isConfirmed && (
+                        <span className="inline-flex items-center gap-1.5 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-4 py-2 rounded-xl text-xs font-bold animate-pulse">
+                          <RefreshCw className="h-3.5 w-3.5 animate-spin text-cyan-400" />
+                          <span>Menunggu Konfirmasi Admin</span>
                         </span>
                       )}
 
@@ -684,7 +756,11 @@ export default function BookingsView() {
                           ? Number(booking.baseAmount) 
                           : (Number(booking.totalPriceIDR || 0) + disc);
                         const unique = Number(booking.uniqueCode || 0);
-                        const finalPayable = Number(booking.paymentAmount) || (Math.max(0, base - disc) + unique);
+                        const finalPayable = 
+                          Number(booking.paymentAmount) || 
+                          Number(booking.totalAmountIDR) || 
+                          Number(booking.totalPaid) || 
+                          (base > 0 ? (Math.max(0, base - disc) + unique) : Number(booking.totalPriceIDR || 0));
                         const finalUSD = idrToUSD(finalPayable);
                         if (currency !== 'IDR') {
                           return (
@@ -720,16 +796,25 @@ export default function BookingsView() {
                         </div>
                       ) : null}
                       
-                      {/* Interactive payment badge under price */}
-                      <span className={`inline-block text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md mt-1 border ${
-                        isPaid 
-                          ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
-                          : isPending 
-                            ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' 
-                            : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-                      }`}>
-                        {isPaid ? 'Payment: LUNAS' : isPending ? 'Payment: PENDING' : 'Payment: UNPAID'}
-                      </span>
+                      {/* Interactive payment & booking badges under price */}
+                      <div className="flex flex-col items-center gap-1 pt-1">
+                        <span className={`inline-block text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md border ${
+                          isPaid 
+                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
+                            : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                        }`}>
+                          Payment: {displayPaymentStatus.toUpperCase()}
+                        </span>
+                        <span className={`inline-block text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md border ${
+                          isConfirmed ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' :
+                          isCompleted ? 'bg-purple-500/10 border-purple-500/20 text-purple-400' :
+                          isPendingConfirmation ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400' :
+                          isCancelled ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' :
+                          'bg-neutral-800 border-neutral-700 text-neutral-400'
+                        }`}>
+                          Booking: {displayBookingStatus.toUpperCase()}
+                        </span>
+                      </div>
                     </div>
                   </div>
 

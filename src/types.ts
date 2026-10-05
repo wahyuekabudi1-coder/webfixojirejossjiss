@@ -103,6 +103,12 @@ export interface Booking {
   };
   totalPrice: number;
   totalPriceIDR: number;
+  totalAmount?: number;
+  totalAmountIDR?: number;
+  totalAmountUSD?: number;
+  finalPaymentAmount?: number;
+  totalPaid?: number;
+  invoiceNumber?: string;
   baseAmount?: number;
   uniqueCode?: number;
   paymentAmount?: number;

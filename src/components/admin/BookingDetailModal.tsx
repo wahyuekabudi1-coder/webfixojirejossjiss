@@ -3,7 +3,8 @@ import {
   X, Check, ShieldCheck, AlertTriangle, Clock, Calendar, MapPin, 
   User, Mail, Phone, Car, Plane, DollarSign, Download, Printer, 
   ExternalLink, Sparkles, Shield, AlertCircle, FileText, CheckCircle2,
-  Users, Luggage, Navigation, ArrowRight, Ban, Compass, Hash, Info
+  Users, Luggage, Navigation, ArrowRight, Ban, Compass, Hash, Info,
+  CreditCard
 } from 'lucide-react';
 
 export interface UnifiedBookingDetail {
@@ -47,6 +48,10 @@ export interface UnifiedBookingDetail {
   totalAmountUSD?: number;
   uniqueCode?: number;
   baseAmount?: number;
+  discount?: number;
+  promoCode?: string;
+  paymentAmount?: number;
+  finalPaymentAmount?: number;
   paymentStatus: 'Pending' | 'Paid' | 'Failed' | 'Expired' | string;
   bookingStatus: 'Pending Payment' | 'Pending Confirmation' | 'Confirmed' | 'Completed' | 'Cancelled' | string;
   createdAt?: string;
@@ -516,36 +521,146 @@ export default function BookingDetailModal({
           </div>
         )}
 
-        {/* FINANCIAL SUMMARY */}
-        <div className={`p-4 rounded-xl border ${isDark ? 'border-neutral-800 bg-neutral-950/60' : 'border-neutral-200 bg-neutral-100/60'} space-y-2`}>
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-neutral-500 font-mono uppercase">Rincian Pembayaran</span>
-            <span className="text-[10px] font-mono text-neutral-400">Gateway: ArtoPay Production / Sandbox</span>
-          </div>
+        {/* FINANCIAL SUMMARY / PAYMENT DETAIL (ARTOPAY PARITY) */}
+        {(() => {
+          const raw = booking.rawBooking || {};
+          const discount = Number(booking.discount ?? raw.discount ?? (raw.details?.discountAmount || 0));
+          const promoCode = booking.promoCode || raw.promoCode || raw.details?.promoCode;
+          const uniqueCode = Number(booking.uniqueCode ?? raw.unique_code ?? raw.uniqueCode ?? 0);
+          let baseAmount = Number(booking.baseAmount ?? raw.base_amount ?? raw.baseAmount ?? 0);
+          if (!baseAmount || baseAmount <= 0) {
+            const netBase = Number(booking.totalAmountIDR ?? raw.total_price_idr ?? raw.totalPriceIDR ?? (booking as any).totalPrice ?? 0);
+            baseAmount = (netBase > 0 && discount > 0) ? (netBase + discount) : netBase;
+          }
+          const finalPaymentAmount = 
+            Number(booking.finalPaymentAmount ?? booking.paymentAmount ?? raw.payment_amount ?? raw.paymentAmount ?? booking.totalAmountIDR ?? raw.total_price_idr ?? 0) ||
+            (baseAmount > 0 ? (Math.max(0, baseAmount - discount) + uniqueCode) : 0);
 
-          <div className="flex items-baseline justify-between pt-1">
-            <div>
-              <span className="text-xs text-neutral-400 block">Total Transaksi</span>
-              {booking.uniqueCode ? (
-                <span className="text-[10px] font-mono text-amber-500 font-bold block">
-                  Termasuk Kode Unik: +Rp {booking.uniqueCode}
+          return (
+            <div className={`p-4 rounded-xl border ${isDark ? 'border-neutral-800 bg-neutral-950/60' : 'border-neutral-200 bg-neutral-100/60'} space-y-3`}>
+              <div className="flex items-center justify-between text-xs border-b border-neutral-800/60 pb-2">
+                <span className="text-neutral-400 font-mono uppercase font-bold flex items-center gap-1.5">
+                  <CreditCard className="h-3.5 w-3.5 text-amber-500" />
+                  <span>Rincian Pembayaran (Payment Detail)</span>
                 </span>
-              ) : null}
-            </div>
-            <div className="text-right">
-              <span className="text-xl font-black font-mono text-amber-500">
-                {booking.totalAmountIDR 
-                  ? `Rp ${Number(booking.totalAmountIDR).toLocaleString('id-ID')}` 
-                  : (booking.totalAmountUSD ? formatPrice(booking.totalAmountUSD, booking.totalAmountIDR || 0) : '-')}
-              </span>
-              {booking.totalAmountUSD && (
-                <span className="text-xs text-neutral-400 block font-mono">
-                  (${booking.totalAmountUSD} USD)
+                <span className="text-[10px] font-mono text-neutral-400">
+                  Gateway: {booking.paymentMethod || 'ArtoPay'}
                 </span>
-              )}
+              </div>
+
+              {/* 4 Line Items: Base Price, Discount/Promo, Unique Code, Final Payment Amount */}
+              <div className="space-y-2 text-xs font-mono">
+                {/* 1. Base Price */}
+                <div className="flex items-center justify-between text-neutral-300">
+                  <span className="text-neutral-400">1. Harga Dasar Layanan (Base Price):</span>
+                  <span className="font-semibold text-neutral-200">
+                    Rp {baseAmount.toLocaleString('id-ID')}
+                  </span>
+                </div>
+
+                {/* 2. Discount / Promo */}
+                <div className="flex items-center justify-between">
+                  <span className="text-neutral-400">
+                    2. Diskon Promo {promoCode ? <strong className="text-emerald-400 uppercase font-sans font-bold">({promoCode})</strong> : ''}:
+                  </span>
+                  <span className={`font-semibold ${discount > 0 ? 'text-emerald-400' : 'text-neutral-500'}`}>
+                    {discount > 0 ? `- Rp ${discount.toLocaleString('id-ID')}` : 'Rp 0'}
+                  </span>
+                </div>
+
+                {/* 3. Unique Code */}
+                <div className="flex items-center justify-between">
+                  <span className="text-neutral-400">3. Kode Unik Verifikasi (Unique Code):</span>
+                  <span className={`font-semibold ${uniqueCode > 0 ? 'text-amber-400' : 'text-neutral-500'}`}>
+                    {uniqueCode > 0 ? `+ Rp ${uniqueCode.toLocaleString('id-ID')}` : 'Rp 0'}
+                  </span>
+                </div>
+
+                {/* 4. Final Payment Amount (Sent to ArtoPay) */}
+                <div className="flex items-baseline justify-between pt-2.5 border-t border-neutral-800/80">
+                  <div>
+                    <span className="text-xs font-bold text-amber-400 block">
+                      4. Nominal Final Pembayaran (ArtoPay):
+                    </span>
+                    <span className="text-[10px] text-neutral-500 block font-sans">
+                      Nominal persis sama dengan payload amount yang dikirim ke ArtoPay Gateway
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xl font-black font-mono text-amber-400 block">
+                      Rp {finalPaymentAmount.toLocaleString('id-ID')}
+                    </span>
+                    {booking.totalAmountUSD && (
+                      <span className="text-xs text-neutral-400 block font-mono">
+                        (${booking.totalAmountUSD} USD)
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Verification Badge & Box */}
+              <div className="pt-2 border-t border-neutral-800/60 flex items-center justify-between text-[11px] font-mono">
+                <span className="text-neutral-400">Status Pembayaran Gateway:</span>
+                <span className={`px-2.5 py-0.5 rounded-full font-bold uppercase ${
+                  booking.paymentStatus === 'Paid'
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                    : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                }`}>
+                  {booking.paymentStatus === 'Paid' ? '✓ PAID (LUNAS)' : 'PENDING PAYMENT'}
+                </span>
+              </div>
+
+              {/* Admin Payment Verification Box */}
+              {(() => {
+                const expectedFinal = baseAmount > 0 ? (Math.max(0, baseAmount - discount) + uniqueCode) : finalPaymentAmount;
+                const isAmountMatched = Math.abs(finalPaymentAmount - expectedFinal) <= 1;
+                const isPaymentVerified = isPaid && isAmountMatched;
+
+                return (
+                  <div className={`p-3 rounded-xl border ${
+                    isPaymentVerified
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                      : !isPaid
+                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                        : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                  } text-xs space-y-1`}>
+                    <div className="flex items-center justify-between font-bold">
+                      <span className="flex items-center gap-1.5">
+                        {isPaymentVerified ? (
+                          <>
+                            <ShieldCheck className="h-4 w-4 text-emerald-400" />
+                            <span>Verifikasi Pembayaran: VALID &amp; COCOK (Verified)</span>
+                          </>
+                        ) : !isPaid ? (
+                          <>
+                            <Clock className="h-4 w-4 text-amber-400" />
+                            <span>Verifikasi Pembayaran: MENUNGGU PEMBAYARAN</span>
+                          </>
+                        ) : (
+                          <>
+                            <AlertTriangle className="h-4 w-4 text-rose-400" />
+                            <span>Verifikasi Pembayaran: KETIDAKCOCOKAN NOMINAL</span>
+                          </>
+                        )}
+                      </span>
+                      <span className="font-mono text-[10px] px-2 py-0.5 rounded-full border uppercase">
+                        {isPaymentVerified ? 'PAID + MATCH' : !isPaid ? 'PENDING' : 'MISMATCH'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] opacity-90 leading-relaxed font-sans">
+                      {isPaymentVerified
+                        ? `Status pembayaran telah PAID dan nominal final (Rp ${finalPaymentAmount.toLocaleString('id-ID')}) terverifikasi cocok sempurna dengan kode unik (+Rp ${uniqueCode}) serta harga dasar.`
+                        : !isPaid
+                          ? 'Status pembayaran belum Paid. Konfirmasi resmi admin dikunci hingga pembayaran lunas terverifikasi gateway ArtoPay.'
+                          : `Peringatan: Nominal pembayaran final (Rp ${finalPaymentAmount.toLocaleString('id-ID')}) berbeda dari perhitungan harga dasar + kode unik (Rp ${expectedFinal.toLocaleString('id-ID')}).`}
+                    </p>
+                  </div>
+                );
+              })()}
             </div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* ACTION BUTTONS FOOTER */}
         <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t ${isDark ? 'border-neutral-800' : 'border-neutral-200'}`}>
@@ -578,27 +693,50 @@ export default function BookingDetailModal({
               </button>
             )}
 
-            {/* Confirm Action Button: ONLY enabled if paymentStatus === Paid */}
-            {!isConfirmed && !isCompleted && !isCancelled && (
-              <button
-                disabled={!isPaid}
-                onClick={() => {
-                  if (!isPaid) return;
-                  if (onConfirmBooking) {
-                    onConfirmBooking(booking.id, booking.source);
+            {/* Confirm Action Button: ONLY enabled if paymentStatus === Paid AND final payment amount + unique code match */}
+            {!isConfirmed && !isCompleted && !isCancelled && (() => {
+              const raw = booking.rawBooking || {};
+              const disc = Number(booking.discount ?? raw.discount ?? (raw.details?.discountAmount || 0));
+              const unique = Number(booking.uniqueCode ?? raw.unique_code ?? raw.uniqueCode ?? 0);
+              let base = Number(booking.baseAmount ?? raw.base_amount ?? raw.baseAmount ?? 0);
+              if (!base || base <= 0) {
+                const netBase = Number(booking.totalAmountIDR ?? raw.total_price_idr ?? raw.totalPriceIDR ?? (booking as any).totalPrice ?? 0);
+                base = (netBase > 0 && disc > 0) ? (netBase + disc) : netBase;
+              }
+              const finalAmt = 
+                Number(booking.finalPaymentAmount ?? booking.paymentAmount ?? raw.payment_amount ?? raw.paymentAmount ?? booking.totalAmountIDR ?? raw.total_price_idr ?? 0) ||
+                (base > 0 ? (Math.max(0, base - disc) + unique) : 0);
+              const expectedAmt = base > 0 ? (Math.max(0, base - disc) + unique) : finalAmt;
+              const isMatch = Math.abs(finalAmt - expectedAmt) <= 1;
+              const canConfirm = isPaid && isMatch;
+
+              return (
+                <button
+                  disabled={!canConfirm}
+                  onClick={() => {
+                    if (!canConfirm) return;
+                    if (onConfirmBooking) {
+                      onConfirmBooking(booking.id, booking.source);
+                    }
+                  }}
+                  className={`px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 ${
+                    canConfirm
+                      ? 'bg-emerald-500 hover:bg-emerald-600 text-neutral-950 cursor-pointer shadow-md'
+                      : 'bg-neutral-800 text-neutral-500 cursor-not-allowed border border-neutral-700 opacity-60'
+                  }`}
+                  title={
+                    !isPaid 
+                      ? 'Admin tidak boleh konfirmasi jika status pembayaran belum Paid' 
+                      : !isMatch 
+                        ? 'Admin tidak boleh konfirmasi jika nominal final dan kode unik tidak cocok' 
+                        : 'Verifikasi Pembayaran & Konfirmasi Booking'
                   }
-                }}
-                className={`px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 ${
-                  isPaid
-                    ? 'bg-emerald-500 hover:bg-emerald-600 text-neutral-950 cursor-pointer shadow-md'
-                    : 'bg-neutral-800 text-neutral-500 cursor-not-allowed border border-neutral-700 opacity-60'
-                }`}
-                title={!isPaid ? 'Admin tidak boleh konfirmasi jika status pembayaran belum Paid' : 'Konfirmasi Booking ini'}
-              >
-                <Check className="h-4 w-4 stroke-[3]" />
-                <span>Konfirmasi Booking</span>
-              </button>
-            )}
+                >
+                  <Check className="h-4 w-4 stroke-[3]" />
+                  <span>Verifikasi &amp; Konfirmasi Booking</span>
+                </button>
+              );
+            })()}
 
             {/* Complete Action Button: enabled when isConfirmed */}
             {isConfirmed && !isCompleted && (

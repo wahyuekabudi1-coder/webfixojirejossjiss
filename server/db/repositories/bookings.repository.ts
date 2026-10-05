@@ -49,6 +49,12 @@ export interface BookingEntity {
   tripTitle?: string;
   batchId?: string;
   nationalityType?: string;
+  totalAmount?: number;
+  totalAmountIDR?: number;
+  totalAmountUSD?: number;
+  finalPaymentAmount?: number;
+  totalPaid?: number;
+  invoiceNumber?: string;
 }
 
 function parseJsonObject<T = any>(val: any, fallback: T = {} as T): T {
@@ -84,6 +90,15 @@ export function parseDiscountNumber(val: any): number {
 
 function rowToBooking(row: BookingRow): BookingEntity {
   const parsedDetails = parseJsonObject<any>(row.details, {});
+  const verifiedDiscount = parseDiscountNumber(row.discount);
+  const baseAmount = Number(row.base_amount) || 0;
+  const uniqueCode = Number(row.unique_code) || 0;
+  const totalPriceIDR = Number(row.total_price_idr) || 0;
+  const rawPaymentAmount = Number(row.payment_amount) || 0;
+  const effectiveTotalPayment = rawPaymentAmount > 0 
+    ? rawPaymentAmount 
+    : (baseAmount > 0 ? Math.max(0, baseAmount - verifiedDiscount + uniqueCode) : (totalPriceIDR > 0 ? (totalPriceIDR + uniqueCode) : Number(row.total_price) || 0));
+
   return {
     id: row.id,
     bookingCode: row.booking_code,
@@ -105,15 +120,21 @@ function rowToBooking(row: BookingRow): BookingEntity {
     status: (row.status === 'Pending' ? 'Pending Payment' : (row.status || 'Pending Payment')) as any,
     paymentStatus: (row.payment_status === 'Pending Payment' || row.payment_status === 'Unpaid' ? 'Pending' : (row.payment_status || 'Pending')) as any,
     totalPrice: Number(row.total_price) || 0,
-    totalPriceIDR: Number(row.total_price_idr) || 0,
-    baseAmount: Number(row.base_amount) || 0,
-    uniqueCode: Number(row.unique_code) || 0,
-    paymentAmount: Number(row.payment_amount) || 0,
+    totalPriceIDR: totalPriceIDR,
+    baseAmount: baseAmount || (totalPriceIDR > 0 && verifiedDiscount > 0 ? totalPriceIDR + verifiedDiscount : totalPriceIDR),
+    uniqueCode: uniqueCode,
+    paymentAmount: effectiveTotalPayment,
+    totalAmount: effectiveTotalPayment,
+    totalAmountIDR: effectiveTotalPayment,
+    totalAmountUSD: Math.round(effectiveTotalPayment / 15500),
+    finalPaymentAmount: effectiveTotalPayment,
+    totalPaid: effectiveTotalPayment,
+    invoiceNumber: `INV-${row.booking_code || row.id}`,
     currency: row.currency || 'IDR',
     createdAt: row.created_at || new Date().toISOString(),
     details: parsedDetails,
     tourSnapshot: parseJsonObject<any>(row.tour_snapshot, {}),
-    discount: parseDiscountNumber(row.discount),
+    discount: verifiedDiscount,
     promoCode: row.promo_code || undefined,
     adminNotes: row.admin_notes || undefined,
     paidAt: row.paid_at || undefined,

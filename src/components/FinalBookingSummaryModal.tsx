@@ -50,6 +50,8 @@ export interface FinalSummaryData {
   payment: {
     baseAmount: number;
     basePrice?: number;
+    discount?: number;
+    promoCode?: string;
     uniqueCode: number;
     totalPaid: number;
     currency?: string;
@@ -363,11 +365,17 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
               <span>Rincian Pembayaran &amp; Transaksi (LUNAS)</span>
             </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
+            <div className={`grid grid-cols-1 ${data.payment.discount && data.payment.discount > 0 ? 'sm:grid-cols-4' : 'sm:grid-cols-3'} gap-3 pt-2 text-xs`}>
               <div className="bg-white p-3 rounded-lg border border-neutral-200">
                 <span className="text-neutral-400 block text-[10px]">Harga Dasar Tur (Base Price)</span>
                 <span className="font-mono font-bold text-neutral-800 text-sm">Rp {formattedBase}</span>
               </div>
+              {Boolean(data.payment.discount && data.payment.discount > 0) && (
+                <div className="bg-rose-50 p-3 rounded-lg border border-rose-200">
+                  <span className="text-rose-700 block text-[10px] font-bold">Diskon Promo {data.payment.promoCode ? `(${data.payment.promoCode})` : ''}</span>
+                  <span className="font-mono font-bold text-rose-700 text-sm">- Rp {Number(data.payment.discount).toLocaleString('id-ID')}</span>
+                </div>
+              )}
               <div className="bg-white p-3 rounded-lg border border-neutral-200">
                 <span className="text-neutral-400 block text-[10px]">Kode Unik (Unique Code)</span>
                 <span className="font-mono font-bold text-neutral-800 text-sm">Rp {formattedUnique}</span>

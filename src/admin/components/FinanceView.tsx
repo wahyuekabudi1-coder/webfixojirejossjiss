@@ -211,7 +211,7 @@ export default function FinanceView({
       // 3. Search Filter
       if (invoicesSearch.trim()) {
         const q = invoicesSearch.toLowerCase().trim();
-        const invNum = `INV-${b.bookingCode.slice(-6)}`.toLowerCase();
+        const invNum = ((b as any).invoiceNumber || `INV-${b.bookingCode}`).toLowerCase();
         const matches = 
           invNum.includes(q) ||
           (b.bookingCode || '').toLowerCase().includes(q) ||
@@ -710,6 +710,21 @@ export default function FinanceView({
                       const isPaid = (item.paymentStatus || '').toLowerCase() === 'paid';
                       const badge = getServiceBadge(item.serviceType);
 
+                      // Payment Verification: verify that final payment amount matches base price - discount + unique code
+                      const raw = item.rawBooking || {};
+                      const disc = Number(item.discount ?? raw.discount ?? (raw.details?.discountAmount || 0));
+                      const unique = Number(item.uniqueCode ?? raw.unique_code ?? raw.uniqueCode ?? 0);
+                      let base = Number(item.baseAmount ?? raw.base_amount ?? raw.baseAmount ?? 0);
+                      if (!base || base <= 0) {
+                        const netBase = Number(item.totalAmountIDR ?? raw.total_price_idr ?? raw.totalPriceIDR ?? (item as any).totalPrice ?? 0);
+                        base = (netBase > 0 && disc > 0) ? (netBase + disc) : netBase;
+                      }
+                      const finalAmt = 
+                        Number(item.finalPaymentAmount ?? item.paymentAmount ?? raw.payment_amount ?? raw.paymentAmount ?? item.totalAmountIDR ?? raw.total_price_idr ?? 0) ||
+                        (base > 0 ? (Math.max(0, base - disc) + unique) : 0);
+                      const expectedAmt = base > 0 ? (Math.max(0, base - disc) + unique) : finalAmt;
+                      const isAmountMatched = Math.abs(finalAmt - expectedAmt) <= 1;
+
                       return (
                         <tr key={item.id} className={`${theme.hover} transition-colors`}>
                           <td className="p-3.5 font-mono font-bold text-amber-500">
@@ -735,15 +750,26 @@ export default function FinanceView({
                           <td className="p-3.5 text-center font-mono text-amber-400 font-bold">
                             {item.uniqueCode ? `+${item.uniqueCode}` : '-'}
                           </td>
-                          {/* Payment Status (Separated) */}
+                          {/* Payment Status (Separated) with Verification Match Badge */}
                           <td className="p-3.5 text-center">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase ${
-                              isPaid
-                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                                : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                            }`}>
-                              {item.paymentStatus || 'Pending'}
-                            </span>
+                            <div className="flex flex-col items-center gap-1">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase ${
+                                isPaid
+                                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                              }`}>
+                                {item.paymentStatus || 'Pending'}
+                              </span>
+                              {isPaid && (
+                                <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded border ${
+                                  isAmountMatched
+                                    ? 'bg-emerald-950/40 text-emerald-400 border-emerald-600/40'
+                                    : 'bg-rose-950/40 text-rose-400 border-rose-600/40'
+                                }`} title={isAmountMatched ? `Nominal final dan kode unik (+Rp ${unique}) cocok sempurna` : 'Ketidakcocokan nominal final dan kode unik'}>
+                                  {isAmountMatched ? '✓ Match' : '⚠ Mismatch'}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           {/* Booking Status (Separated) */}
                           <td className="p-3.5 text-center">
@@ -859,7 +885,7 @@ export default function FinanceView({
                       return (
                         <tr key={item.id} className={`${theme.hover} transition-colors`}>
                           <td className="p-3.5 font-mono font-bold text-neutral-200">
-                            INV-2026-{item.bookingCode.slice(-6)}
+                            {(item as any).invoiceNumber || `INV-${item.bookingCode}`}
                           </td>
                           <td className="p-3.5 font-mono text-amber-500 font-bold">
                             #{item.bookingCode}

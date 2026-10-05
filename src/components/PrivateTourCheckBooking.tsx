@@ -395,7 +395,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
           <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-100 pb-5">
               <div>
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <span className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-400">Kode Booking / ID</span>
                   <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
                     booking.isShared || booking.bookingType === 'shared'
@@ -403,6 +403,26 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                       : 'bg-amber-50 text-amber-800 border-amber-200'
                   }`}>
                     {booking.isShared || booking.bookingType === 'shared' ? 'OPEN TRIP / SHARE TOUR' : 'PRIVATE TOUR'}
+                  </span>
+
+                  {/* Status badges matching Admin */}
+                  <span className={`inline-flex items-center gap-1 text-[10px] font-bold font-mono px-2.5 py-0.5 rounded-full border uppercase ${
+                    (booking.paymentStatus || '').toLowerCase() === 'paid'
+                      ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                      : 'bg-amber-100 text-amber-800 border-amber-300'
+                  }`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${(booking.paymentStatus || '').toLowerCase() === 'paid' ? 'bg-emerald-600' : 'bg-amber-600 animate-pulse'}`} />
+                    <span>Payment: {(booking.paymentStatus || '').toLowerCase() === 'paid' ? 'PAID' : 'PENDING'}</span>
+                  </span>
+
+                  <span className={`inline-flex items-center gap-1 text-[10px] font-bold font-mono px-2.5 py-0.5 rounded-full border uppercase ${
+                    booking.bookingStatus === 'Confirmed' ? 'bg-blue-100 text-blue-800 border-blue-300' :
+                    booking.bookingStatus === 'Completed' ? 'bg-purple-100 text-purple-800 border-purple-300' :
+                    booking.bookingStatus === 'Cancelled' ? 'bg-rose-100 text-rose-800 border-rose-300' :
+                    booking.bookingStatus === 'Pending Confirmation' ? 'bg-cyan-100 text-cyan-800 border-cyan-300' :
+                    'bg-amber-100 text-amber-800 border-amber-300'
+                  }`}>
+                    <span>Booking: {booking.bookingStatus || (booking as any).status || 'PENDING'}</span>
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
@@ -684,20 +704,30 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                   <div className="flex justify-between py-2 border-t border-neutral-200 font-bold text-sm bg-neutral-50 px-2 rounded-lg items-center">
                     <span className="text-neutral-800">Total Pembayaran (ArtoPay IDR):</span>
                     <div className="text-right">
-                      {currency !== 'IDR' ? (
-                        <>
-                          <span className="font-mono text-emerald-700 font-black block">
-                            {formatPrice(idrToUSD(booking.paymentAmount || 0), booking.paymentAmount || 0)}
+                      {(() => {
+                        const finalPayable = 
+                          Number(booking.paymentAmount) || 
+                          Number(booking.totalAmountIDR) || 
+                          Number(booking.totalPaid) || 
+                          Number(booking.totalPriceIDR) || 0;
+                        if (currency !== 'IDR') {
+                          return (
+                            <>
+                              <span className="font-mono text-emerald-700 font-black block">
+                                {formatPrice(idrToUSD(finalPayable), finalPayable)}
+                              </span>
+                              <span className="text-[10px] font-mono text-neutral-500 font-semibold block">
+                                (≈ Rp {finalPayable.toLocaleString('id-ID')} IDR)
+                              </span>
+                            </>
+                          );
+                        }
+                        return (
+                          <span className="font-mono text-emerald-700 font-black">
+                            Rp {finalPayable.toLocaleString('id-ID')}
                           </span>
-                          <span className="text-[10px] font-mono text-neutral-500 font-semibold block">
-                            (≈ Rp {(booking.paymentAmount || 0).toLocaleString('id-ID')} IDR)
-                          </span>
-                        </>
-                      ) : (
-                        <span className="font-mono text-emerald-700 font-black">
-                          Rp {(booking.paymentAmount || 0).toLocaleString('id-ID')}
-                        </span>
-                      )}
+                        );
+                      })()}
                     </div>
                   </div>
 

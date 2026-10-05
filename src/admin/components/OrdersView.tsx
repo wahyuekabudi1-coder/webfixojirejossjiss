@@ -694,6 +694,22 @@ export default function OrdersView({
                     item.bookingStatus === 'Pending Confirmation' || 
                     (item.bookingStatus === 'Pending' && isPaid);
 
+                  // Payment Verification: verify that final payment amount matches base price - discount + unique code
+                  const raw = item.rawBooking || {};
+                  const disc = Number(item.discount ?? raw.discount ?? (raw.details?.discountAmount || 0));
+                  const unique = Number(item.uniqueCode ?? raw.unique_code ?? raw.uniqueCode ?? 0);
+                  let base = Number(item.baseAmount ?? raw.base_amount ?? raw.baseAmount ?? 0);
+                  if (!base || base <= 0) {
+                    const netBase = Number(item.totalAmountIDR ?? raw.total_price_idr ?? raw.totalPriceIDR ?? (item as any).totalPrice ?? 0);
+                    base = (netBase > 0 && disc > 0) ? (netBase + disc) : netBase;
+                  }
+                  const finalAmt = 
+                    Number(item.finalPaymentAmount ?? item.paymentAmount ?? raw.payment_amount ?? raw.paymentAmount ?? item.totalAmountIDR ?? raw.total_price_idr ?? 0) ||
+                    (base > 0 ? (Math.max(0, base - disc) + unique) : 0);
+                  const expectedAmt = base > 0 ? (Math.max(0, base - disc) + unique) : finalAmt;
+                  const isAmountMatched = Math.abs(finalAmt - expectedAmt) <= 1;
+                  const isPaymentVerified = isPaid && isAmountMatched;
+
                   // Official departure date for Open Trip, otherwise date
                   const officialDate = item.departureDate || item.date || '-';
 
@@ -768,15 +784,26 @@ export default function OrdersView({
                           : (item.totalAmountUSD ? formatPrice(item.totalAmountUSD, item.totalAmountIDR || 0) : '-')}
                       </td>
 
-                      {/* Mandatory Status Separation: 1. paymentStatus */}
+                      {/* Mandatory Status Separation: 1. paymentStatus with verification match indicator */}
                       <td className="p-3.5 text-center whitespace-nowrap">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase ${
-                          isPaid 
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' 
-                            : 'bg-amber-500/10 text-amber-400 border border-amber-500/30 animate-pulse'
-                        }`}>
-                          {isPaid ? 'Paid' : (item.paymentStatus || 'Pending')}
-                        </span>
+                        <div className="flex flex-col items-center gap-1">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase ${
+                            isPaid 
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' 
+                              : 'bg-amber-500/10 text-amber-400 border border-amber-500/30 animate-pulse'
+                          }`}>
+                            {isPaid ? 'Paid' : (item.paymentStatus || 'Pending')}
+                          </span>
+                          {isPaid && (
+                            <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded border ${
+                              isAmountMatched
+                                ? 'bg-emerald-950/40 text-emerald-400 border-emerald-600/40'
+                                : 'bg-rose-950/40 text-rose-400 border-rose-600/40'
+                            }`} title={isAmountMatched ? `Nominal final dan kode unik (+Rp ${unique}) cocok sempurna` : 'Ketidakcocokan nominal final dan kode unik'}>
+                              {isAmountMatched ? '✓ Match' : '⚠ Mismatch'}
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Mandatory Status Separation: 2. bookingStatus */}
@@ -804,23 +831,33 @@ export default function OrdersView({
                             <Eye className="h-3.5 w-3.5" />
                           </button>
 
-                          {/* Quick Confirm button: strictly only if paymentStatus === Paid */}
+                          {/* Quick Confirm button: strictly only if isPaymentVerified (isPaid AND isAmountMatched) */}
                           {!isConfirmed && !isCompleted && !isCancelled && (
                             <button
-                              disabled={!isPaid}
+                              disabled={!isPaymentVerified}
                               onClick={() => {
                                 if (!isPaid) {
                                   triggerToast('Gagal: Admin hanya boleh konfirmasi jika status pembayaran sudah "Paid".');
                                   return;
                                 }
+                                if (!isAmountMatched) {
+                                  triggerToast('Gagal: Verifikasi pembayaran gagal karena ketidakcocokan nominal final dan kode unik.');
+                                  return;
+                                }
                                 onConfirmBooking(item.id, item.source);
                               }}
                               className={`p-1.5 rounded-lg border transition-all ${
-                                isPaid
+                                isPaymentVerified
                                   ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30 cursor-pointer shadow-xs'
                                   : 'bg-neutral-850 text-neutral-600 border-neutral-800 cursor-not-allowed opacity-50'
                               }`}
-                              title={isPaid ? 'Konfirmasi Booking ini' : 'Admin hanya boleh konfirmasi jika status pembayaran sudah Paid'}
+                              title={
+                                !isPaid 
+                                  ? 'Admin hanya boleh konfirmasi jika status pembayaran sudah Paid'
+                                  : !isAmountMatched
+                                    ? 'Admin tidak boleh konfirmasi jika nominal final dan kode unik tidak cocok'
+                                    : 'Verifikasi Pembayaran & Konfirmasi Booking'
+                              }
                             >
                               <Check className="h-3.5 w-3.5 stroke-[2.5]" />
                             </button>

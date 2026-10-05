@@ -3082,7 +3082,14 @@ app.post('/api/bookings', async (req, res) => {
 
           matchedServiceId = resolvedTour.id;
           resolvedTitle = resolvedTour.name || resolvedTour.title || payload.tripTitle || payload.serviceName || 'Private Tour';
-          baseAmount = tourPricing.totalPriceIDR;
+          const clientBaseInput = Math.round(Number(payload.baseAmount || payload.totalPriceIDR || payload.totalPrice || 0));
+          const tourStartingIDR = Number(resolvedTour.startingPriceIDR || resolvedTour.starting_price_idr || resolvedTour.wniPrice || resolvedTour.wni_price || 0);
+
+          if (clientBaseInput > 0 && (clientBaseInput === tourStartingIDR || clientBaseInput === tourPricing.totalPriceIDR || clientBaseInput === Math.round(tourStartingIDR * serverMultiplier))) {
+            baseAmount = clientBaseInput;
+          } else {
+            baseAmount = tourPricing.totalPriceIDR;
+          }
 
           tourSnapshot = {
             tourId: resolvedTour.id,
@@ -3298,6 +3305,23 @@ app.put('/api/bookings/:id', requireAdminAuth, requirePermission('manageBookings
       if (effectivePayment !== 'Paid') {
         return res.status(400).json({ error: 'Admin hanya boleh konfirmasi booking jika status pembayaran adalah Paid.' });
       }
+
+      // Payment Verification: verify matching final payment amount and unique code
+      const disc = Number(originalBooking.discount || originalBooking.details?.discountAmount || 0);
+      const unique = Number(originalBooking.uniqueCode || (originalBooking as any).unique_code || 0);
+      let base = Number(originalBooking.baseAmount || (originalBooking as any).base_amount || 0);
+      if (!base || base <= 0) {
+        const netBase = Number(originalBooking.totalAmountIDR || originalBooking.totalPriceIDR || originalBooking.totalPrice || 0);
+        base = (netBase > 0 && disc > 0) ? (netBase + disc) : netBase;
+      }
+      const finalAmt = Number(originalBooking.finalPaymentAmount || originalBooking.paymentAmount || originalBooking.totalAmountIDR || 0);
+      if (base > 0 && finalAmt > 0) {
+        const expectedFinal = Math.max(0, base - disc) + unique;
+        if (Math.abs(finalAmt - expectedFinal) > 1) {
+          return res.status(400).json({ error: 'Admin tidak dapat mengonfirmasi: verifikasi gagal karena ketidakcocokan nominal final dan kode unik.' });
+        }
+      }
+
       if (!updates.confirmedAt && !originalBooking.confirmedAt) {
         updates.confirmedAt = new Date().toISOString();
       }
@@ -3323,6 +3347,10 @@ app.put('/api/bookings/:id', requireAdminAuth, requirePermission('manageBookings
 
     // Persist to SQL
     const updated = await bookingsRepo.update(bookingId, updates);
+
+    if (updated?.status === 'Confirmed') {
+      await syncInvoiceForBooking(updated, 'PAID');
+    }
 
     console.log(`[Admin] Booking ${bookingId} updated: status=${updated?.status || updates.status}, paymentStatus=${updated?.paymentStatus || updates.paymentStatus}`);
     res.json(updated);
@@ -3353,8 +3381,26 @@ app.all(['/api/bookings/:id/status'], requireAdminAuth, requirePermission('manag
     const newBookingStatus = status || bookingStatus || currentStatus;
     const newPaymentStatus = paymentStatus || currentPaymentStatus;
 
-    if (newBookingStatus === 'Confirmed' && newPaymentStatus !== 'Paid') {
-      return res.status(400).json({ error: 'Admin hanya boleh konfirmasi booking jika status pembayaran adalah Paid.' });
+    if (newBookingStatus === 'Confirmed') {
+      if (newPaymentStatus !== 'Paid') {
+        return res.status(400).json({ error: 'Admin hanya boleh konfirmasi booking jika status pembayaran adalah Paid.' });
+      }
+
+      // Payment Verification: verify matching final payment amount and unique code
+      const disc = Number(originalBooking.discount || originalBooking.details?.discountAmount || 0);
+      const unique = Number(originalBooking.uniqueCode || (originalBooking as any).unique_code || 0);
+      let base = Number(originalBooking.baseAmount || (originalBooking as any).base_amount || 0);
+      if (!base || base <= 0) {
+        const netBase = Number(originalBooking.totalAmountIDR || originalBooking.totalPriceIDR || originalBooking.totalPrice || 0);
+        base = (netBase > 0 && disc > 0) ? (netBase + disc) : netBase;
+      }
+      const finalAmt = Number(originalBooking.finalPaymentAmount || originalBooking.paymentAmount || originalBooking.totalAmountIDR || 0);
+      if (base > 0 && finalAmt > 0) {
+        const expectedFinal = Math.max(0, base - disc) + unique;
+        if (Math.abs(finalAmt - expectedFinal) > 1) {
+          return res.status(400).json({ error: 'Admin tidak dapat mengonfirmasi: verifikasi gagal karena ketidakcocokan nominal final dan kode unik.' });
+        }
+      }
     }
 
     const isNowRejected = newBookingStatus === 'Rejected' || newBookingStatus === 'Cancelled';
@@ -3386,6 +3432,10 @@ app.all(['/api/bookings/:id/status'], requireAdminAuth, requirePermission('manag
       adminNotes: adminNotes !== undefined ? adminNotes : (originalBooking?.adminNotes || ''),
       rejectReason: rejectReason !== undefined ? rejectReason : (originalBooking?.rejectReason || '')
     });
+
+    if (newBookingStatus === 'Confirmed') {
+      await syncInvoiceForBooking(updated, 'PAID');
+    }
 
     console.log(`[Admin Status Action] Booking ${bookingId}: bookingStatus=${newBookingStatus}, paymentStatus=${newPaymentStatus}`);
     res.json({
@@ -3569,6 +3619,10 @@ app.get([
       uniqueCode,
       paymentAmount,
       finalPaymentAmount: paymentAmount,
+      totalPaid: paymentAmount,
+      totalAmount: paymentAmount,
+      totalAmountIDR: paymentAmount,
+      invoiceNumber: (booking as any).invoiceNumber || `INV-${booking.bookingCode || booking.id}`,
       totalPrice: Math.max(0, baseAmount - discount),
       totalPriceIDR: Math.max(0, baseAmount - discount),
       currency: 'IDR',
@@ -3705,6 +3759,7 @@ app.get([
       documentType: 'FINAL_BOOKING_SUMMARY',
       generatedAt: new Date().toISOString(),
       bookingCode: booking.bookingCode || booking.id,
+      invoiceNumber: (booking as any).invoiceNumber || `INV-${booking.bookingCode || booking.id}`,
       id: booking.id,
       bookingDate: bookingDateFormatted,
       bookingStatus,
@@ -3737,6 +3792,10 @@ app.get([
         promoCode,
         uniqueCode,
         totalPaid: paymentAmount,
+        paymentAmount,
+        totalAmount: paymentAmount,
+        totalAmountIDR: paymentAmount,
+        finalPaymentAmount: paymentAmount,
         currency: 'IDR',
         paidAt: booking.paidAt || booking.createdAt || new Date().toISOString(),
         paymentDate: paymentDateFormatted,
@@ -4472,6 +4531,150 @@ app.get('/api/private-tour/invoice-html/:bookingCode', async (req, res) => {
   }
 });
 
+// Helper to synchronize authoritative invoice entity in SQL database with exact booking and total payment amount
+async function syncInvoiceForBooking(booking: any, status: 'PAID' | 'UNPAID' | 'CONFIRMED' = 'PAID'): Promise<void> {
+  try {
+    if (!booking) return;
+    const bookingCode = booking.bookingCode || booking.id;
+    const invoiceNumber = (booking as any).invoiceNumber || `INV-${bookingCode}`;
+    const verifiedDiscount = Math.max(0, Math.round(Number(
+      booking.discount !== undefined && booking.discount !== null
+        ? booking.discount
+        : (booking.details?.verifiedDiscount ?? 0)
+    )));
+    const baseAmount = Number(booking.baseAmount) || ((Number(booking.totalPriceIDR || booking.totalPrice || 0)) + verifiedDiscount);
+    const uniqueCode = Number(booking.uniqueCode) || 0;
+    const totalPayment = Number(booking.paymentAmount) || Math.max(0, baseAmount - verifiedDiscount + uniqueCode);
+
+    const existingInv = await invoicesRepo.getByInvoiceNumber(invoiceNumber);
+    if (existingInv) {
+      await invoicesRepo.updateInvoice(invoiceNumber, {
+        status,
+        amount: totalPayment,
+        customerName: booking.customerName || booking.fullName,
+        customerEmail: booking.customerEmail || booking.email,
+        serviceSummary: booking.serviceName || booking.tripTitle
+      });
+    } else {
+      await invoicesRepo.createInvoice({
+        id: `inv-${booking.id}`,
+        bookingId: booking.id,
+        invoiceNumber,
+        amount: totalPayment,
+        currency: 'IDR',
+        status,
+        customerName: booking.customerName || booking.fullName,
+        customerEmail: booking.customerEmail || booking.email,
+        serviceSummary: booking.serviceName || booking.tripTitle,
+        createdAt: booking.confirmedAt || booking.paidAt || booking.createdAt || new Date().toISOString()
+      });
+    }
+  } catch (err) {
+    console.warn('[Invoice Sync Notice]:', err);
+  }
+}
+
+// Admin endpoint to list all SQL invoices
+app.get('/api/invoices', requireAdminAuth, requirePermission('manageFinance'), async (req, res) => {
+  try {
+    const list = await invoicesRepo.getAll();
+    return res.json(list);
+  } catch (err: any) {
+    console.error('Error fetching all invoices:', err);
+    return res.status(500).json({ error: 'Gagal mengambil daftar invoice', details: err.message });
+  }
+});
+
+// JSON Invoice Endpoint (Single Source of Truth for Invoices)
+app.get([
+  '/api/invoices/:invoiceNumber',
+  '/api/bookings/:bookingCode/invoice',
+  '/api/private-tour/invoice/:bookingCode'
+], async (req, res) => {
+  try {
+    const rawIdentifier = (req.params.invoiceNumber || req.params.bookingCode || '').trim();
+    if (!rawIdentifier) {
+      return res.status(400).json({ error: 'Invoice number atau booking code wajib diisi.' });
+    }
+
+    let cleanCode = rawIdentifier;
+    if (cleanCode.toUpperCase().startsWith('INV-')) {
+      cleanCode = cleanCode.slice(4);
+    }
+
+    let booking: any = await bookingsRepo.getByCode(cleanCode);
+    if (!booking) {
+      booking = await bookingsRepo.getByCode(rawIdentifier);
+    }
+
+    if (!booking) {
+      const sqlInv = await invoicesRepo.getByInvoiceNumber(rawIdentifier);
+      if (sqlInv) {
+        return res.json({
+          invoiceNumber: sqlInv.invoiceNumber,
+          bookingCode: sqlInv.bookingId,
+          bookingId: sqlInv.bookingId,
+          totalAmount: sqlInv.amount,
+          totalAmountIDR: sqlInv.amount,
+          paymentAmount: sqlInv.amount,
+          totalPaid: sqlInv.amount,
+          finalPaymentAmount: sqlInv.amount,
+          currency: sqlInv.currency,
+          status: sqlInv.status,
+          bookingStatus: sqlInv.status === 'PAID' ? 'Confirmed' : 'Pending Payment',
+          paymentStatus: sqlInv.status === 'PAID' ? 'Paid' : 'Pending',
+          customerName: sqlInv.customerName,
+          customerEmail: sqlInv.customerEmail,
+          serviceSummary: sqlInv.serviceSummary,
+          createdAt: sqlInv.createdAt
+        });
+      }
+      return res.status(404).json({ error: 'Invoice tidak ditemukan.' });
+    }
+
+    const bookingCode = booking.bookingCode || booking.id;
+    const invoiceNumber = (booking as any).invoiceNumber || `INV-${bookingCode}`;
+    const verifiedDiscount = Math.max(0, Math.round(Number(
+      booking.discount !== undefined && booking.discount !== null
+        ? booking.discount
+        : (booking.details?.verifiedDiscount ?? 0)
+    )));
+    const baseAmount = Number(booking.baseAmount) || ((Number(booking.totalPriceIDR || booking.totalPrice || 0)) + verifiedDiscount);
+    const uniqueCode = Number(booking.uniqueCode) || 0;
+    const paymentAmount = Number(booking.paymentAmount) || Math.max(0, baseAmount - verifiedDiscount + uniqueCode);
+
+    return res.json({
+      success: true,
+      invoiceNumber,
+      bookingCode,
+      bookingId: booking.id,
+      bookingStatus: booking.status || 'Pending Payment',
+      paymentStatus: booking.paymentStatus || 'Pending',
+      customerName: booking.customerName || booking.fullName,
+      customerEmail: booking.customerEmail || booking.email,
+      customerPhone: booking.customerPhone || booking.phone,
+      serviceName: booking.serviceName || booking.tripTitle,
+      departureDate: booking.departureDate,
+      baseAmount,
+      discount: verifiedDiscount,
+      uniqueCode,
+      totalAmount: paymentAmount,
+      totalAmountIDR: paymentAmount,
+      paymentAmount,
+      totalPaid: paymentAmount,
+      finalPaymentAmount: paymentAmount,
+      currency: 'IDR',
+      paidAt: booking.paidAt || null,
+      confirmedAt: booking.confirmedAt || null,
+      verificationHash: booking.verificationHash || null,
+      createdAt: booking.createdAt
+    });
+  } catch (err: any) {
+    console.error('Error fetching invoice:', err);
+    return res.status(500).json({ error: 'Gagal mengambil data invoice', details: err.message });
+  }
+});
+
 // Admin-only Confirmation endpoint for Private Tour & Generic Bookings
 app.post(['/api/private-tour/bookings/:id/confirm', '/api/bookings/:id/confirm'], requireAdminAuth, requirePermission('manageBookings'), async (req, res) => {
   try {
@@ -4491,18 +4694,29 @@ app.post(['/api/private-tour/bookings/:id/confirm', '/api/bookings/:id/confirm']
 
     const confirmedAt = new Date().toISOString();
     const adminNotes = req.body?.adminNotes || currentBooking.adminNotes;
+    const bookingCode = currentBooking.bookingCode || currentBooking.id;
+
+    let verificationHash = currentBooking.verificationHash;
+    if (!verificationHash) {
+      const codeClean = bookingCode.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+      const seed = (confirmedAt || currentBooking.createdAt || currentBooking.id || 'SJ').replace(/[^A-Za-z0-9]/g, '').slice(-8).toUpperCase();
+      verificationHash = `SJ-VERIFIED-${codeClean}-${seed}`;
+    }
 
     const updated = await bookingsRepo.update(currentBooking.id, {
       status: 'Confirmed',
       confirmedAt,
+      verificationHash,
       adminNotes
     });
 
-    console.log(`[Admin] Private Tour Booking ${currentBooking.id} (${currentBooking.bookingCode}) CONFIRMED. Payment=${currentBooking.paymentStatus}, Status=Confirmed`);
+    await syncInvoiceForBooking(updated, 'PAID');
+
+    console.log(`[Admin] Booking ${currentBooking.id} (${bookingCode}) CONFIRMED. Payment=${currentBooking.paymentStatus}, Status=Confirmed, Amount=${updated?.paymentAmount || currentBooking.paymentAmount}`);
 
     return res.json({
       success: true,
-      message: `Booking #${currentBooking.bookingCode || currentBooking.id} berhasil dikonfirmasi oleh Admin Pusat.`,
+      message: `Booking #${bookingCode} berhasil dikonfirmasi oleh Admin Pusat.`,
       booking: updated
     });
   } catch (err: any) {

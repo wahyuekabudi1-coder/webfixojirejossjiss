@@ -343,10 +343,14 @@ export default function AdminView() {
         pricingBreakdown: (b.details as any)?.pricingBreakdown,
         nationalityType: (b as any).nationalityType || (b as any).participantData?.nationalityType,
         specialRequests: (b as any).specialRequests || (b.details as any)?.notes || (b.details as any)?.specialRequests,
-        totalAmountIDR: b.totalPriceIDR,
+        totalAmountIDR: Number(b.paymentAmount) || Number(b.totalPriceIDR) || 0,
         totalAmountUSD: b.totalPrice,
         uniqueCode: b.uniqueCode,
         baseAmount: b.baseAmount,
+        discount: Number((b as any).discount) || 0,
+        promoCode: (b as any).promoCode || (b.details as any)?.promoCode,
+        paymentAmount: Number(b.paymentAmount) || Number(b.totalPriceIDR) || 0,
+        finalPaymentAmount: Number(b.paymentAmount) || Number(b.totalPriceIDR) || 0,
         paymentStatus,
         bookingStatus,
         createdAt: b.bookingDate,
@@ -421,10 +425,14 @@ export default function AdminView() {
         batchId: (sb as any).batchId,
         nationalityType: (sb as any).nationalityType || (sb as any).participantData?.nationalityType,
         specialRequests: (sb as any).specialRequests || (sb as any).participantData?.specialRequests || (sb as any).adminNotes,
-        totalAmountIDR: (sb as any).totalPriceIDR || (sb as any).totalAmountIDR,
+        totalAmountIDR: Number((sb as any).paymentAmount) || Number((sb as any).totalPriceIDR) || Number((sb as any).totalAmountIDR) || 0,
         totalAmountUSD: (sb as any).totalPrice || (sb as any).totalAmountUSD,
         uniqueCode: (sb as any).uniqueCode,
         baseAmount: (sb as any).baseAmount,
+        discount: Number((sb as any).discount) || 0,
+        promoCode: (sb as any).promoCode || (sb as any).details?.promoCode,
+        paymentAmount: Number((sb as any).paymentAmount) || Number((sb as any).totalPriceIDR) || Number((sb as any).totalAmountIDR) || 0,
+        finalPaymentAmount: Number((sb as any).paymentAmount) || Number((sb as any).totalPriceIDR) || Number((sb as any).totalAmountIDR) || 0,
         paymentStatus,
         bookingStatus,
         createdAt: (sb as any).createdAt,
@@ -485,8 +493,29 @@ export default function AdminView() {
     const item = unifiedBookingsList.find(b => b.id === id);
     if (!item) return;
 
+    // 1. Payment Verification Rule 1: paymentStatus must be Paid
     if (item.paymentStatus !== 'Paid') {
       triggerToast('Gagal: Admin tidak boleh mengonfirmasi booking jika status pembayaran belum Paid.');
+      return;
+    }
+
+    // 2. Payment Verification Rule 2: final payment amount + unique code match
+    const raw = item.rawBooking || {};
+    const disc = Number(item.discount ?? raw.discount ?? (raw.details?.discountAmount || 0));
+    const unique = Number(item.uniqueCode ?? raw.unique_code ?? raw.uniqueCode ?? 0);
+    let base = Number(item.baseAmount ?? raw.base_amount ?? raw.baseAmount ?? 0);
+    if (!base || base <= 0) {
+      const netBase = Number(item.totalAmountIDR ?? raw.total_price_idr ?? raw.totalPriceIDR ?? (item as any).totalPrice ?? 0);
+      base = (netBase > 0 && disc > 0) ? (netBase + disc) : netBase;
+    }
+    const finalAmt = 
+      Number(item.finalPaymentAmount ?? item.paymentAmount ?? raw.payment_amount ?? raw.paymentAmount ?? item.totalAmountIDR ?? raw.total_price_idr ?? 0) ||
+      (base > 0 ? (Math.max(0, base - disc) + unique) : 0);
+    const expectedAmt = base > 0 ? (Math.max(0, base - disc) + unique) : finalAmt;
+    const isAmountMatched = Math.abs(finalAmt - expectedAmt) <= 1;
+
+    if (!isAmountMatched) {
+      triggerToast('Gagal: Verifikasi pembayaran gagal karena ketidakcocokan nominal final dan kode unik.');
       return;
     }
 

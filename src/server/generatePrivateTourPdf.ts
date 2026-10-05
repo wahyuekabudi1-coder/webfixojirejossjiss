@@ -255,6 +255,22 @@ export function generatePrivateTourPdf(data: FinalSummaryPdfInput): Promise<Buff
           unitPrice: Number(it.unitPrice) || 0,
           amount: Number(it.amount) || (Number(it.qty || 1) * Number(it.unitPrice || 0))
         }));
+
+        if (data.payment.uniqueCode && data.payment.uniqueCode > 0) {
+          const hasUnique = lineItems.some(it => 
+            it.description.toLowerCase().includes('unique') || 
+            it.description.toLowerCase().includes('kode unik')
+          );
+          if (!hasUnique) {
+            lineItems.push({
+              no: lineItems.length + 1,
+              description: 'Payment Verification Code (Kode Unik Pembayaran Otomatis)',
+              qty: '1 Transaksi',
+              unitPrice: data.payment.uniqueCode,
+              amount: data.payment.uniqueCode
+            });
+          }
+        }
       } else {
         // Fallback dinamis dari spesifikasi booking & snapshot aktual
         const paxCount = guestCount || 1;

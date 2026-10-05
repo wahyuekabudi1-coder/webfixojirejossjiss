@@ -114,6 +114,39 @@ export class InvoicesRepository {
     );
     return res.affectedRows > 0;
   }
+
+  async updateInvoice(invoiceNumber: string, updates: Partial<InvoiceEntity>): Promise<boolean> {
+    const client = await this.db();
+    const sets: string[] = [];
+    const params: any[] = [];
+    if (updates.status !== undefined) {
+      sets.push('status = ?');
+      params.push(updates.status);
+    }
+    if (updates.amount !== undefined) {
+      sets.push('amount = ?');
+      params.push(Number(updates.amount) || 0);
+    }
+    if (updates.customerName !== undefined) {
+      sets.push('customer_name = ?');
+      params.push(updates.customerName);
+    }
+    if (updates.customerEmail !== undefined) {
+      sets.push('customer_email = ?');
+      params.push(updates.customerEmail);
+    }
+    if (updates.serviceSummary !== undefined) {
+      sets.push('service_summary = ?');
+      params.push(updates.serviceSummary);
+    }
+    if (sets.length === 0) return false;
+    params.push(invoiceNumber, invoiceNumber);
+    const res = await client.execute(
+      `UPDATE invoices SET ${sets.join(', ')} WHERE invoice_number = ? OR booking_id = ?`,
+      params
+    );
+    return res.affectedRows > 0;
+  }
 }
 
 export const invoicesRepo = new InvoicesRepository();
