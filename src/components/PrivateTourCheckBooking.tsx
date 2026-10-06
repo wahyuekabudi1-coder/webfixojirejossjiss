@@ -432,15 +432,15 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
 
           {/* Open Trip Navigation Tabs (Active for Confirmed Open Trip bookings) */}
           {isSharedBooking && isStatusConfirmedOrCompleted && (
-            <div className="bg-[#0b1714] p-1.5 rounded-2xl border border-[#1c3830] shadow-xl flex gap-1.5">
+            <div className="bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-xs flex gap-1.5">
               <button
                 type="button"
                 id="btn-tab-departure-board"
                 onClick={() => setOpenTripActiveView('board')}
                 className={`flex-1 py-2.5 px-3 sm:px-4 rounded-xl font-mono font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
                   openTripActiveView === 'board'
-                    ? 'bg-emerald-500 text-neutral-950 font-black shadow-md'
-                    : 'text-slate-300 hover:text-white hover:bg-emerald-950/40'
+                    ? 'bg-emerald-700 text-white font-black shadow-sm'
+                    : 'text-slate-700 hover:text-slate-950 hover:bg-white/60'
                 }`}
               >
                 <Plane className="h-4 w-4" />
@@ -452,8 +452,8 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                 onClick={() => setOpenTripActiveView('billing')}
                 className={`flex-1 py-2.5 px-3 sm:px-4 rounded-xl font-mono font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
                   openTripActiveView === 'billing'
-                    ? 'bg-amber-500 text-neutral-950 font-black shadow-md'
-                    : 'text-slate-300 hover:text-white hover:bg-emerald-950/40'
+                    ? 'bg-emerald-700 text-white font-black shadow-sm'
+                    : 'text-slate-700 hover:text-slate-950 hover:bg-white/60'
                 }`}
               >
                 <FileText className="h-4 w-4" />
@@ -473,13 +473,13 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
             <>
               {/* If Open Trip but not yet confirmed, render airport departure board notice */}
               {isSharedBooking && !isStatusConfirmedOrCompleted && (
-                <div className="p-4 rounded-2xl bg-[#0b1714] border border-[#1c3830] text-emerald-300 flex items-start gap-3 shadow-sm">
-                  <Plane className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+                <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 flex items-start gap-3 shadow-xs">
+                  <Plane className="h-5 w-5 text-emerald-700 shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-mono font-black text-amber-300 uppercase block text-xs tracking-wider">
+                    <span className="font-mono font-black text-emerald-900 uppercase block text-xs tracking-wider">
                       Akses Layar Keberangkatan (Departure Board)
                     </span>
-                    <p className="text-xs text-slate-300 mt-1 leading-relaxed font-sans">
+                    <p className="text-xs text-slate-700 mt-1 leading-relaxed font-sans">
                       Pemesanan Open Trip Anda tercatat di sistem. Layar Informasi Keberangkatan (Departure Board) dan daftar manifes peserta satu batch akan aktif otomatis begitu status pemesanan resmi berstatus <strong>Confirmed</strong> oleh Admin.
                     </p>
                   </div>
