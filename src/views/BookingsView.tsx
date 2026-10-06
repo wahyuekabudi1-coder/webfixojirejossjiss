@@ -2,64 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../AppContext';
 import { 
   Calendar, 
-  Trash2, 
-  MessageSquare, 
-  Compass, 
-  AlertCircle, 
-  RefreshCw, 
-  CreditCard, 
-  CheckCircle2, 
-  X, 
-  ShieldCheck, 
-  QrCode, 
-  Wallet, 
-  ArrowRight,
-  Info,
-  Search,
-  FileCheck,
-  Download,
-  Lock,
-  Sparkles
+  Search 
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
 import { processArtoPayPayment } from '../lib/artopay';
-import { idrToUSD } from '../utils/pricingUtils';
 import Breadcrumbs from '../components/Breadcrumbs';
 import PrivateTourCheckBooking from '../components/PrivateTourCheckBooking';
 
 export default function BookingsView() {
-  const { bookings, formatPrice, setPage, currency, refreshBookings } = useApp();
-  const [cancellingId, setCancellingId] = useState<string | null>(null);
-  const [localBookings, setLocalBookings] = useState(bookings);
-  const [paymentLoadingId, setPaymentLoadingId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'check' | 'list'>('check');
+  const { refreshBookings } = useApp();
   const [selectedCode, setSelectedCode] = useState<string>('');
-
-  // Sandbox Test Payment state (Active in Sandbox / Development only)
-  const [isSandbox, setIsSandbox] = useState(() => {
-    if (typeof window === 'undefined') return true;
-    const isDev = Boolean((import.meta as any).env?.DEV);
-    const host = window.location.hostname;
-    return isDev || host === 'localhost' || host === '127.0.0.1' || host.includes('.run.app') || host.includes('ai.studio');
-  });
-  const [simulatingId, setSimulatingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch('/api/artopay/config')
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        if (data && data.env === 'sandbox') {
-          setIsSandbox(true);
-        } else if ((import.meta as any).env?.DEV || (import.meta as any).env?.VITE_ARTOPAY_SANDBOX === 'true' || (import.meta as any).env?.VITE_ARTOPAY_ENV !== 'production') {
-          setIsSandbox(true);
-        }
-      })
-      .catch(() => {
-        if ((import.meta as any).env?.DEV || (import.meta as any).env?.VITE_ARTOPAY_SANDBOX === 'true' || (import.meta as any).env?.VITE_ARTOPAY_ENV !== 'production') {
-          setIsSandbox(true);
-        }
-      });
-  }, []);
 
   // Check URL query param ?code= from both search and hash on mount
   useEffect(() => {
@@ -72,7 +23,6 @@ export default function BookingsView() {
     }
     if (code) {
       setSelectedCode(code);
-      setActiveTab('check');
     }
 
     const handleHash = () => {
@@ -81,201 +31,14 @@ export default function BookingsView() {
       const hCode = hashParams.get('code');
       if (hCode) {
         setSelectedCode(hCode);
-        setActiveTab('check');
       }
     };
     window.addEventListener('hashchange', handleHash);
     return () => window.removeEventListener('hashchange', handleHash);
   }, []);
 
-  // Load customer's personal booking codes from localStorage and sync from authoritative backend
-  useEffect(() => {
-    try {
-      const storedCodes: string[] = JSON.parse(localStorage.getItem('sj_customer_booking_codes') || '[]');
-      if (storedCodes.length > 0) {
-        Promise.all(
-          storedCodes.map(code => 
-            fetch(`/api/private-tour/check-booking/${encodeURIComponent(code)}`)
-              .then(res => res.ok ? res.json() : null)
-              .catch(() => null)
-          )
-        ).then(results => {
-          const valid = results.filter(r => r && r.found);
-          if (valid.length > 0) {
-            setLocalBookings(prev => {
-              const validMap = new Map(valid.map(v => [(v.bookingCode || v.id).toUpperCase(), v]));
-              
-              // 1. Update existing items in prev with latest authoritative server data
-              const updatedPrev = prev.map(p => {
-                const code = (p.bookingCode || p.id || '').toUpperCase();
-                const serverData = validMap.get(code);
-                if (!serverData) return p;
-                validMap.delete(code); // mark as merged
-                const effAmount = Number(serverData.paymentAmount) || Number(serverData.totalAmountIDR) || Number(serverData.totalPaid) || p.paymentAmount || p.totalAmountIDR || p.totalPriceIDR || 0;
-                return {
-                  ...p,
-                  status: serverData.bookingStatus || serverData.status || p.status,
-                  bookingStatus: serverData.bookingStatus || serverData.status || (p as any).bookingStatus,
-                  paymentStatus: serverData.paymentStatus || p.paymentStatus,
-                  paymentAmount: effAmount,
-                  totalAmountIDR: effAmount,
-                  totalPriceIDR: effAmount,
-                  totalPaid: effAmount,
-                  baseAmount: serverData.baseAmount || p.baseAmount,
-                  uniqueCode: serverData.uniqueCode || p.uniqueCode,
-                  paidAt: serverData.paidAt || p.paidAt
-                };
-              });
-
-              // 2. Add remaining bookings from server not yet in prev
-              const remainingToAdd = Array.from(validMap.values()).map(v => {
-                const effAmount = Number(v.paymentAmount) || Number(v.totalAmountIDR) || Number(v.totalPaid) || Number(v.totalPriceIDR) || 0;
-                return {
-                  id: v.id,
-                  bookingCode: v.bookingCode,
-                  type: v.isShared || v.bookingType === 'shared' ? 'shared' : (v.serviceType || 'tour'),
-                  serviceName: v.serviceName || v.tripTitle,
-                  details: {
-                    date: v.departureDate,
-                    guests: v.participantsCount,
-                    vehicleName: v.vehicleName,
-                    pickupLocation: v.pickupLocation
-                  },
-                  totalPrice: v.baseAmount,
-                  totalPriceIDR: effAmount,
-                  totalAmountIDR: effAmount,
-                  paymentAmount: effAmount,
-                  totalPaid: effAmount,
-                  uniqueCode: v.uniqueCode,
-                  baseAmount: v.baseAmount,
-                  status: v.bookingStatus || v.status,
-                  bookingStatus: v.bookingStatus || v.status,
-                  paymentStatus: v.paymentStatus,
-                  paidAt: v.paidAt,
-                  bookingDate: v.createdAt
-                } as any;
-              });
-
-              return [...remainingToAdd, ...updatedPrev];
-            });
-          }
-        });
-      }
-    } catch {}
-  }, []);
-
-  // Sync state if bookings change in context
-  useEffect(() => {
-    setLocalBookings(prev => {
-      const existingIds = new Set(bookings.map(b => b.id));
-      const preserved = prev.filter(p => !existingIds.has(p.id));
-      return [...bookings, ...preserved];
-    });
-  }, [bookings]);
-
-  // Poll server payment status for bookings to ensure live sync with ArtoPay Webhook & Admin Confirmation
-  useEffect(() => {
-    if (localBookings.length === 0) return;
-
-    let isMounted = true;
-
-    const syncPaymentStatuses = async () => {
-      let hasChanges = false;
-      const nextBookings = [...localBookings];
-
-      for (const b of localBookings) {
-        if (b.status === 'Cancelled' || b.status === 'Rejected') continue;
-        try {
-          const checkTarget = b.bookingCode || b.id;
-          const res = await fetch(`/api/private-tour/check-booking/${encodeURIComponent(checkTarget)}`);
-          if (res.ok) {
-            const data = await res.json();
-            if (data.found) {
-              const idx = nextBookings.findIndex(item => (item.id && item.id === b.id) || (item.bookingCode && item.bookingCode === b.bookingCode));
-              if (idx !== -1) {
-                const serverPaymentStatus = data.paymentStatus || nextBookings[idx].paymentStatus;
-                const serverBookingStatus = data.bookingStatus || data.status || nextBookings[idx].status;
-                const serverPaymentAmount = Number(data.paymentAmount) || Number(data.totalAmountIDR) || Number(data.totalPaid) || nextBookings[idx].paymentAmount;
-                const serverUniqueCode = data.uniqueCode || nextBookings[idx].uniqueCode;
-                const serverBaseAmount = data.baseAmount || nextBookings[idx].baseAmount;
-
-                if (
-                  nextBookings[idx].paymentStatus !== serverPaymentStatus ||
-                  nextBookings[idx].status !== serverBookingStatus ||
-                  (nextBookings[idx] as any).bookingStatus !== serverBookingStatus ||
-                  nextBookings[idx].paymentAmount !== serverPaymentAmount ||
-                  nextBookings[idx].totalAmountIDR !== serverPaymentAmount
-                ) {
-                  // Single Source of Truth from backend SQL
-                  nextBookings[idx] = { 
-                    ...nextBookings[idx], 
-                    paymentStatus: serverPaymentStatus, 
-                    status: serverBookingStatus,
-                    bookingStatus: serverBookingStatus,
-                    baseAmount: serverBaseAmount,
-                    uniqueCode: serverUniqueCode,
-                    paymentAmount: serverPaymentAmount,
-                    totalPriceIDR: serverPaymentAmount,
-                    totalAmountIDR: serverPaymentAmount,
-                    totalPaid: serverPaymentAmount,
-                    paidAt: data.paidAt || nextBookings[idx].paidAt
-                  };
-                  hasChanges = true;
-                }
-              }
-            }
-          }
-        } catch (err) {
-          // Silent polling error catch
-        }
-      }
-
-      if (hasChanges && isMounted) {
-        setLocalBookings(nextBookings);
-      }
-    };
-
-    syncPaymentStatuses();
-    const timer = setInterval(syncPaymentStatuses, 4000);
-    return () => {
-      isMounted = false;
-      clearInterval(timer);
-    };
-  }, [localBookings]);
-
-  const handleChatSupport = (booking: any) => {
-    const text = `Hi SmartJourney Support, I have an active reservation (ID: ${booking.id || booking.bookingCode}) for the "${booking.serviceName || booking.tripTitle}" scheduled on ${booking.details?.date || booking.departureDate}. I'd like to ask a question regarding my trip details!`;
-    const encoded = encodeURIComponent(text);
-    window.open(`https://wa.me/6285212347289?text=${encoded}`, '_blank', 'noreferrer,noopener');
-  };
-
-  const updateBookingPaymentStatus = (
-    id: string, 
-    status: string, 
-    bookingStatus?: string,
-    paymentAmount?: number,
-    uniqueCode?: number,
-    baseAmount?: number
-  ) => {
-    const updated = localBookings.map(b => {
-      if (b.id === id) {
-        return { 
-          ...b, 
-          paymentStatus: status,
-          ...(bookingStatus ? { status: bookingStatus } : {}),
-          ...(paymentAmount ? { paymentAmount } : {}),
-          ...(uniqueCode ? { uniqueCode } : {}),
-          ...(baseAmount ? { baseAmount } : {})
-        };
-      }
-      return b;
-    });
-    setLocalBookings(updated);
-  };
-
-  // Triggered when paying with ArtoPay
+  // Triggered when paying with ArtoPay via Cek Booking ID & Invoice
   const handlePayWithArtoPay = async (booking: any) => {
-    setPaymentLoadingId(booking.id);
     try {
       const targetOrderId = booking.bookingCode || booking.id;
       const disc = Math.max(0, Number(booking.discount || 0));
@@ -290,44 +53,14 @@ export default function BookingsView() {
         orderId: targetOrderId,
         amount: payableAmount,
         currency: 'IDR',
-        onSuccess: async (res) => {
-          try {
-            const check = await fetch(`/api/orders/${encodeURIComponent(targetOrderId)}/payment-status`);
-            if (check.ok) {
-              const data = await check.json();
-              if (data.found) {
-                updateBookingPaymentStatus(
-                  booking.id, 
-                  data.paymentStatus || 'Paid', 
-                  data.bookingStatus || data.orderStatus,
-                  data.paymentAmount,
-                  data.uniqueCode,
-                  data.baseAmount
-                );
-              }
-            }
-          } catch (e) {
-            console.warn('Status sync error:', e);
+        onSuccess: async () => {
+          if (typeof refreshBookings === 'function') {
+            await refreshBookings().catch(() => {});
           }
         },
-        onPending: async (res) => {
-          try {
-            const check = await fetch(`/api/orders/${encodeURIComponent(targetOrderId)}/payment-status`);
-            if (check.ok) {
-              const data = await check.json();
-              if (data.found) {
-                updateBookingPaymentStatus(
-                  booking.id, 
-                  data.paymentStatus || 'Pending', 
-                  data.bookingStatus || data.orderStatus,
-                  data.paymentAmount,
-                  data.uniqueCode,
-                  data.baseAmount
-                );
-              }
-            }
-          } catch (e) {
-            console.warn('Status sync error:', e);
+        onPending: async () => {
+          if (typeof refreshBookings === 'function') {
+            await refreshBookings().catch(() => {});
           }
         },
         onError: (err) => {
@@ -337,64 +70,6 @@ export default function BookingsView() {
     } catch (err: any) {
       console.error('ArtoPay payment trigger failed:', err);
       alert(err.message || 'Gagal memproses pembayaran ke ArtoPay.');
-    } finally {
-      setPaymentLoadingId(null);
-    }
-  };
-
-  // Sandbox Test Payment Simulation Handler (Only active in sandbox/dev mode)
-  const handleSimulatePayment = async (booking: any) => {
-    const code = booking.bookingCode || booking.id;
-    setSimulatingId(booking.id);
-    try {
-      const res = await fetch('/api/artopay/simulate-webhook', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId: code, bookingId: booking.id, bookingCode: booking.bookingCode })
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        // Re-sync authoritative booking status from backend
-        const checkRes = await fetch(`/api/private-tour/check-booking/${encodeURIComponent(code)}`);
-        if (checkRes.ok) {
-          const updated = await checkRes.json();
-          updateBookingPaymentStatus(
-            booking.id,
-            updated.paymentStatus || 'Paid',
-            updated.bookingStatus || 'Pending Confirmation',
-            updated.paymentAmount,
-            updated.uniqueCode,
-            updated.baseAmount
-          );
-        } else {
-          updateBookingPaymentStatus(booking.id, 'Paid', 'Pending Confirmation');
-        }
-
-        if (typeof refreshBookings === 'function') {
-          await refreshBookings().catch(() => {});
-        }
-
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('sj_booking_updated', {
-            detail: { bookingCode: code, id: booking.id, paymentStatus: 'Paid' }
-          }));
-          try {
-            localStorage.setItem('sj_last_webhook_event', JSON.stringify({
-              timestamp: Date.now(),
-              bookingCode: code,
-              id: booking.id,
-              paymentStatus: 'Paid'
-            }));
-          } catch {}
-        }
-      } else {
-        alert(data.error || 'Simulasi pembayaran gagal.');
-      }
-    } catch (err) {
-      console.error('Simulate payment error:', err);
-      alert('Gagal menghubungi server untuk simulasi pembayaran.');
-    } finally {
-      setSimulatingId(null);
     }
   };
 
@@ -415,428 +90,27 @@ export default function BookingsView() {
           </p>
         </div>
 
-        {/* Portal Tabs: Check Booking (Open Trip & Private) vs My Reservations */}
+        {/* Portal: Cek Booking ID & Invoice */}
         <div className="flex justify-center">
           <div className="inline-flex p-1.5 rounded-2xl bg-[#203c34] border border-[#315B4F] shadow-lg">
-            <button
-              onClick={() => setActiveTab('check')}
-              className={`px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer ${
-                activeTab === 'check'
-                  ? 'bg-amber-500 text-neutral-950 shadow-md'
-                  : 'text-neutral-300 hover:text-white'
-              }`}
+            <div
+              className="px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 bg-amber-500 text-neutral-950 shadow-md"
             >
               <Search className="h-4 w-4" />
               <span>Cek Booking ID &amp; Invoice</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('list')}
-              className={`px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer ${
-                activeTab === 'list'
-                  ? 'bg-amber-500 text-neutral-950 shadow-md'
-                  : 'text-neutral-300 hover:text-white'
-              }`}
-            >
-              <FileCheck className="h-4 w-4" />
-              <span>Tiket Reservasi Saya ({localBookings.length})</span>
-            </button>
+            </div>
           </div>
         </div>
 
-        {/* Active Tab Content */}
-        {activeTab === 'check' ? (
-          <div className="bg-[#F8FAF9] rounded-3xl p-2 sm:p-6 text-neutral-900 shadow-2xl border border-neutral-200">
-            <PrivateTourCheckBooking 
-              initialCode={selectedCode}
-              onPayNow={(b) => handlePayWithArtoPay(b)}
-            />
-          </div>
-        ) : (
-          /* Boarding Tickets Listing */
-          localBookings.length === 0 ? (
-          /* Empty State */
-          <div className="bg-[#203c34] border border-[#315B4F] rounded-3xl p-12 text-center space-y-6 max-w-md mx-auto">
-            <div className="p-4 bg-white/5 border border-white/10 rounded-full w-fit mx-auto text-neutral-400">
-              <Compass className="h-8 w-8 animate-spin-slow" />
-            </div>
-            <div className="space-y-1.5">
-              <h3 className="font-bold text-lg text-white">No Active Reservations</h3>
-              <p className="text-xs text-emerald-100/80 leading-relaxed">
-                You haven't booked any private transportation or tours yet. Explore our premium packages to begin!
-              </p>
-            </div>
-            <button
-              onClick={() => { setPage('tours'); }}
-              className="bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-bold px-6 py-3 rounded-xl shadow-lg transition-all"
-            >
-              Browse Tour Packages
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-8">
-            {localBookings.map((booking) => {
-              const rawPayment = (booking.paymentStatus || '').trim().toLowerCase();
-              const rawBooking = (booking.bookingStatus || booking.status || '').trim();
-              const rawBookingLower = rawBooking.toLowerCase();
-
-              const isPaid = 
-                rawPayment === 'paid' || 
-                rawPayment === 'settlement' || 
-                rawPayment === 'success' || 
-                rawPayment === 'capture' || 
-                rawPayment === 'lunas' ||
-                rawBookingLower === 'paid' ||
-                rawBookingLower.includes('pending confirmation') ||
-                rawBookingLower === 'confirmed' || 
-                rawBookingLower === 'completed' ||
-                Boolean(booking.paidAt);
-
-              const isConfirmed = rawBookingLower === 'confirmed';
-              const isCompleted = rawBookingLower === 'completed';
-              const isCancelled = rawBookingLower === 'cancelled' || rawBookingLower === 'rejected' || rawBookingLower === 'refunded';
-              const isPendingConfirmation = isPaid && !isConfirmed && !isCompleted && !isCancelled;
-              const isPending = !isPaid && !isCancelled;
-              const isConfirmedOrCompleted = isConfirmed || isCompleted;
-
-              const displayPaymentStatus: 'Paid' | 'Pending' = isPaid ? 'Paid' : 'Pending';
-              const displayBookingStatus: 'Pending Payment' | 'Pending Confirmation' | 'Confirmed' | 'Completed' | 'Cancelled' = 
-                isCancelled ? 'Cancelled' :
-                isCompleted ? 'Completed' :
-                isConfirmed ? 'Confirmed' :
-                isPendingConfirmation ? 'Pending Confirmation' : 'Pending Payment';
-              
-              return (
-                <div
-                  key={booking.id}
-                  className="relative bg-[#203c34] border border-[#315B4F] rounded-3xl overflow-hidden shadow-2xl flex flex-col md:grid md:grid-cols-12"
-                >
-                  {/* Boarding pass circular ticket cuts (left and right for desktop) */}
-                  <div className="hidden md:block absolute left-[75%] top-0 -translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-[#1c3830] rounded-full border border-[#315B4F] z-10" />
-                  <div className="hidden md:block absolute left-[75%] bottom-0 -translate-x-1/2 translate-y-1/2 w-6 h-6 bg-[#1c3830] rounded-full border border-[#315B4F] z-10" />
-
-                  {/* Left Section - Ride/Tour specifications (Col 9) */}
-                  <div className="p-6 md:p-8 md:col-span-9 space-y-6">
-                    
-                    {/* Top line ID & category */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-[10px] font-bold text-neutral-950 font-mono uppercase bg-amber-500 px-2.5 py-0.5 rounded-full">
-                          {booking.type}
-                        </span>
-                        <span className="text-xs text-neutral-400 font-mono">
-                          Booking ID: <strong className="text-white">{booking.id}</strong>
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {/* 1. Payment Status Badge (Exact parity with Admin) */}
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold font-mono uppercase tracking-wider border ${
-                          isPaid 
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
-                            : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                        }`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${isPaid ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'}`} />
-                          <span>{displayPaymentStatus}</span>
-                        </span>
-
-                        {/* 2. Booking Status Badge (Exact parity with Admin) */}
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold font-mono uppercase tracking-wider border ${
-                          isConfirmed ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' :
-                          isCompleted ? 'bg-purple-500/10 text-purple-400 border-purple-500/30' :
-                          isCancelled ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' :
-                          isPendingConfirmation ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30 animate-pulse' :
-                          'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                        }`}>
-                          <span>{displayBookingStatus}</span>
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Main Service Description */}
-                    <div>
-                      <h3 className="text-lg sm:text-xl font-black text-white leading-tight">
-                        {booking.serviceName}
-                      </h3>
-                      <p className="text-xs text-neutral-400 mt-1 flex items-center gap-1.5">
-                        <Calendar className="h-3.5 w-3.5 text-amber-500" />
-                        <span>Scheduled Departure: <strong className="text-neutral-200">{booking.details.date} {booking.details.time ? `at ${booking.details.time}` : ''}</strong></span>
-                      </p>
-                    </div>
-
-                    {/* Flight/Address details */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs bg-white/5 p-4 rounded-2xl">
-                      {booking.details.pickupLocation && (
-                        <div>
-                          <span className="text-neutral-500 font-mono text-[9px] block uppercase tracking-wider">Pickup Point</span>
-                          <span className="text-white font-medium line-clamp-2">{booking.details.pickupLocation}</span>
-                        </div>
-                      )}
-                      {booking.details.destination && (
-                        <div>
-                          <span className="text-neutral-500 font-mono text-[9px] block uppercase tracking-wider">Destination</span>
-                          <span className="text-white font-medium line-clamp-2">{booking.details.destination}</span>
-                        </div>
-                      )}
-                      {booking.details.vehicleName && (
-                        <div>
-                          <span className="text-neutral-500 font-mono text-[9px] block uppercase tracking-wider">Assigned Vehicle Class</span>
-                          <span className="text-white font-medium">{booking.details.vehicleName}</span>
-                        </div>
-                      )}
-                      {booking.details.flightNumber && booking.details.flightNumber !== 'N/A' && (
-                        <div>
-                          <span className="text-neutral-500 font-mono text-[9px] block uppercase tracking-wider">Flight Number</span>
-                          <span className="text-amber-400 font-mono font-bold uppercase">{booking.details.flightNumber}</span>
-                        </div>
-                      )}
-                      {booking.details.guests && (
-                        <div>
-                          <span className="text-neutral-500 font-mono text-[9px] block uppercase tracking-wider">Group Size</span>
-                          <span className="text-white font-medium">{booking.details.guests} Passengers</span>
-                        </div>
-                      )}
-                      {booking.details.days && (
-                        <div>
-                          <span className="text-neutral-500 font-mono text-[9px] block uppercase tracking-wider">Rental Duration</span>
-                          <span className="text-white font-medium">{booking.details.days} Days</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Action buttons */}
-                    <div className="pt-2 flex flex-wrap gap-3 items-center">
-                      {/* TAHAP 7-10: Check Status & Final Summary Action */}
-                      <button
-                        onClick={() => {
-                          setSelectedCode(booking.bookingCode || booking.id);
-                          setActiveTab('check');
-                        }}
-                        className="bg-amber-500/15 border border-amber-500/40 text-amber-300 hover:bg-amber-500 hover:text-neutral-950 font-bold px-4 py-2.5 rounded-xl text-xs flex items-center space-x-1.5 transition-all cursor-pointer shadow-sm"
-                        title="Periksa Progres Status & Unduh Final Booking Summary"
-                      >
-                        <ShieldCheck className="h-4 w-4 text-amber-400" />
-                        <span>Lacak Status &amp; Final Summary</span>
-                      </button>
-
-                      {/* Download Confirmation / Invoice PDF: AVAILABLE WHEN CONFIRMED OR COMPLETED */}
-                      {isPaid && (booking.status === 'Confirmed' || booking.status === 'Completed' || (booking as any).bookingStatus === 'Confirmed' || (booking as any).bookingStatus === 'Completed') ? (
-                        <a
-                          id={`btn-download-pdf-${booking.bookingCode || booking.id}`}
-                          href={`/api/private-tour/invoice-pdf/${encodeURIComponent(booking.bookingCode || booking.id)}`}
-                          download={`SmartJourney-Confirmation-${booking.bookingCode || booking.id}.pdf`}
-                          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center space-x-1.5 transition-all shadow-md cursor-pointer"
-                        >
-                          <Download className="h-4 w-4" />
-                          <span>Download Invoice (PDF)</span>
-                        </a>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 bg-neutral-800 text-neutral-400 border border-neutral-700 px-3 py-2 rounded-xl text-xs font-medium cursor-not-allowed" title="Dokumen konfirmasi resmi hanya dapat diunduh setelah dikonfirmasi Admin">
-                          <Lock className="h-3.5 w-3.5 text-neutral-500" />
-                          <span>Dokumen Terkunci</span>
-                        </span>
-                      )}
-
-                      <button
-                        onClick={() => handleChatSupport(booking)}
-                        className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-neutral-950 font-bold px-4 py-2.5 rounded-xl text-xs flex items-center space-x-1.5 transition-all"
-                      >
-                        <MessageSquare className="h-4 w-4" />
-                        <span>WhatsApp Coordinator</span>
-                      </button>
-                      
-                      {/* ArtoPay Online Checkout Action */}
-                      {!isPaid && !isPending && (
-                        <button
-                          onClick={() => handlePayWithArtoPay(booking)}
-                          disabled={paymentLoadingId === booking.id}
-                          className="bg-amber-500 hover:bg-amber-400 text-neutral-950 font-black px-5 py-2.5 rounded-xl text-xs flex items-center space-x-2 transition-all shadow-lg active:scale-95 disabled:opacity-50"
-                        >
-                          {paymentLoadingId === booking.id ? (
-                            <>
-                              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                              <span>Menghubungkan ArtoPay...</span>
-                            </>
-                          ) : (
-                            <>
-                              <CreditCard className="h-3.5 w-3.5" />
-                              <span>Bayar Sekarang (ArtoPay)</span>
-                            </>
-                          )}
-                        </button>
-                      )}
-
-                      {isPaid && isConfirmed && (
-                        <span className="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-4 py-2 rounded-xl text-xs font-bold">
-                          <ShieldCheck className="h-4 w-4" />
-                          <span>Lunas &amp; Terkonfirmasi (Confirmed)</span>
-                        </span>
-                      )}
-
-                      {isPaid && !isConfirmed && (
-                        <span className="inline-flex items-center gap-1.5 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-4 py-2 rounded-xl text-xs font-bold animate-pulse">
-                          <RefreshCw className="h-3.5 w-3.5 animate-spin text-cyan-400" />
-                          <span>Menunggu Konfirmasi Admin</span>
-                        </span>
-                      )}
-
-                      {isPending && (
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center gap-1.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 px-4 py-2 rounded-xl text-xs font-bold">
-                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                            <span>Menunggu Pembayaran</span>
-                          </span>
-                          <button
-                            onClick={() => handlePayWithArtoPay(booking)}
-                            className="bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs px-3 py-2 rounded-xl font-medium cursor-pointer"
-                          >
-                            Ulangi
-                          </button>
-                        </div>
-                      )}
-
-                      {/* TOMBOL TEST PAYMENT UNTUK SANDBOX SAJA */}
-                      {isSandbox && !isPaid && (
-                        <button
-                          id={`btn-simulate-payment-${booking.bookingCode || booking.id}`}
-                          onClick={() => handleSimulatePayment(booking)}
-                          disabled={simulatingId === booking.id}
-                          className="bg-amber-500/15 hover:bg-amber-500/25 border-2 border-dashed border-amber-400 text-amber-300 font-bold px-4 py-2.5 rounded-xl text-xs flex items-center space-x-1.5 transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
-                          title="Simulasi Webhook ArtoPay Sukses (Sandbox Testing Saja)"
-                        >
-                          {simulatingId === booking.id ? (
-                            <>
-                              <RefreshCw className="h-3.5 w-3.5 animate-spin text-amber-400" />
-                              <span>Simulasi Webhook...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-                              <span>Simulasi Pembayaran Sukses</span>
-                            </>
-                          )}
-                        </button>
-                      )}
-                      
-                      {/* Support Contact Button for reservation change / question */}
-                      <button
-                        onClick={() => handleChatSupport(booking)}
-                        className="bg-white/5 border border-white/10 hover:border-emerald-500/30 text-neutral-300 hover:text-emerald-400 font-medium px-4 py-2.5 rounded-xl text-xs flex items-center space-x-1.5 transition-all"
-                      >
-                        <MessageSquare className="h-4 w-4" />
-                        <span>Bantuan &amp; Perubahan</span>
-                      </button>
-                    </div>
-
-                  </div>
-
-                  {/* Right Section - Boarding Ticket QR Code Display (Col 3) */}
-                  <div className="p-6 md:p-8 md:col-span-3 bg-[#182e28] flex flex-col items-center justify-center border-t md:border-t-0 md:border-l border-[#315B4F] md:border-dashed text-center space-y-4">
-                    
-                    {/* Mock Barcode / QR Styling */}
-                    <div className="bg-white p-3.5 rounded-2xl shadow-xl hover:scale-105 transition-transform duration-300">
-                      <div className="grid grid-cols-5 gap-1 w-24 h-24">
-                        {/* Generates a stylized high-fidelity QR look-alike grid */}
-                        {[...Array(25)].map((_, idx) => {
-                          const isFilled = (idx % 2 === 0 && idx % 3 !== 0) || idx === 0 || idx === 4 || idx === 20 || idx === 24;
-                          return (
-                            <div
-                              key={idx}
-                              className={`rounded-sm ${isFilled ? (isPaid ? 'bg-emerald-600' : 'bg-neutral-950') : 'bg-transparent'}`}
-                            />
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <span className="text-[10px] text-neutral-500 block uppercase font-mono tracking-wider">TOTAL TAGIHAN FINAL (ARTOPAY)</span>
-                      {(() => {
-                        const disc = Math.max(0, Number(booking.discount || 0));
-                        const base = Number(booking.baseAmount) > 0 
-                          ? Number(booking.baseAmount) 
-                          : (Number(booking.totalPriceIDR || 0) + disc);
-                        const unique = Number(booking.uniqueCode || 0);
-                        const finalPayable = 
-                          Number(booking.paymentAmount) || 
-                          Number(booking.totalAmountIDR) || 
-                          Number(booking.totalPaid) || 
-                          (base > 0 ? (Math.max(0, base - disc) + unique) : Number(booking.totalPriceIDR || 0));
-                        const finalUSD = idrToUSD(finalPayable);
-                        if (currency !== 'IDR') {
-                          return (
-                            <div>
-                              <span className="text-lg font-black text-amber-400 block leading-tight font-mono">
-                                {formatPrice(finalUSD, finalPayable)}
-                              </span>
-                              <span className="text-[10px] font-mono text-emerald-400 block font-semibold">
-                                ≈ Rp {finalPayable.toLocaleString('id-ID')} IDR
-                              </span>
-                            </div>
-                          );
-                        }
-                        return (
-                          <span className="text-lg font-black text-amber-400 block leading-tight font-mono">
-                            Rp {finalPayable.toLocaleString('id-ID')}
-                          </span>
-                        );
-                      })()}
-                      {booking.uniqueCode ? (
-                        <div className="text-[9px] font-mono text-neutral-400 pt-0.5 space-y-0.5">
-                          <div>
-                            Dasar: Rp {(
-                              Number(booking.baseAmount) > 0
-                                ? Number(booking.baseAmount)
-                                : (Number(booking.totalPriceIDR || 0) + Math.max(0, Number(booking.discount || 0)))
-                            ).toLocaleString('id-ID')}
-                          </div>
-                          {Boolean(booking.discount && Number(booking.discount) > 0) && (
-                            <div className="text-emerald-400 font-bold">Diskon: - Rp {Number(booking.discount).toLocaleString('id-ID')}</div>
-                          )}
-                          <div className="text-amber-400 font-bold">+ Kode: Rp {booking.uniqueCode}</div>
-                        </div>
-                      ) : null}
-                      
-                      {/* Interactive payment & booking badges under price */}
-                      <div className="flex flex-col items-center gap-1 pt-1">
-                        <span className={`inline-block text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md border ${
-                          isPaid 
-                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
-                            : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
-                        }`}>
-                          Payment: {displayPaymentStatus.toUpperCase()}
-                        </span>
-                        <span className={`inline-block text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md border ${
-                          isConfirmed ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' :
-                          isCompleted ? 'bg-purple-500/10 border-purple-500/20 text-purple-400' :
-                          isPendingConfirmation ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400' :
-                          isCancelled ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' :
-                          'bg-neutral-800 border-neutral-700 text-neutral-400'
-                        }`}>
-                          Booking: {displayBookingStatus.toUpperCase()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-              );
-            })}
-
-            <div className="bg-neutral-900 border border-white/5 rounded-2xl p-4 flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
-              <div className="text-xs text-neutral-400 space-y-1">
-                <p className="font-bold text-white">Informasi Pembayaran ArtoPay</p>
-                <p className="leading-relaxed">
-                  Kami menyediakan integrasi pembayaran aman dengan gerbang pembayaran ArtoPay. Anda dapat memilih metode pembayaran instan seperti Virtual Account, QRIS, e-Wallet, atau Kartu Kredit. Setelah pembayaran lunas, kode QR tiket Anda akan diverifikasi secara otomatis dan status pemesanan Anda berubah menjadi LUNAS.
-                </p>
-              </div>
-            </div>
-
-          </div>
-        ))}
+        {/* Cek Booking ID & Invoice Content */}
+        <div className="bg-[#F8FAF9] rounded-3xl p-2 sm:p-6 text-neutral-900 shadow-2xl border border-neutral-200">
+          <PrivateTourCheckBooking 
+            initialCode={selectedCode}
+            onPayNow={(b) => handlePayWithArtoPay(b)}
+          />
+        </div>
 
       </div>
-
     </div>
   );
 }
