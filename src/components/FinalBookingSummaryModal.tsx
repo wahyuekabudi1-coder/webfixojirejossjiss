@@ -13,7 +13,6 @@ import {
   Car, 
   MapPin, 
   CreditCard, 
-  FileText,
   Phone,
   Mail,
   Building
@@ -100,23 +99,6 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
     }, 1000);
   };
 
-  const handleOpenPrintablePage = () => {
-    window.open(`/api/private-tour/invoice-html/${encodeURIComponent(data.bookingCode)}?autoPrint=true`, '_blank');
-  };
-
-  const handleDownloadJSON = () => {
-    const jsonStr = JSON.stringify(data, null, 2);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `SmartJourney-Final-Booking-${data.bookingCode}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
   const formattedTotal = (data.payment.totalPaid || 0).toLocaleString('id-ID');
   const formattedBase = (data.payment.baseAmount || data.payment.basePrice || 0).toLocaleString('id-ID');
   const formattedUnique = (data.payment.uniqueCode || 0).toLocaleString('id-ID');
@@ -159,24 +141,6 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
               <span>Cetak (A4)</span>
             </button>
             <button
-              id="btn-open-pdf-summary-modal"
-              onClick={handleOpenPrintablePage}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors cursor-pointer"
-              title="Buka Halaman Siap Cetak A4"
-            >
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">Versi Web A4</span>
-            </button>
-            <button
-              id="btn-download-json-summary"
-              onClick={handleDownloadJSON}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-neutral-950 text-xs font-black transition-colors cursor-pointer"
-              title="Unduh Snapshot JSON"
-            >
-              <Download className="h-4 w-4" />
-              <span className="hidden sm:inline">JSON</span>
-            </button>
-            <button
               id="btn-close-summary-modal"
               onClick={onClose}
               className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer ml-1"
@@ -191,24 +155,36 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
         <div className="p-4 sm:p-6 md:p-8 space-y-6 overflow-y-auto overscroll-contain flex-1 print:overflow-visible print:p-0 print:space-y-4 text-neutral-900" id="printable-summary-document">
           
           {/* Header Brand & Verification */}
-          <div className="border-b border-neutral-200 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center space-x-2 mb-1">
+          <div className="border-b border-neutral-200 pb-5 sm:pb-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 mb-1">
                 <span className="font-black text-2xl tracking-tight text-neutral-900 font-mono">SMART JOURNEY</span>
-                <span className="text-[10px] bg-emerald-100 text-emerald-950 font-extrabold px-2 py-0.5 rounded-full border border-emerald-300">
+                <span className="text-[10px] bg-emerald-100 text-emerald-950 font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-300 tracking-wide">
                   OFFICIAL CONFIRMATION
                 </span>
               </div>
-              <div className="text-base font-black text-emerald-900 tracking-wider uppercase font-mono">FINAL BOOKING CONFIRMATION</div>
-              <p className="text-xs text-slate-700 font-semibold mt-0.5">Booking Summary &amp; Payment Receipt</p>
-              <p className="text-xs text-slate-600 font-medium mt-1">PT Sawah Jaya Trans • Smart Journey Official Travel</p>
-              <p className="text-[11px] text-slate-700 font-mono font-medium">Hub: Malang &amp; Bali • WhatsApp: +62 852-1234-7289 • Info@sawahjayatrans.com</p>
+              <div className="text-sm sm:text-base font-black text-emerald-900 tracking-wider uppercase font-mono">
+                FINAL BOOKING CONFIRMATION
+              </div>
+              <p className="text-xs text-slate-900 font-bold">
+                Booking Summary &amp; Payment Receipt
+              </p>
+              <p className="text-xs text-slate-800 font-semibold">
+                PT Sawah Jaya Trans
+              </p>
+              <div className="text-[11px] text-slate-700 font-mono font-medium pt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <span>Hub: Malang &amp; Bali</span>
+                <span className="text-slate-400">•</span>
+                <span>WhatsApp: +62 852-1234-7289</span>
+                <span className="text-slate-400">•</span>
+                <span>Email: Info@sawahjayatrans.com</span>
+              </div>
             </div>
 
-            <div className="sm:text-right bg-slate-50 sm:bg-transparent p-3 sm:p-0 rounded-xl border sm:border-0 border-slate-200">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-slate-600 block font-bold">Booking Code / ID</span>
+            <div className="sm:text-right bg-slate-50 sm:bg-transparent p-3 sm:p-0 rounded-xl border sm:border-0 border-slate-200 shrink-0">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-slate-700 block font-bold">Booking Code / ID</span>
               <span className="text-2xl font-black font-mono text-neutral-900 block" id="summary-booking-code">{data.bookingCode}</span>
-              <div className="mt-1 flex sm:justify-end items-center gap-1.5 flex-wrap">
+              <div className="mt-1.5 flex sm:justify-end items-center gap-1.5 flex-wrap">
                 <span className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-0.5 rounded-md border ${
                   data.bookingStatus === 'Confirmed' || data.bookingStatus === 'Completed'
                     ? 'text-emerald-900 bg-emerald-100 border-emerald-300'
@@ -227,7 +203,7 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
                 </span>
               </div>
               {data.bookingDate && (
-                <span className="text-[11px] text-slate-700 font-semibold block mt-1">Tanggal: {data.bookingDate}</span>
+                <span className="text-[11px] text-slate-800 font-semibold block mt-1">Tanggal: {data.bookingDate}</span>
               )}
             </div>
           </div>
@@ -268,26 +244,26 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
               </h3>
               <div className="space-y-2 text-xs">
                 <div>
-                  <span className="text-slate-600 block text-[10px] font-bold uppercase tracking-wider">Nama Lengkap (Customer)</span>
+                  <span className="text-slate-700 block text-[10px] font-bold uppercase tracking-wider">Nama Lengkap (Customer)</span>
                   <span className="font-black text-slate-900 text-sm" id="summary-customer-name">{data.customer.name}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-slate-200">
                   <div>
-                    <span className="text-slate-600 block text-[10px] font-bold uppercase tracking-wider">Telepon / WhatsApp</span>
+                    <span className="text-slate-700 block text-[10px] font-bold uppercase tracking-wider">Telepon / WhatsApp</span>
                     <span className="font-mono font-bold text-slate-900">{data.customer.phone || '-'}</span>
                   </div>
                   <div>
-                    <span className="text-slate-600 block text-[10px] font-bold uppercase tracking-wider">Email</span>
+                    <span className="text-slate-700 block text-[10px] font-bold uppercase tracking-wider">Email</span>
                     <span className="font-mono font-bold text-slate-900 truncate block">{data.customer.email || '-'}</span>
                   </div>
                 </div>
                 <div className="pt-1.5 border-t border-slate-200">
-                  <span className="text-slate-600 block text-[10px] font-bold uppercase tracking-wider">Lokasi Penjemputan (Pickup)</span>
+                  <span className="text-slate-700 block text-[10px] font-bold uppercase tracking-wider">Lokasi Penjemputan (Pickup)</span>
                   <span className="font-bold text-slate-900">{data.customer.pickupLocation || data.trip.pickupLocation || 'Hotel Lobby / Meeting Point'}</span>
                 </div>
                 {(data.customer.dropoffLocation || data.trip.dropoffLocation) && (
                   <div className="pt-1.5 border-t border-slate-200">
-                    <span className="text-slate-600 block text-[10px] font-bold uppercase tracking-wider">Lokasi Pengantaran (Drop-off)</span>
+                    <span className="text-slate-700 block text-[10px] font-bold uppercase tracking-wider">Lokasi Pengantaran (Drop-off)</span>
                     <span className="font-bold text-slate-900">{data.customer.dropoffLocation || data.trip.dropoffLocation}</span>
                   </div>
                 )}
@@ -302,31 +278,31 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
               </h3>
               <div className="space-y-2 text-xs">
                 <div>
-                  <span className="text-slate-600 block text-[10px] font-bold uppercase tracking-wider">Nama Paket Tur</span>
+                  <span className="text-slate-700 block text-[10px] font-bold uppercase tracking-wider">Nama Paket Tur</span>
                   <span className="font-black text-amber-800 text-sm" id="summary-tour-title">{data.trip.title}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-slate-200">
                   <div>
-                    <span className="text-slate-600 block text-[10px] font-bold uppercase tracking-wider">Kategori / Paket</span>
+                    <span className="text-slate-700 block text-[10px] font-bold uppercase tracking-wider">Kategori / Paket</span>
                     <span className="font-bold text-slate-900">{data.trip.package || 'Private Exclusive'}</span>
                   </div>
                   <div>
-                    <span className="text-slate-600 block text-[10px] font-bold uppercase tracking-wider">Tanggal Wisata</span>
+                    <span className="text-slate-700 block text-[10px] font-bold uppercase tracking-wider">Tanggal Wisata</span>
                     <span className="font-bold text-slate-900">{data.trip.departureDate || '-'}</span>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-slate-200">
                   <div>
-                    <span className="text-slate-600 block text-[10px] font-bold uppercase tracking-wider">Durasi Wisata</span>
+                    <span className="text-slate-700 block text-[10px] font-bold uppercase tracking-wider">Durasi Wisata</span>
                     <span className="font-bold text-slate-900">{data.trip.duration || '1 Hari'}</span>
                   </div>
                   <div>
-                    <span className="text-slate-600 block text-[10px] font-bold uppercase tracking-wider">Jumlah Peserta</span>
+                    <span className="text-slate-700 block text-[10px] font-bold uppercase tracking-wider">Jumlah Peserta</span>
                     <span className="font-bold text-slate-900">{data.trip.participantsCount} Orang</span>
                   </div>
                 </div>
                 <div className="pt-1.5 border-t border-slate-200">
-                  <span className="text-slate-600 block text-[10px] font-bold uppercase tracking-wider">Pilihan Kendaraan (Armada)</span>
+                  <span className="text-slate-700 block text-[10px] font-bold uppercase tracking-wider">Pilihan Kendaraan (Armada)</span>
                   <span className="font-bold text-slate-900">{data.trip.vehicleName || 'Standard Private Tourism Vehicle'}</span>
                 </div>
               </div>
@@ -370,7 +346,7 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
 
             <div className={`grid grid-cols-1 ${data.payment.discount && data.payment.discount > 0 ? 'sm:grid-cols-4' : 'sm:grid-cols-3'} gap-3 pt-2 text-xs`}>
               <div className="bg-white p-3 rounded-lg border border-slate-200">
-                <span className="text-slate-600 block text-[10px] font-bold uppercase tracking-wider">Harga Dasar Tur (Base Price)</span>
+                <span className="text-slate-700 block text-[10px] font-bold uppercase tracking-wider">Harga Dasar Tur (Base Price)</span>
                 <span className="font-mono font-bold text-slate-900 text-sm">Rp {formattedBase}</span>
               </div>
               {Boolean(data.payment.discount && data.payment.discount > 0) && (
@@ -380,7 +356,7 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
                 </div>
               )}
               <div className="bg-white p-3 rounded-lg border border-slate-200">
-                <span className="text-slate-600 block text-[10px] font-bold uppercase tracking-wider">Kode Unik (Unique Code)</span>
+                <span className="text-slate-700 block text-[10px] font-bold uppercase tracking-wider">Kode Unik (Unique Code)</span>
                 <span className="font-mono font-bold text-amber-700 text-sm">Rp {formattedUnique}</span>
               </div>
               <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-300">
@@ -396,15 +372,15 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2.5 border-t border-slate-200 text-[11px] font-mono">
               <div>
-                <span className="text-slate-600 block text-[10px] font-bold uppercase tracking-wider">Metode Pembayaran</span>
+                <span className="text-slate-700 block text-[10px] font-bold uppercase tracking-wider">Metode Pembayaran</span>
                 <span className="font-bold text-slate-900">{data.payment.paymentMethod || 'ARTOPAY GATEWAY'}</span>
               </div>
               <div>
-                <span className="text-slate-600 block text-[10px] font-bold uppercase tracking-wider">ID Transaksi ArtoPay</span>
+                <span className="text-slate-700 block text-[10px] font-bold uppercase tracking-wider">ID Transaksi ArtoPay</span>
                 <span className="truncate block font-bold text-slate-900">{data.payment.paymentId || 'TX-VERIFIED-ARTOPAY'}</span>
               </div>
               <div>
-                <span className="text-slate-600 block text-[10px] font-bold uppercase tracking-wider">Waktu Pelunasan</span>
+                <span className="text-slate-700 block text-[10px] font-bold uppercase tracking-wider">Waktu Pelunasan</span>
                 <span className="font-bold text-slate-900">{data.payment.paymentDate || (data.payment.paidAt ? new Date(data.payment.paidAt).toLocaleString('id-ID') : '-')}</span>
               </div>
             </div>

@@ -304,6 +304,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
 
   const currentStep = getStepProgress();
   const isPaid = (booking?.paymentStatus || '').toLowerCase() === 'paid';
+  const rawBookingStatus = (booking?.bookingStatus || (booking as any)?.status || '').trim();
   const isStatusConfirmedOrCompleted = Boolean(
     booking && (
       booking.bookingStatus === 'Confirmed' ||
@@ -316,6 +317,32 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
       ((booking as any).status || '').toLowerCase() === 'completed'
     )
   );
+
+  // Tombol "Minta Konfirmasi via WhatsApp" aktif hanya saat paymentStatus=Paid dan bookingStatus=Pending Confirmation
+  const isRequestConfirmationActive = Boolean(
+    booking &&
+    isPaid &&
+    (
+      rawBookingStatus === 'Pending Confirmation' ||
+      rawBookingStatus.toLowerCase() === 'pending confirmation' ||
+      rawBookingStatus.toLowerCase() === 'pending'
+    ) &&
+    !isStatusConfirmedOrCompleted
+  );
+
+  const handleRequestConfirmationWA = () => {
+    if (!booking || !isRequestConfirmationActive) return;
+    const bookingId = booking.bookingCode || booking.id;
+    const customerName = booking.customerName || 'Customer';
+    const serviceName = booking.serviceName || booking.tripTitle || 'Layanan Smart Journey';
+    const departureDate = booking.departureDate ? ` (Jadwal: ${booking.departureDate})` : '';
+
+    const message = `Halo Admin Smart Journey,\n\nSaya ingin meminta konfirmasi pemesanan saya:\n- Booking ID: ${bookingId}\n- Nama Customer: ${customerName}\n- Paket / Layanan: ${serviceName}${departureDate}\n- Status Pembayaran: LUNAS (PAID)\n\nPembayaran telah berhasil diselesaikan. Mohon bantuannya untuk memverifikasi dan mengonfirmasi pemesanan ini agar invoice resmi dan jadwal armada dapat segera aktif. Terima kasih!`;
+
+    const waUrl = `https://wa.me/6285212347289?text=${encodeURIComponent(message)}`;
+    window.open(waUrl, '_blank', 'noopener,noreferrer');
+  };
+
   // Authoritative gate: PDF and Final Summary can be downloaded if and only if Paid AND Confirmed/Completed
   const canDownload = Boolean(
     booking && isPaid && isStatusConfirmedOrCompleted
@@ -741,36 +768,38 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                 </div>
               </div>
 
-              {/* AKSI INVOICE & DOKUMEN: HANYA TERSEDIA SETELAH CONFIRMED */}
+              {/* AKSI KONFIRMASI & INVOICE */}
               <div className="pt-4 border-t border-slate-200 space-y-2">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {/* Tombol Minta Konfirmasi via WhatsApp: Aktif hanya saat paymentStatus=Paid dan bookingStatus=Pending Confirmation */}
                   <button
-                    id="btn-download-invoice-pdf"
-                    onClick={handleDownloadPdf}
-                    disabled={!canDownload}
+                    id="btn-request-confirmation-wa"
+                    onClick={handleRequestConfirmationWA}
+                    disabled={!isRequestConfirmationActive}
                     className={`w-full py-2.5 px-3 font-bold text-xs sm:text-sm rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 ${
-                      canDownload
-                        ? 'bg-emerald-700 hover:bg-emerald-800 text-white cursor-pointer'
-                        : 'bg-slate-100 text-slate-700 border border-slate-300 cursor-not-allowed font-semibold'
+                      isRequestConfirmationActive
+                        ? 'bg-[#25D366] hover:bg-[#20ba5a] active:bg-[#1da851] text-white cursor-pointer font-black'
+                        : 'bg-slate-100 text-slate-500 border border-slate-300 cursor-not-allowed font-semibold'
                     }`}
                     title={
-                      canDownload
-                        ? 'Unduh dokumen resmi PDF konfirmasi pemesanan'
-                        : 'Dokumen hanya dapat diunduh setelah pemesanan berstatus Confirmed atau Completed oleh Admin'
+                      isRequestConfirmationActive
+                        ? 'Hubungi WhatsApp resmi Smart Journey untuk meminta konfirmasi pemesanan'
+                        : isStatusConfirmedOrCompleted
+                        ? 'Pemesanan Anda sudah berstatus Confirmed oleh Admin'
+                        : !isPaid
+                        ? 'Tombol aktif setelah pembayaran lunas diverifikasi (status Paid)'
+                        : 'Minta Konfirmasi via WhatsApp'
                     }
                   >
-                    {canDownload ? (
-                      <>
-                        <Download className="h-4 w-4" />
-                        <span>Download Invoice (PDF)</span>
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="h-4 w-4 text-slate-600" />
-                        <span>Download Terkunci (Belum Confirmed)</span>
-                      </>
-                    )}
+                    <svg viewBox="0 0 448 512" className={`h-4 w-4 fill-current shrink-0 ${isRequestConfirmationActive ? 'text-white' : 'text-slate-400'}`} xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-117zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/>
+                    </svg>
+                    <span>
+                      {isStatusConfirmedOrCompleted ? 'Pemesanan Dikonfirmasi' : 'Minta Konfirmasi via WhatsApp'}
+                    </span>
                   </button>
+
+                  {/* Tombol Lihat Invoice: Membuka Booking Summary (di mana tombol Download PDF berada di dalam) */}
                   <button
                     id="btn-view-invoice-modal"
                     onClick={handleOpenSummaryModal}
@@ -782,8 +811,8 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                     }`}
                     title={
                       canDownload
-                        ? 'Pratinjau dokumen konfirmasi & invoice'
-                        : 'Pratinjau invoice hanya aktif setelah pemesanan berstatus Confirmed atau Completed oleh Admin'
+                        ? 'Buka Booking Summary untuk melihat detail dan mengunduh invoice PDF'
+                        : 'Pratinjau invoice dan unduh PDF hanya aktif setelah pemesanan berstatus Confirmed atau Completed oleh Admin'
                     }
                   >
                     {loadingSummary ? (
@@ -799,7 +828,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                     ) : (
                       <>
                         <Lock className="h-4 w-4 text-slate-600" />
-                        <span>Lihat Terkunci (Belum Confirmed)</span>
+                        <span>Lihat Invoice (Terkunci)</span>
                       </>
                     )}
                   </button>
@@ -853,8 +882,10 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                 <span className="text-[11px] text-slate-700 text-center block font-semibold leading-relaxed pt-1">
                   {canDownload
                     ? (booking.bookingStatus === 'Completed' || (booking as any).status === 'Completed'
-                        ? '✓ Perjalanan selesai! Dokumen arsip resmi & invoice siap diunduh dan dicetak.'
-                        : '✓ Pemesanan terkonfirmasi! Dokumen resmi & invoice siap diunduh dan dicetak.')
+                        ? '✓ Perjalanan selesai! Dokumen arsip resmi & invoice siap diunduh melalui tombol "Lihat Invoice".'
+                        : '✓ Pemesanan terkonfirmasi! Dokumen resmi & invoice siap diunduh melalui tombol "Lihat Invoice".')
+                    : isRequestConfirmationActive
+                    ? '⚡ Pembayaran lunas diterima! Silakan klik tombol "Minta Konfirmasi via WhatsApp" untuk konfirmasi langsung dari Admin Pusat.'
                     : booking.paymentStatus === 'Paid'
                     ? '⏳ Pembayaran lunas diterima. Dokumen invoice & konfirmasi akan aktif setelah disetujui Admin Pusat.'
                     : '🔒 Dokumen invoice resmi akan aktif setelah pembayaran diselesaikan dan dikonfirmasi Admin.'}
