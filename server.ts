@@ -3955,11 +3955,11 @@ app.get([
       verificationHash,
       notes: booking.participantData?.specialRequests || booking.details?.notes || booking.adminNotes || rawBooking.notes || undefined,
       customer: {
-        name: booking.customerName || booking.fullName || booking.participantData?.name || 'Tamu Terdaftar',
-        email: booking.customerEmail || booking.email || booking.participantData?.email || '-',
-        phone: booking.customerPhone || booking.phone || booking.participantData?.whatsapp || '-',
+        name: booking.customerName || booking.fullName || booking.participantData?.name || booking.details?.fullName || 'Tamu Terdaftar',
+        email: booking.customerEmail || booking.email || booking.participantData?.email || booking.details?.email || booking.details?.customerEmail || '-',
+        phone: booking.customerPhone || booking.phone || booking.whatsapp || booking.participantData?.whatsapp || booking.participantData?.phone || booking.details?.whatsapp || booking.details?.phone || '-',
         nationality: (() => {
-          const nat = booking.details?.nationalityType || booking.tourSnapshot?.nationalityType || booking.nationalityType;
+          const nat = booking.participantData?.nationalityType || booking.details?.nationalityType || booking.tourSnapshot?.nationalityType || booking.nationalityType;
           if (nat === 'WNA_EUROPE') return 'Europe / International';
           if (nat === 'WNA_CHINA') return 'China';
           if (nat === 'WNI' || nat === 'domestic') return 'Indonesia (Domestic)';
