@@ -186,11 +186,12 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
   };
 
   const handleDownloadPdf = () => {
-    if (!booking) return;
-    const pdfUrl = `/api/private-tour/invoice-pdf/${encodeURIComponent(booking.bookingCode)}`;
+    if (!booking || !canDownload) return;
+    const code = booking.bookingCode || booking.id;
+    const url = `/api/private-tour/invoice-pdf/${encodeURIComponent(code)}`;
     const link = document.createElement('a');
-    link.href = pdfUrl;
-    link.setAttribute('download', `SmartJourney-Final-Booking-${booking.bookingCode}.pdf`);
+    link.href = url;
+    link.setAttribute('download', `SmartJourney-Confirmation-${code}.pdf`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -283,10 +284,6 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
   };
 
   // Determine tracker step (Tahap 8)
-  // Step 1: Pending Payment (Default / Initial)
-  // Step 2: Payment Paid
-  // Step 3: Pending Confirmation (Verification by Central Admin)
-  // Step 4: Confirmed / Completed (Admin confirmed / Trip completed - Final Summary unlocked)
   const getStepProgress = (): 1 | 2 | 3 | 4 => {
     if (!booking) return 1;
 
@@ -329,29 +326,29 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
       
       {/* Section Header */}
       <div className="text-center max-w-2xl mx-auto mb-8">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold uppercase tracking-wider mb-3">
-          <ShieldCheck className="h-3.5 w-3.5 text-amber-600" />
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-300 text-amber-950 text-xs font-black uppercase tracking-wider mb-3">
+          <ShieldCheck className="h-4 w-4 text-amber-700" />
           <span>PORTAL CEK BOOKING &amp; INVOICE</span>
         </div>
-        <h2 className="text-2xl sm:text-3xl font-black text-neutral-900 tracking-tight">
+        <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
           Cek Status Booking &amp; Unduh Invoice
         </h2>
-        <p className="text-sm text-neutral-600 mt-2">
+        <p className="text-sm text-slate-700 font-medium mt-2 leading-relaxed">
           Masukkan kode booking resmi Anda (peserta Open Trip maupun Private Trip) untuk mengecek status pembayaran, melihat rincian perjalanan, dan mengunduh invoice final.
         </p>
       </div>
 
       {/* Search Bar */}
-      <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-4 sm:p-6 mb-8">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-300 p-4 sm:p-6 mb-8">
         <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
             <input
               type="text"
               value={searchCode}
               onChange={(e) => setSearchCode(e.target.value.toUpperCase())}
               placeholder="Masukkan Kode Booking / Booking ID (contoh: SJ-8F42KD)"
-              className="w-full pl-11 pr-4 py-3 bg-neutral-50 border border-neutral-300 rounded-xl text-neutral-900 font-mono font-bold text-base focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all"
+              className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-mono font-bold text-base placeholder:text-slate-500 focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all"
               autoCapitalize="characters"
               autoComplete="off"
             />
@@ -359,7 +356,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
           <button
             type="submit"
             disabled={loading}
-            className="px-6 py-3 bg-neutral-900 hover:bg-neutral-800 disabled:bg-neutral-400 text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0 shadow-sm"
+            className="px-6 py-3 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0 shadow-sm"
           >
             {loading ? (
               <>
@@ -377,11 +374,11 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
 
         {/* Error Alert */}
         {error && (
-          <div className="mt-4 p-4 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3 text-red-800 text-xs sm:text-sm">
+          <div className="mt-4 p-4 rounded-xl bg-red-50 border border-red-300 flex items-start gap-3 text-red-950 text-xs sm:text-sm">
             <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
             <div className="flex-1">
               <span className="font-bold block">Pencarian Tidak Ditemukan</span>
-              <p className="mt-0.5">{error}</p>
+              <p className="mt-0.5 font-medium">{error}</p>
             </div>
           </div>
         )}
@@ -392,57 +389,57 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
         <div className="space-y-6 animate-in fade-in duration-300">
           
           {/* Card 1: Booking Overview Banner */}
-          <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-100 pb-5">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-300 p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
               <div>
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-400">Kode Booking / ID</span>
-                  <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                  <span className="text-xs font-mono font-extrabold uppercase tracking-wider text-slate-700">Kode Booking / ID</span>
+                  <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${
                     booking.isShared || booking.bookingType === 'shared'
-                      ? 'bg-blue-50 text-blue-800 border-blue-200'
-                      : 'bg-amber-50 text-amber-800 border-amber-200'
+                      ? 'bg-blue-100 text-blue-950 border-blue-300'
+                      : 'bg-amber-100 text-amber-950 border-amber-300'
                   }`}>
                     {booking.isShared || booking.bookingType === 'shared' ? 'OPEN TRIP / SHARE TOUR' : 'PRIVATE TOUR'}
                   </span>
 
-                  {/* Status badges matching Admin */}
-                  <span className={`inline-flex items-center gap-1 text-[10px] font-bold font-mono px-2.5 py-0.5 rounded-full border uppercase ${
+                  {/* Status badges matching Admin with high contrast */}
+                  <span className={`inline-flex items-center gap-1.5 text-[10px] font-black font-mono px-2.5 py-0.5 rounded-full border uppercase ${
                     (booking.paymentStatus || '').toLowerCase() === 'paid'
-                      ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                      : 'bg-amber-100 text-amber-800 border-amber-300'
+                      ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
+                      : 'bg-amber-100 text-amber-950 border-amber-300'
                   }`}>
-                    <span className={`h-1.5 w-1.5 rounded-full ${(booking.paymentStatus || '').toLowerCase() === 'paid' ? 'bg-emerald-600' : 'bg-amber-600 animate-pulse'}`} />
+                    <span className={`h-1.5 w-1.5 rounded-full ${(booking.paymentStatus || '').toLowerCase() === 'paid' ? 'bg-emerald-700' : 'bg-amber-600 animate-pulse'}`} />
                     <span>Payment: {(booking.paymentStatus || '').toLowerCase() === 'paid' ? 'PAID' : 'PENDING'}</span>
                   </span>
 
-                  <span className={`inline-flex items-center gap-1 text-[10px] font-bold font-mono px-2.5 py-0.5 rounded-full border uppercase ${
-                    booking.bookingStatus === 'Confirmed' ? 'bg-blue-100 text-blue-800 border-blue-300' :
-                    booking.bookingStatus === 'Completed' ? 'bg-purple-100 text-purple-800 border-purple-300' :
-                    booking.bookingStatus === 'Cancelled' ? 'bg-rose-100 text-rose-800 border-rose-300' :
-                    booking.bookingStatus === 'Pending Confirmation' ? 'bg-cyan-100 text-cyan-800 border-cyan-300' :
-                    'bg-amber-100 text-amber-800 border-amber-300'
+                  <span className={`inline-flex items-center gap-1.5 text-[10px] font-black font-mono px-2.5 py-0.5 rounded-full border uppercase ${
+                    booking.bookingStatus === 'Confirmed' ? 'bg-blue-100 text-blue-950 border-blue-300' :
+                    booking.bookingStatus === 'Completed' ? 'bg-purple-100 text-purple-950 border-purple-300' :
+                    booking.bookingStatus === 'Cancelled' ? 'bg-rose-100 text-rose-950 border-rose-300' :
+                    booking.bookingStatus === 'Pending Confirmation' ? 'bg-cyan-100 text-cyan-950 border-cyan-300' :
+                    'bg-amber-100 text-amber-950 border-amber-300'
                   }`}>
                     <span>Booking: {booking.bookingStatus || (booking as any).status || 'PENDING'}</span>
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <h3 className="text-2xl sm:text-3xl font-black font-mono text-neutral-900 tracking-tight">
+                  <h3 className="text-2xl sm:text-3xl font-black font-mono text-slate-950 tracking-tight">
                     {booking.bookingCode}
                   </h3>
                   <button
                     onClick={handleCopyCode}
-                    className="p-1.5 rounded-lg border border-neutral-200 hover:bg-neutral-100 text-neutral-600 transition-colors text-xs flex items-center gap-1 cursor-pointer"
+                    className="p-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-800 transition-colors text-xs flex items-center gap-1 cursor-pointer font-bold"
                     title="Salin Kode Booking"
                   >
-                    {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
-                    <span className="text-[11px] font-semibold">{copied ? 'Tersalin' : 'Salin'}</span>
+                    {copied ? <Check className="h-4 w-4 text-emerald-700" /> : <Copy className="h-4 w-4" />}
+                    <span className="text-[11px] font-bold">{copied ? 'Tersalin' : 'Salin'}</span>
                   </button>
                 </div>
               </div>
 
               <div className="sm:text-right">
-                <span className="text-xs text-neutral-400 block">Waktu Reservasi Dibuat</span>
-                <span className="text-xs font-mono font-bold text-neutral-700">
+                <span className="text-xs text-slate-600 font-bold uppercase tracking-wider block">Waktu Reservasi Dibuat</span>
+                <span className="text-xs font-mono font-bold text-slate-900">
                   {new Date(booking.createdAt).toLocaleDateString('id-ID', {
                     day: 'numeric',
                     month: 'long',
@@ -455,10 +452,10 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
             {/* TAHAP 8: Visual Status Tracker */}
             <div className="pt-6">
               <div className="flex items-center justify-between mb-2">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono">
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 font-mono">
                   Alur Progres Reservasi (Live Status Tracker)
                 </h4>
-                <span className="text-xs font-mono font-bold text-neutral-600">
+                <span className="text-xs font-mono font-black text-slate-900">
                   Tahap {currentStep} dari 4
                 </span>
               </div>
@@ -466,9 +463,9 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
               {/* Progress Steps Timeline */}
               <div className="relative mt-4">
                 {/* Connecting Line */}
-                <div className="absolute top-4 left-6 right-6 h-1 bg-neutral-200 -z-0 hidden sm:block">
+                <div className="absolute top-4 left-6 right-6 h-1 bg-slate-200 -z-0 hidden sm:block">
                   <div 
-                    className="h-full bg-emerald-500 transition-all duration-500" 
+                    className="h-full bg-emerald-600 transition-all duration-500" 
                     style={{ width: currentStep === 1 ? '0%' : currentStep === 2 ? '33%' : currentStep === 3 ? '66%' : '100%' }}
                   />
                 </div>
@@ -478,22 +475,22 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                   {/* Step 1: Pending Payment */}
                   <div className={`p-3 rounded-xl border transition-all ${
                     currentStep >= 1 
-                      ? 'bg-neutral-50 border-neutral-300 text-neutral-900' 
-                      : 'bg-neutral-50/50 border-neutral-200 text-neutral-400'
+                      ? 'bg-slate-50 border-slate-300 text-slate-900' 
+                      : 'bg-slate-50/50 border-slate-200 text-slate-400'
                   }`}>
                     <div className="flex items-center sm:flex-col sm:items-center text-left sm:text-center gap-3 sm:gap-2">
                       <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
                         currentStep > 1 
-                          ? 'bg-emerald-500 text-white' 
+                          ? 'bg-emerald-600 text-white' 
                           : currentStep === 1 
-                            ? 'bg-amber-500 text-white ring-4 ring-amber-100' 
-                            : 'bg-neutral-200 text-neutral-500'
+                            ? 'bg-amber-500 text-slate-950 font-black ring-4 ring-amber-100' 
+                            : 'bg-slate-200 text-slate-600 font-bold'
                       }`}>
                         {currentStep > 1 ? <Check className="h-4 w-4" /> : '1'}
                       </div>
                       <div>
-                        <span className="text-xs font-bold block">Pending Payment</span>
-                        <span className="text-[11px] text-neutral-500">Menunggu Pembayaran</span>
+                        <span className="text-xs font-black text-slate-900 block">Pending Payment</span>
+                        <span className="text-[11px] font-semibold text-slate-700">Menunggu Pembayaran</span>
                       </div>
                     </div>
                   </div>
@@ -501,22 +498,22 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                   {/* Step 2: Paid */}
                   <div className={`p-3 rounded-xl border transition-all ${
                     currentStep >= 2 
-                      ? 'bg-neutral-50 border-neutral-300 text-neutral-900' 
-                      : 'bg-neutral-50/50 border-neutral-200 text-neutral-400'
+                      ? 'bg-slate-50 border-slate-300 text-slate-900' 
+                      : 'bg-slate-50/50 border-slate-200 text-slate-400'
                   }`}>
                     <div className="flex items-center sm:flex-col sm:items-center text-left sm:text-center gap-3 sm:gap-2">
                       <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
                         currentStep > 2 
-                          ? 'bg-emerald-500 text-white' 
+                          ? 'bg-emerald-600 text-white' 
                           : currentStep === 2 
-                            ? 'bg-amber-500 text-white ring-4 ring-amber-100' 
-                            : 'bg-neutral-200 text-neutral-500'
+                            ? 'bg-amber-500 text-slate-950 font-black ring-4 ring-amber-100' 
+                            : 'bg-slate-200 text-slate-600 font-bold'
                       }`}>
                         {currentStep > 2 ? <Check className="h-4 w-4" /> : '2'}
                       </div>
                       <div>
-                        <span className="text-xs font-bold block">Paid</span>
-                        <span className="text-[11px] text-neutral-500">Pembayaran Diterima</span>
+                        <span className="text-xs font-black text-slate-900 block">Paid</span>
+                        <span className="text-[11px] font-semibold text-slate-700">Pembayaran Diterima</span>
                       </div>
                     </div>
                   </div>
@@ -524,22 +521,22 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                   {/* Step 3: Pending Confirmation */}
                   <div className={`p-3 rounded-xl border transition-all ${
                     currentStep >= 3 
-                      ? 'bg-neutral-50 border-neutral-300 text-neutral-900' 
-                      : 'bg-neutral-50/50 border-neutral-200 text-neutral-400'
+                      ? 'bg-slate-50 border-slate-300 text-slate-900' 
+                      : 'bg-slate-50/50 border-slate-200 text-slate-400'
                   }`}>
                     <div className="flex items-center sm:flex-col sm:items-center text-left sm:text-center gap-3 sm:gap-2">
                       <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
                         currentStep > 3 
-                          ? 'bg-emerald-500 text-white' 
+                          ? 'bg-emerald-600 text-white' 
                           : currentStep === 3 
-                            ? 'bg-amber-500 text-white ring-4 ring-amber-100' 
-                            : 'bg-neutral-200 text-neutral-500'
+                            ? 'bg-amber-500 text-slate-950 font-black ring-4 ring-amber-100' 
+                            : 'bg-slate-200 text-slate-600 font-bold'
                       }`}>
                         {currentStep > 3 ? <Check className="h-4 w-4" /> : '3'}
                       </div>
                       <div>
-                        <span className="text-xs font-bold block">Pending Confirmation</span>
-                        <span className="text-[11px] text-neutral-500">Verifikasi Admin Pusat</span>
+                        <span className="text-xs font-black text-slate-900 block">Pending Confirmation</span>
+                        <span className="text-[11px] font-semibold text-slate-700">Verifikasi Admin Pusat</span>
                       </div>
                     </div>
                   </div>
@@ -548,21 +545,21 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                   <div className={`p-3 rounded-xl border transition-all ${
                     currentStep >= 4 
                       ? 'bg-emerald-50 border-emerald-300 text-emerald-950' 
-                      : 'bg-neutral-50/50 border-neutral-200 text-neutral-400'
+                      : 'bg-slate-50/50 border-slate-200 text-slate-400'
                   }`}>
                     <div className="flex items-center sm:flex-col sm:items-center text-left sm:text-center gap-3 sm:gap-2">
                       <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
                         currentStep >= 4 
                           ? 'bg-emerald-600 text-white ring-4 ring-emerald-100' 
-                          : 'bg-neutral-200 text-neutral-500'
+                          : 'bg-slate-200 text-slate-600 font-bold'
                       }`}>
                         {currentStep >= 4 ? <CheckCircle2 className="h-4 w-4" /> : '4'}
                       </div>
                       <div>
-                        <span className="text-xs font-bold block">
+                        <span className="text-xs font-black text-slate-900 block">
                           {booking?.bookingStatus === 'Completed' || (booking as any)?.status === 'Completed' ? 'Completed' : 'Confirmed'}
                         </span>
-                        <span className="text-[11px] text-neutral-500">
+                        <span className="text-[11px] font-semibold text-slate-700">
                           {booking?.bookingStatus === 'Completed' || (booking as any)?.status === 'Completed' ? 'Trip Selesai Dilaksanakan' : 'Pemesanan Dikonfirmasi'}
                         </span>
                       </div>
@@ -573,15 +570,15 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
               </div>
 
               {/* Status Explanation Box */}
-              <div className="mt-4 p-4 rounded-xl text-xs sm:text-sm border">
+              <div className="mt-4 rounded-xl text-xs sm:text-sm">
                 {currentStep === 4 ? (
-                  <div className="bg-emerald-50 text-emerald-900 border-emerald-200 p-3 rounded-lg flex items-start gap-3">
-                    <ShieldCheck className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+                  <div className="bg-emerald-50 text-emerald-950 border border-emerald-300 p-3.5 rounded-xl flex items-start gap-3">
+                    <ShieldCheck className="h-5 w-5 text-emerald-700 shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold block">
+                      <span className="font-black text-emerald-950 block">
                         {booking?.bookingStatus === 'Completed' || (booking as any)?.status === 'Completed' ? 'Trip Selesai (Completed)' : 'Booking Confirmed'}
                       </span>
-                      <p className="mt-0.5 text-emerald-800">
+                      <p className="mt-0.5 text-emerald-950 font-medium leading-relaxed">
                         {booking?.bookingStatus === 'Completed' || (booking as any)?.status === 'Completed'
                           ? 'Perjalanan wisata Anda telah selesai dilaksanakan dengan sukses. Anda tetap dapat mengunduh dokumen resmi invoice / konfirmasi pemesanan di bawah sebagai arsip perjalanan.'
                           : 'Admin Pusat Smart Journey telah mengonfirmasi pemesanan Anda. Seluruh jadwal perjalanan dan kendaraan siap. Silakan unduh Final Booking Confirmation di bawah.'}
@@ -589,24 +586,24 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                     </div>
                   </div>
                 ) : currentStep === 3 ? (
-                  <div className="bg-amber-50 text-amber-950 border-amber-200 p-3 rounded-lg flex items-start gap-3">
-                    <Clock className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="bg-amber-50 text-amber-950 border border-amber-300 p-3.5 rounded-xl flex items-start gap-3">
+                    <Clock className="h-5 w-5 text-amber-700 shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold block">Payment received. Your booking is currently being reviewed by Smart Journey.</span>
-                      <p className="mt-0.5 text-amber-800">
+                      <span className="font-black text-amber-950 block">Pembayaran diterima. Pemesanan sedang diverifikasi tim Smart Journey.</span>
+                      <p className="mt-0.5 text-amber-950 font-medium leading-relaxed">
                         Pembayaran Anda sebesar <strong>Rp {(booking.paymentAmount || 0).toLocaleString('id-ID')}</strong> telah berhasil diterima via ArtoPay Gateway. Tim operasional Smart Journey sedang memverifikasi alokasi armada dan pemandu wisata khusus Private Tour Anda.
                       </p>
-                      <p className="mt-1 text-[11px] text-amber-700 italic">
+                      <p className="mt-1 text-[11px] text-amber-900 font-semibold italic">
                         * Catatan: Dokumen Final Booking Confirmation hanya akan aktif setelah status resmi berubah menjadi <strong>Confirmed</strong> atau <strong>Completed</strong> oleh Admin Pusat.
                       </p>
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-neutral-50 text-neutral-800 border-neutral-200 p-3 rounded-lg flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-neutral-500 shrink-0 mt-0.5" />
+                  <div className="bg-slate-50 text-slate-950 border border-slate-300 p-3.5 rounded-xl flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-slate-700 shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold block">Menunggu Pembayaran</span>
-                      <p className="mt-0.5 text-neutral-600">
+                      <span className="font-black text-slate-950 block">Menunggu Pembayaran</span>
+                      <p className="mt-0.5 text-slate-800 font-medium leading-relaxed">
                         Pemesanan Anda telah tercatat di sistem. Harap selesaikan pembayaran sebesar <strong>Rp {(booking.paymentAmount || 0).toLocaleString('id-ID')}</strong> (termasuk kode unik) agar jadwal tur dapat segera diproses ke tahap verifikasi.
                       </p>
                     </div>
@@ -622,45 +619,45 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             {/* Tour Specifications */}
-            <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-5 space-y-4">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono flex items-center gap-2">
-                <Car className="h-4 w-4 text-amber-500" />
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-300 p-5 space-y-4">
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 font-mono flex items-center gap-2">
+                <Car className="h-4 w-4 text-amber-600" />
                 <span>Rincian Paket &amp; Jadwal Perjalanan</span>
               </h4>
 
               <div className="space-y-3 text-xs">
                 <div>
-                  <span className="text-neutral-400 block text-[10px]">Nama Paket Tur</span>
-                  <span className="font-bold text-neutral-900 text-sm">{booking.serviceName || booking.tripTitle}</span>
+                  <span className="text-slate-600 block text-[10px] font-bold uppercase tracking-wider">Nama Paket Tur</span>
+                  <span className="font-black text-slate-900 text-sm">{booking.serviceName || booking.tripTitle}</span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-neutral-100">
+                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200">
                   <div>
-                    <span className="text-neutral-400 block text-[10px]">Tanggal Keberangkatan</span>
-                    <span className="font-bold text-neutral-800">{booking.departureDate || '-'}</span>
+                    <span className="text-slate-600 block text-[10px] font-bold uppercase tracking-wider">Tanggal Keberangkatan</span>
+                    <span className="font-bold text-slate-900">{booking.departureDate || '-'}</span>
                   </div>
                   <div>
-                    <span className="text-neutral-400 block text-[10px]">Durasi Tur</span>
-                    <span className="font-bold text-neutral-800">{booking.duration || '1 Hari'}</span>
+                    <span className="text-slate-600 block text-[10px] font-bold uppercase tracking-wider">Durasi Tur</span>
+                    <span className="font-bold text-slate-900">{booking.duration || '1 Hari'}</span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-neutral-100">
+                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200">
                   <div>
-                    <span className="text-neutral-400 block text-[10px]">Jumlah Peserta</span>
-                    <span className="font-bold text-neutral-800">{booking.participantsCount} Orang</span>
+                    <span className="text-slate-600 block text-[10px] font-bold uppercase tracking-wider">Jumlah Peserta</span>
+                    <span className="font-bold text-slate-900">{booking.participantsCount} Orang</span>
                   </div>
                   <div>
-                    <span className="text-neutral-400 block text-[10px]">Pilihan Kendaraan</span>
-                    <span className="font-bold text-neutral-800">{booking.vehicleName || 'Toyota HiAce / Avanza'}</span>
+                    <span className="text-slate-600 block text-[10px] font-bold uppercase tracking-wider">Pilihan Kendaraan</span>
+                    <span className="font-bold text-slate-900">{booking.vehicleName || 'Toyota HiAce / Avanza'}</span>
                   </div>
                 </div>
 
                 {booking.pickupLocation && (
-                  <div className="pt-2 border-t border-neutral-100">
-                    <span className="text-neutral-400 block text-[10px]">Lokasi Penjemputan</span>
-                    <span className="font-medium text-neutral-800 flex items-center gap-1">
-                      <MapPin className="h-3 w-3 text-amber-600" />
+                  <div className="pt-2 border-t border-slate-200">
+                    <span className="text-slate-600 block text-[10px] font-bold uppercase tracking-wider">Lokasi Penjemputan</span>
+                    <span className="font-bold text-slate-900 flex items-center gap-1">
+                      <MapPin className="h-3.5 w-3.5 text-amber-700 shrink-0" />
                       {booking.pickupLocation}
                     </span>
                   </div>
@@ -669,19 +666,19 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
             </div>
 
             {/* Financial Details & Gate Action */}
-            <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-5 flex flex-col justify-between space-y-4">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-300 p-5 flex flex-col justify-between space-y-4">
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-emerald-600" />
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 font-mono flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-emerald-700" />
                   <span>Rincian Biaya &amp; Transaksi</span>
                 </h4>
 
                 <div className="space-y-2 text-xs mt-3">
                   <div className="flex justify-between py-1">
-                    <span className="text-neutral-500">
+                    <span className="text-slate-700 font-semibold">
                       {booking.serviceType === 'rental' ? 'Harga Dasar Sewa:' : booking.serviceType === 'taxi' ? 'Harga Dasar Taksi:' : booking.serviceType === 'airport' ? 'Harga Dasar Transfer:' : 'Harga Dasar Tur:'}
                     </span>
-                    <span className="font-mono font-bold text-neutral-900">
+                    <span className="font-mono font-bold text-slate-900">
                       Rp {(
                         Number(booking.baseAmount) > 0
                           ? Number(booking.baseAmount)
@@ -692,17 +689,17 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                     </span>
                   </div>
                   {Boolean(booking.discount && Number(booking.discount) > 0) && (
-                    <div className="flex justify-between py-1 border-t border-neutral-100 text-emerald-600 font-semibold">
+                    <div className="flex justify-between py-1 border-t border-slate-200 text-emerald-700 font-bold">
                       <span>Diskon Promo {booking.promoCode ? `(${booking.promoCode})` : ''}:</span>
                       <span className="font-mono">- Rp {Number(booking.discount).toLocaleString('id-ID')}</span>
                     </div>
                   )}
-                  <div className="flex justify-between py-1 border-t border-neutral-100">
-                    <span className="text-neutral-500">Kode Unik Verifikasi:</span>
-                    <span className="font-mono font-bold text-amber-600">+ Rp {(booking.uniqueCode || 0).toLocaleString('id-ID')}</span>
+                  <div className="flex justify-between py-1 border-t border-slate-200">
+                    <span className="text-slate-700 font-semibold">Kode Unik Verifikasi:</span>
+                    <span className="font-mono font-bold text-amber-700">+ Rp {(booking.uniqueCode || 0).toLocaleString('id-ID')}</span>
                   </div>
-                  <div className="flex justify-between py-2 border-t border-neutral-200 font-bold text-sm bg-neutral-50 px-2 rounded-lg items-center">
-                    <span className="text-neutral-800">Total Pembayaran (ArtoPay IDR):</span>
+                  <div className="flex justify-between py-2 border-t border-slate-200 font-bold text-sm bg-slate-50 px-2 rounded-lg items-center">
+                    <span className="text-slate-900 font-extrabold">Total Pembayaran (ArtoPay IDR):</span>
                     <div className="text-right">
                       {(() => {
                         const finalPayable = 
@@ -713,17 +710,17 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                         if (currency !== 'IDR') {
                           return (
                             <>
-                              <span className="font-mono text-emerald-700 font-black block">
+                              <span className="font-mono text-emerald-800 font-black block">
                                 {formatPrice(idrToUSD(finalPayable), finalPayable)}
                               </span>
-                              <span className="text-[10px] font-mono text-neutral-500 font-semibold block">
+                              <span className="text-[10px] font-mono text-slate-700 font-semibold block">
                                 (≈ Rp {finalPayable.toLocaleString('id-ID')} IDR)
                               </span>
                             </>
                           );
                         }
                         return (
-                          <span className="font-mono text-emerald-700 font-black">
+                          <span className="font-mono text-emerald-800 font-black">
                             Rp {finalPayable.toLocaleString('id-ID')}
                           </span>
                         );
@@ -731,12 +728,12 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                     </div>
                   </div>
 
-                  <div className="pt-2 flex items-center justify-between text-[11px] text-neutral-500">
-                    <span>Status Pembayaran:</span>
-                    <span className={`font-bold px-2 py-0.5 rounded-full ${
+                  <div className="pt-2 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-700 font-bold">Status Pembayaran:</span>
+                    <span className={`font-extrabold px-2.5 py-0.5 rounded-full ${
                       booking.paymentStatus === 'Paid' 
-                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
-                        : 'bg-amber-100 text-amber-800 border border-amber-300'
+                        ? 'bg-emerald-100 text-emerald-950 border border-emerald-300' 
+                        : 'bg-amber-100 text-amber-950 border border-amber-300'
                     }`}>
                       {booking.paymentStatus === 'Paid' ? '✓ Lunas (Paid)' : 'Menunggu Pembayaran'}
                     </span>
@@ -745,7 +742,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
               </div>
 
               {/* AKSI INVOICE & DOKUMEN: HANYA TERSEDIA SETELAH CONFIRMED */}
-              <div className="pt-4 border-t border-neutral-100 space-y-2">
+              <div className="pt-4 border-t border-slate-200 space-y-2">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <button
                     id="btn-download-invoice-pdf"
@@ -754,7 +751,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                     className={`w-full py-2.5 px-3 font-bold text-xs sm:text-sm rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 ${
                       canDownload
                         ? 'bg-emerald-700 hover:bg-emerald-800 text-white cursor-pointer'
-                        : 'bg-neutral-100 text-neutral-400 border border-neutral-200 cursor-not-allowed'
+                        : 'bg-slate-100 text-slate-700 border border-slate-300 cursor-not-allowed font-semibold'
                     }`}
                     title={
                       canDownload
@@ -769,7 +766,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                       </>
                     ) : (
                       <>
-                        <Lock className="h-4 w-4 text-neutral-400" />
+                        <Lock className="h-4 w-4 text-slate-600" />
                         <span>Download Terkunci (Belum Confirmed)</span>
                       </>
                     )}
@@ -780,8 +777,8 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                     disabled={!canDownload || loadingSummary}
                     className={`w-full py-2.5 px-3 font-bold text-xs sm:text-sm rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 ${
                       canDownload
-                        ? 'bg-neutral-900 hover:bg-neutral-800 text-white cursor-pointer'
-                        : 'bg-neutral-100 text-neutral-400 border border-neutral-200 cursor-not-allowed'
+                        ? 'bg-slate-900 hover:bg-slate-800 text-white cursor-pointer'
+                        : 'bg-slate-100 text-slate-700 border border-slate-300 cursor-not-allowed font-semibold'
                     }`}
                     title={
                       canDownload
@@ -801,7 +798,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                       </>
                     ) : (
                       <>
-                        <Lock className="h-4 w-4 text-neutral-400" />
+                        <Lock className="h-4 w-4 text-slate-600" />
                         <span>Lihat Terkunci (Belum Confirmed)</span>
                       </>
                     )}
@@ -830,7 +827,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                       type="button"
                       onClick={handleSimulatePayment}
                       disabled={isSimulatingPayment}
-                      className="w-full py-2.5 px-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 border-2 border-dashed border-amber-400 font-bold text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-[0.99] disabled:opacity-50"
+                      className="w-full py-2.5 px-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-950 border-2 border-dashed border-amber-500 font-black text-xs sm:text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-[0.99] disabled:opacity-50"
                       title="Simulasi Webhook ArtoPay Sukses (Sandbox Testing Saja)"
                     >
                       {isSimulatingPayment ? (
@@ -846,14 +843,14 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                       )}
                     </button>
                     {simulationFeedback && (
-                      <p className="mt-1.5 text-center text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 py-1 px-2 rounded-lg">
+                      <p className="mt-1.5 text-center text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-300 py-1 px-2 rounded-lg">
                         ✓ {simulationFeedback}
                       </p>
                     )}
                   </div>
                 )}
 
-                <span className="text-[10px] text-neutral-500 text-center block font-medium">
+                <span className="text-[11px] text-slate-700 text-center block font-semibold leading-relaxed pt-1">
                   {canDownload
                     ? (booking.bookingStatus === 'Completed' || (booking as any).status === 'Completed'
                         ? '✓ Perjalanan selesai! Dokumen arsip resmi & invoice siap diunduh dan dicetak.'

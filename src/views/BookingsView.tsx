@@ -85,7 +85,7 @@ export default function BookingsView() {
             <span>Passenger Reservation Center</span>
           </span>
           <h1 className="text-3xl sm:text-4.5xl font-black">Your Booking Portal</h1>
-          <p className="text-xs sm:text-sm text-neutral-400 max-w-lg mx-auto leading-relaxed">
+          <p className="text-xs sm:text-sm text-emerald-100/90 font-medium max-w-lg mx-auto leading-relaxed">
             Cek Booking ID untuk peserta Open Trip maupun Private Trip, lihat rincian pemesanan, dan unduh invoice resmi Anda di sini.
           </p>
         </div>
