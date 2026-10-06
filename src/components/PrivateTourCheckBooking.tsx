@@ -64,9 +64,10 @@ interface PrivateTourBookingResult {
 interface PrivateTourCheckBookingProps {
   initialCode?: string;
   onPayNow?: (booking: any) => void;
+  hideHeader?: boolean;
 }
 
-export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: PrivateTourCheckBookingProps) {
+export default function PrivateTourCheckBooking({ initialCode = '', onPayNow, hideHeader = false }: PrivateTourCheckBookingProps) {
   const { currency, formatPrice, refreshBookings } = useApp();
   const [searchCode, setSearchCode] = useState(initialCode);
   const [loading, setLoading] = useState(false);
@@ -366,19 +367,21 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 py-8" id="private-tour-check-booking-section">
       
-      {/* Section Header */}
-      <div className="text-center max-w-2xl mx-auto mb-8">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-300 text-amber-950 text-xs font-black uppercase tracking-wider mb-3">
-          <ShieldCheck className="h-4 w-4 text-amber-700" />
-          <span>PORTAL CEK BOOKING &amp; INVOICE</span>
+      {/* Section Header (Hidden when embedded in dedicated portal page) */}
+      {!hideHeader && (
+        <div className="text-center max-w-2xl mx-auto mb-8">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-300 text-amber-950 text-xs font-black uppercase tracking-wider mb-3">
+            <ShieldCheck className="h-4 w-4 text-amber-700" />
+            <span>PORTAL CEK BOOKING &amp; INVOICE</span>
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            Cek Status Booking &amp; Unduh Invoice
+          </h2>
+          <p className="text-sm text-slate-700 font-medium mt-2 leading-relaxed">
+            Masukkan kode booking resmi Anda (peserta Open Trip maupun Private Trip) untuk mengecek status pembayaran, melihat rincian perjalanan, dan mengunduh invoice final.
+          </p>
         </div>
-        <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-          Cek Status Booking &amp; Unduh Invoice
-        </h2>
-        <p className="text-sm text-slate-700 font-medium mt-2 leading-relaxed">
-          Masukkan kode booking resmi Anda (peserta Open Trip maupun Private Trip) untuk mengecek status pembayaran, melihat rincian perjalanan, dan mengunduh invoice final.
-        </p>
-      </div>
+      )}
 
       {/* Search Bar */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-300 p-4 sm:p-6 mb-8">
@@ -825,17 +828,6 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                       })()}
                     </div>
                   </div>
-
-                  <div className="pt-2 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-700 font-bold">Status Pembayaran:</span>
-                    <span className={`font-extrabold px-2.5 py-0.5 rounded-full ${
-                      booking.paymentStatus === 'Paid' 
-                        ? 'bg-emerald-100 text-emerald-950 border border-emerald-300' 
-                        : 'bg-amber-100 text-amber-950 border border-amber-300'
-                    }`}>
-                      {booking.paymentStatus === 'Paid' ? '✓ Lunas (Paid)' : 'Menunggu Pembayaran'}
-                    </span>
-                  </div>
                 </div>
               </div>
 
@@ -950,16 +942,14 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
                   </div>
                 )}
 
-                <span className="text-[11px] text-slate-700 text-center block font-semibold leading-relaxed pt-1">
+                <span className="text-[11px] text-slate-600 text-center block font-medium pt-1">
                   {canDownload
-                    ? (booking.bookingStatus === 'Completed' || (booking as any).status === 'Completed'
-                        ? '✓ Perjalanan selesai! Dokumen arsip resmi & invoice siap diunduh melalui tombol "Lihat Invoice".'
-                        : '✓ Pemesanan terkonfirmasi! Dokumen resmi & invoice siap diunduh melalui tombol "Lihat Invoice".')
+                    ? '✓ Berkas invoice dan konfirmasi resmi siap diunduh melalui tombol "Lihat Invoice".'
                     : isRequestConfirmationActive
-                    ? '⚡ Pembayaran lunas diterima! Silakan klik tombol "Minta Konfirmasi via WhatsApp" untuk konfirmasi langsung dari Admin Pusat.'
+                    ? '⚡ Pembayaran lunas. Klik "Minta Konfirmasi via WhatsApp" untuk verifikasi langsung.'
                     : booking.paymentStatus === 'Paid'
-                    ? '⏳ Pembayaran lunas diterima. Dokumen invoice & konfirmasi akan aktif setelah disetujui Admin Pusat.'
-                    : '🔒 Dokumen invoice resmi akan aktif setelah pembayaran diselesaikan dan dikonfirmasi Admin.'}
+                    ? '⏳ Pembayaran lunas. Dokumen resmi aktif begitu diverifikasi Admin Pusat.'
+                    : '🔒 Dokumen resmi aktif setelah pembayaran diselesaikan dan diverifikasi Admin.'}
                 </span>
               </div>
 

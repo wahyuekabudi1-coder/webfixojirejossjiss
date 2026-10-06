@@ -624,18 +624,6 @@ export default function BookingDetailModal({
                 </div>
               </div>
 
-              {/* Status Verification Badge & Box */}
-              <div className={`pt-2 border-t ${isDark ? 'border-neutral-800/60' : 'border-slate-200'} flex items-center justify-between text-[11px] font-mono`}>
-                <span className={`font-semibold ${labelColor}`}>Status Pembayaran Gateway:</span>
-                <span className={`px-2.5 py-0.5 rounded-full font-bold uppercase ${
-                  booking.paymentStatus === 'Paid'
-                    ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30'
-                    : 'bg-amber-500/10 text-amber-500 border border-amber-500/30'
-                }`}>
-                  {booking.paymentStatus === 'Paid' ? '✓ PAID (LUNAS)' : 'PENDING PAYMENT'}
-                </span>
-              </div>
-
               {/* Admin Payment Verification Box */}
               {(() => {
                 const expectedFinal = baseAmount > 0 ? (Math.max(0, baseAmount - discount) + uniqueCode) : finalPaymentAmount;

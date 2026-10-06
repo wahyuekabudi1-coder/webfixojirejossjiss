@@ -250,26 +250,19 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
             </div>
           </div>
 
-          {/* Section: Status Snapshot Banner */}
-          <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-emerald-600 text-white rounded-lg shrink-0">
-                <ShieldCheck className="h-5 w-5" />
-              </div>
-              <div>
-                <h4 className="text-sm font-black text-emerald-950">
-                  {data.paymentStatus === 'Paid' ? 'Pemesanan Resmi Terkonfirmasi & Lunas' : 'Pemesanan Terdaftar — Menunggu Pembayaran'}
-                </h4>
-                <p className="text-xs text-emerald-900 font-medium mt-0.5 leading-relaxed">
-                  {data.paymentStatus === 'Paid'
-                    ? 'Pembayaran lunas terverifikasi ArtoPay Gateway. Armada dan jadwal perjalanan telah tercatat resmi di sistem Smart Journey.'
-                    : 'Pemesanan telah tercatat di sistem Smart Journey. Silakan selesaikan pembayaran untuk konfirmasi final jadwal armada.'}
-                </p>
-              </div>
+          {/* Official Verification Bar */}
+          <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl px-4 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs print-avoid-break">
+            <div className="flex items-center space-x-2.5 text-emerald-950">
+              <ShieldCheck className="h-4 w-4 text-emerald-700 shrink-0" />
+              <span className="font-semibold text-[11px]">
+                {data.paymentStatus === 'Paid'
+                  ? 'Pembayaran lunas terverifikasi resmi via ArtoPay Gateway. Armada dan jadwal tercatat resmi di sistem Smart Journey.'
+                  : 'Pemesanan tercatat di sistem Smart Journey. Menunggu verifikasi pembayaran.'}
+              </span>
             </div>
             {data.verificationHash && (
-              <div className="text-[10px] font-mono text-emerald-950 font-bold bg-white px-2.5 py-1 rounded border border-emerald-300 self-stretch sm:self-auto text-center sm:text-right">
-                <span className="block text-[9px] uppercase font-bold text-slate-600">Digital Hash</span>
+              <div className="text-[10px] font-mono text-emerald-950 font-bold bg-white px-2.5 py-0.5 rounded border border-emerald-200 shrink-0">
+                <span className="text-[9px] uppercase font-bold text-slate-500 mr-1.5">Digital Hash:</span>
                 <span id="summary-verification-hash">{data.verificationHash}</span>
               </div>
             )}

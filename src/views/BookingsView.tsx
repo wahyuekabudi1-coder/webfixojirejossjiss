@@ -84,22 +84,10 @@ export default function BookingsView() {
             <Calendar className="h-3.5 w-3.5" />
             <span>Passenger Reservation Center</span>
           </span>
-          <h1 className="text-3xl sm:text-4.5xl font-black">Your Booking Portal</h1>
+          <h1 className="text-3xl sm:text-4.5xl font-black">Portal Cek Booking &amp; Invoice</h1>
           <p className="text-xs sm:text-sm text-emerald-100/90 font-medium max-w-lg mx-auto leading-relaxed">
-            Cek Booking ID untuk peserta Open Trip maupun Private Trip, lihat rincian pemesanan, dan unduh invoice resmi Anda di sini.
+            Periksa status reservasi Open Trip maupun Private Tour, pantau live tracker perjalanan, dan akses invoice resmi Anda.
           </p>
-        </div>
-
-        {/* Portal: Cek Booking ID & Invoice */}
-        <div className="flex justify-center">
-          <div className="inline-flex p-1.5 rounded-2xl bg-[#203c34] border border-[#315B4F] shadow-lg">
-            <div
-              className="px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 bg-amber-500 text-neutral-950 shadow-md"
-            >
-              <Search className="h-4 w-4" />
-              <span>Cek Booking ID &amp; Invoice</span>
-            </div>
-          </div>
         </div>
 
         {/* Cek Booking ID & Invoice Content */}
@@ -107,6 +95,7 @@ export default function BookingsView() {
           <PrivateTourCheckBooking 
             initialCode={selectedCode}
             onPayNow={(b) => handlePayWithArtoPay(b)}
+            hideHeader={true}
           />
         </div>
 

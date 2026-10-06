@@ -1243,23 +1243,11 @@ export default function AirportTransferView() {
                         {confirmedBooking.id}
                       </span>
                     </div>
-                    <div className="text-left sm:text-right space-y-0.5">
-                      <span className="text-[9px] text-neutral-400 font-bold uppercase block tracking-wider font-mono">TOTAL TARIF FINAL (ARTOPAY IDR)</span>
-                      {(() => {
-                        const payableAmount = getTransferFinalAmount(confirmedBooking);
-                        return (
-                          <>
-                            <span className="text-xl sm:text-2xl font-black text-emerald-600 font-mono block">
-                              Rp {payableAmount.toLocaleString('id-ID')}
-                            </span>
-                            {currency !== 'IDR' && (
-                              <span className="text-[11px] font-mono text-neutral-600 block">
-                                {formatPrice(idrToUSD(payableAmount), payableAmount)} (≈ Rp {payableAmount.toLocaleString('id-ID')} IDR)
-                              </span>
-                            )}
-                          </>
-                        );
-                      })()}
+                    <div className="text-left sm:text-right space-y-1">
+                      <span className="text-[9px] text-neutral-400 font-bold uppercase block tracking-wider font-mono">LAYANAN &amp; ARMADA</span>
+                      <span className="inline-block bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold px-3 py-1 rounded-xl font-mono">
+                        {selectedVehicle?.name || 'Mobil'} · {routeType}
+                      </span>
                     </div>
                   </div>
 
