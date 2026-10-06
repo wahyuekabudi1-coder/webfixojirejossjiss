@@ -113,6 +113,15 @@ export default function BookingDetailModal({
 
   const serviceBadge = getServiceBadge(booking.serviceType);
 
+  // Dynamic high-contrast classes ensuring crisp readability in Admin Dashboard Light & Dark modes
+  const labelColor = isDark ? 'text-neutral-400' : 'text-slate-700 font-semibold';
+  const labelHeaderColor = isDark ? 'text-neutral-400' : 'text-slate-800 font-bold';
+  const valueColor = isDark ? 'text-neutral-200' : 'text-slate-900 font-bold';
+  const valueMonoColor = `font-mono ${isDark ? 'text-neutral-200' : 'text-slate-900 font-bold'}`;
+  const subtextColor = isDark ? 'text-neutral-300' : 'text-slate-800 font-medium';
+  const dividerColor = isDark ? 'border-neutral-700/40' : 'border-slate-200';
+  const miniCardBg = isDark ? 'bg-neutral-900/50 border-neutral-800' : 'bg-white border-slate-200 shadow-xs';
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/75 backdrop-blur-xs animate-fade-in">
       <div 
@@ -136,15 +145,21 @@ export default function BookingDetailModal({
             <h2 className="text-lg font-black tracking-tight font-sans">
               {booking.serviceTitle || 'Pemesanan Layanan'}
             </h2>
-            <p className="text-xs text-neutral-500 font-mono">
-              ID Sistem: {booking.id} · Dibuat: {booking.createdAt ? new Date(booking.createdAt).toLocaleString('id-ID') : '-'}
+            <p className={`text-xs font-mono ${isDark ? 'text-neutral-400' : 'text-slate-700 font-medium'}`}>
+              <span className={isDark ? 'text-neutral-400' : 'text-slate-800 font-bold'}>ID Sistem Booking:</span>{' '}
+              <span className={isDark ? 'text-neutral-200' : 'text-slate-900 font-semibold'}>{booking.id}</span>
+              {' · '}
+              <span className={isDark ? 'text-neutral-400' : 'text-slate-800 font-bold'}>Dibuat:</span>{' '}
+              <span className={isDark ? 'text-neutral-200' : 'text-slate-900 font-semibold'}>
+                {booking.createdAt ? new Date(booking.createdAt).toLocaleString('id-ID') : '-'}
+              </span>
             </p>
           </div>
 
           <button 
             onClick={onClose}
             className={`p-1.5 rounded-lg border ${
-              isDark ? 'border-neutral-800 hover:bg-neutral-800 text-neutral-400' : 'border-neutral-200 hover:bg-neutral-100 text-neutral-500'
+              isDark ? 'border-neutral-800 hover:bg-neutral-800 text-neutral-400' : 'border-neutral-200 hover:bg-neutral-100 text-neutral-700'
             } transition-all cursor-pointer`}
           >
             <X className="h-5 w-5" />
@@ -159,7 +174,7 @@ export default function BookingDetailModal({
               ? 'bg-emerald-500/10 border-emerald-500/30' 
               : 'bg-amber-500/10 border-amber-500/30'
           }`}>
-            <span className="text-[10px] font-mono uppercase font-bold text-neutral-500 block mb-1">
+            <span className={`text-[10px] font-mono uppercase font-bold block mb-1 ${labelHeaderColor}`}>
               STATUS PEMBAYARAN (paymentStatus)
             </span>
             <div className="flex items-center justify-between">
@@ -176,17 +191,17 @@ export default function BookingDetailModal({
                 </span>
               </div>
               {booking.paidAt && (
-                <span className="text-[10px] font-mono text-neutral-400">
+                <span className={`text-[10px] font-mono ${subtextColor}`}>
                   Lunas: {new Date(booking.paidAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                 </span>
               )}
             </div>
             {!isPaid ? (
-              <p className="text-[10px] text-amber-600 mt-2 font-medium">
+              <p className={`text-[10px] mt-2 font-medium ${isDark ? 'text-amber-400' : 'text-amber-800'}`}>
                 ⚠️ Menunggu konfirmasi pembayaran lunas (ArtoPay webhook / transfer). Admin hanya dapat mengonfirmasi booking jika status pembayaran adalah <strong>Paid</strong>.
               </p>
             ) : (
-              <p className="text-[10px] text-emerald-600 mt-2 font-medium">
+              <p className={`text-[10px] mt-2 font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-800'}`}>
                 ✓ Pembayaran telah lunas diverifikasi.
               </p>
             )}
@@ -204,7 +219,7 @@ export default function BookingDetailModal({
                     ? 'bg-cyan-500/10 border-cyan-500/30'
                     : 'bg-amber-500/10 border-amber-500/30'
           }`}>
-            <span className="text-[10px] font-mono uppercase font-bold text-neutral-500 block mb-1">
+            <span className={`text-[10px] font-mono uppercase font-bold block mb-1 ${labelHeaderColor}`}>
               STATUS BOOKING / OPERASIONAL (bookingStatus)
             </span>
             <div className="flex items-center justify-between">
@@ -225,18 +240,18 @@ export default function BookingDetailModal({
                 </span>
               </div>
               {booking.confirmedAt && (
-                <span className="text-[10px] font-mono text-neutral-400">
+                <span className={`text-[10px] font-mono ${subtextColor}`}>
                   Dikonfirmasi: {new Date(booking.confirmedAt).toLocaleDateString('id-ID')}
                 </span>
               )}
             </div>
             {isConfirmed && (
-              <p className="text-[10px] text-blue-600 mt-2 font-medium">
+              <p className={`text-[10px] mt-2 font-medium ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>
                 ✅ Booking telah dikonfirmasi Admin. Akses voucher & invoice resmi customer aktif.
               </p>
             )}
             {isPendingConfirmation && (
-              <p className="text-[10px] text-cyan-600 mt-2 font-medium">
+              <p className={`text-[10px] mt-2 font-medium ${isDark ? 'text-cyan-400' : 'text-cyan-800'}`}>
                 ⚡ Pembayaran sudah lunas. Menunggu konfirmasi Admin (Siap Dikonfirmasi).
               </p>
             )}
@@ -246,42 +261,42 @@ export default function BookingDetailModal({
         {/* 2-COLUMN LAYOUT: CUSTOMER INFO & OPERATIONAL DETAILS */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Customer / Guest Info */}
-          <div className={`p-4 rounded-xl border ${isDark ? 'border-neutral-800 bg-neutral-950/40' : 'border-neutral-200 bg-neutral-50/70'} space-y-3`}>
+          <div className={`p-4 rounded-xl border ${isDark ? 'border-neutral-800 bg-neutral-950/40' : 'border-slate-200 bg-slate-50/70'} space-y-3`}>
             <h3 className="text-xs font-black uppercase font-mono tracking-wider text-amber-500 flex items-center gap-1.5">
               <User className="h-3.5 w-3.5" />
               <span>DATA PELANGGAN (CUSTOMER)</span>
             </h3>
 
             <div className="space-y-2 text-xs">
-              <div className="flex justify-between border-b border-dashed border-neutral-700/40 pb-1.5">
-                <span className="text-neutral-500">Nama Utama:</span>
-                <span className="font-bold text-neutral-200">{booking.customerName}</span>
+              <div className={`flex justify-between border-b border-dashed ${dividerColor} pb-1.5`}>
+                <span className={labelColor}>Nama Utama:</span>
+                <span className={valueColor}>{booking.customerName}</span>
               </div>
-              <div className="flex justify-between border-b border-dashed border-neutral-700/40 pb-1.5">
-                <span className="text-neutral-500">Nomor Telepon:</span>
-                <span className="font-mono font-bold text-neutral-200">{booking.customerPhone}</span>
+              <div className={`flex justify-between border-b border-dashed ${dividerColor} pb-1.5`}>
+                <span className={labelColor}>Nomor Telepon:</span>
+                <span className={valueMonoColor}>{booking.customerPhone}</span>
               </div>
-              <div className="flex justify-between border-b border-dashed border-neutral-700/40 pb-1.5">
-                <span className="text-neutral-500">Email:</span>
-                <span className="font-mono text-neutral-300">{booking.customerEmail}</span>
+              <div className={`flex justify-between border-b border-dashed ${dividerColor} pb-1.5`}>
+                <span className={labelColor}>Email:</span>
+                <span className={`font-mono ${subtextColor}`}>{booking.customerEmail}</span>
               </div>
               {booking.emergencyContact && (
-                <div className="flex justify-between border-b border-dashed border-neutral-700/40 pb-1.5">
-                  <span className="text-neutral-500">Kontak Darurat / WeChat:</span>
-                  <span className="font-mono text-neutral-300">{booking.emergencyContact}</span>
+                <div className={`flex justify-between border-b border-dashed ${dividerColor} pb-1.5`}>
+                  <span className={labelColor}>Kontak Darurat / WeChat:</span>
+                  <span className={`font-mono ${subtextColor}`}>{booking.emergencyContact}</span>
                 </div>
               )}
               {booking.nationalityType && (
-                <div className="flex justify-between border-b border-dashed border-neutral-700/40 pb-1.5">
-                  <span className="text-neutral-500">Kewarganegaraan:</span>
-                  <span className="font-mono font-bold text-neutral-300">{booking.nationalityType}</span>
+                <div className={`flex justify-between border-b border-dashed ${dividerColor} pb-1.5`}>
+                  <span className={labelColor}>Kewarganegaraan:</span>
+                  <span className={valueMonoColor}>{booking.nationalityType}</span>
                 </div>
               )}
             </div>
           </div>
 
           {/* Operational Details By Service */}
-          <div className={`p-4 rounded-xl border ${isDark ? 'border-neutral-800 bg-neutral-950/40' : 'border-neutral-200 bg-neutral-50/70'} space-y-3`}>
+          <div className={`p-4 rounded-xl border ${isDark ? 'border-neutral-800 bg-neutral-950/40' : 'border-slate-200 bg-slate-50/70'} space-y-3`}>
             <h3 className="text-xs font-black uppercase font-mono tracking-wider text-amber-500 flex items-center gap-1.5">
               <Navigation className="h-3.5 w-3.5" />
               <span>JADWAL &amp; TITIK OPERASIONAL</span>
@@ -290,48 +305,48 @@ export default function BookingDetailModal({
             <div className="space-y-2 text-xs">
               {/* If Open Trip, prominently show departureDate as official date */}
               {booking.serviceType === 'sharetour' ? (
-                <div className="flex justify-between border-b border-dashed border-emerald-500/40 pb-1.5 bg-emerald-500/5 px-2 py-1 rounded">
-                  <span className="text-emerald-400 font-bold">Tanggal Keberangkatan Resmi (departureDate):</span>
-                  <span className="font-mono font-black text-emerald-400 text-sm">
+                <div className={`flex justify-between border-b border-dashed ${isDark ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-emerald-300 bg-emerald-50'} pb-1.5 px-2 py-1 rounded`}>
+                  <span className={`font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-900'}`}>Tanggal Keberangkatan Resmi (departureDate):</span>
+                  <span className={`font-mono font-black text-sm ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
                     {booking.departureDate || booking.date || '-'}
                   </span>
                 </div>
               ) : (
-                <div className="flex justify-between border-b border-dashed border-neutral-700/40 pb-1.5">
-                  <span className="text-neutral-500">Tanggal Operasional:</span>
-                  <span className="font-mono font-bold text-amber-400">{booking.date || '-'}</span>
+                <div className={`flex justify-between border-b border-dashed ${dividerColor} pb-1.5`}>
+                  <span className={labelColor}>Tanggal Operasional:</span>
+                  <span className="font-mono font-bold text-amber-500">{booking.date || '-'}</span>
                 </div>
               )}
 
               {booking.time && (
-                <div className="flex justify-between border-b border-dashed border-neutral-700/40 pb-1.5">
-                  <span className="text-neutral-500">Waktu / Jam:</span>
-                  <span className="font-mono font-bold text-neutral-200">{booking.time}</span>
+                <div className={`flex justify-between border-b border-dashed ${dividerColor} pb-1.5`}>
+                  <span className={labelColor}>Waktu / Jam:</span>
+                  <span className={valueMonoColor}>{booking.time}</span>
                 </div>
               )}
-              <div className="flex justify-between border-b border-dashed border-neutral-700/40 pb-1.5">
-                <span className="text-neutral-500">Jumlah Penumpang (Pax):</span>
-                <span className="font-mono font-bold text-neutral-200">{booking.passengers} Orang</span>
+              <div className={`flex justify-between border-b border-dashed ${dividerColor} pb-1.5`}>
+                <span className={labelColor}>Jumlah Penumpang (Pax):</span>
+                <span className={valueMonoColor}>{booking.passengers} Orang</span>
               </div>
 
               {booking.meetingPoint && (
-                <div className="flex justify-between border-b border-dashed border-neutral-700/40 pb-1.5">
-                  <span className="text-neutral-500">Titik Kumpul (Meeting Point):</span>
-                  <span className="text-right text-neutral-200 font-medium">{booking.meetingPoint}</span>
+                <div className={`flex justify-between border-b border-dashed ${dividerColor} pb-1.5`}>
+                  <span className={labelColor}>Titik Kumpul (Meeting Point):</span>
+                  <span className={`text-right ${valueColor}`}>{booking.meetingPoint}</span>
                 </div>
               )}
 
               {booking.pickupLocation && (
-                <div className="flex justify-between border-b border-dashed border-neutral-700/40 pb-1.5">
-                  <span className="text-neutral-500">Titik Jemput (Pickup):</span>
-                  <span className="text-right max-w-[200px] truncate text-neutral-200 font-medium">{booking.pickupLocation}</span>
+                <div className={`flex justify-between border-b border-dashed ${dividerColor} pb-1.5`}>
+                  <span className={labelColor}>Titik Jemput (Pickup):</span>
+                  <span className={`text-right max-w-[200px] truncate ${valueColor}`}>{booking.pickupLocation}</span>
                 </div>
               )}
 
               {booking.dropoffLocation && (
-                <div className="flex justify-between border-b border-dashed border-neutral-700/40 pb-1.5">
-                  <span className="text-neutral-500">Tujuan (Destination):</span>
-                  <span className="text-right max-w-[200px] truncate text-neutral-200 font-medium">{booking.dropoffLocation}</span>
+                <div className={`flex justify-between border-b border-dashed ${dividerColor} pb-1.5`}>
+                  <span className={labelColor}>Tujuan (Destination):</span>
+                  <span className={`text-right max-w-[200px] truncate ${valueColor}`}>{booking.dropoffLocation}</span>
                 </div>
               )}
             </div>
@@ -342,12 +357,12 @@ export default function BookingDetailModal({
         {booking.serviceType === 'sharetour' && (
           <div className={`p-4 rounded-xl border ${isDark ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-emerald-200 bg-emerald-50/50'} space-y-3`}>
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-black uppercase font-mono tracking-wider text-emerald-400 flex items-center gap-1.5">
+              <h3 className="text-xs font-black uppercase font-mono tracking-wider text-emerald-500 flex items-center gap-1.5">
                 <Compass className="h-3.5 w-3.5" />
                 <span>SPESIFIKASI KHUSUS OPEN TRIP (SHARE TOUR)</span>
               </h3>
               {booking.batchId && (
-                <span className="text-[10px] font-mono bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20">
+                <span className="text-[10px] font-mono bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded border border-emerald-500/20 font-bold">
                   Batch ID: #{booking.batchId}
                 </span>
               )}
@@ -355,27 +370,31 @@ export default function BookingDetailModal({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div>
-                <span className="text-neutral-500 block mb-1">Tanggal Keberangkatan Resmi:</span>
-                <span className="font-mono font-black text-emerald-400 text-sm">
+                <span className={`block mb-1 font-semibold ${labelColor}`}>Tanggal Keberangkatan Resmi:</span>
+                <span className={`font-mono font-black text-sm ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
                   {booking.departureDate || booking.date || '-'}
                 </span>
               </div>
               <div>
-                <span className="text-neutral-500 block mb-1">Titik Kumpul / Pickup Point:</span>
-                <span className="font-medium text-neutral-200">
+                <span className={`block mb-1 font-semibold ${labelColor}`}>Titik Kumpul / Pickup Point:</span>
+                <span className={`font-semibold ${valueColor}`}>
                   {booking.meetingPoint || booking.pickupLocation || 'Sesuai kesepakatan meeting point trip'}
                 </span>
               </div>
             </div>
 
             {booking.participantNames && booking.participantNames.length > 0 && (
-              <div className="pt-2 border-t border-emerald-500/20">
-                <span className="text-[11px] font-bold text-neutral-400 block mb-1.5">
+              <div className={`pt-2 border-t ${isDark ? 'border-emerald-500/20' : 'border-emerald-200'}`}>
+                <span className={`text-[11px] font-bold block mb-1.5 ${isDark ? 'text-neutral-300' : 'text-slate-800'}`}>
                   Manifest Nama Peserta Terdaftar ({booking.participantNames.length} Orang):
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {booking.participantNames.map((name, idx) => (
-                    <span key={idx} className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-mono text-[11px]">
+                    <span key={idx} className={`px-2 py-0.5 rounded-md border font-mono text-[11px] font-semibold ${
+                      isDark 
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' 
+                        : 'bg-emerald-100/80 border-emerald-300 text-emerald-900'
+                    }`}>
                       {idx + 1}. {name}
                     </span>
                   ))}
@@ -387,36 +406,38 @@ export default function BookingDetailModal({
 
         {booking.serviceType === 'airport' && (
           <div className={`p-4 rounded-xl border ${isDark ? 'border-blue-500/20 bg-blue-500/5' : 'border-blue-200 bg-blue-50/50'} space-y-3`}>
-            <h3 className="text-xs font-black uppercase font-mono tracking-wider text-blue-400 flex items-center gap-1.5">
+            <h3 className="text-xs font-black uppercase font-mono tracking-wider text-blue-500 flex items-center gap-1.5">
               <Plane className="h-3.5 w-3.5" />
               <span>SPESIFIKASI AIRPORT TRANSFER</span>
             </h3>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-              <div className="p-2.5 rounded-lg bg-neutral-900/50 border border-neutral-800">
-                <span className="text-[10px] text-neutral-500 block">Nomor Penerbangan</span>
-                <span className="font-mono font-bold text-amber-400">{booking.flightNumber || '-'}</span>
+              <div className={`p-2.5 rounded-lg border ${miniCardBg}`}>
+                <span className={`text-[10px] block font-semibold ${labelColor}`}>Nomor Penerbangan</span>
+                <span className="font-mono font-bold text-amber-500">{booking.flightNumber || '-'}</span>
               </div>
-              <div className="p-2.5 rounded-lg bg-neutral-900/50 border border-neutral-800">
-                <span className="text-[10px] text-neutral-500 block">Arah Perjalanan</span>
-                <span className="font-semibold text-neutral-200">{booking.direction || 'Bandara ⇄ Kota'}</span>
+              <div className={`p-2.5 rounded-lg border ${miniCardBg}`}>
+                <span className={`text-[10px] block font-semibold ${labelColor}`}>Arah Perjalanan</span>
+                <span className={valueColor}>{booking.direction || 'Bandara ⇄ Kota'}</span>
               </div>
-              <div className="p-2.5 rounded-lg bg-neutral-900/50 border border-neutral-800">
-                <span className="text-[10px] text-neutral-500 block">Tipe Rute</span>
-                <span className="font-semibold text-neutral-200">{booking.routeType || 'One Way'}</span>
+              <div className={`p-2.5 rounded-lg border ${miniCardBg}`}>
+                <span className={`text-[10px] block font-semibold ${labelColor}`}>Tipe Rute</span>
+                <span className={valueColor}>{booking.routeType || 'One Way'}</span>
               </div>
-              <div className="p-2.5 rounded-lg bg-neutral-900/50 border border-neutral-800">
-                <span className="text-[10px] text-neutral-500 block">Jumlah Bagasi</span>
-                <span className="font-mono font-bold text-neutral-200">
+              <div className={`p-2.5 rounded-lg border ${miniCardBg}`}>
+                <span className={`text-[10px] block font-semibold ${labelColor}`}>Jumlah Bagasi</span>
+                <span className={valueMonoColor}>
                   {booking.luggage ? `${booking.luggage} Koper` : `${booking.passengers} Standar`}
                 </span>
               </div>
             </div>
 
             {booking.returnDate && (
-              <div className="p-2.5 rounded-lg bg-neutral-900/40 border border-blue-500/30 text-xs flex justify-between items-center">
-                <span className="text-blue-400 font-bold">Jadwal Pengantaran Kembali (Round Trip):</span>
-                <span className="font-mono text-neutral-200">{booking.returnDate} {booking.returnTime ? `· ${booking.returnTime}` : ''}</span>
+              <div className={`p-2.5 rounded-lg border text-xs flex justify-between items-center ${
+                isDark ? 'bg-neutral-900/40 border-blue-500/30' : 'bg-white border-blue-200 shadow-xs'
+              }`}>
+                <span className={`font-bold ${isDark ? 'text-blue-400' : 'text-blue-800'}`}>Jadwal Pengantaran Kembali (Round Trip):</span>
+                <span className={`font-mono font-semibold ${valueColor}`}>{booking.returnDate} {booking.returnTime ? `· ${booking.returnTime}` : ''}</span>
               </div>
             )}
           </div>
@@ -424,23 +445,23 @@ export default function BookingDetailModal({
 
         {booking.serviceType === 'taxi' && (
           <div className={`p-4 rounded-xl border ${isDark ? 'border-indigo-500/20 bg-indigo-500/5' : 'border-indigo-200 bg-indigo-50/50'} space-y-3`}>
-            <h3 className="text-xs font-black uppercase font-mono tracking-wider text-indigo-400 flex items-center gap-1.5">
+            <h3 className="text-xs font-black uppercase font-mono tracking-wider text-indigo-500 flex items-center gap-1.5">
               <Car className="h-3.5 w-3.5" />
               <span>SPESIFIKASI TAXI SERVICE</span>
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              <div className="p-2.5 rounded-lg bg-neutral-900/50 border border-neutral-800">
-                <span className="text-[10px] text-neutral-500 block">Zona Penjemputan</span>
-                <span className="font-semibold text-neutral-200">{booking.pickupLocation || booking.pickupArea || '-'}</span>
+              <div className={`p-2.5 rounded-lg border ${miniCardBg}`}>
+                <span className={`text-[10px] block font-semibold ${labelColor}`}>Zona Penjemputan</span>
+                <span className={valueColor}>{booking.pickupLocation || booking.pickupArea || '-'}</span>
               </div>
-              <div className="p-2.5 rounded-lg bg-neutral-900/50 border border-neutral-800">
-                <span className="text-[10px] text-neutral-500 block">Zona Tujuan</span>
-                <span className="font-semibold text-neutral-200">{booking.dropoffLocation || booking.dropoffArea || '-'}</span>
+              <div className={`p-2.5 rounded-lg border ${miniCardBg}`}>
+                <span className={`text-[10px] block font-semibold ${labelColor}`}>Zona Tujuan</span>
+                <span className={valueColor}>{booking.dropoffLocation || booking.dropoffArea || '-'}</span>
               </div>
-              <div className="p-2.5 rounded-lg bg-neutral-900/50 border border-neutral-800">
-                <span className="text-[10px] text-neutral-500 block">Kategori Armada</span>
-                <span className="font-bold text-amber-400">{booking.vehicleName || 'Standard Taxi'}</span>
+              <div className={`p-2.5 rounded-lg border ${miniCardBg}`}>
+                <span className={`text-[10px] block font-semibold ${labelColor}`}>Kategori Armada</span>
+                <span className="font-bold text-amber-500">{booking.vehicleName || 'Standard Taxi'}</span>
               </div>
             </div>
           </div>
@@ -448,36 +469,40 @@ export default function BookingDetailModal({
 
         {(booking.serviceType === 'car-rental' || booking.serviceType === 'rental') && (
           <div className={`p-4 rounded-xl border ${isDark ? 'border-purple-500/20 bg-purple-500/5' : 'border-purple-200 bg-purple-50/50'} space-y-3`}>
-            <h3 className="text-xs font-black uppercase font-mono tracking-wider text-purple-400 flex items-center gap-1.5">
+            <h3 className="text-xs font-black uppercase font-mono tracking-wider text-purple-500 flex items-center gap-1.5">
               <Car className="h-3.5 w-3.5" />
               <span>SPESIFIKASI CAR RENTAL (SEWA MOBIL)</span>
             </h3>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-              <div className="p-2.5 rounded-lg bg-neutral-900/50 border border-neutral-800">
-                <span className="text-[10px] text-neutral-500 block">Armada Mobil</span>
-                <span className="font-bold text-neutral-200">{booking.vehicleName || 'Avanza / Xenia'}</span>
+              <div className={`p-2.5 rounded-lg border ${miniCardBg}`}>
+                <span className={`text-[10px] block font-semibold ${labelColor}`}>Armada Mobil</span>
+                <span className={valueColor}>{booking.vehicleName || 'Avanza / Xenia'}</span>
               </div>
-              <div className="p-2.5 rounded-lg bg-neutral-900/50 border border-neutral-800">
-                <span className="text-[10px] text-neutral-500 block">Kota Operasional</span>
-                <span className="font-semibold text-neutral-200">{booking.operationalCity || 'Jawa Timur'}</span>
+              <div className={`p-2.5 rounded-lg border ${miniCardBg}`}>
+                <span className={`text-[10px] block font-semibold ${labelColor}`}>Kota Operasional</span>
+                <span className={valueColor}>{booking.operationalCity || 'Jawa Timur'}</span>
               </div>
-              <div className="p-2.5 rounded-lg bg-neutral-900/50 border border-neutral-800">
-                <span className="text-[10px] text-neutral-500 block">Durasi Sewa</span>
-                <span className="font-mono font-bold text-neutral-200">{booking.duration || '1 Hari'}</span>
+              <div className={`p-2.5 rounded-lg border ${miniCardBg}`}>
+                <span className={`text-[10px] block font-semibold ${labelColor}`}>Durasi Sewa</span>
+                <span className={valueMonoColor}>{booking.duration || '1 Hari'}</span>
               </div>
-              <div className="p-2.5 rounded-lg bg-neutral-900/50 border border-neutral-800">
-                <span className="text-[10px] text-neutral-500 block">Opsi Supir</span>
-                <span className="font-bold text-amber-400">{booking.withDriver ? 'Dengan Supir' : 'Lepas Kunci'}</span>
+              <div className={`p-2.5 rounded-lg border ${miniCardBg}`}>
+                <span className={`text-[10px] block font-semibold ${labelColor}`}>Opsi Supir</span>
+                <span className="font-bold text-amber-500">{booking.withDriver ? 'Dengan Supir' : 'Lepas Kunci'}</span>
               </div>
             </div>
 
             {booking.selectedAddons && booking.selectedAddons.length > 0 && (
-              <div className="pt-2 border-t border-purple-500/20">
-                <span className="text-[11px] font-bold text-neutral-400 block mb-1">Add-ons Tambahan:</span>
+              <div className={`pt-2 border-t ${isDark ? 'border-purple-500/20' : 'border-purple-200'}`}>
+                <span className={`text-[11px] font-bold block mb-1 ${isDark ? 'text-neutral-300' : 'text-slate-800'}`}>Add-ons Tambahan:</span>
                 <div className="flex flex-wrap gap-1.5">
                   {booking.selectedAddons.map((addon, idx) => (
-                    <span key={idx} className="px-2 py-0.5 rounded bg-purple-500/10 border border-purple-500/30 text-purple-300 font-mono text-[10px]">
+                    <span key={idx} className={`px-2 py-0.5 rounded border font-mono text-[10px] font-semibold ${
+                      isDark 
+                        ? 'bg-purple-500/10 border-purple-500/30 text-purple-300' 
+                        : 'bg-purple-100/80 border-purple-300 text-purple-900'
+                    }`}>
                       + {addon}
                     </span>
                   ))}
@@ -489,23 +514,23 @@ export default function BookingDetailModal({
 
         {booking.serviceType === 'tour' && (
           <div className={`p-4 rounded-xl border ${isDark ? 'border-amber-500/20 bg-amber-500/5' : 'border-amber-200 bg-amber-50/50'} space-y-3`}>
-            <h3 className="text-xs font-black uppercase font-mono tracking-wider text-amber-400 flex items-center gap-1.5">
+            <h3 className="text-xs font-black uppercase font-mono tracking-wider text-amber-500 flex items-center gap-1.5">
               <Compass className="h-3.5 w-3.5" />
               <span>SPESIFIKASI PRIVATE TOUR</span>
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              <div className="p-2.5 rounded-lg bg-neutral-900/50 border border-neutral-800">
-                <span className="text-[10px] text-neutral-500 block">Paket Tour</span>
-                <span className="font-semibold text-neutral-200">{booking.serviceTitle}</span>
+              <div className={`p-2.5 rounded-lg border ${miniCardBg}`}>
+                <span className={`text-[10px] block font-semibold ${labelColor}`}>Paket Tour</span>
+                <span className={valueColor}>{booking.serviceTitle}</span>
               </div>
-              <div className="p-2.5 rounded-lg bg-neutral-900/50 border border-neutral-800">
-                <span className="text-[10px] text-neutral-500 block">Durasi</span>
-                <span className="font-mono font-bold text-neutral-200">{booking.duration || 'Sesuai Paket'}</span>
+              <div className={`p-2.5 rounded-lg border ${miniCardBg}`}>
+                <span className={`text-[10px] block font-semibold ${labelColor}`}>Durasi</span>
+                <span className={valueMonoColor}>{booking.duration || 'Sesuai Paket'}</span>
               </div>
-              <div className="p-2.5 rounded-lg bg-neutral-900/50 border border-neutral-800">
-                <span className="text-[10px] text-neutral-500 block">Armada Disediakan</span>
-                <span className="font-bold text-amber-400">{booking.vehicleName || 'Innova Reborn / Hiace'}</span>
+              <div className={`p-2.5 rounded-lg border ${miniCardBg}`}>
+                <span className={`text-[10px] block font-semibold ${labelColor}`}>Armada Disediakan</span>
+                <span className="font-bold text-amber-500">{booking.vehicleName || 'Innova Reborn / Hiace'}</span>
               </div>
             </div>
           </div>
@@ -513,11 +538,11 @@ export default function BookingDetailModal({
 
         {/* SPECIAL REQUESTS IF ANY */}
         {booking.specialRequests && (
-          <div className={`p-3 rounded-xl border ${isDark ? 'border-neutral-800 bg-neutral-900/60' : 'border-neutral-200 bg-neutral-100/60'} text-xs space-y-1`}>
+          <div className={`p-3 rounded-xl border ${isDark ? 'border-neutral-800 bg-neutral-900/60' : 'border-slate-200 bg-slate-100/70'} text-xs space-y-1`}>
             <span className="text-[10px] font-mono uppercase text-amber-500 font-bold block">
               Catatan / Permintaan Khusus Tamu:
             </span>
-            <p className="text-neutral-300 italic">{booking.specialRequests}</p>
+            <p className={`italic ${isDark ? 'text-neutral-200' : 'text-slate-900 font-medium'}`}>{booking.specialRequests}</p>
           </div>
         )}
 
@@ -537,13 +562,13 @@ export default function BookingDetailModal({
             (baseAmount > 0 ? (Math.max(0, baseAmount - discount) + uniqueCode) : 0);
 
           return (
-            <div className={`p-4 rounded-xl border ${isDark ? 'border-neutral-800 bg-neutral-950/60' : 'border-neutral-200 bg-neutral-100/60'} space-y-3`}>
-              <div className="flex items-center justify-between text-xs border-b border-neutral-800/60 pb-2">
-                <span className="text-neutral-400 font-mono uppercase font-bold flex items-center gap-1.5">
+            <div className={`p-4 rounded-xl border ${isDark ? 'border-neutral-800 bg-neutral-950/60' : 'border-slate-200 bg-slate-50/80'} space-y-3`}>
+              <div className={`flex items-center justify-between text-xs border-b ${isDark ? 'border-neutral-800/60' : 'border-slate-200'} pb-2`}>
+                <span className={`font-mono uppercase font-bold flex items-center gap-1.5 ${isDark ? 'text-neutral-300' : 'text-slate-900'}`}>
                   <CreditCard className="h-3.5 w-3.5 text-amber-500" />
                   <span>Rincian Pembayaran (Payment Detail)</span>
                 </span>
-                <span className="text-[10px] font-mono text-neutral-400">
+                <span className={`text-[10px] font-mono font-semibold ${isDark ? 'text-neutral-400' : 'text-slate-700'}`}>
                   Gateway: {booking.paymentMethod || 'ArtoPay'}
                 </span>
               </div>
@@ -551,47 +576,47 @@ export default function BookingDetailModal({
               {/* 4 Line Items: Base Price, Discount/Promo, Unique Code, Final Payment Amount */}
               <div className="space-y-2 text-xs font-mono">
                 {/* 1. Base Price */}
-                <div className="flex items-center justify-between text-neutral-300">
-                  <span className="text-neutral-400">1. Harga Dasar Layanan (Base Price):</span>
-                  <span className="font-semibold text-neutral-200">
+                <div className="flex items-center justify-between">
+                  <span className={labelColor}>1. Harga Dasar Layanan (Base Price):</span>
+                  <span className={valueColor}>
                     Rp {baseAmount.toLocaleString('id-ID')}
                   </span>
                 </div>
 
                 {/* 2. Discount / Promo */}
                 <div className="flex items-center justify-between">
-                  <span className="text-neutral-400">
-                    2. Diskon Promo {promoCode ? <strong className="text-emerald-400 uppercase font-sans font-bold">({promoCode})</strong> : ''}:
+                  <span className={labelColor}>
+                    2. Diskon Promo {promoCode ? <strong className="text-emerald-500 uppercase font-sans font-bold">({promoCode})</strong> : ''}:
                   </span>
-                  <span className={`font-semibold ${discount > 0 ? 'text-emerald-400' : 'text-neutral-500'}`}>
+                  <span className={`font-bold ${discount > 0 ? (isDark ? 'text-emerald-400' : 'text-emerald-700') : (isDark ? 'text-neutral-500' : 'text-slate-600')}`}>
                     {discount > 0 ? `- Rp ${discount.toLocaleString('id-ID')}` : 'Rp 0'}
                   </span>
                 </div>
 
                 {/* 3. Unique Code */}
                 <div className="flex items-center justify-between">
-                  <span className="text-neutral-400">3. Kode Unik Verifikasi (Unique Code):</span>
-                  <span className={`font-semibold ${uniqueCode > 0 ? 'text-amber-400' : 'text-neutral-500'}`}>
+                  <span className={labelColor}>3. Kode Unik Verifikasi (Unique Code):</span>
+                  <span className={`font-bold ${uniqueCode > 0 ? 'text-amber-500' : (isDark ? 'text-neutral-500' : 'text-slate-600')}`}>
                     {uniqueCode > 0 ? `+ Rp ${uniqueCode.toLocaleString('id-ID')}` : 'Rp 0'}
                   </span>
                 </div>
 
                 {/* 4. Final Payment Amount (Sent to ArtoPay) */}
-                <div className="flex items-baseline justify-between pt-2.5 border-t border-neutral-800/80">
+                <div className={`flex items-baseline justify-between pt-2.5 border-t ${isDark ? 'border-neutral-800/80' : 'border-slate-200'}`}>
                   <div>
-                    <span className="text-xs font-bold text-amber-400 block">
+                    <span className="text-xs font-black text-amber-500 block">
                       4. Nominal Final Pembayaran (ArtoPay):
                     </span>
-                    <span className="text-[10px] text-neutral-500 block font-sans">
+                    <span className={`text-[10px] block font-sans font-medium ${isDark ? 'text-neutral-400' : 'text-slate-700'}`}>
                       Nominal persis sama dengan payload amount yang dikirim ke ArtoPay Gateway
                     </span>
                   </div>
                   <div className="text-right">
-                    <span className="text-xl font-black font-mono text-amber-400 block">
+                    <span className="text-xl font-black font-mono text-amber-500 block">
                       Rp {finalPaymentAmount.toLocaleString('id-ID')}
                     </span>
                     {booking.totalAmountUSD && (
-                      <span className="text-xs text-neutral-400 block font-mono">
+                      <span className={`text-xs block font-mono font-medium ${isDark ? 'text-neutral-400' : 'text-slate-700'}`}>
                         (${booking.totalAmountUSD} USD)
                       </span>
                     )}
@@ -600,12 +625,12 @@ export default function BookingDetailModal({
               </div>
 
               {/* Status Verification Badge & Box */}
-              <div className="pt-2 border-t border-neutral-800/60 flex items-center justify-between text-[11px] font-mono">
-                <span className="text-neutral-400">Status Pembayaran Gateway:</span>
+              <div className={`pt-2 border-t ${isDark ? 'border-neutral-800/60' : 'border-slate-200'} flex items-center justify-between text-[11px] font-mono`}>
+                <span className={`font-semibold ${labelColor}`}>Status Pembayaran Gateway:</span>
                 <span className={`px-2.5 py-0.5 rounded-full font-bold uppercase ${
                   booking.paymentStatus === 'Paid'
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                    : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                    ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30'
+                    : 'bg-amber-500/10 text-amber-500 border border-amber-500/30'
                 }`}>
                   {booking.paymentStatus === 'Paid' ? '✓ PAID (LUNAS)' : 'PENDING PAYMENT'}
                 </span>
@@ -620,26 +645,26 @@ export default function BookingDetailModal({
                 return (
                   <div className={`p-3 rounded-xl border ${
                     isPaymentVerified
-                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                      ? isDark ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-950'
                       : !isPaid
-                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
-                        : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                        ? isDark ? 'bg-amber-500/10 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-950'
+                        : isDark ? 'bg-rose-500/10 border-rose-500/30 text-rose-300' : 'bg-rose-50 border-rose-200 text-rose-950'
                   } text-xs space-y-1`}>
                     <div className="flex items-center justify-between font-bold">
                       <span className="flex items-center gap-1.5">
                         {isPaymentVerified ? (
                           <>
-                            <ShieldCheck className="h-4 w-4 text-emerald-400" />
+                            <ShieldCheck className="h-4 w-4 text-emerald-500" />
                             <span>Verifikasi Pembayaran: VALID &amp; COCOK (Verified)</span>
                           </>
                         ) : !isPaid ? (
                           <>
-                            <Clock className="h-4 w-4 text-amber-400" />
+                            <Clock className="h-4 w-4 text-amber-500" />
                             <span>Verifikasi Pembayaran: MENUNGGU PEMBAYARAN</span>
                           </>
                         ) : (
                           <>
-                            <AlertTriangle className="h-4 w-4 text-rose-400" />
+                            <AlertTriangle className="h-4 w-4 text-rose-500" />
                             <span>Verifikasi Pembayaran: KETIDAKCOCOKAN NOMINAL</span>
                           </>
                         )}
@@ -648,7 +673,13 @@ export default function BookingDetailModal({
                         {isPaymentVerified ? 'PAID + MATCH' : !isPaid ? 'PENDING' : 'MISMATCH'}
                       </span>
                     </div>
-                    <p className="text-[11px] opacity-90 leading-relaxed font-sans">
+                    <p className={`text-[11px] leading-relaxed font-sans font-medium ${
+                      isPaymentVerified 
+                        ? isDark ? 'text-emerald-200' : 'text-emerald-900' 
+                        : !isPaid 
+                          ? isDark ? 'text-amber-200' : 'text-amber-900' 
+                          : isDark ? 'text-rose-200' : 'text-rose-900'
+                    }`}>
                       {isPaymentVerified
                         ? `Status pembayaran telah PAID dan nominal final (Rp ${finalPaymentAmount.toLocaleString('id-ID')}) terverifikasi cocok sempurna dengan kode unik (+Rp ${uniqueCode}) serta harga dasar.`
                         : !isPaid
@@ -685,7 +716,7 @@ export default function BookingDetailModal({
                     onCancelBooking(booking.id, booking.source);
                   }
                 }}
-                className="px-3.5 py-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-bold text-xs cursor-pointer transition-all flex items-center gap-1.5"
+                className="px-3.5 py-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-bold text-xs cursor-pointer transition-all flex items-center gap-1.5"
                 title="Batalkan Booking"
               >
                 <Ban className="h-3.5 w-3.5" />
