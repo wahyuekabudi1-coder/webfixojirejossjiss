@@ -196,6 +196,28 @@ function generateUniqueBookingCode(existingCodes: string[]): string {
   return 'SJ-' + Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
+// Helper to generate a unique Open Trip / Share Tour booking code: SJ-OT-[6 RANDOM ALPHANUMERIC CHARACTERS]
+function generateUniqueOpenTripBookingCode(existingCodes: string[]): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let attempt = 0;
+
+  while (attempt < 1000) {
+    let code = 'SJ-OT-';
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+
+    const exists = existingCodes.some(c => c.toUpperCase() === code.toUpperCase());
+    if (!exists) {
+      return code;
+    }
+
+    attempt++;
+  }
+
+  return 'SJ-OT-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
 // Security: Customer input HTML escaping to prevent Stored XSS
 function sanitizeHtml(str: any): string {
   if (str === null || str === undefined) return '';
@@ -2254,7 +2276,9 @@ app.post('/api/bookings', async (req, res) => {
         decrementedSeatsCount = count;
 
         const allBookings = await bookingsRepo.getAll();
-        const bookingCode = payload.bookingCode || generateUniqueBookingCode(allBookings.map(b => b.bookingCode));
+        const bookingCode = (payload.bookingCode && payload.bookingCode.startsWith('SJ-OT-'))
+          ? payload.bookingCode
+          : generateUniqueOpenTripBookingCode(allBookings.map(b => b.bookingCode));
 
         // Authoritative Server-Side Calculation using pure IDR pricing (no USD/1.25x guessing)
         const rawNationality = String(
@@ -3612,6 +3636,7 @@ app.get([
       bookingType,
       bookingCategory,
       isShared,
+      batchId: booking.batchId || matchedBatch?.id || null,
       serviceName: tripTitle,
       tripTitle,
       packageName: booking.details?.package || tourSnapshot.packageName || (isShared ? 'Paket Open Trip' : 'Private Exclusive'),
@@ -3648,6 +3673,169 @@ app.get([
   } catch (err: any) {
     console.error('Error in /api/private-tour/check-booking:', err);
     return res.status(500).json({ error: 'Gagal memeriksa status booking', details: err.message });
+  }
+});
+
+// ==============================================================================
+// OPEN TRIP / SHARE TOUR DEPARTURE BOARD ENDPOINT (FIDS)
+// Flight Information Display System style departure board strictly for confirmed Open Trip bookings
+// ==============================================================================
+app.get([
+  '/api/open-trip/departure-board/:bookingCode',
+  '/api/sharetour/departure-board/:bookingCode'
+], async (req, res) => {
+  try {
+    const rawCode = (req.params.bookingCode || '').trim();
+    if (!rawCode) {
+      return res.status(400).json({ error: 'Kode booking wajib diisi.' });
+    }
+
+    const booking: any = await bookingsRepo.getByCode(rawCode);
+    if (!booking) {
+      return res.status(404).json({ error: `Booking dengan kode "${rawCode}" tidak ditemukan.` });
+    }
+
+    // Validate bookingType="shared" / Open Trip
+    const isShared = booking.bookingType === 'shared' || 
+      booking.tourBookingType === 'shared' || 
+      booking.serviceType === 'shared' || 
+      Boolean(booking.batchId);
+
+    if (!isShared) {
+      return res.status(400).json({ 
+        error: 'Pemesanan ini adalah Private Tour, bukan Open Trip. Layar Departure Board hanya diperuntukkan bagi peserta Open Trip / Share Tour.',
+        isShared: false 
+      });
+    }
+
+    const isConfirmed = booking.status === 'Confirmed' || booking.status === 'Completed';
+    const isPaid = (booking.paymentStatus || '').toLowerCase() === 'paid';
+
+    // Gate Access: Only accessible if Confirmed
+    if (!isConfirmed) {
+      return res.json({
+        accessible: false,
+        isShared: true,
+        bookingCode: booking.bookingCode || booking.id,
+        bookingStatus: booking.status || 'Pending Payment',
+        paymentStatus: booking.paymentStatus || 'Pending',
+        isPaid,
+        tripTitle: booking.tripTitle || booking.serviceName || 'Open Trip',
+        departureDate: booking.departureDate || '',
+        message: 'Departure Board hanya dapat diakses setelah pemesanan Anda berstatus Confirmed resmi oleh Admin Pusat.'
+      });
+    }
+
+    // Resolve Batch and Trip
+    let batch: any = null;
+    if (booking.batchId) {
+      batch = await shareToursRepo.getBatchById(booking.batchId);
+    }
+
+    let trip: any = null;
+    const tripId = booking.tripId || batch?.tripId;
+    if (tripId) {
+      trip = await shareToursRepo.getTripById(tripId);
+    }
+
+    // Resolve departure time from batch, trip, or itinerary
+    let departureTime = '03:00 WIB';
+    if (batch && (batch as any).departureTime) {
+      departureTime = (batch as any).departureTime;
+    } else if (trip && (trip as any).departureTime) {
+      departureTime = (trip as any).departureTime;
+    } else if (trip?.itinerary?.[0]?.timeSchedules?.[0]?.time) {
+      departureTime = trip.itinerary[0].timeSchedules[0].time + ' WIB';
+    } else if (booking.details?.pickupTime) {
+      departureTime = booking.details.pickupTime;
+    }
+
+    // Fetch all bookings to get other confirmed bookings in the SAME batch
+    const allBookings = await bookingsRepo.getAll();
+    const batchId = booking.batchId || batch?.id;
+
+    // Filter confirmed bookings belonging to this batch
+    const batchConfirmedBookings = allBookings.filter(b => {
+      const isSameBatch = Boolean(batchId && b.batchId && b.batchId === batchId);
+      const isConfirmedBooking = b.status === 'Confirmed' || b.status === 'Completed';
+      return isSameBatch && isConfirmedBooking;
+    });
+
+    // Ensure the current booking is included
+    const hasCurrent = batchConfirmedBookings.some(b => b.id === booking.id || b.bookingCode === booking.bookingCode);
+    if (!hasCurrent) {
+      batchConfirmedBookings.push(booking);
+    }
+
+    // Calculate confirmed pax & build passenger manifest
+    let totalConfirmedPax = 0;
+    const passengers: Array<{
+      id: string;
+      name: string;
+      pax: number;
+      isYou: boolean;
+      status: string;
+    }> = [];
+
+    batchConfirmedBookings.forEach((b, idx) => {
+      const isYou = (b.id === booking.id || b.bookingCode === booking.bookingCode);
+      const pax = Math.max(1, Number(b.participantsCount) || 1);
+      totalConfirmedPax += pax;
+
+      // Privacy: Only name and pax! NEVER include email, phone/whatsapp, payment reference, or price
+      let displayName = isYou 
+        ? (booking.customerName || booking.fullName || 'Tamu Utama')
+        : (b.customerName || b.fullName || `Peserta #${idx + 1}`);
+
+      passengers.push({
+        id: b.id || `pax-${idx}`,
+        name: displayName,
+        pax,
+        isYou,
+        status: 'CONFIRMED'
+      });
+    });
+
+    // Place "YOU" first for customer visibility
+    passengers.sort((a, b) => (a.isYou === b.isYou ? 0 : a.isYou ? -1 : 1));
+
+    const maxCapacity = batch?.quota || (batch ? (Number(batch.availableSeats || 0) + totalConfirmedPax) : 14);
+    const availableSeats = Math.max(0, maxCapacity - totalConfirmedPax);
+
+    let boardStatus = 'ON SCHEDULE';
+    if (batch?.status === 'Closed' || availableSeats <= 0) {
+      boardStatus = 'GATE READY / FULL';
+    } else if (totalConfirmedPax >= 4) {
+      boardStatus = 'CONFIRMED TO GO';
+    } else {
+      boardStatus = 'ON SCHEDULE';
+    }
+
+    return res.json({
+      accessible: true,
+      isShared: true,
+      bookingCode: booking.bookingCode || booking.id,
+      tripTitle: trip?.title || booking.tripTitle || booking.serviceName || 'Open Trip Smart Journey',
+      batchId: batchId || 'BATCH-001',
+      departureDate: batch?.departureDate || booking.departureDate || '',
+      departureTime,
+      meetingPoint: trip?.location || booking.pickupLocation || booking.details?.pickupLocation || 'Meeting Point Smart Journey',
+      boardStatus,
+      totalConfirmedPax,
+      maxCapacity,
+      availableSeats,
+      passengers,
+      customer: {
+        bookingCode: booking.bookingCode || booking.id,
+        customerName: booking.customerName || booking.fullName,
+        pax: booking.participantsCount || 1,
+        bookingStatus: booking.status,
+        paymentStatus: booking.paymentStatus
+      }
+    });
+  } catch (err: any) {
+    console.error('Error in /api/open-trip/departure-board:', err);
+    return res.status(500).json({ error: 'Gagal memuat Departure Board', details: err.message });
   }
 });
 

@@ -18,9 +18,11 @@ import {
   ExternalLink,
   MapPin,
   RefreshCw,
-  Sparkles
+  Sparkles,
+  Plane
 } from 'lucide-react';
 import FinalBookingSummaryModal, { FinalSummaryData } from './FinalBookingSummaryModal';
+import OpenTripDepartureBoard from './OpenTripDepartureBoard';
 import { useApp } from '../AppContext';
 import { idrToUSD } from '../utils/pricingUtils';
 
@@ -76,6 +78,9 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
   const [summaryData, setSummaryData] = useState<FinalSummaryData | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
+
+  // Open Trip View Tab: 'board' (Departure Board) vs 'billing' (Financial & Invoice)
+  const [openTripActiveView, setOpenTripActiveView] = useState<'board' | 'billing'>('board');
 
   // Sandbox Test Payment state (Active in Sandbox / Development only)
   const [isSandbox, setIsSandbox] = useState(() => {
@@ -154,6 +159,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
       }
 
       setBooking(data);
+      setOpenTripActiveView('board');
 
       if (data.found && data.bookingCode) {
         try {
@@ -348,6 +354,15 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
     booking && isPaid && isStatusConfirmedOrCompleted
   );
 
+  // Check whether current booking is an Open Trip / Share Tour
+  const isSharedBooking = Boolean(
+    booking && (
+      booking.isShared ||
+      booking.bookingType === 'shared' ||
+      (booking.bookingCode && booking.bookingCode.startsWith('SJ-OT-'))
+    )
+  );
+
   return (
     <div className="w-full max-w-4xl mx-auto px-4 py-8" id="private-tour-check-booking-section">
       
@@ -414,8 +429,64 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
       {/* Booking Result View */}
       {booking && (
         <div className="space-y-6 animate-in fade-in duration-300">
-          
-          {/* Card 1: Booking Overview Banner */}
+
+          {/* Open Trip Navigation Tabs (Active for Confirmed Open Trip bookings) */}
+          {isSharedBooking && isStatusConfirmedOrCompleted && (
+            <div className="bg-[#0b1714] p-1.5 rounded-2xl border border-[#1c3830] shadow-xl flex gap-1.5">
+              <button
+                type="button"
+                id="btn-tab-departure-board"
+                onClick={() => setOpenTripActiveView('board')}
+                className={`flex-1 py-2.5 px-3 sm:px-4 rounded-xl font-mono font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                  openTripActiveView === 'board'
+                    ? 'bg-emerald-500 text-neutral-950 font-black shadow-md'
+                    : 'text-slate-300 hover:text-white hover:bg-emerald-950/40'
+                }`}
+              >
+                <Plane className="h-4 w-4" />
+                <span>Layar Keberangkatan (Departure Board)</span>
+              </button>
+              <button
+                type="button"
+                id="btn-tab-billing-summary"
+                onClick={() => setOpenTripActiveView('billing')}
+                className={`flex-1 py-2.5 px-3 sm:px-4 rounded-xl font-mono font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                  openTripActiveView === 'billing'
+                    ? 'bg-amber-500 text-neutral-950 font-black shadow-md'
+                    : 'text-slate-300 hover:text-white hover:bg-emerald-950/40'
+                }`}
+              >
+                <FileText className="h-4 w-4" />
+                <span>Rincian Tagihan &amp; Invoice</span>
+              </button>
+            </div>
+          )}
+
+          {/* If Open Trip Confirmed and Board tab is active, render Departure Board */}
+          {isSharedBooking && isStatusConfirmedOrCompleted && openTripActiveView === 'board' ? (
+            <OpenTripDepartureBoard
+              bookingCode={booking.bookingCode}
+              onBackToSearch={() => setBooking(null)}
+              onViewBilling={() => setOpenTripActiveView('billing')}
+            />
+          ) : (
+            <>
+              {/* If Open Trip but not yet confirmed, render airport departure board notice */}
+              {isSharedBooking && !isStatusConfirmedOrCompleted && (
+                <div className="p-4 rounded-2xl bg-[#0b1714] border border-[#1c3830] text-emerald-300 flex items-start gap-3 shadow-sm">
+                  <Plane className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-mono font-black text-amber-300 uppercase block text-xs tracking-wider">
+                      Akses Layar Keberangkatan (Departure Board)
+                    </span>
+                    <p className="text-xs text-slate-300 mt-1 leading-relaxed font-sans">
+                      Pemesanan Open Trip Anda tercatat di sistem. Layar Informasi Keberangkatan (Departure Board) dan daftar manifes peserta satu batch akan aktif otomatis begitu status pemesanan resmi berstatus <strong>Confirmed</strong> oleh Admin.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Card 1: Booking Overview Banner */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-300 p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
               <div>
@@ -895,6 +966,8 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow }: 
             </div>
 
           </div>
+          </>
+          )}
 
         </div>
       )}
