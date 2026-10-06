@@ -212,7 +212,7 @@ async function runInvoiceChecklist() {
     tripId: 'tour-komodo-private',
     serviceName: 'Komodo Island Overland & Boat Tour',
     category: 'Private Tour',
-    departureDate: '2026-11-20',
+    departureDate: `2026-12-${String((Date.now() % 25) + 1).padStart(2, '0')}`,
     participantsCount: 2,
     customerName: 'Chen Wei',
     customerEmail: `chen.wei.${uniqueSuffix2}@example.com`,

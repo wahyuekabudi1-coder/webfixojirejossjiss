@@ -113,6 +113,50 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
         if (e.target === e.currentTarget) onClose();
       }}
     >
+      <style>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 8mm 10mm;
+          }
+          body * {
+            visibility: hidden;
+          }
+          #final-summary-modal, #final-summary-modal * {
+            visibility: visible;
+          }
+          #final-summary-modal {
+            position: absolute !important;
+            inset: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            background: #ffffff !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: visible !important;
+          }
+          #final-summary-modal > div {
+            box-shadow: none !important;
+            border: none !important;
+            border-radius: 0 !important;
+            max-height: none !important;
+            height: auto !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          #printable-summary-document {
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: visible !important;
+          }
+          .print-avoid-break {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+        }
+      `}</style>
       <div className="bg-white text-neutral-900 w-full max-w-3xl max-h-[92vh] flex flex-col rounded-2xl shadow-2xl overflow-hidden border border-neutral-200 my-auto">
         
         {/* Modal Top Actions (Hidden in Print, Sticky at top) */}
@@ -126,7 +170,7 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
               id="btn-download-pdf-actual"
               onClick={handleDownloadActualPdf}
               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-sm"
-              title="Unduh Berkas PDF Asli"
+              title="Unduh Berkas PDF Asli (1 Halaman A4)"
             >
               <Download className="h-4 w-4" />
               <span>Download PDF</span>
@@ -135,7 +179,7 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
               id="btn-print-summary-modal"
               onClick={handlePrint}
               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors cursor-pointer"
-              title="Cetak via Dialog Browser"
+              title="Cetak via Dialog Browser (A4)"
             >
               <Printer className="h-4 w-4" />
               <span>Cetak (A4)</span>
@@ -155,7 +199,7 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
         <div className="p-4 sm:p-6 md:p-8 space-y-6 overflow-y-auto overscroll-contain flex-1 print:overflow-visible print:p-0 print:space-y-4 text-neutral-900" id="printable-summary-document">
           
           {/* Header Brand & Verification */}
-          <div className="border-b border-neutral-200 pb-5 sm:pb-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+          <div className="border-b border-neutral-200 pb-5 sm:pb-6 flex flex-col sm:flex-row sm:items-start justify-between gap-4 print-avoid-break">
             <div className="space-y-1">
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-black text-2xl tracking-tight text-neutral-900 font-mono">SMART JOURNEY</span>
@@ -169,15 +213,13 @@ export default function FinalBookingSummaryModal({ isOpen, onClose, data }: Fina
               <p className="text-xs text-slate-900 font-bold">
                 Booking Summary &amp; Payment Receipt
               </p>
-              <p className="text-xs text-slate-800 font-semibold">
-                PT Sawah Jaya Trans
-              </p>
-              <div className="text-[11px] text-slate-700 font-mono font-medium pt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                <span>Hub: Malang &amp; Bali</span>
-                <span className="text-slate-400">•</span>
-                <span>WhatsApp: +62 852-1234-7289</span>
-                <span className="text-slate-400">•</span>
-                <span>Email: Info@sawahjayatrans.com</span>
+              
+              {/* Susunan Kontak Vertikal yang Rapi: PT Sawah Jaya Trans, Hub, WhatsApp, Email */}
+              <div className="pt-1.5 space-y-0.5 text-xs">
+                <p className="font-bold text-slate-900">PT Sawah Jaya Trans</p>
+                <p className="text-[11px] text-slate-700 font-medium">Hub: Malang &amp; Bali</p>
+                <p className="text-[11px] text-slate-700 font-medium">WhatsApp: +62 852-1234-7289</p>
+                <p className="text-[11px] text-slate-700 font-medium">Email: Info@sawahjayatrans.com</p>
               </div>
             </div>
 

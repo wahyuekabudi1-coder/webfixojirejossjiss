@@ -3054,8 +3054,12 @@ app.post('/api/bookings', async (req, res) => {
 
           // Server-authoritative calculation using database tour prices (IDR only)
           if (nationalityType !== 'WNI') {
-            const authWnaIDR = Number(resolvedTour.wnaPriceIDR || resolvedTour.wna_price_idr || 0);
-            if (authWnaIDR <= 0) {
+            let authWnaIDR = Number(resolvedTour.wnaPriceIDR || resolvedTour.wna_price_idr || 0);
+            if (authWnaIDR <= 0 && resolvedTour.startingPriceIDR) {
+              authWnaIDR = Math.round(Number(resolvedTour.startingPriceIDR) * 1.25);
+              resolvedTour.wnaPriceIDR = authWnaIDR;
+            }
+            if (authWnaIDR <= 0 && (!Array.isArray(payload.items) || payload.items.length === 0)) {
               return res.status(400).json({
                 error: 'Paket tour belum memiliki tarif WNA (IDR) resmi di database backend. Silakan konfigurasi harga WNA di Admin.',
                 code: 'MISSING_WNA_IDR_PRICE'
@@ -3227,6 +3231,8 @@ app.post('/api/bookings', async (req, res) => {
           createdAt: new Date().toISOString(),
           details: {
             ...(payload.details || {}),
+            ...(payload.items ? { items: payload.items } : {}),
+            ...(payload.nationalityType ? { nationalityType: payload.nationalityType } : {}),
             ...(tourSnapshot ? {
               duration: payload.details?.duration || tourSnapshot.duration,
               vehicleName: payload.details?.vehicleName || tourSnapshot.vehicleName
@@ -3240,7 +3246,10 @@ app.post('/api/bookings', async (req, res) => {
             discountAmount: verifiedDiscount,
             verifiedDiscount
           },
-          tourSnapshot,
+          tourSnapshot: {
+            ...(tourSnapshot || {}),
+            nationalityType: payload.nationalityType
+          },
           nationalityType: payload.nationalityType,
           items: payload.items || payload.lineItems || payload.details?.items || undefined,
           discount: verifiedDiscount,
@@ -3949,9 +3958,13 @@ app.get([
         name: booking.customerName || booking.fullName || booking.participantData?.name || 'Tamu Terdaftar',
         email: booking.customerEmail || booking.email || booking.participantData?.email || '-',
         phone: booking.customerPhone || booking.phone || booking.participantData?.whatsapp || '-',
-        nationality: booking.nationalityType === 'WNI' || booking.nationalityType === 'domestic'
-          ? 'Indonesia (Domestic)'
-          : (booking.nationalityType === 'WNA_CHINA' ? 'China' : (booking.nationalityType === 'WNA_EUROPE' ? 'Europe / International' : (booking.nationalityType || 'Indonesia (Domestic)'))),
+        nationality: (() => {
+          const nat = booking.details?.nationalityType || booking.tourSnapshot?.nationalityType || booking.nationalityType;
+          if (nat === 'WNA_EUROPE') return 'Europe / International';
+          if (nat === 'WNA_CHINA') return 'China';
+          if (nat === 'WNI' || nat === 'domestic') return 'Indonesia (Domestic)';
+          return booking.nationalityType && booking.nationalityType !== 'private' ? booking.nationalityType : 'Indonesia (Domestic)';
+        })(),
         pickupLocation: booking.details?.pickupLocation || booking.participantData?.pickupLocation || (isShared ? 'Meeting Point Open Trip' : 'Sesuai Konfirmasi'),
         dropoffLocation: booking.details?.dropoffLocation || booking.participantData?.dropoffLocation || undefined,
       },
@@ -4363,8 +4376,8 @@ app.get('/api/private-tour/invoice-html/:bookingCode', async (req, res) => {
       <div>
         <h1 class="brand-title">SMART JOURNEY</h1>
         <div class="doc-type">${isShared ? 'INVOICE &amp; BOOKING CONFIRMATION — OPEN TRIP' : 'INVOICE &amp; BOOKING CONFIRMATION — PRIVATE TOUR'}</div>
-        <p class="brand-subtitle">PT Smart Journey Transindo • Lisensi Resmi Biro Perjalanan Wisata</p>
-        <p class="brand-subtitle">Malang &amp; Surabaya, Jawa Timur • Hotline 24/7: +62 852-1234-7289</p>
+        <p class="brand-subtitle"><strong>PT Sawah Jaya Trans</strong> • Lisensi Resmi Biro Perjalanan Wisata</p>
+        <p class="brand-subtitle">Hub Operasional: Malang &amp; Bali • WhatsApp: +62 852-1234-7289 • Email: Info@sawahjayatrans.com</p>
         <div class="badge-wrap">
           <span class="badge ${bookingStatus === 'Confirmed' || bookingStatus === 'Completed' ? 'badge-confirmed' : ''}" style="${bookingStatus !== 'Confirmed' && bookingStatus !== 'Completed' ? 'background:#fef3c7;color:#b45309;border:1px solid #fcd34d;' : ''}">
             ${bookingStatus === 'Confirmed' || bookingStatus === 'Completed' ? '✓ BOOKING CONFIRMED' : '⏳ PENDING CONFIRMATION'}
