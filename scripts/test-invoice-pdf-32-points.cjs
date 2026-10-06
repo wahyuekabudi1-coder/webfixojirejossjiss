@@ -119,7 +119,7 @@ async function runInvoiceChecklist() {
     tripId: 'tour-bromo-private',
     serviceName: 'Bromo Sunrise Exclusive Tour',
     category: 'Private Tour',
-    departureDate: '2026-10-15',
+    departureDate: `2026-11-${String((Date.now() % 20) + 1).padStart(2, '0')}`,
     participantsCount: 3,
     participantsNames: ['David Miller', 'Sarah Miller', 'Leo Miller'],
     customerName: 'David Miller',
