@@ -89,7 +89,7 @@ export function generatePrivateTourPdf(data: FinalSummaryPdfInput): Promise<Buff
           Title: `SmartJourney-Invoice-${data.bookingCode}`,
           Author: 'Smart Journey (PT Sawah Jaya Trans)',
           Subject: 'INVOICE - PRIVATE TOUR - Official Booking Confirmation & Receipt - Booking Summary & Payment Receipt',
-          Keywords: 'Smart Journey, Invoice, Private Tour, Booking Summary, Payment Receipt, Official'
+          Keywords: 'Smart Journey, Invoice, Private Tour, Booking Summary, Payment Receipt, Official, Hotline 24/7'
         }
       });
 
@@ -197,12 +197,22 @@ export function generatePrivateTourPdf(data: FinalSummaryPdfInput): Promise<Buff
       doc.font('Helvetica').fontSize(7.2).fillColor(bodySlate)
         .text('Jl. Puntadewa No. 192, Tumpang, Malang, Jawa Timur', companyX + 14, compY, { width: companyW - 14, align: 'left' });
 
-      // Baris 4: Nomor WhatsApp & Badge Centang Biru
+      // Baris 4: Nomor WhatsApp & Badge Centang Biru Vector (Tanpa unicode rusak)
       compY += 10;
       drawSmallGreenBullet(companyX + 6, compY + 4);
+      const waNumberText = '+62 852-1234-7289';
       doc.font('Helvetica-Bold').fontSize(7.5).fillColor(darkSlate)
-        .text('+62 852-1234-7289', companyX + 14, compY, { continued: true });
-      doc.fillColor('#0284c7').text(' ✓', { width: companyW - 14, align: 'left' });
+        .text(waNumberText, companyX + 14, compY);
+      
+      const waWidth = doc.widthOfString(waNumberText);
+      const checkBadgeX = companyX + 14 + waWidth + 5;
+      const checkBadgeY = compY + 4;
+      doc.circle(checkBadgeX, checkBadgeY, 3.5).fill('#0284c7');
+      doc.strokeColor('#ffffff').lineWidth(1)
+        .moveTo(checkBadgeX - 1.5, checkBadgeY)
+        .lineTo(checkBadgeX - 0.3, checkBadgeY + 1.3)
+        .lineTo(checkBadgeX + 1.8, checkBadgeY - 1.2)
+        .stroke();
 
       // Baris 5: Email
       compY += 10;
@@ -296,9 +306,10 @@ export function generatePrivateTourPdf(data: FinalSummaryPdfInput): Promise<Buff
       doc.roundedRect(leftMargin, cardY, contentWidth, cardH, 8).fill(cardBg);
       doc.roundedRect(leftMargin, cardY, contentWidth, cardH, 8).strokeColor(borderSlate).lineWidth(0.8).stroke();
 
-      // Header Card: Ikon Kalender + BOOKING INFORMATION
+      // Header Card: Dot Hijau + BOOKING INFORMATION (Tanpa unicode emoji)
+      doc.circle(leftMargin + 16, cardY + 11.5, 2.5).fill(primaryGreen);
       doc.font('Helvetica-Bold').fontSize(8.5).fillColor(primaryGreen)
-        .text('📅  BOOKING INFORMATION', leftMargin + 14, cardY + 7, { characterSpacing: 0.4 });
+        .text('BOOKING INFORMATION', leftMargin + 23, cardY + 7, { characterSpacing: 0.4 });
 
       // Garis Pembatas Vertikal di Tengah Card
       const midColX = leftMargin + (contentWidth / 2) - 10;
@@ -307,8 +318,8 @@ export function generatePrivateTourPdf(data: FinalSummaryPdfInput): Promise<Buff
 
       // --- KOLOM KIRI (Booking ID, Booking Date, Travel Date dengan Highlight Box) ---
       const col1LabelX = leftMargin + 14;
-      const col1ColonX = leftMargin + 82;
-      const col1ValX = leftMargin + 90;
+      const col1ColonX = leftMargin + 76;
+      const col1ValX = leftMargin + 84;
 
       // 1. Booking ID (Bold Hijau Teal Sesuai Referensi)
       doc.font('Helvetica-Bold').fontSize(7.8).fillColor(darkSlate).text('Booking ID', col1LabelX, cardY + 25);
@@ -320,12 +331,12 @@ export function generatePrivateTourPdf(data: FinalSummaryPdfInput): Promise<Buff
       doc.font('Helvetica').fontSize(7.8).fillColor(darkSlate).text(':', col1ColonX, cardY + 42);
       doc.font('Helvetica').fontSize(7.8).fillColor(darkSlate).text(data.bookingDate || '-', col1ValX, cardY + 42);
 
-      // 3. Travel Date (Highlight Box Hijau Mint dengan Ikon Kalender Sesuai Referensi)
+      // 3. Travel Date (Highlight Box Hijau Mint Sesuai Referensi)
       const travelDateVal = data.trip.departureDate || '-';
       doc.font('Helvetica-Bold').fontSize(7.8).fillColor(darkSlate).text('Travel Date', col1LabelX, cardY + 59);
       doc.font('Helvetica').fontSize(7.8).fillColor(darkSlate).text(':', col1ColonX, cardY + 59);
 
-      const travelBoxW = 135;
+      const travelBoxW = 140;
       const travelBoxH = 21;
       const travelBoxY = cardY + 55;
       doc.roundedRect(col1ValX, travelBoxY, travelBoxW, travelBoxH, 5).fill(mintBg);
@@ -333,11 +344,11 @@ export function generatePrivateTourPdf(data: FinalSummaryPdfInput): Promise<Buff
 
       // Teks Tanggal di Dalam Highlight Box
       doc.font('Helvetica-Bold').fontSize(8.5).fillColor(darkEmerald)
-        .text(`📅   ${travelDateVal}`, col1ValX, travelBoxY + 5, { width: travelBoxW, align: 'center' });
+        .text(travelDateVal, col1ValX, travelBoxY + 6, { width: travelBoxW, align: 'center' });
 
       // --- KOLOM KANAN (Customer, Phone, Email, Nationality, No. of Pax) ---
       const col2LabelX = midColX + 16;
-      const col2ColonX = col2LabelX + 110;
+      const col2ColonX = col2LabelX + 104;
       const col2ValX = col2ColonX + 8;
       const col2ValW = rightMargin - col2ValX - 10;
 
@@ -351,27 +362,27 @@ export function generatePrivateTourPdf(data: FinalSummaryPdfInput): Promise<Buff
       const guestCount = data.trip.participantsCount || (data.trip.participantsNames ? data.trip.participantsNames.length : 1);
 
       // Row 1: Customer
-      doc.font('Helvetica').fontSize(7.5).fillColor(mutedSlate).text('👤  Customer', col2LabelX, cardY + 23);
+      doc.font('Helvetica').fontSize(7.5).fillColor(mutedSlate).text('Customer', col2LabelX, cardY + 23);
       doc.font('Helvetica').fontSize(7.5).fillColor(darkSlate).text(':', col2ColonX, cardY + 23);
-      doc.font('Helvetica').fontSize(7.8).fillColor(darkSlate).text(data.customer.name || '-', col2ValX, cardY + 23, { width: col2ValW });
+      doc.font('Helvetica-Bold').fontSize(7.8).fillColor(darkSlate).text(data.customer.name || '-', col2ValX, cardY + 23, { width: col2ValW });
 
       // Row 2: Customer Phone / WhatsApp
-      doc.font('Helvetica').fontSize(7.5).fillColor(mutedSlate).text('📞  Customer Phone / WhatsApp', col2LabelX, cardY + 35);
+      doc.font('Helvetica').fontSize(7.5).fillColor(mutedSlate).text('Customer Phone / WhatsApp', col2LabelX, cardY + 35);
       doc.font('Helvetica').fontSize(7.5).fillColor(darkSlate).text(':', col2ColonX, cardY + 35);
       doc.font('Helvetica').fontSize(7.5).fillColor(darkSlate).text(custPhone, col2ValX, cardY + 35, { width: col2ValW });
 
       // Row 3: Customer Email
-      doc.font('Helvetica').fontSize(7.5).fillColor(mutedSlate).text('✉️  Customer Email', col2LabelX, cardY + 47);
+      doc.font('Helvetica').fontSize(7.5).fillColor(mutedSlate).text('Customer Email', col2LabelX, cardY + 47);
       doc.font('Helvetica').fontSize(7.5).fillColor(darkSlate).text(':', col2ColonX, cardY + 47);
       doc.font('Helvetica').fontSize(7.5).fillColor(darkSlate).text(custEmail, col2ValX, cardY + 47, { width: col2ValW, ellipsis: true });
 
       // Row 4: Nationality
-      doc.font('Helvetica').fontSize(7.5).fillColor(mutedSlate).text('🌐  Nationality', col2LabelX, cardY + 59);
+      doc.font('Helvetica').fontSize(7.5).fillColor(mutedSlate).text('Nationality', col2LabelX, cardY + 59);
       doc.font('Helvetica').fontSize(7.5).fillColor(darkSlate).text(':', col2ColonX, cardY + 59);
       doc.font('Helvetica').fontSize(7.5).fillColor(darkSlate).text(data.customer.nationality || 'Indonesia (Domestic)', col2ValX, cardY + 59, { width: col2ValW });
 
       // Row 5: No. of Pax
-      doc.font('Helvetica').fontSize(7.5).fillColor(mutedSlate).text('👥  No. of Pax', col2LabelX, cardY + 71);
+      doc.font('Helvetica').fontSize(7.5).fillColor(mutedSlate).text('No. of Pax', col2LabelX, cardY + 71);
       doc.font('Helvetica').fontSize(7.5).fillColor(darkSlate).text(':', col2ColonX, cardY + 71);
       doc.font('Helvetica-Bold').fontSize(8).fillColor(darkSlate).text(`${guestCount} Pax`, col2ValX, cardY + 71, { width: col2ValW });
 
@@ -511,9 +522,10 @@ export function generatePrivateTourPdf(data: FinalSummaryPdfInput): Promise<Buff
       doc.roundedRect(leftMargin, blockTopY, leftColW, payBoxH, 8).fill(cardBg);
       doc.roundedRect(leftMargin, blockTopY, leftColW, payBoxH, 8).strokeColor(borderSlate).lineWidth(0.8).stroke();
 
-      // Header Bar Panel Kiri: 💳 PAYMENT INFORMATION
+      // Header Bar Panel Kiri: PAYMENT INFORMATION (Tanpa unicode emoji)
+      doc.circle(leftMargin + 16, blockTopY + 12, 2.5).fill(primaryGreen);
       doc.font('Helvetica-Bold').fontSize(8.5).fillColor(darkSlate)
-        .text('💳  PAYMENT INFORMATION', leftMargin + 12, blockTopY + 8, { characterSpacing: 0.4 });
+        .text('PAYMENT INFORMATION', leftMargin + 23, blockTopY + 8, { characterSpacing: 0.4 });
 
       const pRowStartX = leftMargin + 12;
       const pLabelX = pRowStartX + 16;
@@ -570,9 +582,10 @@ export function generatePrivateTourPdf(data: FinalSummaryPdfInput): Promise<Buff
       doc.roundedRect(rightColX, blockTopY, rightColW, payBoxH, 8).fill('#ffffff');
       doc.roundedRect(rightColX, blockTopY, rightColW, payBoxH, 8).strokeColor(borderSlate).lineWidth(0.8).stroke();
 
-      // Header Bar Panel Kanan: 🧮 PAYMENT SUMMARY
+      // Header Bar Panel Kanan: PAYMENT SUMMARY (Tanpa unicode emoji)
+      doc.circle(rightColX + 16, blockTopY + 12, 2.5).fill(primaryGreen);
       doc.font('Helvetica-Bold').fontSize(8.5).fillColor(darkSlate)
-        .text('🧮  PAYMENT SUMMARY', rightColX + 12, blockTopY + 8, { characterSpacing: 0.4 });
+        .text('PAYMENT SUMMARY', rightColX + 23, blockTopY + 8, { characterSpacing: 0.4 });
 
       const totValW = 100;
       const totValX = rightColX + rightColW - totValW - 12;
@@ -608,9 +621,10 @@ export function generatePrivateTourPdf(data: FinalSummaryPdfInput): Promise<Buff
       doc.roundedRect(leftMargin, curY, contentWidth, notesH, 8).fill(cardBg);
       doc.roundedRect(leftMargin, curY, contentWidth, notesH, 8).strokeColor(borderSlate).lineWidth(0.8).stroke();
 
-      // Ikon Dokumen + TERMS & NOTES
+      // Dot Hijau + TERMS & NOTES (Tanpa unicode emoji)
+      doc.circle(leftMargin + 16, curY + 12, 2.5).fill(primaryGreen);
       doc.font('Helvetica-Bold').fontSize(8.5).fillColor(darkSlate)
-        .text('📄  TERMS & NOTES', leftMargin + 14, curY + 8, { characterSpacing: 0.4 });
+        .text('TERMS & NOTES', leftMargin + 23, curY + 8, { characterSpacing: 0.4 });
 
       // 3 Butir Ketentuan dengan Badge Nomor Bulat Hijau Sesuai Gambar
       const termsList = [

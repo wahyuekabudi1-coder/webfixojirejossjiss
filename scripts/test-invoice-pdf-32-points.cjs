@@ -275,8 +275,8 @@ async function runInvoiceChecklist() {
   // Terms & Notes
   assert(rawText1.includes('TERMS & NOTES') && rawText1.includes('PT Sawah Jaya Trans'), 27, 'Terms & Notes tetap tersedia dengan isi profesional dan relevan', 'Official terms rendered');
 
-  // Footer
-  assert(rawText1.includes('SMART JOURNEY') && rawText1.includes('Hotline 24/7') && rawText1.includes('www.smartjourney.id'), 28, 'Footer memuat branding, lisensi/legalitas, dan kontak resmi Smart Journey', 'Footer verified');
+  // Footer (Minimal per user requirement: hanya kode verifikasi & validasi resmi, tanpa duplikasi info perusahaan)
+  assert((rawText1.includes('Kode Verifikasi') || rawText1.includes('SJ-VERIFIED')) && (rawText1.includes('Dokumen Resmi Sah') || rawText1.includes('smartjourney.id')), 28, 'Footer memuat legalitas resmi dan kode verifikasi tanpa pengulangan informasi perusahaan', 'Footer verified');
 
   // Layout & Quality
   assert(pdfRes1.buffer.length > 20000, 29, 'Layout A4 bersih, proporsional, banyak whitespace, dan tipografi rapi', `Generated PDF size: ${pdfRes1.buffer.length} bytes`);
