@@ -968,22 +968,42 @@ app.get('/api/gathering/quotations/:id', async (req, res) => {
     const token = typeof req.query.token === 'string' ? req.query.token.trim() : '';
     const isAdmin = checkIsAdmin(req);
 
-    const quotation = await gatheringRepo.getQuotationById(id);
+    let quotation = await gatheringRepo.getQuotationById(id);
+    if (!quotation && id) {
+      quotation = await gatheringRepo.getQuotationByRequestId(id);
+    }
+
     if (!quotation) {
+      const maybeReq = await gatheringRepo.getRequestById(id);
+      if (maybeReq) {
+        if (!isAdmin && token && maybeReq.secureToken !== token && maybeReq.id !== token) {
+          return res.status(403).json({ error: 'Akses ditolak: Token verifikasi tidak valid.' });
+        }
+        return res.status(200).json({
+          isPendingRequest: true,
+          request: maybeReq,
+          message: 'Permintaan penawaran Anda sedang dalam tahap peninjauan dan penyusunan proposal oleh tim Smart Journey.'
+        });
+      }
       return res.status(404).json({ error: 'Quotation tidak ditemukan.' });
     }
 
     if (!isAdmin) {
-      // Validate customer access via linked request token or quotation ID matching token
+      // Validate customer access via linked request token or quotation's own secureToken
       if (token) {
         const linkedReq = await gatheringRepo.getRequestById(quotation.requestId);
-        const tokenMatch = linkedReq && linkedReq.secureToken === token;
-        if (!tokenMatch && quotation.id !== token && quotation.quotationNumber !== token) {
+        const tokenMatch = (linkedReq && linkedReq.secureToken === token) || (quotation.secureToken && quotation.secureToken === token);
+        if (!tokenMatch) {
           return res.status(403).json({ error: 'Akses ditolak: Token verifikasi tidak valid.' });
         }
       } else {
         return res.status(401).json({ error: 'Akses ditolak: Membutuhkan Token Akses Customer atau Sesi Admin.' });
       }
+
+      // Do not expose internal admin notes or internal data to customer
+      const sanitized = { ...quotation };
+      delete (sanitized as any).adminNotes;
+      return res.json(sanitized);
     }
 
     res.json(quotation);
@@ -1024,7 +1044,10 @@ app.post('/api/gathering/quotations/:id/approve', async (req, res) => {
       const token = typeof req.query.token === 'string' ? req.query.token.trim() : (req.body?.token ? String(req.body.token).trim() : '');
       const isAdmin = checkIsAdmin(req);
 
-      const quotation = await gatheringRepo.getQuotationById(id);
+      let quotation = await gatheringRepo.getQuotationById(id);
+      if (!quotation && id) {
+        quotation = await gatheringRepo.getQuotationByRequestId(id);
+      }
       if (!quotation) {
         return res.status(404).json({ error: 'Quotation tidak ditemukan.' });
       }
@@ -1032,8 +1055,8 @@ app.post('/api/gathering/quotations/:id/approve', async (req, res) => {
       if (!isAdmin) {
         if (token) {
           const linkedReq = await gatheringRepo.getRequestById(quotation.requestId);
-          const tokenMatch = linkedReq && linkedReq.secureToken === token;
-          if (!tokenMatch && quotation.id !== token) {
+          const tokenMatch = (linkedReq && linkedReq.secureToken === token) || (quotation.secureToken && quotation.secureToken === token);
+          if (!tokenMatch) {
             return res.status(403).json({ error: 'Akses ditolak: Token verifikasi tidak valid.' });
           }
         } else {
@@ -1055,6 +1078,34 @@ app.post('/api/gathering/quotations/:id/approve', async (req, res) => {
         }
       }
 
+      // Extra idempotency check: query bookings table directly
+      const allBookings = await bookingsRepo.getAll();
+      const existingForQuo = allBookings.find(b => 
+        b.gatheringQuotationId === quotation.id || 
+        b.serviceId === quotation.id ||
+        b.details?.quotationId === quotation.id
+      );
+      if (existingForQuo) {
+        if (!quotation.bookingId) {
+          await gatheringRepo.setQuotationBookingId(quotation.id, existingForQuo.id);
+        }
+        return res.json({
+          success: true,
+          alreadyApproved: true,
+          booking: existingForQuo,
+          quotation,
+          message: 'Quotation telah disetujui sebelumnya. Booking sudah aktif.'
+        });
+      }
+
+      if (quotation.status === 'REJECTED') {
+        return res.status(400).json({ error: 'Quotation telah ditolak dan tidak dapat disetujui.' });
+      }
+
+      if (quotation.status === 'REVISION_REQUESTED') {
+        return res.status(400).json({ error: 'Quotation sedang dalam proses revisi. Harap tunggu versi penawaran terbaru dari Admin.' });
+      }
+
       // Create canonical booking in existing bookings database table
       const paxCount = quotation.participantCount || 60;
       const bookingCode = `SJ-GAT-${Date.now().toString().slice(-6)}`;
@@ -1067,6 +1118,10 @@ app.post('/api/gathering/quotations/:id/approve', async (req, res) => {
         serviceType: 'gathering',
         bookingType: 'gathering',
         tourBookingType: 'gathering',
+        serviceId: quotation.id,
+        gatheringRequestId: quotation.requestId,
+        gatheringQuotationId: quotation.id,
+        gatheringQuotationVersion: quotation.currentVersion || 1,
         serviceName: `${packageName} (${companyOrClient})`,
         customerName: `${quotation.customerName} (${companyOrClient})`,
         fullName: quotation.customerName,

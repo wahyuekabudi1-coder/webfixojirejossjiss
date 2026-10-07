@@ -111,7 +111,10 @@ CREATE TABLE IF NOT EXISTS bookings (
   checkout_url TEXT,
   confirmed_at VARCHAR(64),
   reject_reason TEXT,
-  verification_hash TEXT
+  verification_hash TEXT,
+  gathering_request_id VARCHAR(64),
+  gathering_quotation_id VARCHAR(64),
+  gathering_quotation_version INT
 );
 
 -- 5. Payments Table (ArtoPay Transactions & Webhooks Audit Trail)
@@ -350,6 +353,7 @@ CREATE TABLE IF NOT EXISTS event_gathering_quotations (
   currency VARCHAR(10) DEFAULT 'IDR',
   booking_id VARCHAR(64),
   package_snapshot TEXT,
+  secure_token VARCHAR(128),
   created_at VARCHAR(64),
   updated_at VARCHAR(64)
 );
@@ -373,3 +377,10 @@ CREATE TABLE IF NOT EXISTS event_gathering_quotation_versions (
   created_by VARCHAR(64) DEFAULT 'admin',
   created_at VARCHAR(64)
 );
+
+-- 21. Canonical Gathering Views (Aliases for gathering_* table access)
+CREATE VIEW IF NOT EXISTS gathering_packages AS SELECT * FROM event_gathering_packages;
+CREATE VIEW IF NOT EXISTS gathering_requests AS SELECT * FROM event_gathering_requests;
+CREATE VIEW IF NOT EXISTS gathering_quotations AS SELECT * FROM event_gathering_quotations;
+CREATE VIEW IF NOT EXISTS gathering_quotation_versions AS SELECT * FROM event_gathering_quotation_versions;
+

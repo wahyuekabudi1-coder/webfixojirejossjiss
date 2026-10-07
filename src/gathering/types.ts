@@ -156,6 +156,7 @@ export interface GatheringQuotation {
   versions?: GatheringQuotationVersion[];
   status: 'PROPOSAL_SENT' | 'REVISION_REQUESTED' | 'APPROVED' | 'REJECTED' | 'QUOTED' | 'ACCEPTED' | 'CONFIRMED' | 'EXPIRED';
   bookingId?: string; // ID of booking when converted to confirmed order
+  secureToken?: string;
   createdAt: string;
   updatedAt: string;
 }

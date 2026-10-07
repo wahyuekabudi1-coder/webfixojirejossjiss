@@ -154,6 +154,7 @@ export interface GatheringQuotation {
   currency: string;
   bookingId?: string;
   packageSnapshot?: PackageSnapshot | null;
+  secureToken?: string;
   terms?: string[];
   notes?: string;
   createdAt: string;
@@ -466,7 +467,17 @@ export class GatheringRepository {
     const db = await this.db();
     const id = pkg.id || `pkg-eg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const title = pkg.title || pkg.name || 'Untitled Gathering Package';
-    const slug = pkg.slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || id;
+    let slug = pkg.slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || id;
+    let attempts = 0;
+    while (attempts < 5) {
+      const existingSlug = await db.query('SELECT id FROM event_gathering_packages WHERE slug = ? LIMIT 1', [slug]);
+      if (existingSlug.length > 0) {
+        slug = `${slug.replace(/-\d+$/, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
+        attempts++;
+      } else {
+        break;
+      }
+    }
     const now = new Date().toISOString();
 
     const price60 = pkg.price60Pax ?? pkg.estimatedPrices?.pax60 ?? 0;
@@ -684,8 +695,8 @@ export class GatheringRepository {
   async getQuotationById(idOrNumber: string): Promise<GatheringQuotation | null> {
     const db = await this.db();
     const rows = await db.query<any>(
-      'SELECT * FROM event_gathering_quotations WHERE id = ? OR quotation_number = ? LIMIT 1',
-      [idOrNumber, idOrNumber]
+      'SELECT * FROM event_gathering_quotations WHERE id = ? OR quotation_number = ? OR request_id = ? ORDER BY created_at DESC LIMIT 1',
+      [idOrNumber, idOrNumber, idOrNumber]
     );
     if (!rows.length) return null;
     const q = mapQuotationFromDb(rows[0]);
@@ -740,13 +751,31 @@ export class GatheringRepository {
     const quotationNumber = `QUO-EG-${new Date().getFullYear()}-${randomSeq}`;
     const now = new Date().toISOString();
 
+    let items = Array.isArray(data.lineItems) ? [...data.lineItems] : [];
     let subtotal = 0;
-    for (const item of (data.lineItems || [])) {
-      subtotal += Number(item.subtotal || item.quantity * item.unitPrice || 0);
+    if (items.length > 0) {
+      for (const item of items) {
+        subtotal += Number(item.subtotal || ((item.quantity || 1) * (item.unitPrice || 0)) || 0);
+      }
+    } else {
+      const pax = data.participantCount || 60;
+      const unit = (data as any).pricePerPaxIDR || ((data as any).totalPriceIDR ? Math.round((data as any).totalPriceIDR / pax) : 0);
+      const total = (data as any).totalPriceIDR || (pax * unit);
+      subtotal = total;
+      items = [{
+        id: `item-${Date.now()}-1`,
+        name: `Paket ${data.packageName || 'Corporate Gathering'} (${pax} Pax)`,
+        quantity: pax,
+        unitPrice: unit,
+        subtotal: total
+      }];
     }
     const discount = Number(data.discount || 0);
     const additionalCost = Number(data.additionalCost || 0);
     const grandTotal = Math.max(0, subtotal - discount + additionalCost);
+
+    const linkedReq = data.requestId ? await this.getRequestById(data.requestId) : null;
+    const secureToken = linkedReq?.secureToken || `tok_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
     // Fetch master package to build immutable snapshot
     const masterPkg = await this.getPackageById(data.packageId);
@@ -769,7 +798,7 @@ export class GatheringRepository {
         price90Pax: masterPkg?.price90Pax,
         price90PlusText: masterPkg?.price90PlusText
       },
-      lineItems: data.lineItems || [],
+      lineItems: items,
       subtotal,
       discount,
       additionalCost,
@@ -782,8 +811,8 @@ export class GatheringRepository {
       `INSERT INTO event_gathering_quotations (
         id, quotation_number, request_id, package_id, customer_name, company_name,
         whatsapp, email, event_date, participant_count, valid_until, current_version,
-        status, subtotal, discount, additional_cost, grand_total, currency, package_snapshot, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        status, subtotal, discount, additional_cost, grand_total, currency, package_snapshot, secure_token, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         quotationNumber,
@@ -804,6 +833,7 @@ export class GatheringRepository {
         grandTotal,
         'IDR',
         snapshotJson,
+        secureToken,
         now,
         now
       ]
@@ -824,7 +854,7 @@ export class GatheringRepository {
         JSON.stringify(snapshot.included),
         JSON.stringify(snapshot.excluded),
         snapshot.notes,
-        JSON.stringify(data.lineItems || []),
+        JSON.stringify(items),
         subtotal,
         discount,
         additionalCost,
@@ -1154,6 +1184,7 @@ function mapQuotationFromDb(row: any): GatheringQuotation {
     currency: String(row.currency || 'IDR'),
     bookingId: row.booking_id ? String(row.booking_id) : undefined,
     packageSnapshot: safeParseJson(row.package_snapshot, null),
+    secureToken: row.secure_token ? String(row.secure_token) : undefined,
     terms: safeParseJson(row.terms, []),
     notes: row.notes ? String(row.notes) : '',
     createdAt: String(row.created_at || ''),

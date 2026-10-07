@@ -13,13 +13,18 @@ import {
 } from '../types';
 import { 
   getGatheringPackages, 
-  saveGatheringPackage, 
-  deleteGatheringPackage,
+  fetchGatheringPackages,
+  apiSaveGatheringPackage,
+  apiDeleteGatheringPackage,
+  apiTogglePublishPackage,
+  apiArchivePackage,
   getGatheringQuotationRequests, 
-  updateGatheringQuotationRequestStatus,
+  fetchGatheringRequests,
+  apiUpdateRequestStatus,
   getGatheringQuotations, 
-  saveGatheringQuotation, 
-  updateGatheringQuotationStatus,
+  fetchGatheringQuotations,
+  apiCreateGatheringQuotation,
+  apiApproveGatheringQuotation,
   GATHERING_STORAGE_EVENT 
 } from '../gatheringStore';
 import { UnifiedBookingDetail } from '../../components/admin/BookingDetailModal';
@@ -47,13 +52,25 @@ export default function GatheringAdminWorkspace({
   const [requests, setRequests] = useState<GatheringQuotationRequest[]>(() => getGatheringQuotationRequests());
   const [quotations, setQuotations] = useState<GatheringQuotation[]>(() => getGatheringQuotations());
 
-  const reloadData = () => {
-    setPackages(getGatheringPackages());
-    setRequests(getGatheringQuotationRequests());
-    setQuotations(getGatheringQuotations());
+  const reloadData = async () => {
+    try {
+      const [pkgs, reqs, quots] = await Promise.all([
+        fetchGatheringPackages(true),
+        fetchGatheringRequests(),
+        fetchGatheringQuotations()
+      ]);
+      setPackages(pkgs);
+      setRequests(reqs);
+      setQuotations(quots);
+    } catch (e) {
+      setPackages(getGatheringPackages());
+      setRequests(getGatheringQuotationRequests());
+      setQuotations(getGatheringQuotations());
+    }
   };
 
   useEffect(() => {
+    reloadData();
     window.addEventListener(GATHERING_STORAGE_EVENT, reloadData);
     return () => window.removeEventListener(GATHERING_STORAGE_EVENT, reloadData);
   }, []);
@@ -130,7 +147,7 @@ export default function GatheringAdminWorkspace({
     setPkgIncludesRaw(pkg.includes.join('\n'));
     setPkgExcludesRaw(pkg.excludes.join('\n'));
     setPkgFacilitiesRaw(pkg.facilities.join('\n'));
-    setPkgNotesRaw(pkg.notes.join('\n'));
+    setPkgNotesRaw(Array.isArray(pkg.notes) ? pkg.notes.join('\n') : (pkg.notes || ''));
     setPkgPrice60(pkg.estimatedPrices.pax60);
     setPkgPrice70(pkg.estimatedPrices.pax70);
     setPkgPrice80(pkg.estimatedPrices.pax80);
@@ -140,7 +157,7 @@ export default function GatheringAdminWorkspace({
     setIsPkgModalOpen(true);
   };
 
-  const handleSavePkg = (e: React.FormEvent) => {
+  const handleSavePkg = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pkgName.trim() || !pkgDestination.trim()) {
       triggerToast('Nama paket dan destinasi wajib diisi.');
@@ -192,27 +209,45 @@ export default function GatheringAdminWorkspace({
       updatedAt: now
     };
 
-    saveGatheringPackage(pkg);
-    setIsPkgModalOpen(false);
-    triggerToast(editingPkg ? 'Paket berhasil diperbarui.' : 'Paket baru berhasil ditambahkan.');
+    try {
+      await apiSaveGatheringPackage(pkg);
+      await reloadData();
+      setIsPkgModalOpen(false);
+      triggerToast(editingPkg ? 'Paket berhasil diperbarui di database backend.' : 'Paket baru berhasil ditambahkan ke database backend.');
+    } catch (err: any) {
+      triggerToast(`Gagal menyimpan paket: ${err.message || 'Error'}`);
+    }
   };
 
-  const handleTogglePublishPkg = (pkg: GatheringPackage) => {
-    const nextStatus = pkg.status === 'published' ? 'draft' : 'published';
-    saveGatheringPackage({ ...pkg, status: nextStatus });
-    triggerToast(`Status paket diubah menjadi ${nextStatus}.`);
+  const handleTogglePublishPkg = async (pkg: GatheringPackage) => {
+    try {
+      await apiTogglePublishPackage(pkg.id);
+      await reloadData();
+      triggerToast(`Status publish paket ${pkg.name} berhasil diperbarui.`);
+    } catch (err: any) {
+      triggerToast(`Gagal mengubah status publish: ${err.message || 'Error'}`);
+    }
   };
 
-  const handleArchivePkg = (pkg: GatheringPackage) => {
-    const nextStatus = pkg.status === 'archived' ? 'published' : 'archived';
-    saveGatheringPackage({ ...pkg, status: nextStatus });
-    triggerToast(nextStatus === 'archived' ? 'Paket diarsipkan.' : 'Paket dikembalikan dari arsip.');
+  const handleArchivePkg = async (pkg: GatheringPackage) => {
+    try {
+      await apiArchivePackage(pkg.id);
+      await reloadData();
+      triggerToast(`Status arsip paket ${pkg.name} berhasil diperbarui.`);
+    } catch (err: any) {
+      triggerToast(`Gagal mengarsipkan paket: ${err.message || 'Error'}`);
+    }
   };
 
-  const handleDeletePkg = (id: string) => {
+  const handleDeletePkg = async (id: string) => {
     if (confirm('Yakin ingin menghapus paket gathering ini?')) {
-      deleteGatheringPackage(id);
-      triggerToast('Paket berhasil dihapus.');
+      try {
+        await apiDeleteGatheringPackage(id);
+        await reloadData();
+        triggerToast('Paket berhasil dihapus dari database.');
+      } catch (err: any) {
+        triggerToast(`Gagal menghapus paket: ${err.message || 'Error'}`);
+      }
     }
   };
 
@@ -246,43 +281,53 @@ export default function GatheringAdminWorkspace({
     setIsCreateQuoteModalOpen(true);
   };
 
-  const handleSaveQuotation = (e: React.FormEvent) => {
+  const handleSaveQuotation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedRequestForQuote) return;
 
     const validUntilDate = new Date();
     validUntilDate.setDate(validUntilDate.getDate() + (quoteValidDays || 14));
+    const paxNum = parseInt(selectedRequestForQuote.participants) || 60;
 
-    const newQuotation: GatheringQuotation = {
-      id: `QUO-${Date.now().toString().slice(-6)}`,
-      requestId: selectedRequestForQuote.id,
-      packageId: selectedRequestForQuote.packageId,
-      packageName: selectedRequestForQuote.packageName,
-      company: selectedRequestForQuote.company,
-      picName: selectedRequestForQuote.customerName,
-      whatsapp: selectedRequestForQuote.whatsapp,
-      email: selectedRequestForQuote.email,
-      participants: `${selectedRequestForQuote.participants} Pax`,
-      eventDate: selectedRequestForQuote.requestedDate,
-      pricePerPaxIDR: Number(quotePricePerPax) || 0,
-      totalPriceIDR: Number(quoteTotalPrice) || 0,
-      validUntil: validUntilDate.toISOString().split('T')[0],
-      terms: [
-        'Harga berlaku sesuai masa validitas penawaran.',
-        'Down Payment (DP) 30% dibayarkan saat konfirmasi booking.',
-        'Pelunasan sisa 70% dilakukan H-3 sebelum keberangkatan.',
-        'Pembatalan sepihak setelah DP dikenakan biaya administrasi 50% dari nilai DP.'
-      ],
-      notes: quoteNotes,
-      status: 'QUOTED',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    try {
+      const created = await apiCreateGatheringQuotation({
+        requestId: selectedRequestForQuote.id,
+        packageId: selectedRequestForQuote.packageId,
+        packageName: selectedRequestForQuote.packageName,
+        companyName: selectedRequestForQuote.company,
+        customerName: selectedRequestForQuote.customerName,
+        whatsapp: selectedRequestForQuote.whatsapp,
+        email: selectedRequestForQuote.email,
+        eventDate: selectedRequestForQuote.requestedDate,
+        participantCount: paxNum,
+        pricePerPaxIDR: Number(quotePricePerPax) || 0,
+        totalPriceIDR: Number(quoteTotalPrice) || 0,
+        validUntil: validUntilDate.toISOString().split('T')[0],
+        lineItems: [
+          {
+            id: `item-${Date.now()}-1`,
+            name: `Paket ${selectedRequestForQuote.packageName} (${paxNum} Pax)`,
+            quantity: paxNum,
+            unitPrice: Number(quotePricePerPax) || 0,
+            subtotal: Number(quoteTotalPrice) || 0
+          }
+        ],
+        terms: [
+          'Harga berlaku sesuai masa validitas penawaran.',
+          'Down Payment (DP) 30% dibayarkan saat konfirmasi booking.',
+          'Pelunasan sisa 70% dilakukan H-3 sebelum keberangkatan.',
+          'Pembatalan sepihak setelah DP dikenakan biaya administrasi 50% dari nilai DP.'
+        ],
+        notes: quoteNotes
+      });
 
-    saveGatheringQuotation(newQuotation);
-    setIsCreateQuoteModalOpen(false);
-    setActiveTab('quotations');
-    triggerToast(`Quotation resmi ${newQuotation.id} berhasil diterbitkan.`);
+      await reloadData();
+      setIsCreateQuoteModalOpen(false);
+      setActiveTab('quotations');
+      triggerToast(`Quotation resmi ${created.quotationNumber || created.id} berhasil diterbitkan di server database.`);
+    } catch (err: any) {
+      triggerToast(`Gagal menerbitkan quotation: ${err.message || 'Error'}`);
+    }
   };
 
   // -------------------------------------------------------------
@@ -315,32 +360,10 @@ export default function GatheringAdminWorkspace({
     }
 
     try {
-      const paxCount = parseInt(quote.participants) || 60;
-      const createdBooking = await addBooking({
-        type: 'tour',
-        serviceType: 'gathering',
-        serviceName: `${quote.packageName} (${quote.company})`,
-        customerName: `${quote.picName} (${quote.company})`,
-        customerEmail: quote.email,
-        customerPhone: quote.whatsapp,
-        totalPrice: Math.round(quote.totalPriceIDR / 16000),
-        totalPriceIDR: quote.totalPriceIDR,
-        paymentAmount: quote.totalPriceIDR,
-        baseAmount: quote.totalPriceIDR,
-        details: {
-          date: quote.eventDate,
-          departureDate: quote.eventDate,
-          guests: paxCount,
-          destination: quote.packageName,
-          cityAddress: quote.company,
-          notes: `Corporate Gathering: ${quote.packageName}. Quo ID: ${quote.id}. Notes: ${quote.notes}`
-        }
-      });
-
-      // Update quotation status to CONFIRMED with link to booking ID
-      updateGatheringQuotationStatus(quote.id, 'CONFIRMED', createdBooking.id);
+      const res = await apiApproveGatheringQuotation(quote.id);
+      await reloadData();
       setActiveTab('confirmed');
-      triggerToast(`Booking berhasil dibuat dengan Kode: ${createdBooking.id}. Data telah tersinkronisasi ke Orders & Operations!`);
+      triggerToast(`Booking berhasil dibuat dengan Kode: ${res.booking?.id || res.booking?.bookingCode}. Data telah tersinkronisasi ke Orders & Operations!`);
     } catch (err: any) {
       console.error('Failed to confirm gathering booking:', err);
       triggerToast(`Gagal mengonfirmasi booking: ${err.message || 'Error'}`);

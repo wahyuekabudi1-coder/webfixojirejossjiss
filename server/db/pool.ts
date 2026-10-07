@@ -313,7 +313,11 @@ export const REQUIRED_INDEXES: IndexDefinition[] = [
   { name: 'idx_assignments_booking', table: 'operational_assignments', columns: ['booking_id'] },
   { name: 'idx_articles_slug', table: 'articles', columns: ['slug'] },
   { name: 'idx_articles_status', table: 'articles', columns: ['status'] },
-  { name: 'idx_promos_code', table: 'promo_codes', columns: ['code'] }
+  { name: 'idx_promos_code', table: 'promo_codes', columns: ['code'] },
+  { name: 'idx_eg_packages_slug', table: 'event_gathering_packages', columns: ['slug'] },
+  { name: 'idx_eg_requests_token', table: 'event_gathering_requests', columns: ['secure_token'] },
+  { name: 'idx_eg_quotations_req', table: 'event_gathering_quotations', columns: ['request_id'] },
+  { name: 'idx_bookings_gath_quo', table: 'bookings', columns: ['gathering_quotation_id'] }
 ];
 
 export const REQUIRED_TABLES = [
@@ -336,7 +340,11 @@ export const REQUIRED_TABLES = [
   'event_gathering_packages',
   'event_gathering_requests',
   'event_gathering_quotations',
-  'event_gathering_quotation_versions'
+  'event_gathering_quotation_versions',
+  'gathering_packages',
+  'gathering_requests',
+  'gathering_quotations',
+  'gathering_quotation_versions'
 ];
 
 export async function initSchema(client: DatabaseClient): Promise<void> {
@@ -394,7 +402,8 @@ export async function initSchema(client: DatabaseClient): Promise<void> {
     { table: 'bookings', column: 'gathering_request_id', type: 'VARCHAR(64)' },
     { table: 'bookings', column: 'gathering_quotation_version', type: 'INT' },
     { table: 'event_gathering_quotation_versions', column: 'package_snapshot', type: 'TEXT' },
-    { table: 'event_gathering_quotations', column: 'package_snapshot', type: 'TEXT' }
+    { table: 'event_gathering_quotations', column: 'package_snapshot', type: 'TEXT' },
+    { table: 'event_gathering_quotations', column: 'secure_token', type: 'VARCHAR(128)' }
   ];
 
   for (const col of columnMigrations) {
@@ -461,7 +470,7 @@ export async function validateSchema(client: DatabaseClient): Promise<void> {
     existingTables = rows.map(r => r.TABLE_NAME.toLowerCase());
   } else {
     const rows = await client.query<{ name: string }>(
-      `SELECT name FROM sqlite_master WHERE type='table'`
+      `SELECT name FROM sqlite_master WHERE type IN ('table', 'view')`
     );
     existingTables = rows.map(r => r.name.toLowerCase());
   }

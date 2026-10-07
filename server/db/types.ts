@@ -122,6 +122,9 @@ export interface BookingRow {
   confirmed_at?: string | null;
   reject_reason?: string | null;
   verification_hash?: string | null;
+  gathering_request_id?: string | null;
+  gathering_quotation_id?: string | null;
+  gathering_quotation_version?: number | null;
 }
 
 export interface ArticleRow {

@@ -14,7 +14,7 @@ function notifyChange() {
   }
 }
 
-// In-memory cache for ultra-fast, smooth React renders
+// In-memory cache populated from backend API for zero-lag React rendering
 let cachedPackages: GatheringPackage[] | null = null;
 let cachedRequests: GatheringQuotationRequest[] | null = null;
 let cachedQuotations: GatheringQuotation[] | null = null;
@@ -44,7 +44,7 @@ function getAuthHeaders(): HeadersInit {
 }
 
 // -------------------------------------------------------------
-// Packages API & Cache
+// Packages API (Authoritative Server Single Source of Truth)
 // -------------------------------------------------------------
 
 export async function fetchGatheringPackages(includeAll = false): Promise<GatheringPackage[]> {
@@ -53,21 +53,17 @@ export async function fetchGatheringPackages(includeAll = false): Promise<Gather
     const res = await fetch(url, { headers: getAuthHeaders() });
     if (res.ok) {
       const data: GatheringPackage[] = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         cachedPackages = data;
-        if (typeof window !== 'undefined') {
-          try {
-            localStorage.setItem('sj_gathering_packages', JSON.stringify(data));
-          } catch {}
-        }
+        notifyChange();
         return data;
       }
     }
   } catch (err) {
-    console.warn('Network error fetching gathering packages, using local cache:', err);
+    console.warn('[GatheringStore] Error fetching packages from server:', err);
   }
 
-  return getGatheringPackages();
+  return cachedPackages || SEED_GATHERING_PACKAGES;
 }
 
 export async function fetchGatheringPackageById(id: string): Promise<GatheringPackage | null> {
@@ -79,7 +75,7 @@ export async function fetchGatheringPackageById(id: string): Promise<GatheringPa
       return await res.json();
     }
   } catch (err) {
-    console.warn('Network error fetching gathering package by id:', err);
+    console.warn('[GatheringStore] Error fetching package by id from server:', err);
   }
   const current = getGatheringPackages();
   return current.find(p => p.id === id || p.slug === id) || null;
@@ -90,143 +86,106 @@ export async function apiSaveGatheringPackage(pkg: Partial<GatheringPackage>): P
   const url = isUpdate ? `/api/gathering/packages/${encodeURIComponent(pkg.id!)}` : '/api/gathering/packages';
   const method = isUpdate ? 'PUT' : 'POST';
 
-  try {
-    const res = await fetch(url, {
-      method,
-      headers: getAuthHeaders(),
-      body: JSON.stringify(pkg)
-    });
-    if (res.ok) {
-      const saved: GatheringPackage = await res.json();
-      if (cachedPackages) {
-        const idx = cachedPackages.findIndex(p => p.id === saved.id);
-        if (idx >= 0) {
-          cachedPackages[idx] = saved;
-        } else {
-          cachedPackages.unshift(saved);
-        }
-      }
-      notifyChange();
-      return saved;
-    }
-  } catch (err) {
-    console.error('Error saving gathering package to API:', err);
+  const res = await fetch(url, {
+    method,
+    headers: getAuthHeaders(),
+    body: JSON.stringify(pkg)
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || 'Gagal menyimpan paket gathering ke database backend.');
   }
 
-  // Local fallback
-  const fullPkg = pkg as GatheringPackage;
-  saveGatheringPackage(fullPkg);
-  return fullPkg;
+  const saved: GatheringPackage = await res.json();
+  if (cachedPackages) {
+    const idx = cachedPackages.findIndex(p => p.id === saved.id);
+    if (idx >= 0) {
+      cachedPackages[idx] = saved;
+    } else {
+      cachedPackages.unshift(saved);
+    }
+  } else {
+    cachedPackages = [saved];
+  }
+
+  notifyChange();
+  return saved;
 }
 
 export async function apiDeleteGatheringPackage(id: string): Promise<boolean> {
-  try {
-    const res = await fetch(`/api/gathering/packages/${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-      headers: getAuthHeaders()
-    });
-    if (res.ok) {
-      if (cachedPackages) {
-        cachedPackages = cachedPackages.filter(p => p.id !== id);
-      }
-      deleteGatheringPackage(id);
-      notifyChange();
-      return true;
-    }
-  } catch (err) {
-    console.error('Error deleting gathering package via API:', err);
+  const res = await fetch(`/api/gathering/packages/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || 'Gagal menghapus paket gathering via API.');
   }
-  deleteGatheringPackage(id);
+
+  if (cachedPackages) {
+    cachedPackages = cachedPackages.filter(p => p.id !== id);
+  }
+  notifyChange();
   return true;
 }
 
 export async function apiTogglePublishPackage(id: string): Promise<boolean> {
-  try {
-    const res = await fetch(`/api/gathering/packages/${encodeURIComponent(id)}/publish`, {
-      method: 'POST',
-      headers: getAuthHeaders()
-    });
-    if (res.ok) {
-      await fetchGatheringPackages(true);
-      notifyChange();
-      return true;
-    }
-  } catch (err) {
-    console.error('Error toggling publish package:', err);
+  const res = await fetch(`/api/gathering/packages/${encodeURIComponent(id)}/publish`, {
+    method: 'POST',
+    headers: getAuthHeaders()
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || 'Gagal mengubah status publish paket gathering.');
   }
-  return false;
+
+  await fetchGatheringPackages(true);
+  notifyChange();
+  return true;
 }
 
 export async function apiArchivePackage(id: string): Promise<boolean> {
-  try {
-    const res = await fetch(`/api/gathering/packages/${encodeURIComponent(id)}/archive`, {
-      method: 'POST',
-      headers: getAuthHeaders()
-    });
-    if (res.ok) {
-      await fetchGatheringPackages(true);
-      notifyChange();
-      return true;
-    }
-  } catch (err) {
-    console.error('Error archiving package:', err);
+  const res = await fetch(`/api/gathering/packages/${encodeURIComponent(id)}/archive`, {
+    method: 'POST',
+    headers: getAuthHeaders()
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || 'Gagal mengarsipkan paket gathering.');
   }
-  return false;
+
+  await fetchGatheringPackages(true);
+  notifyChange();
+  return true;
 }
 
-// Synchronous getter for zero-flash renders
+// Synchronous getter from in-memory cache for fast UI rendering
 export function getGatheringPackages(): GatheringPackage[] {
   if (cachedPackages && cachedPackages.length > 0) {
     return cachedPackages;
   }
-  if (typeof window === 'undefined') return SEED_GATHERING_PACKAGES;
-  try {
-    const raw = localStorage.getItem('sj_gathering_packages');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        cachedPackages = parsed;
-        return parsed;
-      }
-    }
-  } catch {}
-  cachedPackages = SEED_GATHERING_PACKAGES;
   return SEED_GATHERING_PACKAGES;
 }
 
+// Backward-compatible delegates that write to server
 export function saveGatheringPackage(pkg: GatheringPackage): void {
-  const current = getGatheringPackages();
-  const existingIdx = current.findIndex(p => p.id === pkg.id);
-  let updated: GatheringPackage[];
-  if (existingIdx >= 0) {
-    updated = [...current];
-    updated[existingIdx] = { ...pkg, updatedAt: new Date().toISOString() };
-  } else {
-    updated = [pkg, ...current];
-  }
-  cachedPackages = updated;
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.setItem('sj_gathering_packages', JSON.stringify(updated));
-    } catch {}
-  }
-  notifyChange();
+  apiSaveGatheringPackage(pkg).catch(err => {
+    console.error('[GatheringStore] Error saving package:', err);
+  });
 }
 
 export function deleteGatheringPackage(id: string): void {
-  const current = getGatheringPackages();
-  const filtered = current.filter(p => p.id !== id);
-  cachedPackages = filtered;
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.setItem('sj_gathering_packages', JSON.stringify(filtered));
-    } catch {}
-  }
-  notifyChange();
+  apiDeleteGatheringPackage(id).catch(err => {
+    console.error('[GatheringStore] Error deleting package:', err);
+  });
 }
 
 // -------------------------------------------------------------
-// Quotation Requests API & Cache
+// Quotation Requests API (Authoritative Server Single Source of Truth)
 // -------------------------------------------------------------
 
 export async function fetchGatheringRequests(): Promise<GatheringQuotationRequest[]> {
@@ -236,120 +195,97 @@ export async function fetchGatheringRequests(): Promise<GatheringQuotationReques
       const data: GatheringQuotationRequest[] = await res.json();
       if (Array.isArray(data)) {
         cachedRequests = data;
-        if (typeof window !== 'undefined') {
-          try {
-            localStorage.setItem('sj_gathering_quotation_requests', JSON.stringify(data));
-          } catch {}
-        }
+        notifyChange();
         return data;
       }
     }
   } catch (err) {
-    console.warn('Network error fetching requests from API:', err);
+    console.warn('[GatheringStore] Error fetching requests from API:', err);
   }
-  return getGatheringQuotationRequests();
+  return cachedRequests || [];
 }
 
 export async function apiCreateGatheringRequest(
   data: Omit<GatheringQuotationRequest, 'id' | 'status' | 'createdAt' | 'updatedAt'>
 ): Promise<GatheringQuotationRequest> {
-  try {
-    const res = await fetch('/api/gathering/requests', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    if (res.ok) {
-      const created: GatheringQuotationRequest = await res.json();
-      if (cachedRequests) {
-        cachedRequests.unshift(created);
-      }
-      notifyChange();
-      return created;
-    }
-  } catch (err) {
-    console.error('Error creating gathering request via API:', err);
+  const res = await fetch('/api/gathering/requests', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || 'Gagal mengirim permintaan penawaran ke server.');
   }
 
-  // Fallback
-  return addGatheringQuotationRequest(data);
+  const created: GatheringQuotationRequest = await res.json();
+  if (cachedRequests) {
+    cachedRequests.unshift(created);
+  } else {
+    cachedRequests = [created];
+  }
+  notifyChange();
+  return created;
 }
 
 export async function apiUpdateRequestStatus(
   id: string,
   status: GatheringQuotationRequest['status']
 ): Promise<boolean> {
-  try {
-    const res = await fetch(`/api/gathering/requests/${encodeURIComponent(id)}/status`, {
-      method: 'PUT',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ status })
-    });
-    if (res.ok) {
-      updateGatheringQuotationRequestStatus(id, status);
-      return true;
-    }
-  } catch (err) {
-    console.error('Error updating request status via API:', err);
+  const res = await fetch(`/api/gathering/requests/${encodeURIComponent(id)}/status`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ status })
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || 'Gagal memperbarui status permintaan.');
   }
-  updateGatheringQuotationRequestStatus(id, status);
+
+  if (cachedRequests) {
+    cachedRequests = cachedRequests.map(r => r.id === id ? { ...r, status, updatedAt: new Date().toISOString() } : r);
+  }
+  notifyChange();
   return true;
 }
 
 export function getGatheringQuotationRequests(): GatheringQuotationRequest[] {
-  if (cachedRequests) return cachedRequests;
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem('sj_gathering_quotation_requests');
-    if (raw) {
-      cachedRequests = JSON.parse(raw);
-      return cachedRequests || [];
-    }
-  } catch {}
-  return [];
+  return cachedRequests || [];
 }
 
+// Backward-compatible delegates
 export function addGatheringQuotationRequest(
   data: Omit<GatheringQuotationRequest, 'id' | 'status' | 'createdAt' | 'updatedAt'>
 ): GatheringQuotationRequest {
-  const id = `GQR-${Date.now().toString().slice(-6)}`;
-  const now = new Date().toISOString();
-  const newRequest: GatheringQuotationRequest = {
+  const optimisticId = `EGR-${Date.now().toString().slice(-6)}`;
+  const optimistic: GatheringQuotationRequest = {
     ...data,
-    id,
+    id: optimisticId,
     status: 'REQUESTED',
-    createdAt: now,
-    updatedAt: now
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   };
-  const current = getGatheringQuotationRequests();
-  const updated = [newRequest, ...current];
-  cachedRequests = updated;
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.setItem('sj_gathering_quotation_requests', JSON.stringify(updated));
-    } catch {}
-  }
-  notifyChange();
-  return newRequest;
+
+  apiCreateGatheringRequest(data).catch(err => {
+    console.error('[GatheringStore] Error submitting request:', err);
+  });
+
+  return optimistic;
 }
 
 export function updateGatheringQuotationRequestStatus(
   id: string,
   status: GatheringQuotationRequest['status']
 ): void {
-  const current = getGatheringQuotationRequests();
-  const updated = current.map(r => r.id === id ? { ...r, status, updatedAt: new Date().toISOString() } : r);
-  cachedRequests = updated;
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.setItem('sj_gathering_quotation_requests', JSON.stringify(updated));
-    } catch {}
-  }
-  notifyChange();
+  apiUpdateRequestStatus(id, status).catch(err => {
+    console.error('[GatheringStore] Error updating request status:', err);
+  });
 }
 
 // -------------------------------------------------------------
-// Quotations API & Cache
+// Quotations API (Authoritative Server Single Source of Truth)
 // -------------------------------------------------------------
 
 export async function fetchGatheringQuotations(): Promise<GatheringQuotation[]> {
@@ -359,77 +295,73 @@ export async function fetchGatheringQuotations(): Promise<GatheringQuotation[]> 
       const data: GatheringQuotation[] = await res.json();
       if (Array.isArray(data)) {
         cachedQuotations = data;
-        if (typeof window !== 'undefined') {
-          try {
-            localStorage.setItem('sj_gathering_quotations', JSON.stringify(data));
-          } catch {}
-        }
+        notifyChange();
         return data;
       }
     }
   } catch (err) {
-    console.warn('Network error fetching quotations from API:', err);
+    console.warn('[GatheringStore] Error fetching quotations from API:', err);
   }
-  return getGatheringQuotations();
+  return cachedQuotations || [];
 }
 
 export async function fetchGatheringQuotationById(id: string, token?: string): Promise<GatheringQuotation | null> {
-  try {
-    const url = `/api/gathering/quotations/${encodeURIComponent(id)}${token ? `?token=${encodeURIComponent(token)}` : ''}`;
-    const res = await fetch(url, { headers: getAuthHeaders() });
-    if (res.ok) {
-      return await res.json();
-    }
-  } catch (err) {
-    console.warn('Network error fetching quotation by id:', err);
+  const url = `/api/gathering/quotations/${encodeURIComponent(id)}${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+  const res = await fetch(url, { headers: getAuthHeaders() });
+  if (res.ok) {
+    const data = await res.json();
+    return data;
   }
-  const current = getGatheringQuotations();
-  return current.find(q => q.id === id || q.quotationNumber === id) || null;
+  if (res.status === 403) {
+    throw new Error('Akses ditolak: Token verifikasi tidak cocok dengan penawaran ini.');
+  }
+  if (res.status === 401) {
+    throw new Error('Akses ditolak: Membutuhkan Token Akses Customer atau Sesi Admin.');
+  }
+  return null;
 }
 
 export async function apiCreateGatheringQuotation(data: any): Promise<GatheringQuotation> {
-  try {
-    const res = await fetch('/api/gathering/quotations', {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(data)
-    });
-    if (res.ok) {
-      const created: GatheringQuotation = await res.json();
-      if (cachedQuotations) {
-        cachedQuotations.unshift(created);
-      }
-      notifyChange();
-      return created;
-    }
-  } catch (err) {
-    console.error('Error creating quotation via API:', err);
+  const res = await fetch('/api/gathering/quotations', {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data)
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || 'Gagal menerbitkan quotation ke database backend.');
   }
-  // Fallback
-  saveGatheringQuotation(data);
-  return data;
+
+  const created: GatheringQuotation = await res.json();
+  if (cachedQuotations) {
+    cachedQuotations.unshift(created);
+  } else {
+    cachedQuotations = [created];
+  }
+  notifyChange();
+  return created;
 }
 
 export async function apiCreateQuotationVersion(quotationId: string, data: any): Promise<GatheringQuotation> {
-  try {
-    const res = await fetch(`/api/gathering/quotations/${encodeURIComponent(quotationId)}/versions`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(data)
-    });
-    if (res.ok) {
-      const updated: GatheringQuotation = await res.json();
-      if (cachedQuotations) {
-        const idx = cachedQuotations.findIndex(q => q.id === quotationId);
-        if (idx >= 0) cachedQuotations[idx] = updated;
-      }
-      notifyChange();
-      return updated;
-    }
-  } catch (err) {
-    console.error('Error creating quotation version via API:', err);
+  const res = await fetch(`/api/gathering/quotations/${encodeURIComponent(quotationId)}/versions`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data)
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || 'Gagal membuat versi quotation baru di database server.');
   }
-  throw new Error('Gagal memperbarui versi quotation ke database server.');
+
+  const updated: GatheringQuotation = await res.json();
+  if (cachedQuotations) {
+    const idx = cachedQuotations.findIndex(q => q.id === quotationId);
+    if (idx >= 0) cachedQuotations[idx] = updated;
+  }
+  notifyChange();
+  return updated;
 }
 
 export async function apiApproveGatheringQuotation(
@@ -448,7 +380,6 @@ export async function apiApproveGatheringQuotation(
   }
 
   const result = await res.json();
-  // Update local cache
   if (result.quotation && cachedQuotations) {
     const idx = cachedQuotations.findIndex(q => q.id === quotationId);
     if (idx >= 0) cachedQuotations[idx] = result.quotation;
@@ -474,45 +405,25 @@ export async function apiRevisionGatheringQuotation(
   }
 
   const result = await res.json();
+  if (cachedQuotations) {
+    const idx = cachedQuotations.findIndex(q => q.id === quotationId);
+    if (idx >= 0) {
+      cachedQuotations[idx] = { ...cachedQuotations[idx], status: 'REVISION_REQUESTED' };
+    }
+  }
   notifyChange();
   return result.success;
 }
 
 export function getGatheringQuotations(): GatheringQuotation[] {
-  if (cachedQuotations) return cachedQuotations;
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem('sj_gathering_quotations');
-    if (raw) {
-      cachedQuotations = JSON.parse(raw);
-      return cachedQuotations || [];
-    }
-  } catch {}
-  return [];
+  return cachedQuotations || [];
 }
 
+// Backward-compatible delegates
 export function saveGatheringQuotation(quotation: GatheringQuotation): void {
-  const current = getGatheringQuotations();
-  const existingIdx = current.findIndex(q => q.id === quotation.id);
-  let updated: GatheringQuotation[];
-  if (existingIdx >= 0) {
-    updated = [...current];
-    updated[existingIdx] = { ...quotation, updatedAt: new Date().toISOString() };
-  } else {
-    updated = [quotation, ...current];
-  }
-  cachedQuotations = updated;
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.setItem('sj_gathering_quotations', JSON.stringify(updated));
-    } catch {}
-  }
-
-  if (quotation.requestId) {
-    updateGatheringQuotationRequestStatus(quotation.requestId, 'QUOTED');
-  }
-
-  notifyChange();
+  apiCreateGatheringQuotation(quotation).catch(err => {
+    console.error('[GatheringStore] Error saving quotation:', err);
+  });
 }
 
 export function updateGatheringQuotationStatus(
@@ -520,23 +431,9 @@ export function updateGatheringQuotationStatus(
   status: GatheringQuotation['status'],
   bookingId?: string
 ): void {
-  const current = getGatheringQuotations();
-  const updated = current.map(q => {
-    if (q.id === id) {
-      return { 
-        ...q, 
-        status, 
-        ...(bookingId ? { bookingId } : {}),
-        updatedAt: new Date().toISOString() 
-      };
-    }
-    return q;
-  });
-  cachedQuotations = updated;
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.setItem('sj_gathering_quotations', JSON.stringify(updated));
-    } catch {}
+  // If status is approved/confirmed with bookingId, this is handled through apiApproveGatheringQuotation
+  if (cachedQuotations) {
+    cachedQuotations = cachedQuotations.map(q => q.id === id ? { ...q, status, ...(bookingId ? { bookingId } : {}) } : q);
+    notifyChange();
   }
-  notifyChange();
 }

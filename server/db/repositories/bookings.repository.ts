@@ -55,6 +55,9 @@ export interface BookingEntity {
   finalPaymentAmount?: number;
   totalPaid?: number;
   invoiceNumber?: string;
+  gatheringRequestId?: string;
+  gatheringQuotationId?: string;
+  gatheringQuotationVersion?: number;
 }
 
 function parseJsonObject<T = any>(val: any, fallback: T = {} as T): T {
@@ -147,7 +150,12 @@ function rowToBooking(row: BookingRow): BookingEntity {
     tripId: parsedDetails.tripId || row.service_id || undefined,
     tripTitle: parsedDetails.tripTitle || row.service_name || undefined,
     batchId: parsedDetails.batchId || undefined,
-    nationalityType: parsedDetails.nationalityType || row.tour_booking_type || undefined
+    nationalityType: parsedDetails.nationalityType || row.tour_booking_type || undefined,
+    gatheringRequestId: row.gathering_request_id || parsedDetails.gatheringRequestId || parsedDetails.requestId || undefined,
+    gatheringQuotationId: row.gathering_quotation_id || parsedDetails.gatheringQuotationId || parsedDetails.quotationId || undefined,
+    gatheringQuotationVersion: row.gathering_quotation_version !== undefined && row.gathering_quotation_version !== null
+      ? Number(row.gathering_quotation_version)
+      : (parsedDetails.gatheringQuotationVersion || parsedDetails.currentVersion || undefined)
   };
 }
 
@@ -196,7 +204,8 @@ export class BookingsRepository {
         participants_names, proof_of_payment, status, payment_status,
         total_price, total_price_idr, base_amount, unique_code, payment_amount,
         currency, created_at, details, tour_snapshot, discount, admin_notes,
-        paid_at, payment_id, payment_intent_id, checkout_url, confirmed_at, reject_reason, verification_hash, promo_code
+        paid_at, payment_id, payment_intent_id, checkout_url, confirmed_at, reject_reason, verification_hash, promo_code,
+        gathering_request_id, gathering_quotation_id, gathering_quotation_version
       ) VALUES (
         ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?,
@@ -204,9 +213,14 @@ export class BookingsRepository {
         ?, ?, ?, ?,
         ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?, ?, ?, ?
+        ?, ?, ?, ?, ?, ?, ?, ?,
+        ?, ?, ?
       )
     `;
+
+    const gReqId = booking.gatheringRequestId || (booking.details as any)?.gatheringRequestId || (booking.details as any)?.requestId || null;
+    const gQuoId = booking.gatheringQuotationId || (booking.details as any)?.gatheringQuotationId || (booking.details as any)?.quotationId || null;
+    const gQuoVer = booking.gatheringQuotationVersion !== undefined ? booking.gatheringQuotationVersion : ((booking.details as any)?.gatheringQuotationVersion || null);
 
     const params = [
       id,
@@ -246,7 +260,10 @@ export class BookingsRepository {
       booking.confirmedAt || null,
       booking.rejectReason || null,
       booking.verificationHash || null,
-      booking.promoCode || null
+      booking.promoCode || null,
+      gReqId,
+      gQuoId,
+      gQuoVer
     ];
 
     await client.execute(sql, params);
