@@ -403,7 +403,13 @@ export async function initSchema(client: DatabaseClient): Promise<void> {
     { table: 'bookings', column: 'gathering_quotation_version', type: 'INT' },
     { table: 'event_gathering_quotation_versions', column: 'package_snapshot', type: 'TEXT' },
     { table: 'event_gathering_quotations', column: 'package_snapshot', type: 'TEXT' },
-    { table: 'event_gathering_quotations', column: 'secure_token', type: 'VARCHAR(128)' }
+    { table: 'event_gathering_quotations', column: 'secure_token', type: 'VARCHAR(128)' },
+    { table: 'tours', column: 'faq', type: 'TEXT' },
+    { table: 'event_gathering_packages', column: 'faq', type: 'TEXT' },
+    { table: 'reviews', column: 'service_id', type: 'VARCHAR(128)' },
+    { table: 'reviews', column: 'service_name', type: 'VARCHAR(255)' },
+    { table: 'reviews', column: 'booking_code', type: 'VARCHAR(64)' },
+    { table: 'reviews', column: 'country', type: 'VARCHAR(64)' }
   ];
 
   for (const col of columnMigrations) {

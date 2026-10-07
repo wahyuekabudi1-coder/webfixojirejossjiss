@@ -4,7 +4,7 @@ import { Star, MessageSquare, CheckCircle, User, Globe, Send } from 'lucide-reac
 import { motion, AnimatePresence } from 'motion/react';
 
 interface CustomerReviewsSectionProps {
-  serviceType: 'tour' | 'airport' | 'taxi' | 'rental';
+  serviceType: 'tour' | 'airport' | 'taxi' | 'rental' | 'sharetour' | 'gathering' | string;
   serviceId?: string;
   serviceName: string;
 }
@@ -15,27 +15,38 @@ export default function CustomerReviewsSection({ serviceType, serviceId, service
   // Form states
   const [name, setName] = useState('');
   const [country, setCountry] = useState('');
+  const [bookingCode, setBookingCode] = useState('');
   const [rating, setRating] = useState(5);
   const [text, setText] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [formError, setFormError] = useState('');
 
-  // Filter reviews matching this service type and approved
-  const approvedReviews = reviews.filter(
-    r => r.serviceType === serviceType && r.status === 'approved'
-  );
+  // Strict Data Isolation: filter reviews matching BOTH serviceType and serviceId (if serviceId is provided)
+  const approvedReviews = reviews.filter(r => {
+    if (r.status !== 'approved') return false;
+    if (r.serviceType !== serviceType && r.service !== serviceType) return false;
+    if (serviceId) {
+      return r.serviceId === serviceId;
+    }
+    return true;
+  });
 
   // Calculate average rating
   const averageRating = approvedReviews.length > 0
     ? (approvedReviews.reduce((sum, r) => sum + r.rating, 0) / approvedReviews.length).toFixed(1)
     : '5.0';
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
 
     if (!name.trim()) {
       setFormError('Nama lengkap wajib diisi');
+      return;
+    }
+    if (!bookingCode.trim()) {
+      setFormError('Kode booking wajib diisi untuk verifikasi perjalanan Anda');
       return;
     }
     if (!country.trim()) {
@@ -47,23 +58,31 @@ export default function CustomerReviewsSection({ serviceType, serviceId, service
       return;
     }
 
-    // Submit review to global state
-    addReview({
-      name,
-      country,
-      rating,
-      text,
-      avatar: '',
-      serviceType,
-      serviceId
-    });
+    try {
+      setIsSubmitting(true);
+      await addReview({
+        name: name.trim(),
+        country: country.trim(),
+        bookingCode: bookingCode.trim().toUpperCase(),
+        rating,
+        text: text.trim(),
+        avatar: '',
+        serviceType,
+        serviceId,
+        serviceName
+      });
 
-    setIsSubmitted(true);
-    // Reset form fields
-    setName('');
-    setCountry('');
-    setRating(5);
-    setText('');
+      setIsSubmitted(true);
+      setName('');
+      setCountry('');
+      setBookingCode('');
+      setRating(5);
+      setText('');
+    } catch (err: any) {
+      setFormError(err?.message || 'Gagal mengirimkan ulasan. Pastikan kode booking valid.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -202,7 +221,7 @@ export default function CustomerReviewsSection({ serviceType, serviceId, service
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-neutral-500 uppercase flex items-center gap-1">
                         <User className="h-3 w-3" />
@@ -227,6 +246,19 @@ export default function CustomerReviewsSection({ serviceType, serviceId, service
                         onChange={(e) => setCountry(e.target.value)}
                         placeholder="Contoh: Australia"
                         className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-amber-500 outline-none transition-all"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-neutral-500 uppercase flex items-center gap-1">
+                        <CheckCircle className="h-3 w-3 text-amber-500" />
+                        <span>Kode Booking *</span>
+                      </label>
+                      <input 
+                        type="text"
+                        value={bookingCode}
+                        onChange={(e) => setBookingCode(e.target.value)}
+                        placeholder="Contoh: SJ-ABC123"
+                        className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs font-mono uppercase focus:ring-1 focus:ring-amber-500 outline-none transition-all"
                       />
                     </div>
                   </div>
@@ -260,10 +292,11 @@ export default function CustomerReviewsSection({ serviceType, serviceId, service
 
                   <button
                     type="submit"
-                    className="w-full bg-neutral-900 hover:bg-neutral-800 text-white font-extrabold text-xs py-2.5 rounded-xl transition-all shadow-sm hover:shadow flex items-center justify-center gap-1.5 cursor-pointer"
+                    disabled={isSubmitting}
+                    className="w-full bg-neutral-900 hover:bg-neutral-800 text-white font-extrabold text-xs py-2.5 rounded-xl transition-all shadow-sm hover:shadow flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Send className="h-3.5 w-3.5" />
-                    <span>Kirim Ulasan (Menunggu Moderasi Admin)</span>
+                    <span>{isSubmitting ? 'Memverifikasi & Mengirim...' : 'Kirim Ulasan (Menunggu Moderasi Admin)'}</span>
                   </button>
                 </form>
               )}

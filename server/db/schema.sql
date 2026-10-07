@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS tours (
   includes TEXT,
   excludes TEXT,
   what_to_bring TEXT,
+  faq TEXT,
   status VARCHAR(32) DEFAULT 'published',
   is_deleted INT DEFAULT 0,
   is_archived INT DEFAULT 0,
@@ -185,6 +186,10 @@ CREATE TABLE IF NOT EXISTS reviews (
   comment TEXT,
   date VARCHAR(64),
   service VARCHAR(64),
+  service_id VARCHAR(128),
+  service_name VARCHAR(255),
+  booking_code VARCHAR(64),
+  country VARCHAR(64),
   status VARCHAR(32) DEFAULT 'pending',
   created_at VARCHAR(64)
 );
@@ -301,6 +306,7 @@ CREATE TABLE IF NOT EXISTS event_gathering_packages (
   excluded TEXT,
   facilities TEXT,
   notes TEXT,
+  faq TEXT,
   price_60_pax DECIMAL(14,2) DEFAULT 0,
   price_70_pax DECIMAL(14,2) DEFAULT 0,
   price_80_pax DECIMAL(14,2) DEFAULT 0,

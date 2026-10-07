@@ -30,6 +30,7 @@ export interface GatheringPackage {
   excluded?: string[]; // alias
   facilities: string[];
   notes: string[] | string;
+  faq?: Array<{ question: string; answer: string; q?: string; a?: string }>;
   gallery: string[];
   featuredImage: string;
   image?: string; // alias

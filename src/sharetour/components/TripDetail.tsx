@@ -25,6 +25,7 @@ import {
 import { useLanguageCurrency } from "../LanguageCurrencyContext";
 import { calculateShareTourPricing } from "../../utils/pricingUtils";
 import { trackTourDetailView, trackBookNowClick } from "../../lib/analytics";
+import CustomerReviewsSection from "../../components/CustomerReviewsSection";
 
 interface TripDetailProps {
   trip: Trip;
@@ -1012,6 +1013,13 @@ export default function TripDetail({
         </div>
 
       </div>
+
+      {/* Customer Reviews Section (Isolated to this Trip) */}
+      <CustomerReviewsSection
+        serviceType="sharetour"
+        serviceId={trip.id}
+        serviceName={trip.title}
+      />
 
        {/* Similar Trips Section (auto-generated based on categories/other catalog packages) */}
       {similarTrips.length > 0 && (

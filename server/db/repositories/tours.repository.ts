@@ -27,6 +27,7 @@ export interface TourEntity {
   includes?: string[];
   excludes?: string[];
   whatToBring?: string[];
+  faq?: Array<{ question: string; answer: string; q?: string; a?: string }>;
   status: 'published' | 'draft' | 'unpublished' | 'archived';
   slug?: string;
   isDeleted?: boolean;
@@ -75,6 +76,7 @@ function rowToTour(row: TourRow): TourEntity {
     includes: parseJsonArray<string>(row.includes),
     excludes: parseJsonArray<string>(row.excludes),
     whatToBring: parseJsonArray<string>(row.what_to_bring),
+    faq: parseJsonArray<any>(row.faq),
     status: normalizedStatus,
     slug: (row as any).slug || row.id,
     isDeleted: Boolean(row.is_deleted),
@@ -133,8 +135,8 @@ export class ToursRepository {
         id, name, description, category, days, nights, duration,
         starting_price_usd, starting_price_idr, wni_price, wna_price, wna_price_idr,
         rating, review_count, image, highlights, itinerary, includes, excludes, what_to_bring,
-        status, is_deleted, is_archived, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        faq, status, is_deleted, is_archived, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -158,6 +160,7 @@ export class ToursRepository {
       JSON.stringify(tour.includes || []),
       JSON.stringify(tour.excludes || []),
       JSON.stringify(tour.whatToBring || []),
+      JSON.stringify(tour.faq || []),
       status,
       0, // is_deleted
       status === 'archived' ? 1 : 0, // is_archived
@@ -205,6 +208,7 @@ export class ToursRepository {
         includes = ?,
         excludes = ?,
         what_to_bring = ?,
+        faq = ?,
         status = ?,
         is_archived = ?,
         updated_at = ?
@@ -231,6 +235,7 @@ export class ToursRepository {
       JSON.stringify(tour.includes !== undefined ? tour.includes : existing.includes),
       JSON.stringify(tour.excludes !== undefined ? tour.excludes : existing.excludes),
       JSON.stringify(tour.whatToBring !== undefined ? tour.whatToBring : existing.whatToBring),
+      JSON.stringify(tour.faq !== undefined ? tour.faq : (existing.faq || [])),
       status,
       status === 'archived' ? 1 : 0,
       now,

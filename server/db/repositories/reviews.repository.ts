@@ -11,8 +11,14 @@ export interface ReviewEntity {
   name: string;
   rating: number;
   comment: string;
+  text?: string;
   date: string;
   service: string;
+  serviceType?: string;
+  serviceId?: string;
+  serviceName?: string;
+  bookingCode?: string;
+  country?: string;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
 }
@@ -22,13 +28,33 @@ export class ReviewsRepository {
     return await getDB();
   }
 
-  async getAll(onlyApproved: boolean = false): Promise<ReviewEntity[]> {
+  async getAll(options: { onlyApproved?: boolean; service?: string; serviceId?: string } | boolean = false): Promise<ReviewEntity[]> {
     const client = await this.db();
-    let sql = 'SELECT * FROM reviews';
+    let onlyApproved = false;
+    let service: string | undefined;
+    let serviceId: string | undefined;
+
+    if (typeof options === 'boolean') {
+      onlyApproved = options;
+    } else if (options && typeof options === 'object') {
+      onlyApproved = Boolean(options.onlyApproved);
+      service = options.service;
+      serviceId = options.serviceId;
+    }
+
+    let sql = 'SELECT * FROM reviews WHERE 1=1';
     const params: any[] = [];
     if (onlyApproved) {
-      sql += ' WHERE status = ?';
+      sql += ' AND status = ?';
       params.push('approved');
+    }
+    if (service) {
+      sql += ' AND service = ?';
+      params.push(service);
+    }
+    if (serviceId) {
+      sql += ' AND service_id = ?';
+      params.push(serviceId);
     }
     sql += ' ORDER BY created_at DESC';
 
@@ -39,6 +65,10 @@ export class ReviewsRepository {
       comment: string;
       date: string;
       service: string;
+      service_id?: string;
+      service_name?: string;
+      booking_code?: string;
+      country?: string;
       status: string;
       created_at: string;
     }>(sql, params);
@@ -48,8 +78,41 @@ export class ReviewsRepository {
       name: r.name,
       rating: Number(r.rating) || 5,
       comment: r.comment || '',
+      text: r.comment || '',
       date: r.date || '',
       service: r.service || 'tour',
+      serviceType: r.service || 'tour',
+      serviceId: r.service_id || undefined,
+      serviceName: r.service_name || undefined,
+      bookingCode: r.booking_code || undefined,
+      country: r.country || 'Indonesia',
+      status: (r.status || 'pending') as any,
+      createdAt: r.created_at || new Date().toISOString()
+    }));
+  }
+
+  async findByBookingCodeAndServiceId(bookingCode: string, serviceId?: string): Promise<ReviewEntity[]> {
+    const client = await this.db();
+    let sql = 'SELECT * FROM reviews WHERE LOWER(booking_code) = LOWER(?)';
+    const params: any[] = [(bookingCode || '').trim()];
+    if (serviceId) {
+      sql += ' AND service_id = ?';
+      params.push(serviceId);
+    }
+    const rows = await client.query<any>(sql, params);
+    return rows.map(r => ({
+      id: r.id,
+      name: r.name,
+      rating: Number(r.rating) || 5,
+      comment: r.comment || '',
+      text: r.comment || '',
+      date: r.date || '',
+      service: r.service || 'tour',
+      serviceType: r.service || 'tour',
+      serviceId: r.service_id || undefined,
+      serviceName: r.service_name || undefined,
+      bookingCode: r.booking_code || undefined,
+      country: r.country || 'Indonesia',
       status: (r.status || 'pending') as any,
       createdAt: r.created_at || new Date().toISOString()
     }));
@@ -59,29 +122,49 @@ export class ReviewsRepository {
     const client = await this.db();
     const id = review.id || `rev-${Date.now()}`;
     const now = new Date().toISOString();
+    const service = review.service || review.serviceType || 'tour';
+    const comment = review.comment || review.text || '';
+    const name = review.name || 'Anonymous';
+    const rating = Number(review.rating) || 5;
+    const date = review.date || now.split('T')[0];
+    const status = review.status || 'pending';
+    const serviceId = review.serviceId || null;
+    const serviceName = review.serviceName || null;
+    const bookingCode = review.bookingCode || null;
+    const country = review.country || 'Indonesia';
 
     await client.execute(
-      'INSERT INTO reviews (id, name, rating, comment, date, service, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO reviews (id, name, rating, comment, date, service, service_id, service_name, booking_code, country, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         id,
-        review.name || 'Anonymous',
-        Number(review.rating) || 5,
-        review.comment || '',
-        review.date || now.split('T')[0],
-        review.service || 'tour',
-        review.status || 'pending',
+        name,
+        rating,
+        comment,
+        date,
+        service,
+        serviceId,
+        serviceName,
+        bookingCode,
+        country,
+        status,
         now
       ]
     );
 
     return {
       id,
-      name: review.name || 'Anonymous',
-      rating: Number(review.rating) || 5,
-      comment: review.comment || '',
-      date: review.date || now.split('T')[0],
-      service: review.service || 'tour',
-      status: (review.status || 'pending') as any,
+      name,
+      rating,
+      comment,
+      text: comment,
+      date,
+      service,
+      serviceType: service,
+      serviceId: serviceId || undefined,
+      serviceName: serviceName || undefined,
+      bookingCode: bookingCode || undefined,
+      country,
+      status: status as any,
       createdAt: now
     };
   }

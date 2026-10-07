@@ -3,10 +3,11 @@ import {
   Building2, Users, Calendar, MapPin, Clock, Check, X, 
   Sparkles, PhoneCall, Mail, ArrowRight, ArrowLeft, ShieldCheck, 
   HelpCircle, ChevronRight, Send, AlertCircle, FileText, CheckCircle2,
-  Info, Star, Award, Compass, MessageSquare, ChevronLeft, Image as ImageIcon
+  Info, Star, Award, Compass, MessageSquare, ChevronLeft, ChevronDown, ChevronUp, Image as ImageIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../AppContext';
+import CustomerReviewsSection from '../components/CustomerReviewsSection';
 import { 
   GatheringPackage, 
   GatheringPaxOption, 
@@ -76,6 +77,7 @@ export default function GatheringView() {
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [detailNotFound, setDetailNotFound] = useState(false);
   const [activeGalleryIndex, setActiveGalleryIndex] = useState(0);
+  const [expandedFaq, setExpandedFaq] = useState<number | null>(0);
 
   // Request Quotation Modal State
   const [isQuotationModalOpen, setIsQuotationModalOpen] = useState(false);
@@ -386,6 +388,13 @@ export default function GatheringView() {
         ? currentPackage.notes 
         : (typeof currentPackage.notes === 'string' && currentPackage.notes.trim() ? currentPackage.notes.split('\n').filter(Boolean) : []);
 
+      const faqList = Array.isArray(currentPackage.faq)
+        ? currentPackage.faq.map(item => ({
+            question: item.question || (item as any).q || '',
+            answer: item.answer || (item as any).a || ''
+          })).filter(f => f.question.trim() !== '')
+        : [];
+
       return (
         <div className="min-h-screen bg-slate-50 text-neutral-900 pb-24">
           {/* Breadcrumbs & Navigation Bar */}
@@ -608,6 +617,44 @@ export default function GatheringView() {
                     </ul>
                   </div>
                 )}
+
+                {/* FAQ Accordion Section */}
+                {faqList.length > 0 && (
+                  <div className="bg-white rounded-3xl p-6 sm:p-8 border border-neutral-200/90 shadow-sm space-y-4">
+                    <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider font-mono flex items-center gap-2">
+                      <HelpCircle className="w-4 h-4 text-emerald-700" />
+                      <span>Pertanyaan yang Sering Diajukan (FAQ)</span>
+                    </h3>
+                    <div className="divide-y divide-neutral-100 border border-neutral-200 rounded-2xl overflow-hidden">
+                      {faqList.map((item, idx) => {
+                        const isOpen = expandedFaq === idx;
+                        return (
+                          <div key={idx} className="py-1">
+                            <button
+                              onClick={() => setExpandedFaq(isOpen ? null : idx)}
+                              className="w-full flex items-center justify-between text-left font-bold text-xs sm:text-sm text-neutral-800 hover:text-emerald-700 transition-colors py-4 px-5 cursor-pointer"
+                            >
+                              <span>{item.question}</span>
+                              {isOpen ? <ChevronUp className="h-4 w-4 text-emerald-600" /> : <ChevronDown className="h-4 w-4 text-neutral-400" />}
+                            </button>
+                            {isOpen && (
+                              <div className="px-5 pb-4 text-xs sm:text-sm text-neutral-600 leading-relaxed">
+                                {item.answer}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Customer Reviews Section (Specific to this Gathering Package) */}
+                <CustomerReviewsSection
+                  serviceType="gathering"
+                  serviceId={currentPackage.id}
+                  serviceName={packageName}
+                />
               </div>
 
               {/* Right Column: Pricing Tiers & Action Card */}

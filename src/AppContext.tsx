@@ -216,15 +216,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       date: formattedDate,
       status: 'pending'
     };
-    setReviews(prev => [newReview, ...prev]);
     try {
-      await fetch('/api/reviews', {
+      const res = await fetch('/api/reviews', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newReview)
       });
-    } catch (err) {
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Gagal menyimpan ulasan ke server.');
+      }
+      const savedReview = await res.json();
+      setReviews(prev => [savedReview || newReview, ...prev]);
+      return { success: true, review: savedReview || newReview };
+    } catch (err: any) {
       console.error('Failed to persist review to server:', err);
+      throw err;
     }
   };
 

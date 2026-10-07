@@ -38,6 +38,7 @@ export interface TourRow {
   includes?: string | null;
   excludes?: string | null;
   what_to_bring?: string | null;
+  faq?: string | null;
   status?: string | null;
   is_deleted?: number | null;
   is_archived?: number | null;

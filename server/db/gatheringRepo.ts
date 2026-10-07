@@ -36,6 +36,7 @@ export interface GatheringPackage {
   excludes?: string[]; // alias for excluded
   facilities: string[];
   notes: string;
+  faq?: Array<{ question: string; answer: string }>;
   price60Pax: number;
   price70Pax: number;
   price80Pax: number;
@@ -491,10 +492,10 @@ export class GatheringRepository {
     await db.execute(
       `INSERT INTO event_gathering_packages (
         id, title, slug, destination, duration, image, gallery, description,
-        itinerary, included, excluded, facilities, notes, price_60_pax, price_70_pax,
+        itinerary, included, excluded, facilities, notes, faq, price_60_pax, price_70_pax,
         price_80_pax, price_90_pax, price_90_plus_text, is_published, is_archived,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         title,
@@ -509,6 +510,7 @@ export class GatheringRepository {
         JSON.stringify(pkg.excluded || pkg.excludes || []),
         JSON.stringify(pkg.facilities || []),
         typeof pkg.notes === 'string' ? pkg.notes : (Array.isArray(pkg.notes) ? (pkg.notes as any).join('\n') : ''),
+        JSON.stringify(pkg.faq || []),
         price60,
         price70,
         price80,
@@ -554,7 +556,7 @@ export class GatheringRepository {
       `UPDATE event_gathering_packages SET
         title = ?, slug = ?, destination = ?, duration = ?, image = ?, gallery = ?,
         description = ?, itinerary = ?, included = ?, excluded = ?, facilities = ?,
-        notes = ?, price_60_pax = ?, price_70_pax = ?, price_80_pax = ?, price_90_pax = ?,
+        notes = ?, faq = ?, price_60_pax = ?, price_70_pax = ?, price_80_pax = ?, price_90_pax = ?,
         price_90_plus_text = ?, is_published = ?, updated_at = ?
       WHERE id = ?`,
       [
@@ -570,6 +572,7 @@ export class GatheringRepository {
         JSON.stringify(excluded),
         JSON.stringify(pkg.facilities ?? existing.facilities),
         notesStr,
+        JSON.stringify(pkg.faq ?? existing.faq ?? []),
         price60,
         price70,
         price80,
@@ -1104,6 +1107,7 @@ function mapPackageFromDb(row: any): GatheringPackage {
     excludes: excluded,
     facilities: safeParseJson(row.facilities, []),
     notes: String(row.notes || ''),
+    faq: safeParseJson(row.faq, []),
     price60Pax: p60,
     price70Pax: p70,
     price80Pax: p80,

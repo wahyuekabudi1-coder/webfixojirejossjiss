@@ -22,6 +22,7 @@ export interface Tour {
   excludes?: string[];
   gallery?: string[];
   whatToBring?: string[];
+  faq?: Array<{ question: string; answer: string; q?: string; a?: string }>;
   status?: 'published' | 'draft' | 'unpublished' | 'archived';
   createdAt?: string;
   updatedAt?: string;
@@ -51,8 +52,10 @@ export interface Review {
   avatar: string;
   isLocalGuide?: boolean;
   status?: 'pending' | 'approved';
-  serviceType?: 'tour' | 'airport' | 'taxi' | 'rental';
+  serviceType?: 'tour' | 'airport' | 'taxi' | 'rental' | 'sharetour' | 'gathering' | string;
   serviceId?: string;
+  serviceName?: string;
+  bookingCode?: string;
 }
 
 export interface Booking {

@@ -2127,7 +2127,17 @@ app.post('/api/operations/resources', requireAdminAuth, requirePermission(['mana
 app.get('/api/reviews', async (req, res) => {
   try {
     const isAdmin = checkIsAdmin(req);
-    const reviews = await reviewsRepo.getAll(isAdmin);
+    const service = req.query.service ? String(req.query.service) : undefined;
+    const serviceId = req.query.serviceId ? String(req.query.serviceId) : undefined;
+
+    // Public users can ONLY ever see approved reviews; admin can see all
+    const onlyApproved = !isAdmin;
+
+    const reviews = await reviewsRepo.getAll({
+      onlyApproved,
+      service,
+      serviceId
+    });
     return res.json(reviews);
   } catch (err) {
     return res.status(500).json({ error: 'Gagal mengambil data review.' });
@@ -2152,6 +2162,70 @@ app.post('/api/reviews', loginLimiter, async (req, res) => {
     const isAdmin = checkIsAdmin(req);
     const status: 'pending' | 'approved' | 'rejected' = (isAdmin && ['pending', 'approved', 'rejected'].includes(String(newRev.status))) ? (newRev.status as any) : 'pending';
 
+    const serviceType = sanitizeHtml(String(newRev.serviceType || newRev.service || 'tour')).slice(0, 50);
+    const serviceId = newRev.serviceId ? sanitizeHtml(String(newRev.serviceId)).slice(0, 128) : undefined;
+    const serviceName = newRev.serviceName ? sanitizeHtml(String(newRev.serviceName)).slice(0, 255) : undefined;
+    const bookingCode = newRev.bookingCode ? sanitizeHtml(String(newRev.bookingCode).trim()).slice(0, 64) : undefined;
+
+    // NON-ADMIN BOOKING VALIDATION ENFORCEMENT
+    // Required to prevent fabricated/spam reviews
+    if (!isAdmin) {
+      if (!bookingCode) {
+        return res.status(400).json({
+          error: 'Kode booking wajib disertakan sebagai bukti verifikasi perjalanan Anda.'
+        });
+      }
+
+      const booking = await bookingsRepo.getByCode(bookingCode);
+      if (!booking) {
+        return res.status(404).json({
+          error: `Kode booking "${bookingCode}" tidak ditemukan di sistem.`
+        });
+      }
+
+      // Check booking status eligibility (Confirmed, Completed, or Paid)
+      const isEligibleStatus = ['confirmed', 'completed'].includes(String(booking.status || '').toLowerCase()) ||
+        String(booking.paymentStatus || '').toLowerCase() === 'paid';
+      if (!isEligibleStatus) {
+        return res.status(400).json({
+          error: 'Hanya pesanan yang telah dikonfirmasi atau selesai yang dapat memberikan ulasan.'
+        });
+      }
+
+      // Check service type compatibility
+      const bType = String(booking.serviceType || booking.bookingType || (booking as any).type || '').toLowerCase();
+      const reqType = serviceType.toLowerCase();
+      const isServiceMatched = bType === reqType ||
+        (reqType === 'tour' && (bType === 'tour' || bType === 'private-tour')) ||
+        (reqType === 'sharetour' && (bType === 'sharetour' || bType === 'shared')) ||
+        (reqType === 'gathering' && (bType === 'gathering' || bType === 'event-gathering'));
+
+      if (!isServiceMatched) {
+        return res.status(400).json({
+          error: `Pesanan "${bookingCode}" terdaftar untuk layanan yang berbeda.`
+        });
+      }
+
+      // Check serviceId match if provided
+      if (serviceId) {
+        const bSvcId = String(booking.serviceId || booking.tripId || (booking.details && (booking.details.tripId || booking.details.packageId)) || '');
+        if (bSvcId && bSvcId !== serviceId) {
+          // If booking is for a different package
+          return res.status(400).json({
+            error: 'Kode booking ini terdaftar untuk paket/trip yang berbeda.'
+          });
+        }
+      }
+
+      // Check duplicate review for the same booking + package
+      const existingReviews = await reviewsRepo.findByBookingCodeAndServiceId(bookingCode, serviceId);
+      if (existingReviews.length > 0) {
+        return res.status(400).json({
+          error: 'Anda sudah pernah mengirimkan ulasan untuk pesanan ini.'
+        });
+      }
+    }
+
     const reviewItem = {
       id: generateEntityId('rev'),
       author,
@@ -2160,8 +2234,11 @@ app.post('/api/reviews', loginLimiter, async (req, res) => {
       text: content,
       rating,
       date: newRev.date || new Date().toISOString().split('T')[0],
-      service: sanitizeHtml(String(newRev.service || newRev.serviceType || 'tour')).slice(0, 50),
-      serviceType: sanitizeHtml(String(newRev.serviceType || newRev.service || 'tour')).slice(0, 50),
+      service: serviceType,
+      serviceType: serviceType,
+      serviceId,
+      serviceName,
+      bookingCode,
       status,
       country: sanitizeHtml(String(newRev.country || 'Indonesia')).slice(0, 50),
       avatar: newRev.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150'

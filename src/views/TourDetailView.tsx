@@ -191,7 +191,16 @@ export default function TourDetailView({ tourId, onBack }: TourDetailViewProps) 
     includes: tour.includes && tour.includes.length > 0 ? tour.includes : DEFAULT_RICH_DATA.includes,
     excludes: tour.excludes && tour.excludes.length > 0 ? tour.excludes : DEFAULT_RICH_DATA.excludes,
     gallery: tour.gallery && tour.gallery.length > 0 ? tour.gallery : (tour.image ? [tour.image] : []),
-    whatToBring: tour.whatToBring && tour.whatToBring.length > 0 ? tour.whatToBring : DEFAULT_RICH_DATA.whatToBring
+    whatToBring: tour.whatToBring && tour.whatToBring.length > 0 ? tour.whatToBring : DEFAULT_RICH_DATA.whatToBring,
+    faqs: (() => {
+      if (Array.isArray(tour.faq) && tour.faq.length > 0) {
+        return tour.faq.map(item => ({
+          q: item.question || item.q || '',
+          a: item.answer || item.a || ''
+        })).filter(f => f.q.trim() !== '');
+      }
+      return DEFAULT_RICH_DATA.faqs;
+    })()
   };
   const [activeImage, setActiveImage] = useState<string>(tour.image);
   const [imageDisplayMode, setImageDisplayMode] = useState<'cover' | 'contain'>('cover');
@@ -823,31 +832,33 @@ export default function TourDetailView({ tourId, onBack }: TourDetailViewProps) 
 
 
             {/* 6. Collapse FAQ Accordions */}
-            <div className="space-y-4">
-              <h3 className="text-xl font-extrabold text-neutral-900">Pertanyaan yang Sering Diajukan (FAQ)</h3>
-              <div className="divide-y divide-neutral-100 border border-neutral-200 rounded-2xl bg-white overflow-hidden">
-                {richData.faqs.map((item, idx) => {
-                  const isOpen = expandedFaq === idx;
-                  return (
-                    <div key={idx} className="py-1">
-                      <button
-                        onClick={() => setExpandedFaq(isOpen ? null : idx)}
-                        className="w-full flex items-center justify-between text-left font-bold text-xs sm:text-sm text-neutral-800 hover:text-amber-600 transition-colors py-4 px-5 cursor-pointer"
-                      >
-                        <span>{item.q}</span>
-                        {isOpen ? <ChevronUp className="h-4 w-4 text-amber-500" /> : <ChevronDown className="h-4 w-4 text-neutral-400" />}
-                      </button>
-                      
-                      {isOpen && (
-                        <div className="px-5 pb-4 text-xs sm:text-sm text-neutral-500 leading-relaxed">
-                          {item.a}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+            {richData.faqs.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-xl font-extrabold text-neutral-900">Pertanyaan yang Sering Diajukan (FAQ)</h3>
+                <div className="divide-y divide-neutral-100 border border-neutral-200 rounded-2xl bg-white overflow-hidden">
+                  {richData.faqs.map((item, idx) => {
+                    const isOpen = expandedFaq === idx;
+                    return (
+                      <div key={idx} className="py-1">
+                        <button
+                          onClick={() => setExpandedFaq(isOpen ? null : idx)}
+                          className="w-full flex items-center justify-between text-left font-bold text-xs sm:text-sm text-neutral-800 hover:text-amber-600 transition-colors py-4 px-5 cursor-pointer"
+                        >
+                          <span>{item.q}</span>
+                          {isOpen ? <ChevronUp className="h-4 w-4 text-amber-500" /> : <ChevronDown className="h-4 w-4 text-neutral-400" />}
+                        </button>
+                        
+                        {isOpen && (
+                          <div className="px-5 pb-4 text-xs sm:text-sm text-neutral-500 leading-relaxed">
+                            {item.a}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
           </div>
 

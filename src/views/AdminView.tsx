@@ -621,8 +621,13 @@ export default function AdminView() {
     includes: '',
     excludes: '',
     gallery: [] as string[],
-    whatToBring: ''
+    whatToBring: '',
+    faq: [] as Array<{ question: string; answer: string }>
   });
+
+  // Tour FAQ state
+  const [tourFaqQuestion, setTourFaqQuestion] = useState('');
+  const [tourFaqAnswer, setTourFaqAnswer] = useState('');
 
   // Interactive Itinerary State
   const [itineraryItems, setItineraryItems] = useState<ItineraryFormItem[]>([]);
@@ -1560,7 +1565,8 @@ export default function AdminView() {
                     itinerary: parsedItinerary,
                     includes: parsedIncludes,
                     excludes: parsedExcludes,
-                    whatToBring: parsedWhatToBring
+                    whatToBring: parsedWhatToBring,
+                    faq: Array.isArray(tourForm.faq) ? tourForm.faq : []
                   };
 
                   try {
@@ -2563,7 +2569,11 @@ export default function AdminView() {
                     includes: 'Tiket Masuk Wisata Resmi\nTransportasi Privat AC Premium\nBBM & Biaya Tol\nDriver Profesional Berpengalaman\nAir Mineral Dingin Selama Perjalanan',
                     excludes: 'Pengeluaran Pribadi & Belanja Oleh-Oleh\nMakan & Minum di Luar Paket\nUang Tip Sukarela (Driver & Pemandu)\nSewa Kuda di Lautan Pasir (Opsional)',
                     gallery: ['https://images.unsplash.com/photo-1537996194471-e657df975ab4'],
-                    whatToBring: 'Masker Gas Respirator & Kacamata Goggles (Ijen)\nPakaian Hangat / Jaket Tebal (Bromo/Ijen)\nSepatu Trekking Antiselip\nSenter / Headlamp\nBotol Air Minum Isi Ulang\nObat-obatan Pribadi'
+                    whatToBring: 'Masker Gas Respirator & Kacamata Goggles (Ijen)\nPakaian Hangat / Jaket Tebal (Bromo/Ijen)\nSepatu Trekking Antiselip\nSenter / Headlamp\nBotol Air Minum Isi Ulang\nObat-obatan Pribadi',
+                    faq: [
+                      { question: 'Bagaimana penyesuaian jadwal penjemputan?', answer: 'Jadwal penjemputan sangat fleksibel dan dapat disesuaikan dengan waktu kedatangan pesawat atau kereta api Anda.' },
+                      { question: 'Apakah semua tiket masuk sudah termasuk?', answer: 'Ya, seluruh harga kami all-inclusive. Anda tidak perlu membayar tiket masuk lagi di lokasi.' }
+                    ]
                   });
                   setItineraryItems([]);
                   setIsTourFormOpen(true);
@@ -2775,7 +2785,8 @@ export default function AdminView() {
                                   includes: tour.includes?.join('\n') || '',
                                   excludes: tour.excludes?.join('\n') || '',
                                   gallery: tour.gallery || [],
-                                  whatToBring: tour.whatToBring?.join('\n') || ''
+                                  whatToBring: tour.whatToBring?.join('\n') || '',
+                                  faq: Array.isArray(tour.faq) ? tour.faq.map(f => ({ question: f.question || (f as any).q || '', answer: f.answer || (f as any).a || '' })) : []
                                 });
                                 setItineraryItems(parseItineraryToForm(tour.itinerary));
                                 setIsTourFormOpen(true);
