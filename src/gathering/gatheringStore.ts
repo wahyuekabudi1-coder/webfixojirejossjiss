@@ -74,6 +74,9 @@ export async function fetchGatheringPackageById(id: string): Promise<GatheringPa
     if (res.ok) {
       return await res.json();
     }
+    if (res.status === 404) {
+      return null;
+    }
   } catch (err) {
     console.warn('[GatheringStore] Error fetching package by id from server:', err);
   }

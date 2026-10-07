@@ -53,6 +53,7 @@ interface AppContextProps {
     withDriver?: boolean;
     selectedTourId?: string;
     selectedArticleSlug?: string;
+    selectedGatheringPackageId?: string;
   };
   setSearchParams: (params: any) => void;
   activeArticle: BlogPost | null;
@@ -551,14 +552,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => clearTimeout(timer);
   }, [airports, airportRoutes]);
 
-  // Sync with URL hash
-
+  // Sync with URL hash and browser history (popstate / deep-linking)
   useEffect(() => {
-    const handleHashChange = () => {
+    const handleLocationChange = () => {
       const fullHash = window.location.hash || '';
+      const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
       let hash = fullHash.split('?')[0].replace(/^#\/?/, '');
-      if (!hash && typeof window !== 'undefined' && window.location.pathname && window.location.pathname !== '/') {
-        hash = window.location.pathname.replace(/^\/+|\/+$/g, '');
+      if (!hash && typeof window !== 'undefined' && pathname && pathname !== '/') {
+        hash = pathname.replace(/^\/+|\/+$/g, '');
       }
       if (hash === 'rental') {
         hash = 'car-rental';
@@ -594,7 +595,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
-      const validPages: ActivePage[] = ['home', 'tours', 'share-tour', 'airport', 'taxi', 'partnerships', 'contact', 'bookings', 'car-rental', 'about', 'admin'];
+
+      // Event & Gathering deep link handler (handles /event-gathering, /event-gathering/:slug, #/event-gathering, #/event-gathering/:slug, etc.)
+      if (pathname.startsWith('/event-gathering') || hash.startsWith('event-gathering') || fullHash.includes('event-gathering')) {
+        setActivePageState('event-gathering');
+        let pkgIdentifier = '';
+
+        // Check pathname: /event-gathering/<slug-or-id>
+        const pathSegments = pathname.replace(/^\/+|\/+$/g, '').split('/');
+        if (pathSegments[0] === 'event-gathering' && pathSegments[1]) {
+          pkgIdentifier = decodeURIComponent(pathSegments[1]).trim();
+        }
+
+        // Check hash path: #/event-gathering/<slug-or-id>
+        if (!pkgIdentifier && hash.startsWith('event-gathering/')) {
+          const hashSegments = hash.split('/');
+          if (hashSegments[1]) {
+            pkgIdentifier = decodeURIComponent(hashSegments[1]).trim();
+          }
+        }
+
+        // Check query params
+        if (!pkgIdentifier) {
+          const searchParamsObj = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+          const hashParamsObj = new URLSearchParams(fullHash.includes('?') ? fullHash.split('?')[1] : '');
+          const qParam = searchParamsObj.get('package') || searchParamsObj.get('pkg') || searchParamsObj.get('id') ||
+                         hashParamsObj.get('package') || hashParamsObj.get('pkg') || hashParamsObj.get('id');
+          if (qParam) {
+            pkgIdentifier = decodeURIComponent(qParam).trim();
+          }
+        }
+
+        if (pkgIdentifier) {
+          setSearchParams((prev: any) => ({ ...prev, selectedGatheringPackageId: pkgIdentifier }));
+        } else {
+          setSearchParams((prev: any) => ({ ...prev, selectedGatheringPackageId: undefined }));
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      const validPages: ActivePage[] = ['home', 'tours', 'share-tour', 'event-gathering', 'airport', 'taxi', 'partnerships', 'contact', 'bookings', 'car-rental', 'about', 'admin'];
       if (validPages.includes(hash as ActivePage)) {
         setActivePageState(hash as ActivePage);
         setActiveArticle(null);
@@ -607,16 +648,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     };
 
-    window.addEventListener('hashchange', handleHashChange);
-    handleHashChange(); // Run once on mount
+    window.addEventListener('hashchange', handleLocationChange);
+    window.addEventListener('popstate', handleLocationChange);
+    handleLocationChange(); // Run once on mount
 
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    return () => {
+      window.removeEventListener('hashchange', handleLocationChange);
+      window.removeEventListener('popstate', handleLocationChange);
+    };
   }, []);
 
   const setPage = (page: ActivePage) => {
     setActivePageState(page);
     if (page === 'tours') {
       setSearchParams((prev: any) => ({ ...prev, selectedTourId: undefined }));
+    }
+    if (page === 'event-gathering') {
+      setSearchParams((prev: any) => ({ ...prev, selectedGatheringPackageId: undefined }));
+      if (typeof window !== 'undefined' && window.location.pathname.startsWith('/event-gathering')) {
+        try {
+          window.history.pushState(null, '', '/event-gathering');
+        } catch {}
+      }
     }
     if (page !== 'about') {
       setActiveArticle(null);
