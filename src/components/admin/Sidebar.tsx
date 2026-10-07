@@ -33,6 +33,7 @@ export interface NavGroupItem {
     label: string;
     icon?: React.ComponentType<{ className?: string }>;
     badge?: number;
+    group?: string;
   }[];
 }
 
@@ -130,11 +131,11 @@ export default function Sidebar({
           label: 'Services',
           icon: Layers,
           subItems: [
-            { id: 'private-tour', label: 'Private Tour', icon: Compass },
-            { id: 'open-trip', label: 'Open Trip', icon: Users },
-            { id: 'airport', label: 'Airport Transfer', icon: Plane },
-            { id: 'taxi', label: 'Taxi', icon: MapPin },
-            { id: 'rental', label: 'Car Rental', icon: Truck }
+            { id: 'private-tour', label: 'Private Tour', icon: Compass, group: 'TOURS' },
+            { id: 'open-trip', label: 'Open Trip / Share Tour', icon: Users, group: 'TOURS' },
+            { id: 'airport', label: 'Airport Transfer', icon: Plane, group: 'TRANSPORTATION' },
+            { id: 'taxi', label: 'Taxi Service', icon: MapPin, group: 'TRANSPORTATION' },
+            { id: 'rental', label: 'Car Rental', icon: Truck, group: 'TRANSPORTATION' }
           ]
         },
         {
@@ -316,46 +317,58 @@ export default function Sidebar({
                       {/* Expanded Sub-items (visible when module active & sidebar not collapsed) */}
                       {!collapsed && isActive && hasSubItems && (
                         <div className={`ml-4 pl-3.5 border-l ${isDark ? 'border-neutral-800' : 'border-neutral-200'} space-y-0.5 py-1`}>
-                          {item.subItems?.map((sub) => {
+                          {item.subItems?.map((sub, idx, arr) => {
                             const SubIcon = sub.icon;
                             const isSubActive = activeSubItem === sub.id;
                             const isSubPermitted = checkSubItemPermission(item.id, sub.id, role || 'Super Administrator');
+                            const showGroupHeader = sub.group && (idx === 0 || arr[idx - 1]?.group !== sub.group);
                             
                             return (
-                              <button
-                                key={sub.id}
-                                disabled={!isSubPermitted}
-                                onClick={() => {
-                                  if (!isSubPermitted) return;
-                                  if (setActiveSubItem) {
-                                    setActiveSubItem(sub.id);
-                                  }
-                                }}
-                                title={!isSubPermitted ? `${sub.label} (Terkunci oleh RBAC)` : undefined}
-                                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all text-left ${
-                                  !isSubPermitted
-                                    ? 'opacity-40 cursor-not-allowed text-neutral-500'
-                                    : 'cursor-pointer ' + (isSubActive
-                                    ? isDark
-                                      ? 'text-amber-400 font-bold bg-amber-500/10'
-                                      : 'text-amber-700 font-bold bg-amber-500/10'
-                                    : isDark
-                                      ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/40'
-                                      : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100')
-                                }`}
-                              >
-                                <div className="flex items-center gap-2 truncate">
-                                  {SubIcon && <SubIcon className="h-3 w-3 shrink-0" />}
-                                  <span className="truncate">{sub.label}</span>
-                                </div>
-                                {!isSubPermitted ? (
-                                  <Lock className="h-2.5 w-2.5 text-neutral-500 shrink-0 ml-1" />
-                                ) : sub.badge !== undefined && sub.badge > 0 ? (
-                                  <span className="ml-1 text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-500 border border-amber-500/30">
-                                    {sub.badge}
-                                  </span>
-                                ) : null}
-                              </button>
+                              <React.Fragment key={sub.id}>
+                                {showGroupHeader && (
+                                  <div className={`pt-2 pb-1 px-1 flex items-center gap-1.5 ${idx > 0 ? 'border-t ' + (isDark ? 'border-neutral-800/80' : 'border-neutral-200/80') + ' mt-1.5' : ''}`}>
+                                    <span className="text-[9px] font-mono font-black uppercase tracking-wider text-amber-500 flex items-center gap-1 select-none">
+                                      <span className="h-1 w-1 rounded-full bg-amber-500"></span>
+                                      {sub.group}
+                                    </span>
+                                  </div>
+                                )}
+                                <button
+                                  disabled={!isSubPermitted}
+                                  onClick={() => {
+                                    if (!isSubPermitted) return;
+                                    if (setActiveSubItem) {
+                                      setActiveSubItem(sub.id);
+                                    }
+                                  }}
+                                  title={!isSubPermitted ? `${sub.label} (Terkunci oleh RBAC)` : undefined}
+                                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all text-left ${
+                                    sub.group ? 'pl-3 ' : ''
+                                  }${
+                                    !isSubPermitted
+                                      ? 'opacity-40 cursor-not-allowed text-neutral-500'
+                                      : 'cursor-pointer ' + (isSubActive
+                                      ? isDark
+                                        ? 'text-amber-400 font-bold bg-amber-500/10'
+                                        : 'text-amber-700 font-bold bg-amber-500/10'
+                                      : isDark
+                                        ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/40'
+                                        : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100')
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 truncate">
+                                    {SubIcon && <SubIcon className="h-3 w-3 shrink-0" />}
+                                    <span className="truncate">{sub.label}</span>
+                                  </div>
+                                  {!isSubPermitted ? (
+                                    <Lock className="h-2.5 w-2.5 text-neutral-500 shrink-0 ml-1" />
+                                  ) : sub.badge !== undefined && sub.badge > 0 ? (
+                                    <span className="ml-1 text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-500 border border-amber-500/30">
+                                      {sub.badge}
+                                    </span>
+                                  ) : null}
+                                </button>
+                              </React.Fragment>
                             );
                           })}
                         </div>

@@ -6831,7 +6831,16 @@ export default function AdminView() {
             {activeModule === 'services' && (
               <>
                 <ChevronRight className="h-3.5 w-3.5 text-neutral-600" />
-                <span className={`${theme.textSecondary} uppercase font-bold`}>{activeService}</span>
+                <span className="text-amber-500/90 uppercase font-mono text-[10px] font-bold">
+                  {['private-tour', 'open-trip'].includes(activeService) ? 'TOURS' : 'TRANSPORTATION'}
+                </span>
+                <ChevronRight className="h-3.5 w-3.5 text-neutral-600" />
+                <span className={`${theme.textSecondary} uppercase font-bold`}>
+                  {activeService === 'private-tour' ? 'Private Tour' :
+                   activeService === 'open-trip' ? 'Open Trip / Share Tour' :
+                   activeService === 'airport' ? 'Airport Transfer' :
+                   activeService === 'taxi' ? 'Taxi Service' : 'Car Rental'}
+                </span>
                 <ChevronRight className="h-3.5 w-3.5 text-neutral-600" />
                 <span className="text-amber-500/80 uppercase font-mono text-[10px] font-bold">{activeSubTab}</span>
               </>
@@ -7174,38 +7183,74 @@ export default function AdminView() {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-1.5 p-1 rounded-xl bg-neutral-900 border border-neutral-800 overflow-x-auto no-scrollbar">
-                    {[
-                      { id: 'private-tour', label: 'Private Tour', icon: Compass },
-                      { id: 'open-trip', label: 'Open Trip', icon: Globe },
-                      { id: 'airport', label: 'Airport Transfer', icon: Plane },
-                      { id: 'taxi', label: 'Taxi Service', icon: MapPin },
-                      { id: 'rental', label: 'Car Rental', icon: Truck },
-                    ].map((svc) => {
-                      const Icon = svc.icon;
-                      const isActive = activeService === svc.id;
-                      return (
-                        <button
-                          key={svc.id}
-                          onClick={() => {
-                            setActiveService(svc.id as any);
-                            if (svc.id === 'private-tour') setActiveSubTab('management');
-                            else if (svc.id === 'open-trip') setActiveSubTab('catalog');
-                            else if (svc.id === 'airport') setActiveSubTab('routes');
-                            else if (svc.id === 'taxi') setActiveSubTab('master-data');
-                            else if (svc.id === 'rental') setActiveSubTab('vehicles');
-                          }}
-                          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-                            isActive
-                              ? 'bg-amber-500 text-neutral-950 font-black shadow-sm'
-                              : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60'
-                          }`}
-                        >
-                          <Icon className="h-3.5 w-3.5" />
-                          <span>{svc.label}</span>
-                        </button>
-                      );
-                    })}
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    {/* TOURS Group */}
+                    <div className="flex items-center gap-1 p-1 rounded-xl bg-neutral-900 border border-neutral-800">
+                      <span className="text-[9px] font-mono font-black uppercase tracking-wider text-amber-500/90 px-2 select-none flex items-center gap-1">
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                        TOURS
+                      </span>
+                      {[
+                        { id: 'private-tour', label: 'Private Tour', icon: Compass },
+                        { id: 'open-trip', label: 'Open Trip / Share Tour', icon: Users },
+                      ].map((svc) => {
+                        const Icon = svc.icon;
+                        const isActive = activeService === svc.id;
+                        return (
+                          <button
+                            key={svc.id}
+                            onClick={() => {
+                              setActiveService(svc.id as any);
+                              if (svc.id === 'private-tour') setActiveSubTab('management');
+                              else if (svc.id === 'open-trip') setActiveSubTab('catalog');
+                            }}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                              isActive
+                                ? 'bg-amber-500 text-neutral-950 font-black shadow-sm'
+                                : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60'
+                            }`}
+                          >
+                            <Icon className="h-3.5 w-3.5" />
+                            <span>{svc.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* TRANSPORTATION Group */}
+                    <div className="flex items-center gap-1 p-1 rounded-xl bg-neutral-900 border border-neutral-800">
+                      <span className="text-[9px] font-mono font-black uppercase tracking-wider text-amber-500/90 px-2 select-none flex items-center gap-1">
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                        TRANSPORTATION
+                      </span>
+                      {[
+                        { id: 'airport', label: 'Airport Transfer', icon: Plane },
+                        { id: 'taxi', label: 'Taxi Service', icon: MapPin },
+                        { id: 'rental', label: 'Car Rental', icon: Truck },
+                      ].map((svc) => {
+                        const Icon = svc.icon;
+                        const isActive = activeService === svc.id;
+                        return (
+                          <button
+                            key={svc.id}
+                            onClick={() => {
+                              setActiveService(svc.id as any);
+                              if (svc.id === 'airport') setActiveSubTab('routes');
+                              else if (svc.id === 'taxi') setActiveSubTab('master-data');
+                              else if (svc.id === 'rental') setActiveSubTab('vehicles');
+                            }}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                              isActive
+                                ? 'bg-amber-500 text-neutral-950 font-black shadow-sm'
+                                : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60'
+                            }`}
+                          >
+                            <Icon className="h-3.5 w-3.5" />
+                            <span>{svc.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
 
