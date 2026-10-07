@@ -90,6 +90,26 @@ const dictionary: Record<string, Partial<Record<Language, string>>> = {
     id: "Sewa mobil dengan driver atau lepas kunci",
     zh: "优质车队，支持带驾或自驾"
   },
+  "nav.tours": {
+    en: "Tours",
+    id: "Tours",
+    zh: "旅游度假"
+  },
+  "nav.transportation": {
+    en: "Transportation",
+    id: "Transportasi",
+    zh: "交通出行"
+  },
+  "nav.privateTour": {
+    en: "Private Tour",
+    id: "Private Tour",
+    zh: "私人定制包车游"
+  },
+  "nav.taxiService": {
+    en: "Taxi Service",
+    id: "Taxi Service",
+    zh: "城际专车出租"
+  },
   "nav.services": {
     en: "Services",
     id: "Layanan",

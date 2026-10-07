@@ -11,7 +11,8 @@ export default function Header() {
   const { language, setLanguage, currency, setCurrency, t } = useLanguageCurrency();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isToursOpen, setIsToursOpen] = useState(false);
+  const [isTransportOpen, setIsTransportOpen] = useState(false);
   
   // Desktop dropdown states
   const [isLangOpen, setIsLangOpen] = useState(false);
@@ -44,6 +45,12 @@ export default function Header() {
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
+      if (!target.closest('#tours-dropdown-container')) {
+        setIsToursOpen(false);
+      }
+      if (!target.closest('#transport-dropdown-container')) {
+        setIsTransportOpen(false);
+      }
       if (!target.closest('#lang-switcher-container') && !target.closest('#curr-switcher-container')) {
         setIsLangOpen(false);
         setIsCurrOpen(false);
@@ -71,7 +78,8 @@ export default function Header() {
       } catch {}
     }
     setIsMobileMenuOpen(false);
-    setIsDropdownOpen(false);
+    setIsToursOpen(false);
+    setIsTransportOpen(false);
     setIsLangOpen(false);
     setIsCurrOpen(false);
     setIsMobileLangOpen(false);
@@ -142,62 +150,102 @@ export default function Header() {
               {t('nav.home')}
             </button>
 
-            {/* Services Dropdown */}
+            {/* Tours Dropdown */}
             <div 
+              id="tours-dropdown-container"
               className="relative"
-              onMouseEnter={() => setIsDropdownOpen(true)}
-              onMouseLeave={() => setIsDropdownOpen(false)}
+              onMouseEnter={() => setIsToursOpen(true)}
+              onMouseLeave={() => setIsToursOpen(false)}
             >
               <button
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className={`flex items-center space-x-1 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                  ['tours', 'share-tour', isServiceEnabled('airport') && 'airport', isServiceEnabled('taxi') && 'taxi', isServiceEnabled('car-rental') && 'car-rental'].filter(Boolean).includes(activePage)
+                onClick={() => setIsToursOpen(!isToursOpen)}
+                className={`flex items-center space-x-1 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer ${
+                  ['tours', 'share-tour'].includes(activePage)
                     ? 'text-amber-600 bg-amber-500/10 font-semibold'
                     : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
                 }`}
+                aria-expanded={isToursOpen}
               >
-                <span>{t('nav.services')}</span>
-                <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                <span>{t('nav.tours') || 'Tours'}</span>
+                <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${isToursOpen ? 'rotate-180' : ''}`} />
               </button>
 
               <AnimatePresence>
-                {isDropdownOpen && (
+                {isToursOpen && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute left-0 mt-2 w-64 rounded-2xl bg-white border border-neutral-200 shadow-xl py-2 overflow-hidden"
+                    className="absolute left-0 mt-2 w-64 rounded-2xl bg-white border border-neutral-200 shadow-xl py-2 overflow-hidden z-50"
                   >
-                     <button
-                      onClick={() => handleNavigate('tours')}
-                      className="flex items-center space-x-3 w-full px-4 py-3 text-left text-neutral-700 hover:text-amber-600 hover:bg-amber-500/5 transition-colors"
-                    >
-                      <Compass className="h-4 w-4 text-amber-500 shrink-0" />
-                      <div>
-                        <div className="text-sm font-semibold">
-                          <span>{t('nav.tours')}</span>
+                    {isServiceEnabled('tours') && (
+                      <button
+                        onClick={() => handleNavigate('tours')}
+                        className="flex items-center space-x-3 w-full px-4 py-3 text-left text-neutral-700 hover:text-amber-600 hover:bg-amber-500/5 transition-colors cursor-pointer"
+                      >
+                        <Compass className="h-4 w-4 text-amber-500 shrink-0" />
+                        <div>
+                          <div className="text-sm font-semibold">
+                            <span>{t('nav.privateTour') || 'Private Tour'}</span>
+                          </div>
+                          <div className="text-[10px] text-neutral-500">{t('nav.toursSubtitle')}</div>
                         </div>
-                        <div className="text-[10px] text-neutral-500">{t('nav.toursSubtitle')}</div>
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => handleNavigate('share-tour')}
-                      className="flex items-center space-x-3 w-full px-4 py-3 text-left text-neutral-700 hover:text-amber-600 hover:bg-amber-500/5 transition-colors border-t border-neutral-100"
-                    >
-                      <Users className="h-4 w-4 text-amber-500 shrink-0" />
-                      <div>
-                        <div className="text-sm font-semibold flex items-center gap-1.5">
-                          <span>{t('nav.shareTour')}</span>
-                          <span className="text-[8px] bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-1 py-0.5 rounded font-mono font-black uppercase tracking-wider">{t('nav.newBadge')}</span>
+                      </button>
+                    )}
+                    {isServiceEnabled('share-tour') && (
+                      <button
+                        onClick={() => handleNavigate('share-tour')}
+                        className={`flex items-center space-x-3 w-full px-4 py-3 text-left text-neutral-700 hover:text-amber-600 hover:bg-amber-500/5 transition-colors cursor-pointer ${isServiceEnabled('tours') ? 'border-t border-neutral-100' : ''}`}
+                      >
+                        <Users className="h-4 w-4 text-amber-500 shrink-0" />
+                        <div>
+                          <div className="text-sm font-semibold flex items-center gap-1.5">
+                            <span>{t('nav.shareTour') || 'Open Trip / Share Tour'}</span>
+                            <span className="text-[8px] bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-1 py-0.5 rounded font-mono font-black uppercase tracking-wider">{t('nav.newBadge')}</span>
+                          </div>
+                          <div className="text-[10px] text-neutral-500">{t('nav.shareTourSubtitle')}</div>
                         </div>
-                        <div className="text-[10px] text-neutral-500">{t('nav.shareTourSubtitle')}</div>
-                      </div>
-                    </button>
+                      </button>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Transportation Dropdown */}
+            <div 
+              id="transport-dropdown-container"
+              className="relative"
+              onMouseEnter={() => setIsTransportOpen(true)}
+              onMouseLeave={() => setIsTransportOpen(false)}
+            >
+              <button
+                onClick={() => setIsTransportOpen(!isTransportOpen)}
+                className={`flex items-center space-x-1 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer ${
+                  ['airport', 'taxi', 'car-rental'].includes(activePage)
+                    ? 'text-amber-600 bg-amber-500/10 font-semibold'
+                    : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
+                }`}
+                aria-expanded={isTransportOpen}
+              >
+                <span>{t('nav.transportation') || 'Transportation'}</span>
+                <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${isTransportOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              <AnimatePresence>
+                {isTransportOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute left-0 mt-2 w-64 rounded-2xl bg-white border border-neutral-200 shadow-xl py-2 overflow-hidden z-50"
+                  >
                     {isServiceEnabled('airport') && (
                       <button
                         onClick={() => handleNavigate('airport')}
-                        className="flex items-center space-x-3 w-full px-4 py-3 text-left text-neutral-700 hover:text-amber-600 hover:bg-amber-500/5 transition-colors border-t border-neutral-100"
+                        className="flex items-center space-x-3 w-full px-4 py-3 text-left text-neutral-700 hover:text-amber-600 hover:bg-amber-500/5 transition-colors cursor-pointer"
                       >
                         <Plane className="h-4 w-4 text-amber-500 shrink-0" />
                         <div>
@@ -211,12 +259,12 @@ export default function Header() {
                     {isServiceEnabled('taxi') && (
                       <button
                         onClick={() => handleNavigate('taxi')}
-                        className="flex items-center space-x-3 w-full px-4 py-3 text-left text-neutral-700 hover:text-amber-600 hover:bg-amber-500/5 transition-colors border-t border-neutral-100"
+                        className={`flex items-center space-x-3 w-full px-4 py-3 text-left text-neutral-700 hover:text-amber-600 hover:bg-amber-500/5 transition-colors cursor-pointer ${isServiceEnabled('airport') ? 'border-t border-neutral-100' : ''}`}
                       >
                         <Route className="h-4 w-4 text-amber-500 shrink-0" />
                         <div>
                           <div className="text-sm font-semibold flex items-center gap-1.5">
-                            <span>{t('nav.taxi')}</span>
+                            <span>{t('nav.taxiService') || t('nav.taxi') || 'Taxi Service'}</span>
                           </div>
                           <div className="text-[10px] text-neutral-500">{t('nav.taxiSubtitle')}</div>
                         </div>
@@ -225,9 +273,9 @@ export default function Header() {
                     {isServiceEnabled('car-rental') && (
                       <button
                         onClick={() => handleNavigate('car-rental')}
-                        className="flex items-center space-x-3 w-full px-4 py-3 text-left text-neutral-700 hover:text-amber-600 hover:bg-amber-500/5 transition-colors border-t border-neutral-100"
+                        className={`flex items-center space-x-3 w-full px-4 py-3 text-left text-neutral-700 hover:text-amber-600 hover:bg-amber-500/5 transition-colors cursor-pointer ${(isServiceEnabled('airport') || isServiceEnabled('taxi')) ? 'border-t border-neutral-100' : ''}`}
                       >
-                        <Car className="h-4 w-4 text-amber-500" />
+                        <Car className="h-4 w-4 text-amber-500 shrink-0" />
                         <div>
                           <div className="text-sm font-semibold flex items-center gap-1.5">
                             <span>{t('nav.carRental')}</span>
@@ -571,35 +619,47 @@ export default function Header() {
                   {t('nav.home')}
                 </button>
 
+                {/* Mobile Tours Category */}
                 <div className="border-t border-neutral-100 pt-3 my-1">
                   <div className="px-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2 font-mono">
-                    {t('nav.services')}
+                    {t('nav.tours') || 'Tours'}
                   </div>
-                  <button
-                    onClick={() => handleNavigate('tours')}
-                    className={`flex items-center justify-between w-full px-4 py-3 rounded-2xl text-sm transition-colors min-h-[44px] cursor-pointer ${
-                      activePage === 'tours' ? 'bg-amber-500/10 text-amber-700 font-bold' : 'text-neutral-700 hover:bg-neutral-50'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <Compass className="h-5 w-5 text-amber-500 shrink-0" />
-                      <span className="font-medium">{t('nav.tours')}</span>
-                    </div>
-                    <span className="text-xs text-neutral-400">Bromo, Ijen</span>
-                  </button>
+                  {isServiceEnabled('tours') && (
+                    <button
+                      onClick={() => handleNavigate('tours')}
+                      className={`flex items-center justify-between w-full px-4 py-3 rounded-2xl text-sm transition-colors min-h-[44px] cursor-pointer ${
+                        activePage === 'tours' ? 'bg-amber-500/10 text-amber-700 font-bold' : 'text-neutral-700 hover:bg-neutral-50'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Compass className="h-5 w-5 text-amber-500 shrink-0" />
+                        <span className="font-medium">{t('nav.privateTour') || 'Private Tour'}</span>
+                      </div>
+                      <span className="text-xs text-neutral-400">Bromo, Ijen</span>
+                    </button>
+                  )}
 
-                  <button
-                    onClick={() => handleNavigate('share-tour')}
-                    className={`flex items-center justify-between w-full px-4 py-3 rounded-2xl text-sm transition-colors min-h-[44px] cursor-pointer ${
-                      activePage === 'share-tour' ? 'bg-amber-500/10 text-amber-700 font-bold' : 'text-neutral-700 hover:bg-neutral-50'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <Users className="h-5 w-5 text-amber-500 shrink-0" />
-                      <span className="font-medium">{t('nav.shareTour')}</span>
-                    </div>
-                    <span className="text-[9px] bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-2 py-0.5 rounded font-mono font-bold uppercase tracking-wider">{t('nav.newBadge')}</span>
-                  </button>
+                  {isServiceEnabled('share-tour') && (
+                    <button
+                      onClick={() => handleNavigate('share-tour')}
+                      className={`flex items-center justify-between w-full px-4 py-3 rounded-2xl text-sm transition-colors min-h-[44px] cursor-pointer ${
+                        activePage === 'share-tour' ? 'bg-amber-500/10 text-amber-700 font-bold' : 'text-neutral-700 hover:bg-neutral-50'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Users className="h-5 w-5 text-amber-500 shrink-0" />
+                        <span className="font-medium">{t('nav.shareTour') || 'Open Trip / Share Tour'}</span>
+                      </div>
+                      <span className="text-[9px] bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-2 py-0.5 rounded font-mono font-bold uppercase tracking-wider">{t('nav.newBadge')}</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Mobile Transportation Category */}
+                <div className="border-t border-neutral-100 pt-3 my-1">
+                  <div className="px-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2 font-mono">
+                    {t('nav.transportation') || 'Transportation'}
+                  </div>
 
                   {isServiceEnabled('airport') && (
                     <button
@@ -625,7 +685,7 @@ export default function Header() {
                     >
                       <div className="flex items-center space-x-3">
                         <Route className="h-5 w-5 text-amber-500 shrink-0" />
-                        <span className="font-medium">{t('nav.taxi')}</span>
+                        <span className="font-medium">{t('nav.taxiService') || t('nav.taxi') || 'Taxi Service'}</span>
                       </div>
                       <span className="text-xs text-neutral-400">{t('nav.taxiSubtitle')}</span>
                     </button>

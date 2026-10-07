@@ -38,15 +38,16 @@ export interface ServiceVisibilityConfig {
 
 /**
  * Current Feature Visibility State
- * Customer Front-End active services: Private Tour & Open Trip ONLY.
- * Temporarily disabled for customer: Airport Transfer, Taxi, Car Rental.
+ * All 5 core services active for Customer Front-End:
+ * TOURS: Private Tour, Open Trip / Share Tour
+ * TRANSPORTATION: Airport Transfer, Taxi Service, Car Rental
  */
 export const SERVICE_VISIBILITY: ServiceVisibilityConfig = {
-  tours: true,       // ACTIVE for Customer
-  shareTour: true,   // ACTIVE for Customer
-  airport: false,    // DISABLED / HIDDEN for Customer
-  taxi: false,       // DISABLED / HIDDEN for Customer
-  carRental: false,  // DISABLED / HIDDEN for Customer
+  tours: true,       // ACTIVE for Customer (Private Tour)
+  shareTour: true,   // ACTIVE for Customer (Open Trip / Share Tour)
+  airport: true,     // ACTIVE for Customer (Airport Transfer)
+  taxi: true,        // ACTIVE for Customer (Taxi Service)
+  carRental: true,   // ACTIVE for Customer (Car Rental)
 };
 
 export type ServiceKey = 

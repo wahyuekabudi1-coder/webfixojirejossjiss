@@ -708,9 +708,9 @@ app.get('/api/service-visibility', (req, res) => {
   res.json({
     tours: true,
     shareTour: true,
-    airport: false,
-    taxi: false,
-    carRental: false,
+    airport: true,
+    taxi: true,
+    carRental: true,
   });
 });
 

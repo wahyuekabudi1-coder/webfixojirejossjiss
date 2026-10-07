@@ -75,6 +75,9 @@ const legacyDictionary: Record<string, Partial<Record<Language, string>>> = {
   
   // Navigation & service dropdown aliases
   'nav.services': { id: 'Layanan', en: 'Services', zh: '特色服务' },
+  'nav.transportation': { id: 'Transportasi', en: 'Transportation', zh: '交通出行' },
+  'nav.privateTour': { id: 'Private Tour', en: 'Private Tour', zh: '私人定制包车游' },
+  'nav.taxiService': { id: 'Taksi Privat', en: 'Taxi Service', zh: '城际专车出租' },
   'nav.tour.subtitle': { id: 'Jelajahi destinasi wisata terbaik', en: 'Explore curated travel destinations', zh: '精选经典旅游目的地与路线' },
   'nav.tours.subtitle': { id: 'Jelajahi destinasi wisata terbaik', en: 'Explore curated travel destinations', zh: '精选经典旅游目的地与路线' },
   'nav.toursSubtitle': { id: 'Jelajahi destinasi wisata terbaik', en: 'Explore curated travel destinations', zh: '精选经典旅游目的地与路线' },
