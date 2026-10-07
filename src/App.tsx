@@ -25,6 +25,7 @@ const CarRentalView = lazy(() => import('./views/CarRentalView'));
 const AboutView = lazy(() => import('./views/AboutView'));
 const AdminView = lazy(() => import('./views/AdminView'));
 const ShareTourView = lazy(() => import('./views/ShareTourView'));
+const GatheringView = lazy(() => import('./views/GatheringView'));
 const ServiceUnavailablePage = lazy(() => import('./components/ServiceUnavailablePage'));
 const PrivacyModal = lazy(() => import('./components/PrivacyModal'));
 const TermsModal = lazy(() => import('./components/TermsModal'));
@@ -47,6 +48,7 @@ function AppContent() {
       home: { path: '/', title: 'Smart Journey - Sewa Mobil, Antar Jemput Bandara & Paket Wisata Bromo Bali' },
       tours: { path: '/tours', title: 'Paket Wisata Private Tour - Bromo, Ijen, Bali & Tumpak Sewu' },
       'share-tour': { path: '/share-tour', title: 'Open Trip & Share Tour Bromo Ijen Murah' },
+      'event-gathering': { path: '/event-gathering', title: 'Event & Corporate Gathering Perusahaan - Smart Journey' },
       airport: { path: '/airport', title: 'Antar Jemput Bandara Juanda, Abdulrachman Saleh & Banyuwangi' },
       taxi: { path: '/taxi', title: 'Layanan Taksi & Antar Jemput Luar Kota Jawa Bali' },
       'car-rental': { path: '/car-rental', title: 'Rental Mobil Lepas Kunci & dengan Supir Terpercaya' },
@@ -68,6 +70,8 @@ function AppContent() {
         return <ToursView />;
       case 'share-tour':
         return <ShareTourView />;
+      case 'event-gathering':
+        return isServiceEnabled('gathering') ? <GatheringView /> : <ServiceUnavailablePage serviceKey="gathering" />;
       case 'airport':
         return isServiceEnabled('airport') ? <AirportTransferView /> : <ServiceUnavailablePage serviceKey="airport" />;
       case 'taxi':

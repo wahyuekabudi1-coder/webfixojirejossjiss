@@ -332,7 +332,11 @@ export const REQUIRED_TABLES = [
   'system_meta',
   'operational_assignments',
   'articles',
-  'promo_codes'
+  'promo_codes',
+  'event_gathering_packages',
+  'event_gathering_requests',
+  'event_gathering_quotations',
+  'event_gathering_quotation_versions'
 ];
 
 export async function initSchema(client: DatabaseClient): Promise<void> {
@@ -382,7 +386,15 @@ export async function initSchema(client: DatabaseClient): Promise<void> {
     { table: 'payments', column: 'order_id', type: 'VARCHAR(64)' },
     { table: 'tours', column: 'wna_price_idr', type: 'DECIMAL(14,2) DEFAULT 0' },
     { table: 'share_tours', column: 'wna_price_idr', type: 'DECIMAL(14,2) DEFAULT 0' },
-    { table: 'batches', column: 'wna_price_idr', type: 'DECIMAL(14,2) DEFAULT 0' }
+    { table: 'batches', column: 'wna_price_idr', type: 'DECIMAL(14,2) DEFAULT 0' },
+    { table: 'bookings', column: 'quotation_id', type: 'VARCHAR(64)' },
+    { table: 'bookings', column: 'request_id', type: 'VARCHAR(64)' },
+    { table: 'bookings', column: 'package_id', type: 'VARCHAR(64)' },
+    { table: 'bookings', column: 'gathering_quotation_id', type: 'VARCHAR(64)' },
+    { table: 'bookings', column: 'gathering_request_id', type: 'VARCHAR(64)' },
+    { table: 'bookings', column: 'gathering_quotation_version', type: 'INT' },
+    { table: 'event_gathering_quotation_versions', column: 'package_snapshot', type: 'TEXT' },
+    { table: 'event_gathering_quotations', column: 'package_snapshot', type: 'TEXT' }
   ];
 
   for (const col of columnMigrations) {

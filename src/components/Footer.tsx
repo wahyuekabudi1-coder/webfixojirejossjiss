@@ -141,6 +141,13 @@ export default function Footer() {
               {t('footer.servicesTitle')}
             </h3>
             <ul className="space-y-2.5 text-sm">
+              {isServiceEnabled('gathering') && (
+                <li>
+                  <button onClick={() => setPage('event-gathering')} className="hover:text-amber-600 text-neutral-700 transition-colors cursor-pointer font-medium">
+                    Event & Gathering
+                  </button>
+                </li>
+              )}
               <li>
                 <button onClick={() => setPage('tours')} className="hover:text-amber-600 text-neutral-700 transition-colors cursor-pointer font-medium">
                   {t('nav.tours')}

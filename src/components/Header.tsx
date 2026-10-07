@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../AppContext';
 import { useLanguageCurrency } from '../sharetour/LanguageCurrencyContext';
-import { Menu, X, ChevronDown, Calendar, Globe, Plane, Car, Route, Star, Compass, Handshake, Share2, Users, Check } from 'lucide-react';
+import { Menu, X, ChevronDown, Calendar, Globe, Plane, Car, Route, Star, Compass, Handshake, Share2, Users, Check, Building2 } from 'lucide-react';
 import { ENABLE_FOREIGN_CURRENCIES } from '../utils/pricingUtils';
 import { isServiceEnabled } from '../config/serviceVisibility';
 import { AnimatePresence, motion } from 'motion/react';
@@ -160,7 +160,7 @@ export default function Header() {
               <button
                 onClick={() => setIsToursOpen(!isToursOpen)}
                 className={`flex items-center space-x-1 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer ${
-                  ['tours', 'share-tour'].includes(activePage)
+                  ['event-gathering', 'tours', 'share-tour'].includes(activePage)
                     ? 'text-amber-600 bg-amber-500/10 font-semibold'
                     : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
                 }`}
@@ -177,12 +177,26 @@ export default function Header() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute left-0 mt-2 w-64 rounded-2xl bg-white border border-neutral-200 shadow-xl py-2 overflow-hidden z-50"
+                    className="absolute left-0 mt-2 w-72 rounded-2xl bg-white border border-neutral-200 shadow-xl py-2 overflow-hidden z-50"
                   >
+                    {isServiceEnabled('gathering') && (
+                      <button
+                        onClick={() => handleNavigate('event-gathering')}
+                        className="flex items-center space-x-3 w-full px-4 py-3 text-left text-neutral-700 hover:text-amber-600 hover:bg-amber-500/5 transition-colors cursor-pointer"
+                      >
+                        <Building2 className="h-4 w-4 text-amber-500 shrink-0" />
+                        <div>
+                          <div className="text-sm font-semibold flex items-center gap-1.5">
+                            <span>Event & Gathering</span>
+                          </div>
+                          <div className="text-[10px] text-neutral-500">Corporate outing, teambuilding & gathering</div>
+                        </div>
+                      </button>
+                    )}
                     {isServiceEnabled('tours') && (
                       <button
                         onClick={() => handleNavigate('tours')}
-                        className="flex items-center space-x-3 w-full px-4 py-3 text-left text-neutral-700 hover:text-amber-600 hover:bg-amber-500/5 transition-colors cursor-pointer"
+                        className={`flex items-center space-x-3 w-full px-4 py-3 text-left text-neutral-700 hover:text-amber-600 hover:bg-amber-500/5 transition-colors cursor-pointer ${isServiceEnabled('gathering') ? 'border-t border-neutral-100' : ''}`}
                       >
                         <Compass className="h-4 w-4 text-amber-500 shrink-0" />
                         <div>
@@ -196,7 +210,7 @@ export default function Header() {
                     {isServiceEnabled('share-tour') && (
                       <button
                         onClick={() => handleNavigate('share-tour')}
-                        className={`flex items-center space-x-3 w-full px-4 py-3 text-left text-neutral-700 hover:text-amber-600 hover:bg-amber-500/5 transition-colors cursor-pointer ${isServiceEnabled('tours') ? 'border-t border-neutral-100' : ''}`}
+                        className={`flex items-center space-x-3 w-full px-4 py-3 text-left text-neutral-700 hover:text-amber-600 hover:bg-amber-500/5 transition-colors cursor-pointer ${isServiceEnabled('tours') || isServiceEnabled('gathering') ? 'border-t border-neutral-100' : ''}`}
                       >
                         <Users className="h-4 w-4 text-amber-500 shrink-0" />
                         <div>
@@ -624,6 +638,21 @@ export default function Header() {
                   <div className="px-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2 font-mono">
                     {t('nav.tours') || 'Tours'}
                   </div>
+                  {isServiceEnabled('gathering') && (
+                    <button
+                      onClick={() => handleNavigate('event-gathering')}
+                      className={`flex items-center justify-between w-full px-4 py-3 rounded-2xl text-sm transition-colors min-h-[44px] cursor-pointer ${
+                        activePage === 'event-gathering' ? 'bg-amber-500/10 text-amber-700 font-bold' : 'text-neutral-700 hover:bg-neutral-50'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Building2 className="h-5 w-5 text-amber-500 shrink-0" />
+                        <span className="font-medium">Event & Gathering</span>
+                      </div>
+                      <span className="text-xs text-neutral-400">Corporate & Outing</span>
+                    </button>
+                  )}
+
                   {isServiceEnabled('tours') && (
                     <button
                       onClick={() => handleNavigate('tours')}

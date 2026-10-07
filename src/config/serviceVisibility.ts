@@ -24,6 +24,8 @@
  */
 
 export interface ServiceVisibilityConfig {
+  /** Event & Gathering corporate outing and teambuilding catalogue */
+  gathering: boolean;
   /** Private Tour packages across Bromo, Ijen, Bali, Tumpak Sewu */
   tours: boolean;
   /** Open Trip / Join Share Tour group departures */
@@ -38,11 +40,11 @@ export interface ServiceVisibilityConfig {
 
 /**
  * Current Feature Visibility State
- * All 5 core services active for Customer Front-End:
- * TOURS: Private Tour, Open Trip / Share Tour
+ * TOURS: Event & Gathering, Private Tour, Open Trip / Share Tour
  * TRANSPORTATION: Airport Transfer, Taxi Service, Car Rental
  */
 export const SERVICE_VISIBILITY: ServiceVisibilityConfig = {
+  gathering: true,   // ACTIVE for Customer (Event & Gathering Catalogue)
   tours: true,       // ACTIVE for Customer (Private Tour)
   shareTour: true,   // ACTIVE for Customer (Open Trip / Share Tour)
   airport: true,     // ACTIVE for Customer (Airport Transfer)
@@ -51,6 +53,8 @@ export const SERVICE_VISIBILITY: ServiceVisibilityConfig = {
 };
 
 export type ServiceKey = 
+  | 'gathering'
+  | 'event-gathering'
   | 'tours' 
   | 'shareTour' 
   | 'share-tour' 
@@ -64,6 +68,9 @@ export type ServiceKey =
  */
 export function isServiceEnabled(service: ServiceKey): boolean {
   switch (service) {
+    case 'gathering':
+    case 'event-gathering':
+      return Boolean(SERVICE_VISIBILITY.gathering);
     case 'tours':
       return Boolean(SERVICE_VISIBILITY.tours);
     case 'shareTour':

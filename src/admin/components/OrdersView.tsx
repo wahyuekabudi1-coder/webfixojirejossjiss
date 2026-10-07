@@ -7,7 +7,7 @@ import {
 import { UnifiedBookingDetail } from '../../components/admin/BookingDetailModal';
 
 export type OrdersTabType = 'all' | 'pending_payment' | 'pending_confirmation' | 'confirmed' | 'completed' | 'cancelled';
-export type ServiceChannelFilter = 'all' | 'tour' | 'sharetour' | 'airport' | 'taxi' | 'car-rental';
+export type ServiceChannelFilter = 'all' | 'gathering' | 'tour' | 'sharetour' | 'airport' | 'taxi' | 'car-rental';
 export type PaymentStatusFilter = 'all' | 'Pending' | 'Paid';
 export type BookingStatusFilter = 'all' | 'Pending Payment' | 'Pending Confirmation' | 'Confirmed' | 'Completed' | 'Cancelled';
 export type DatePresetFilter = 'all' | 'today' | 'tomorrow' | 'next7days' | 'thisMonth' | 'custom';
@@ -143,6 +143,7 @@ export default function OrdersView({
 
       // 2. Service Filter
       if (serviceFilter !== 'all') {
+        if (serviceFilter === 'gathering' && item.serviceType !== 'gathering' && item.serviceType !== 'event-gathering') return false;
         if (serviceFilter === 'tour' && item.serviceType !== 'tour') return false;
         if (serviceFilter === 'sharetour' && item.serviceType !== 'sharetour') return false;
         if (serviceFilter === 'airport' && item.serviceType !== 'airport') return false;
@@ -469,7 +470,8 @@ export default function OrdersView({
               Layanan:
             </span>
             {[
-              { id: 'all' as const, label: 'Semua (5 Layanan)' },
+              { id: 'all' as const, label: 'Semua Layanan' },
+              { id: 'gathering' as const, label: 'Event & Gathering' },
               { id: 'tour' as const, label: 'Private Tour' },
               { id: 'sharetour' as const, label: 'Open Trip' },
               { id: 'airport' as const, label: 'Airport Transfer' },
@@ -731,16 +733,18 @@ export default function OrdersView({
                         </div>
                       </td>
 
-                      {/* Service Badge (All 5 Services) */}
+                      {/* Service Badge (All Services) */}
                       <td className="p-3.5 whitespace-nowrap">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${
+                          item.serviceType === 'gathering' ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20' :
                           item.serviceType === 'tour' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' :
                           item.serviceType === 'sharetour' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
                           item.serviceType === 'airport' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
                           item.serviceType === 'taxi' ? 'bg-indigo-500/10 text-indigo-500 border border-indigo-500/20' :
                           'bg-purple-500/10 text-purple-500 border border-purple-500/20'
                         }`}>
-                          {item.serviceType === 'tour' ? 'Private Tour' :
+                          {item.serviceType === 'gathering' ? 'Event & Gathering' :
+                           item.serviceType === 'tour' ? 'Private Tour' :
                            item.serviceType === 'sharetour' ? 'Open Trip' :
                            item.serviceType === 'airport' ? 'Airport Transfer' :
                            item.serviceType === 'taxi' ? 'Taxi' : 'Car Rental'}

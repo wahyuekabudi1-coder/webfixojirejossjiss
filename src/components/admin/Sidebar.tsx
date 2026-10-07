@@ -4,7 +4,7 @@ import {
   DollarSign, BarChart3, Sparkles, Settings, ChevronLeft, ChevronRight, 
   LogOut, Globe, CheckCircle2, AlertTriangle, FileText, Compass, 
   Plane, MapPin, Truck, CreditCard, Receipt, TrendingUp, Tag, Shield, 
-  Clock, ShieldAlert, ArrowUpRight, UserCheck, Lock
+  Clock, ShieldAlert, ArrowUpRight, UserCheck, Lock, Building2
 } from 'lucide-react';
 import { checkModulePermission, checkSubItemPermission } from '../../utils/rbac';
 
@@ -131,6 +131,7 @@ export default function Sidebar({
           label: 'Services',
           icon: Layers,
           subItems: [
+            { id: 'event-gathering', label: 'Event & Gathering', icon: Building2, group: 'TOURS' },
             { id: 'private-tour', label: 'Private Tour', icon: Compass, group: 'TOURS' },
             { id: 'open-trip', label: 'Open Trip / Share Tour', icon: Users, group: 'TOURS' },
             { id: 'airport', label: 'Airport Transfer', icon: Plane, group: 'TRANSPORTATION' },

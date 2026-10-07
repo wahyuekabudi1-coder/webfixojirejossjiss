@@ -28,6 +28,7 @@ import { articlesRepo } from './server/db/repositories/articles.repository';
 import { BLOG_POSTS } from './src/blogData';
 import { promoCodesRepo, normalizePromoCode } from './server/db/repositories/promoCodes.repository';
 import { calculatePrivateTourPricing, calculateShareTourPricing } from './src/utils/pricingUtils';
+import { gatheringRepo } from './server/db/gatheringRepo';
 
 // Ensure any Google AI Studio container settings are loaded
 if (fs.existsSync('/app/.dev.env.json')) {
@@ -764,6 +765,391 @@ app.get('/sitemap.xml', (req, res) => {
 
   xml += `</urlset>`;
   res.send(xml);
+});
+
+// -------------------------------------------------------------
+// EVENT & GATHERING REST ENDPOINTS (ENTERPRISE PERSISTENT DATA LAYER)
+// Authoritative SQL Single Source of Truth for Gathering Packages, Requests & Quotations
+// -------------------------------------------------------------
+
+// --- PACKAGES ---
+// 1. GET /api/gathering/packages (Public / Admin)
+app.get('/api/gathering/packages', async (req, res) => {
+  try {
+    const isAdmin = checkIsAdmin(req);
+    const includeAll = isAdmin && req.query.all === 'true';
+    const packages = await gatheringRepo.getPackages(includeAll);
+    res.json(packages);
+  } catch (error: any) {
+    console.error('Error fetching gathering packages:', error);
+    res.status(500).json({ error: 'Gagal mengambil data paket gathering dari server.' });
+  }
+});
+
+// 2. GET /api/gathering/packages/:id (Public)
+app.get('/api/gathering/packages/:id', async (req, res) => {
+  try {
+    const pkg = await gatheringRepo.getPackageById(req.params.id);
+    if (!pkg) {
+      return res.status(404).json({ error: 'Paket gathering tidak ditemukan.' });
+    }
+    res.json(pkg);
+  } catch (error: any) {
+    console.error('Error fetching gathering package by id:', error);
+    res.status(500).json({ error: 'Gagal mengambil detail paket gathering dari server.' });
+  }
+});
+
+// 3. POST /api/gathering/packages [Admin]
+app.post('/api/gathering/packages', requireAdminAuth, async (req, res) => {
+  try {
+    const created = await gatheringRepo.createPackage(req.body);
+    res.status(201).json(created);
+  } catch (error: any) {
+    console.error('Error creating gathering package:', error);
+    res.status(500).json({ error: error.message || 'Gagal membuat paket gathering.' });
+  }
+});
+
+// 4. PUT /api/gathering/packages/:id [Admin]
+app.put('/api/gathering/packages/:id', requireAdminAuth, async (req, res) => {
+  try {
+    const updated = await gatheringRepo.updatePackage(req.params.id, req.body);
+    if (!updated) {
+      return res.status(404).json({ error: 'Paket gathering tidak ditemukan.' });
+    }
+    res.json(updated);
+  } catch (error: any) {
+    console.error('Error updating gathering package:', error);
+    res.status(500).json({ error: error.message || 'Gagal memperbarui paket gathering.' });
+  }
+});
+
+// 5. DELETE /api/gathering/packages/:id [Admin]
+app.delete('/api/gathering/packages/:id', requireAdminAuth, async (req, res) => {
+  try {
+    const success = await gatheringRepo.deletePackage(req.params.id);
+    res.json({ success, message: 'Paket gathering berhasil diarsipkan.' });
+  } catch (error: any) {
+    console.error('Error deleting gathering package:', error);
+    res.status(500).json({ error: error.message || 'Gagal mengarsipkan paket gathering.' });
+  }
+});
+
+// 6. POST /api/gathering/packages/:id/publish [Admin]
+app.post('/api/gathering/packages/:id/publish', requireAdminAuth, async (req, res) => {
+  try {
+    const success = await gatheringRepo.togglePublishPackage(req.params.id);
+    res.json({ success });
+  } catch (error: any) {
+    console.error('Error toggling publish gathering package:', error);
+    res.status(500).json({ error: error.message || 'Gagal mengubah status publish paket gathering.' });
+  }
+});
+
+// 7. POST /api/gathering/packages/:id/archive [Admin]
+app.post('/api/gathering/packages/:id/archive', requireAdminAuth, async (req, res) => {
+  try {
+    const success = await gatheringRepo.archivePackage(req.params.id);
+    res.json({ success });
+  } catch (error: any) {
+    console.error('Error archiving gathering package:', error);
+    res.status(500).json({ error: error.message || 'Gagal mengarsipkan paket gathering.' });
+  }
+});
+
+// --- REQUESTS ---
+// 8. POST /api/gathering/requests [Public Customer]
+app.post('/api/gathering/requests', async (req, res) => {
+  try {
+    const payload = req.body || {};
+    const customerName = (payload.customerName || payload.picName || '').trim();
+    const whatsapp = (payload.whatsapp || '').trim();
+    const email = (payload.email || '').trim();
+    const packageId = (payload.packageId || '').trim();
+
+    if (!customerName || !whatsapp || !email || !packageId) {
+      return res.status(400).json({ error: 'Nama PIC, nomor WhatsApp, email, dan ID Paket wajib diisi.' });
+    }
+
+    const created = await gatheringRepo.createRequest(payload);
+    res.status(201).json(created);
+  } catch (error: any) {
+    console.error('Error creating gathering request:', error);
+    res.status(500).json({ error: error.message || 'Gagal mengirim permintaan penawaran.' });
+  }
+});
+
+// 9. GET /api/gathering/requests [Admin]
+app.get('/api/gathering/requests', requireAdminAuth, async (req, res) => {
+  try {
+    const requests = await gatheringRepo.getRequests();
+    res.json(requests);
+  } catch (error: any) {
+    console.error('Error fetching gathering requests:', error);
+    res.status(500).json({ error: 'Gagal mengambil daftar permintaan penawaran dari database.' });
+  }
+});
+
+// 10. GET /api/gathering/requests/:id [Admin or Customer with Token]
+app.get('/api/gathering/requests/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const token = typeof req.query.token === 'string' ? req.query.token.trim() : '';
+    const isAdmin = checkIsAdmin(req);
+
+    let request = await gatheringRepo.getRequestById(id);
+    if (!request && token) {
+      request = await gatheringRepo.getRequestByToken(token);
+    }
+
+    if (!request) {
+      return res.status(404).json({ error: 'Permintaan penawaran tidak ditemukan.' });
+    }
+
+    // Access control: either admin, or token matches secureToken or request ID
+    if (!isAdmin && (!token || (request.secureToken !== token && request.id !== token))) {
+      return res.status(403).json({ error: 'Akses ditolak: Token verifikasi tidak cocok.' });
+    }
+
+    res.json(request);
+  } catch (error: any) {
+    console.error('Error fetching gathering request by id:', error);
+    res.status(500).json({ error: 'Gagal mengambil detail permintaan penawaran.' });
+  }
+});
+
+// 11. PUT /api/gathering/requests/:id/status [Admin]
+app.put('/api/gathering/requests/:id/status', requireAdminAuth, async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!status) {
+      return res.status(400).json({ error: 'Status diperlukan.' });
+    }
+    const success = await gatheringRepo.updateRequestStatus(req.params.id, status);
+    res.json({ success });
+  } catch (error: any) {
+    console.error('Error updating gathering request status:', error);
+    res.status(500).json({ error: error.message || 'Gagal memperbarui status permintaan.' });
+  }
+});
+
+// --- QUOTATIONS ---
+// 12. POST /api/gathering/quotations [Admin]
+app.post('/api/gathering/quotations', requireAdminAuth, async (req, res) => {
+  try {
+    const payload = req.body || {};
+    if (!payload.requestId || !payload.packageId) {
+      return res.status(400).json({ error: 'requestId dan packageId diperlukan untuk membuat quotation.' });
+    }
+    const created = await gatheringRepo.createQuotation(payload);
+    res.status(201).json(created);
+  } catch (error: any) {
+    console.error('Error creating gathering quotation:', error);
+    res.status(500).json({ error: error.message || 'Gagal membuat quotation.' });
+  }
+});
+
+// 13. GET /api/gathering/quotations [Admin]
+app.get('/api/gathering/quotations', requireAdminAuth, async (req, res) => {
+  try {
+    const quotations = await gatheringRepo.getQuotations();
+    res.json(quotations);
+  } catch (error: any) {
+    console.error('Error fetching gathering quotations:', error);
+    res.status(500).json({ error: 'Gagal mengambil daftar penawaran harga dari database.' });
+  }
+});
+
+// 14. GET /api/gathering/quotations/:id [Admin or Customer with Token / Verification]
+app.get('/api/gathering/quotations/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const token = typeof req.query.token === 'string' ? req.query.token.trim() : '';
+    const isAdmin = checkIsAdmin(req);
+
+    const quotation = await gatheringRepo.getQuotationById(id);
+    if (!quotation) {
+      return res.status(404).json({ error: 'Quotation tidak ditemukan.' });
+    }
+
+    if (!isAdmin) {
+      // Validate customer access via linked request token or quotation ID matching token
+      if (token) {
+        const linkedReq = await gatheringRepo.getRequestById(quotation.requestId);
+        const tokenMatch = linkedReq && linkedReq.secureToken === token;
+        if (!tokenMatch && quotation.id !== token && quotation.quotationNumber !== token) {
+          return res.status(403).json({ error: 'Akses ditolak: Token verifikasi tidak valid.' });
+        }
+      } else {
+        return res.status(401).json({ error: 'Akses ditolak: Membutuhkan Token Akses Customer atau Sesi Admin.' });
+      }
+    }
+
+    res.json(quotation);
+  } catch (error: any) {
+    console.error('Error fetching gathering quotation by id:', error);
+    res.status(500).json({ error: 'Gagal mengambil detail quotation.' });
+  }
+});
+
+// 15. PUT /api/gathering/quotations/:id [Admin] - Create Revision Version V2, V3...
+app.put('/api/gathering/quotations/:id', requireAdminAuth, async (req, res) => {
+  try {
+    const updated = await gatheringRepo.createQuotationVersion(req.params.id, req.body);
+    res.json(updated);
+  } catch (error: any) {
+    console.error('Error updating gathering quotation version:', error);
+    res.status(500).json({ error: error.message || 'Gagal memperbarui versi quotation.' });
+  }
+});
+
+// 16. POST /api/gathering/quotations/:id/versions [Admin]
+app.post('/api/gathering/quotations/:id/versions', requireAdminAuth, async (req, res) => {
+  try {
+    const updated = await gatheringRepo.createQuotationVersion(req.params.id, req.body);
+    res.json(updated);
+  } catch (error: any) {
+    console.error('Error creating gathering quotation version:', error);
+    res.status(500).json({ error: error.message || 'Gagal membuat versi quotation baru.' });
+  }
+});
+
+// 17. POST /api/gathering/quotations/:id/approve [Customer / Admin]
+// Idempotent: creates canonical booking exactly once in bookingsRepo, links quotation & request
+app.post('/api/gathering/quotations/:id/approve', async (req, res) => {
+  return await bookingMutex.runExclusive(async () => {
+    try {
+      const id = req.params.id;
+      const token = typeof req.query.token === 'string' ? req.query.token.trim() : (req.body?.token ? String(req.body.token).trim() : '');
+      const isAdmin = checkIsAdmin(req);
+
+      const quotation = await gatheringRepo.getQuotationById(id);
+      if (!quotation) {
+        return res.status(404).json({ error: 'Quotation tidak ditemukan.' });
+      }
+
+      if (!isAdmin) {
+        if (token) {
+          const linkedReq = await gatheringRepo.getRequestById(quotation.requestId);
+          const tokenMatch = linkedReq && linkedReq.secureToken === token;
+          if (!tokenMatch && quotation.id !== token) {
+            return res.status(403).json({ error: 'Akses ditolak: Token verifikasi tidak valid.' });
+          }
+        } else {
+          return res.status(401).json({ error: 'Akses ditolak: Token verifikasi diperlukan.' });
+        }
+      }
+
+      // Idempotency: Check if already approved and booking already exists
+      if (quotation.bookingId) {
+        const existingBooking = await bookingsRepo.getById(quotation.bookingId) || await bookingsRepo.getByCode(quotation.bookingId);
+        if (existingBooking) {
+          return res.json({
+            success: true,
+            alreadyApproved: true,
+            booking: existingBooking,
+            quotation,
+            message: 'Quotation telah disetujui sebelumnya. Booking sudah aktif.'
+          });
+        }
+      }
+
+      // Create canonical booking in existing bookings database table
+      const paxCount = quotation.participantCount || 60;
+      const bookingCode = `SJ-GAT-${Date.now().toString().slice(-6)}`;
+      const packageName = quotation.packageName || quotation.packageSnapshot?.packageName || 'Event & Gathering';
+      const companyOrClient = quotation.companyName && quotation.companyName !== '-' ? quotation.companyName : quotation.customerName;
+
+      const createdBooking = await bookingsRepo.create({
+        id: bookingCode,
+        bookingCode,
+        serviceType: 'gathering',
+        bookingType: 'gathering',
+        tourBookingType: 'gathering',
+        serviceName: `${packageName} (${companyOrClient})`,
+        customerName: `${quotation.customerName} (${companyOrClient})`,
+        fullName: quotation.customerName,
+        email: quotation.email,
+        phone: quotation.whatsapp,
+        participantsCount: paxCount,
+        departureDate: quotation.eventDate,
+        status: 'Confirmed',
+        paymentStatus: 'Pending',
+        totalPrice: Math.round((quotation.grandTotal || 0) / 16000),
+        totalPriceIDR: quotation.grandTotal || 0,
+        baseAmount: quotation.subtotal || quotation.grandTotal || 0,
+        discount: quotation.discount || 0,
+        currency: 'IDR',
+        details: {
+          quotationId: quotation.id,
+          quotationNumber: quotation.quotationNumber,
+          requestId: quotation.requestId,
+          packageId: quotation.packageId,
+          packageName,
+          company: companyOrClient,
+          date: quotation.eventDate,
+          departureDate: quotation.eventDate,
+          guests: paxCount,
+          destination: quotation.packageSnapshot?.destination || packageName,
+          notes: `Event & Gathering: ${packageName}. Quotation #${quotation.quotationNumber}. Catatan: ${quotation.notes || '-'}`
+        }
+      });
+
+      // Mark quotation as APPROVED with linked booking ID in persistent database
+      await gatheringRepo.setQuotationBookingId(quotation.id, createdBooking.id);
+      const updatedQuotation = await gatheringRepo.getQuotationById(quotation.id);
+
+      console.log(`[Gathering Approval] ✅ Quotation ${quotation.quotationNumber} approved. Booking ${createdBooking.id} created.`);
+
+      res.json({
+        success: true,
+        booking: createdBooking,
+        quotation: updatedQuotation,
+        message: 'Quotation berhasil disetujui dan booking resmi telah dibuat.'
+      });
+    } catch (error: any) {
+      console.error('Error approving gathering quotation:', error);
+      res.status(500).json({ error: error.message || 'Gagal menyetujui quotation dan membuat booking.' });
+    }
+  });
+});
+
+// 18. POST /api/gathering/quotations/:id/revision [Customer / Admin]
+app.post('/api/gathering/quotations/:id/revision', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const token = typeof req.query.token === 'string' ? req.query.token.trim() : (req.body?.token ? String(req.body.token).trim() : '');
+    const isAdmin = checkIsAdmin(req);
+
+    const quotation = await gatheringRepo.getQuotationById(id);
+    if (!quotation) {
+      return res.status(404).json({ error: 'Quotation tidak ditemukan.' });
+    }
+
+    if (!isAdmin) {
+      if (token) {
+        const linkedReq = await gatheringRepo.getRequestById(quotation.requestId);
+        const tokenMatch = linkedReq && linkedReq.secureToken === token;
+        if (!tokenMatch && quotation.id !== token) {
+          return res.status(403).json({ error: 'Akses ditolak: Token verifikasi tidak valid.' });
+        }
+      } else {
+        return res.status(401).json({ error: 'Akses ditolak: Token verifikasi diperlukan.' });
+      }
+    }
+
+    const revisionNotes = req.body?.revisionNotes || req.body?.notes || 'Customer mengajukan revisi penawaran.';
+    const success = await gatheringRepo.requestRevision(id, revisionNotes);
+
+    res.json({
+      success,
+      message: 'Permintaan revisi berhasil dikirim ke Admin Smart Journey.'
+    });
+  } catch (error: any) {
+    console.error('Error requesting gathering revision:', error);
+    res.status(500).json({ error: error.message || 'Gagal mengirim permintaan revisi.' });
+  }
 });
 
 // -------------------------------------------------------------
@@ -2205,8 +2591,10 @@ app.post('/api/bookings', async (req, res) => {
 
       const rawCount = payload.participantsCount ?? payload.details?.guests ?? 1;
       const count = Math.floor(Number(rawCount));
-      if (isNaN(count) || count < 1 || count > 50) {
-        return res.status(400).json({ error: 'Jumlah peserta harus berupa angka positif antara 1 dan 50.' });
+      const isGatheringBooking = payload.serviceType === 'gathering' || payload.type === 'gathering' || payload.serviceType === 'EVENT_GATHERING';
+      const maxCount = isGatheringBooking ? 2000 : 50;
+      if (isNaN(count) || count < 1 || count > maxCount) {
+        return res.status(400).json({ error: `Jumlah peserta harus berupa angka positif antara 1 dan ${maxCount}.` });
       }
 
       const cleanEmail = String(payload.email || payload.customerEmail || payload.participantData?.email || '').trim().toLowerCase();
@@ -6681,6 +7069,11 @@ async function startServer() {
     console.log('[Startup Step 5c/6] Checking and Seeding Initial Promo Codes...');
     const promoSeedCount = await promoCodesRepo.seedInitialPromos();
     console.log(`[Startup Step 5c/6] ✅ Promo Codes Seeded: ${promoSeedCount} new seeded`);
+
+    // Step 5d: Seed initial gathering packages (Enterprise Gathering Data Layer)
+    console.log('[Startup Step 5d/6] Checking and Seeding Initial Event Gathering Packages...');
+    await gatheringRepo.seedDefaultPackages();
+    console.log('[Startup Step 5d/6] ✅ Event Gathering Packages Verified/Seeded');
 
     // Step 6: Synchronize required startup state
     console.log('[Startup Step 6/6] Synchronizing Admin Authentication & Operational State...');

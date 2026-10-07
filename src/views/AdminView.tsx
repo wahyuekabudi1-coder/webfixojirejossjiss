@@ -6,7 +6,7 @@ import {
   Compass, Briefcase, Users, Percent, Calendar, CheckSquare, 
   Sparkles, X, Menu, Search, Bell, Moon, Sun, User, LockKeyhole, 
   Mail, Phone, ChevronDown, CheckCircle2, AlertTriangle, FileText, 
-  ArrowUpRight, BarChart3, Database, Save, Eye, EyeOff, Building, 
+  ArrowUpRight, BarChart3, Database, Save, Eye, EyeOff, Building, Building2, 
   FileCheck, ShieldCheck, ShieldAlert, Download, CalendarDays, RefreshCw, CreditCard, DollarSign,
   Plane, Plus, Trash2, Edit, Check, Copy, Clock, Image, Upload, ChevronUp, GripVertical, History, Car, Map, Star, ExternalLink, Archive, Tag
 } from 'lucide-react';
@@ -41,6 +41,7 @@ import CustomersView from '../admin/components/CustomersView';
 import DashboardView from '../admin/components/DashboardView';
 import MarketingView from '../admin/components/MarketingView';
 import SettingsView from '../admin/components/SettingsView';
+import GatheringAdminWorkspace from '../gathering/components/GatheringAdminWorkspace';
 import { getActiveRole, checkModulePermission, getRequiredPermissionLabel } from '../utils/rbac';
 
 interface ItineraryFormItem {
@@ -183,7 +184,7 @@ export default function AdminView() {
   // Sub-Navigation Tabs per Module
   const [activeOrdersTab, setActiveOrdersTab] = useState<'all' | 'pending_payment' | 'pending_confirmation' | 'confirmed' | 'completed' | 'cancelled'>('all');
   const [activeOperationsTab, setActiveOperationsTab] = useState<'calendar' | 'departures' | 'manifest' | 'assignment'>('calendar');
-  const [activeService, setActiveService] = useState<'private-tour' | 'open-trip' | 'airport' | 'taxi' | 'rental'>('private-tour');
+  const [activeService, setActiveService] = useState<'event-gathering' | 'private-tour' | 'open-trip' | 'airport' | 'taxi' | 'rental'>('private-tour');
   const [activeCustomersTab, setActiveCustomersTab] = useState<'list' | 'reviews'>('list');
   const [activeFinanceTab, setActiveFinanceTab] = useState<'payments' | 'invoices' | 'revenue' | 'reports'>('payments');
   const [activeMarketingTab, setActiveMarketingTab] = useState<'promo' | 'content'>('promo');
@@ -268,8 +269,11 @@ export default function AdminView() {
       seenCodes.add(b.id);
 
       const isShared = (b as any).serviceType === 'shared' || (b as any).bookingType === 'shared' || Boolean((b as any).batchId) || b.type === 'sharetour';
+      const isGathering = (b as any).serviceType === 'gathering' || (b as any).serviceType === 'event-gathering' || b.type === 'gathering' || (b as any).type === 'event-gathering' || b.serviceName?.includes('Gathering') || b.serviceName?.includes('Corporate');
       const serviceType = isShared 
         ? 'sharetour' 
+        : isGathering 
+        ? 'gathering'
         : (b.type === 'tour' ? 'tour' : b.type === 'airport' ? 'airport' : b.type === 'taxi' ? 'taxi' : 'car-rental');
 
       // Payment Status: Strict Pending / Paid
@@ -313,7 +317,7 @@ export default function AdminView() {
         bookingCode: b.bookingCode || b.id,
         source: 'main',
         serviceType,
-        serviceTitle: b.serviceName || (serviceType === 'tour' ? 'Private Tour' : serviceType === 'sharetour' ? 'Open Trip' : serviceType === 'airport' ? 'Airport Transfer' : serviceType === 'taxi' ? 'Taxi Service' : 'Car Rental'),
+        serviceTitle: b.serviceName || (serviceType === 'gathering' ? 'Event & Gathering' : serviceType === 'tour' ? 'Private Tour' : serviceType === 'sharetour' ? 'Open Trip' : serviceType === 'airport' ? 'Airport Transfer' : serviceType === 'taxi' ? 'Taxi Service' : 'Car Rental'),
         customerName: b.customerName || (b as any).fullName || (b as any).leadFullName || b.guestDetails?.name || 'Anonim',
         customerEmail: b.customerEmail || (b as any).email || b.guestDetails?.email || '-',
         customerPhone: b.customerPhone || (b as any).phone || (b as any).phoneNumber || b.guestDetails?.phone || '-',
@@ -6787,7 +6791,8 @@ export default function AdminView() {
           else if (activeModule === 'operations') setActiveOperationsTab(sub as any);
           else if (activeModule === 'services') {
             setActiveService(sub as any);
-            if (sub === 'private-tour') setActiveSubTab('management');
+            if (sub === 'event-gathering') setActiveSubTab('packages');
+            else if (sub === 'private-tour') setActiveSubTab('management');
             else if (sub === 'open-trip') setActiveSubTab('catalog');
             else if (sub === 'airport') setActiveSubTab('routes');
             else if (sub === 'taxi') setActiveSubTab('master-data');
@@ -6832,11 +6837,12 @@ export default function AdminView() {
               <>
                 <ChevronRight className="h-3.5 w-3.5 text-neutral-600" />
                 <span className="text-amber-500/90 uppercase font-mono text-[10px] font-bold">
-                  {['private-tour', 'open-trip'].includes(activeService) ? 'TOURS' : 'TRANSPORTATION'}
+                  {['event-gathering', 'private-tour', 'open-trip'].includes(activeService) ? 'TOURS' : 'TRANSPORTATION'}
                 </span>
                 <ChevronRight className="h-3.5 w-3.5 text-neutral-600" />
                 <span className={`${theme.textSecondary} uppercase font-bold`}>
-                  {activeService === 'private-tour' ? 'Private Tour' :
+                  {activeService === 'event-gathering' ? 'Event & Gathering' :
+                   activeService === 'private-tour' ? 'Private Tour' :
                    activeService === 'open-trip' ? 'Open Trip / Share Tour' :
                    activeService === 'airport' ? 'Airport Transfer' :
                    activeService === 'taxi' ? 'Taxi Service' : 'Car Rental'}
@@ -7191,6 +7197,7 @@ export default function AdminView() {
                         TOURS
                       </span>
                       {[
+                        { id: 'event-gathering', label: 'Event & Gathering', icon: Building2 },
                         { id: 'private-tour', label: 'Private Tour', icon: Compass },
                         { id: 'open-trip', label: 'Open Trip / Share Tour', icon: Users },
                       ].map((svc) => {
@@ -7201,7 +7208,8 @@ export default function AdminView() {
                             key={svc.id}
                             onClick={() => {
                               setActiveService(svc.id as any);
-                              if (svc.id === 'private-tour') setActiveSubTab('management');
+                              if (svc.id === 'event-gathering') setActiveSubTab('packages');
+                              else if (svc.id === 'private-tour') setActiveSubTab('management');
                               else if (svc.id === 'open-trip') setActiveSubTab('catalog');
                             }}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
@@ -7315,6 +7323,15 @@ export default function AdminView() {
 
                 {/* Sub-Service Active Workspace */}
                 <div>
+                  {activeService === 'event-gathering' && (
+                    <GatheringAdminWorkspace
+                      isDark={isDark}
+                      triggerToast={triggerToast}
+                      onOpenBookingDetail={handleOpenBookingDetail}
+                      formatPrice={formatPrice}
+                    />
+                  )}
+
                   {activeService === 'private-tour' && (
                     <div>{renderModuleTabContent('Tour Packages')}</div>
                   )}

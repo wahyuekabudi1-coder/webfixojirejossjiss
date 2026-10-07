@@ -95,6 +95,9 @@ export default function BookingDetailModal({
 
   const getServiceBadge = (type: string) => {
     switch (type) {
+      case 'gathering':
+      case 'event-gathering':
+        return { label: 'Event & Gathering', color: 'bg-teal-500/10 text-teal-400 border-teal-500/30' };
       case 'tour':
         return { label: 'Private Tour', color: 'bg-amber-500/10 text-amber-500 border-amber-500/30' };
       case 'sharetour':

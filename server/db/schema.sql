@@ -282,3 +282,94 @@ CREATE TABLE IF NOT EXISTS promo_codes (
   created_at VARCHAR(64),
   updated_at VARCHAR(64)
 );
+
+-- 17. Event & Gathering Packages (Corporate & Group Event Catalogue)
+CREATE TABLE IF NOT EXISTS event_gathering_packages (
+  id VARCHAR(64) PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) UNIQUE NOT NULL,
+  destination VARCHAR(255) NOT NULL,
+  duration VARCHAR(128) NOT NULL,
+  image TEXT,
+  gallery TEXT,
+  description TEXT,
+  itinerary TEXT,
+  included TEXT,
+  excluded TEXT,
+  facilities TEXT,
+  notes TEXT,
+  price_60_pax DECIMAL(14,2) DEFAULT 0,
+  price_70_pax DECIMAL(14,2) DEFAULT 0,
+  price_80_pax DECIMAL(14,2) DEFAULT 0,
+  price_90_pax DECIMAL(14,2) DEFAULT 0,
+  price_90_plus_text VARCHAR(128) DEFAULT 'Hubungi Admin',
+  is_published INT DEFAULT 1,
+  is_archived INT DEFAULT 0,
+  created_at VARCHAR(64),
+  updated_at VARCHAR(64)
+);
+
+-- 18. Event & Gathering Quotation Requests (Customer Inquiries)
+CREATE TABLE IF NOT EXISTS event_gathering_requests (
+  id VARCHAR(64) PRIMARY KEY,
+  package_id VARCHAR(64) NOT NULL,
+  package_name VARCHAR(255) NOT NULL,
+  duration VARCHAR(128),
+  customer_name VARCHAR(255) NOT NULL,
+  company_name VARCHAR(255),
+  whatsapp VARCHAR(64) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  estimated_participants VARCHAR(32) NOT NULL,
+  requested_date VARCHAR(64) NOT NULL,
+  notes TEXT,
+  status VARCHAR(64) DEFAULT 'REQUESTED',
+  secure_token VARCHAR(128) NOT NULL,
+  created_at VARCHAR(64),
+  updated_at VARCHAR(64)
+);
+
+-- 19. Event & Gathering Quotations (Official Proposals)
+CREATE TABLE IF NOT EXISTS event_gathering_quotations (
+  id VARCHAR(64) PRIMARY KEY,
+  quotation_number VARCHAR(64) UNIQUE NOT NULL,
+  request_id VARCHAR(64) NOT NULL,
+  package_id VARCHAR(64) NOT NULL,
+  customer_name VARCHAR(255) NOT NULL,
+  company_name VARCHAR(255),
+  whatsapp VARCHAR(64) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  event_date VARCHAR(64) NOT NULL,
+  participant_count INT DEFAULT 60,
+  valid_until VARCHAR(64) NOT NULL,
+  current_version INT DEFAULT 1,
+  status VARCHAR(64) DEFAULT 'PROPOSAL_SENT',
+  subtotal DECIMAL(14,2) DEFAULT 0,
+  discount DECIMAL(14,2) DEFAULT 0,
+  additional_cost DECIMAL(14,2) DEFAULT 0,
+  grand_total DECIMAL(14,2) DEFAULT 0,
+  currency VARCHAR(10) DEFAULT 'IDR',
+  booking_id VARCHAR(64),
+  package_snapshot TEXT,
+  created_at VARCHAR(64),
+  updated_at VARCHAR(64)
+);
+
+-- 20. Event & Gathering Quotation Versions (Proposal Version History)
+CREATE TABLE IF NOT EXISTS event_gathering_quotation_versions (
+  id VARCHAR(64) PRIMARY KEY,
+  quotation_id VARCHAR(64) NOT NULL,
+  version_number INT NOT NULL,
+  itinerary TEXT,
+  included TEXT,
+  excluded TEXT,
+  notes TEXT,
+  line_items TEXT,
+  subtotal DECIMAL(14,2) DEFAULT 0,
+  discount DECIMAL(14,2) DEFAULT 0,
+  additional_cost DECIMAL(14,2) DEFAULT 0,
+  grand_total DECIMAL(14,2) DEFAULT 0,
+  package_snapshot TEXT,
+  revision_notes TEXT,
+  created_by VARCHAR(64) DEFAULT 'admin',
+  created_at VARCHAR(64)
+);
