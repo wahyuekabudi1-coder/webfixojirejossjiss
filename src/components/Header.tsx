@@ -3,6 +3,7 @@ import { useApp } from '../AppContext';
 import { useLanguageCurrency } from '../sharetour/LanguageCurrencyContext';
 import { Menu, X, ChevronDown, Calendar, Globe, Plane, Car, Route, Star, Compass, Handshake, Share2, Users, Check } from 'lucide-react';
 import { ENABLE_FOREIGN_CURRENCIES } from '../utils/pricingUtils';
+import { isServiceEnabled } from '../config/serviceVisibility';
 import { AnimatePresence, motion } from 'motion/react';
 
 export default function Header() {
@@ -150,7 +151,7 @@ export default function Header() {
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className={`flex items-center space-x-1 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                  ['tours', 'share-tour', 'airport', 'taxi', 'car-rental'].includes(activePage)
+                  ['tours', 'share-tour', isServiceEnabled('airport') && 'airport', isServiceEnabled('taxi') && 'taxi', isServiceEnabled('car-rental') && 'car-rental'].filter(Boolean).includes(activePage)
                     ? 'text-amber-600 bg-amber-500/10 font-semibold'
                     : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
                 }`}
@@ -193,42 +194,48 @@ export default function Header() {
                         <div className="text-[10px] text-neutral-500">{t('nav.shareTourSubtitle')}</div>
                       </div>
                     </button>
-                    <button
-                      onClick={() => handleNavigate('airport')}
-                      className="flex items-center space-x-3 w-full px-4 py-3 text-left text-neutral-700 hover:text-amber-600 hover:bg-amber-500/5 transition-colors border-t border-neutral-100"
-                    >
-                      <Plane className="h-4 w-4 text-amber-500 shrink-0" />
-                      <div>
-                        <div className="text-sm font-semibold flex items-center gap-1.5">
-                          <span>{t('nav.airport')}</span>
+                    {isServiceEnabled('airport') && (
+                      <button
+                        onClick={() => handleNavigate('airport')}
+                        className="flex items-center space-x-3 w-full px-4 py-3 text-left text-neutral-700 hover:text-amber-600 hover:bg-amber-500/5 transition-colors border-t border-neutral-100"
+                      >
+                        <Plane className="h-4 w-4 text-amber-500 shrink-0" />
+                        <div>
+                          <div className="text-sm font-semibold flex items-center gap-1.5">
+                            <span>{t('nav.airport')}</span>
+                          </div>
+                          <div className="text-[10px] text-neutral-500">{t('nav.airportSubtitle')}</div>
                         </div>
-                        <div className="text-[10px] text-neutral-500">{t('nav.airportSubtitle')}</div>
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => handleNavigate('taxi')}
-                      className="flex items-center space-x-3 w-full px-4 py-3 text-left text-neutral-700 hover:text-amber-600 hover:bg-amber-500/5 transition-colors border-t border-neutral-100"
-                    >
-                      <Route className="h-4 w-4 text-amber-500 shrink-0" />
-                      <div>
-                        <div className="text-sm font-semibold flex items-center gap-1.5">
-                          <span>{t('nav.taxi')}</span>
+                      </button>
+                    )}
+                    {isServiceEnabled('taxi') && (
+                      <button
+                        onClick={() => handleNavigate('taxi')}
+                        className="flex items-center space-x-3 w-full px-4 py-3 text-left text-neutral-700 hover:text-amber-600 hover:bg-amber-500/5 transition-colors border-t border-neutral-100"
+                      >
+                        <Route className="h-4 w-4 text-amber-500 shrink-0" />
+                        <div>
+                          <div className="text-sm font-semibold flex items-center gap-1.5">
+                            <span>{t('nav.taxi')}</span>
+                          </div>
+                          <div className="text-[10px] text-neutral-500">{t('nav.taxiSubtitle')}</div>
                         </div>
-                        <div className="text-[10px] text-neutral-500">{t('nav.taxiSubtitle')}</div>
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => handleNavigate('car-rental')}
-                      className="flex items-center space-x-3 w-full px-4 py-3 text-left text-neutral-700 hover:text-amber-600 hover:bg-amber-500/5 transition-colors border-t border-neutral-100"
-                    >
-                      <Car className="h-4 w-4 text-amber-500" />
-                      <div>
-                        <div className="text-sm font-semibold flex items-center gap-1.5">
-                          <span>{t('nav.carRental')}</span>
+                      </button>
+                    )}
+                    {isServiceEnabled('car-rental') && (
+                      <button
+                        onClick={() => handleNavigate('car-rental')}
+                        className="flex items-center space-x-3 w-full px-4 py-3 text-left text-neutral-700 hover:text-amber-600 hover:bg-amber-500/5 transition-colors border-t border-neutral-100"
+                      >
+                        <Car className="h-4 w-4 text-amber-500" />
+                        <div>
+                          <div className="text-sm font-semibold flex items-center gap-1.5">
+                            <span>{t('nav.carRental')}</span>
+                          </div>
+                          <div className="text-[10px] text-neutral-500">{t('nav.carRentalSubtitle')}</div>
                         </div>
-                        <div className="text-[10px] text-neutral-500">{t('nav.carRentalSubtitle')}</div>
-                      </div>
-                    </button>
+                      </button>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -594,44 +601,50 @@ export default function Header() {
                     <span className="text-[9px] bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-2 py-0.5 rounded font-mono font-bold uppercase tracking-wider">{t('nav.newBadge')}</span>
                   </button>
 
-                  <button
-                    onClick={() => handleNavigate('airport')}
-                    className={`flex items-center justify-between w-full px-4 py-3 rounded-2xl text-sm transition-colors min-h-[44px] cursor-pointer ${
-                      activePage === 'airport' ? 'bg-amber-500/10 text-amber-700 font-bold' : 'text-neutral-700 hover:bg-neutral-50'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <Plane className="h-5 w-5 text-amber-500 shrink-0" />
-                      <span className="font-medium">{t('nav.airport')}</span>
-                    </div>
-                    <span className="text-xs text-neutral-400">SUB, DPS</span>
-                  </button>
+                  {isServiceEnabled('airport') && (
+                    <button
+                      onClick={() => handleNavigate('airport')}
+                      className={`flex items-center justify-between w-full px-4 py-3 rounded-2xl text-sm transition-colors min-h-[44px] cursor-pointer ${
+                        activePage === 'airport' ? 'bg-amber-500/10 text-amber-700 font-bold' : 'text-neutral-700 hover:bg-neutral-50'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Plane className="h-5 w-5 text-amber-500 shrink-0" />
+                        <span className="font-medium">{t('nav.airport')}</span>
+                      </div>
+                      <span className="text-xs text-neutral-400">SUB, DPS</span>
+                    </button>
+                  )}
 
-                  <button
-                    onClick={() => handleNavigate('taxi')}
-                    className={`flex items-center justify-between w-full px-4 py-3 rounded-2xl text-sm transition-colors min-h-[44px] cursor-pointer ${
-                      activePage === 'taxi' ? 'bg-amber-500/10 text-amber-700 font-bold' : 'text-neutral-700 hover:bg-neutral-50'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <Route className="h-5 w-5 text-amber-500 shrink-0" />
-                      <span className="font-medium">{t('nav.taxi')}</span>
-                    </div>
-                    <span className="text-xs text-neutral-400">{t('nav.taxiSubtitle')}</span>
-                  </button>
+                  {isServiceEnabled('taxi') && (
+                    <button
+                      onClick={() => handleNavigate('taxi')}
+                      className={`flex items-center justify-between w-full px-4 py-3 rounded-2xl text-sm transition-colors min-h-[44px] cursor-pointer ${
+                        activePage === 'taxi' ? 'bg-amber-500/10 text-amber-700 font-bold' : 'text-neutral-700 hover:bg-neutral-50'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Route className="h-5 w-5 text-amber-500 shrink-0" />
+                        <span className="font-medium">{t('nav.taxi')}</span>
+                      </div>
+                      <span className="text-xs text-neutral-400">{t('nav.taxiSubtitle')}</span>
+                    </button>
+                  )}
 
-                  <button
-                    onClick={() => handleNavigate('car-rental')}
-                    className={`flex items-center justify-between w-full px-4 py-3 rounded-2xl text-sm transition-colors min-h-[44px] cursor-pointer ${
-                      activePage === 'car-rental' ? 'bg-amber-500/10 text-amber-700 font-bold' : 'text-neutral-700 hover:bg-neutral-50'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <Car className="h-5 w-5 text-amber-500 shrink-0" />
-                      <span className="font-medium">{t('nav.carRental')}</span>
-                    </div>
-                    <span className="text-xs text-neutral-400">{t('nav.carRentalSubtitle')}</span>
-                  </button>
+                  {isServiceEnabled('car-rental') && (
+                    <button
+                      onClick={() => handleNavigate('car-rental')}
+                      className={`flex items-center justify-between w-full px-4 py-3 rounded-2xl text-sm transition-colors min-h-[44px] cursor-pointer ${
+                        activePage === 'car-rental' ? 'bg-amber-500/10 text-amber-700 font-bold' : 'text-neutral-700 hover:bg-neutral-50'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Car className="h-5 w-5 text-amber-500 shrink-0" />
+                        <span className="font-medium">{t('nav.carRental')}</span>
+                      </div>
+                      <span className="text-xs text-neutral-400">{t('nav.carRentalSubtitle')}</span>
+                    </button>
+                  )}
                 </div>
 
                 <button

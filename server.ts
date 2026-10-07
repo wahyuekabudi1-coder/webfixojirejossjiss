@@ -702,6 +702,19 @@ app.get('/api/health', async (req, res) => {
 });
 
 // -------------------------------------------------------------
+// Service Visibility & Feature Flags Endpoint (Customer Display Flags)
+// -------------------------------------------------------------
+app.get('/api/service-visibility', (req, res) => {
+  res.json({
+    tours: true,
+    shareTour: true,
+    airport: false,
+    taxi: false,
+    carRental: false,
+  });
+});
+
+// -------------------------------------------------------------
 // SEO Crawlers Endpoints: Robots.txt & Dynamic Sitemap.xml
 // -------------------------------------------------------------
 

@@ -2,18 +2,21 @@ import React from 'react';
 import { useApp } from '../AppContext';
 import { useLanguageCurrency } from '../sharetour/LanguageCurrencyContext';
 import { Compass, Users, Plane, Route, Car } from 'lucide-react';
+import { isServiceEnabled } from '../config/serviceVisibility';
 
 export default function ServiceNavTabs() {
   const { activePage, setPage } = useApp();
   const { t } = useLanguageCurrency();
 
-  const services = [
+  const allServices = [
     { id: 'tours', label: t('nav.tours') || 'Private Tours', icon: Compass },
     { id: 'share-tour', label: t('nav.shareTour') || 'Open Trip / Join Share Tour', badge: 'Open Trip', icon: Users },
     { id: 'airport', label: t('nav.airport') || 'Airport Transfer', icon: Plane },
     { id: 'taxi', label: t('nav.taxi') || 'City Taxi', icon: Route },
     { id: 'car-rental', label: t('nav.carRental') || 'Rental Car', icon: Car },
   ];
+
+  const services = allServices.filter(srv => isServiceEnabled(srv.id as any));
 
   return (
     <div className="w-full bg-neutral-900/95 backdrop-blur-md border-b border-neutral-800 py-2 sticky top-[56px] sm:top-[72px] z-40 shadow-md">

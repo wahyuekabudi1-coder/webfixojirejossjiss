@@ -4,6 +4,7 @@ import { useLanguageCurrency } from '../sharetour/LanguageCurrencyContext';
 import SocialMediaButtons from './SocialMediaButtons';
 import { Mail, MapPin, Phone, Clock, MessageSquare, Instagram, Facebook, Youtube, Share2, Sparkles, QrCode, Copy, Check, X, ShieldCheck, FileText, Lock, ExternalLink, Compass, Timer } from 'lucide-react';
 import { trackWhatsAppClick, trackEmailClick, trackPhoneClick } from '../lib/analytics';
+import { isServiceEnabled } from '../config/serviceVisibility';
 
 function WeChatIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
@@ -151,21 +152,27 @@ export default function Footer() {
                   <span className="text-[9px] bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-1.5 py-0.5 rounded font-mono font-bold uppercase">{t('nav.newBadge')}</span>
                 </button>
               </li>
-              <li>
-                <button onClick={() => setPage('airport')} className="hover:text-amber-600 text-neutral-700 transition-colors cursor-pointer font-medium">
-                  {t('nav.airport')}
-                </button>
-              </li>
-              <li>
-                <button onClick={() => setPage('taxi')} className="hover:text-amber-600 text-neutral-700 transition-colors cursor-pointer font-medium">
-                  {t('nav.taxi')}
-                </button>
-              </li>
-              <li>
-                <button onClick={() => setPage('car-rental')} className="hover:text-amber-600 text-neutral-700 transition-colors cursor-pointer font-medium">
-                  {t('nav.carRental')}
-                </button>
-              </li>
+              {isServiceEnabled('airport') && (
+                <li>
+                  <button onClick={() => setPage('airport')} className="hover:text-amber-600 text-neutral-700 transition-colors cursor-pointer font-medium">
+                    {t('nav.airport')}
+                  </button>
+                </li>
+              )}
+              {isServiceEnabled('taxi') && (
+                <li>
+                  <button onClick={() => setPage('taxi')} className="hover:text-amber-600 text-neutral-700 transition-colors cursor-pointer font-medium">
+                    {t('nav.taxi')}
+                  </button>
+                </li>
+              )}
+              {isServiceEnabled('car-rental') && (
+                <li>
+                  <button onClick={() => setPage('car-rental')} className="hover:text-amber-600 text-neutral-700 transition-colors cursor-pointer font-medium">
+                    {t('nav.carRental')}
+                  </button>
+                </li>
+              )}
               <li className="pt-2 border-t border-neutral-200/60 flex items-center gap-4 text-xs font-semibold text-neutral-500">
                 <button onClick={() => setPage('about')} className="hover:text-amber-600 transition-colors cursor-pointer">
                   {t('nav.about')}

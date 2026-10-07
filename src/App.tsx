@@ -13,6 +13,7 @@ import FloatingWhatsApp from './components/FloatingWhatsApp';
 import HomeView from './views/HomeView';
 import { motion, AnimatePresence } from 'motion/react';
 import { trackPageView } from './lib/analytics';
+import { isServiceEnabled } from './config/serviceVisibility';
 
 // Code-split lazy loaded view chunks to keep initial bundle ultra-light
 const ToursView = lazy(() => import('./views/ToursView'));
@@ -24,6 +25,7 @@ const CarRentalView = lazy(() => import('./views/CarRentalView'));
 const AboutView = lazy(() => import('./views/AboutView'));
 const AdminView = lazy(() => import('./views/AdminView'));
 const ShareTourView = lazy(() => import('./views/ShareTourView'));
+const ServiceUnavailablePage = lazy(() => import('./components/ServiceUnavailablePage'));
 const PrivacyModal = lazy(() => import('./components/PrivacyModal'));
 const TermsModal = lazy(() => import('./components/TermsModal'));
 
@@ -67,11 +69,11 @@ function AppContent() {
       case 'share-tour':
         return <ShareTourView />;
       case 'airport':
-        return <AirportTransferView />;
+        return isServiceEnabled('airport') ? <AirportTransferView /> : <ServiceUnavailablePage serviceKey="airport" />;
       case 'taxi':
-        return <TaxiView />;
+        return isServiceEnabled('taxi') ? <TaxiView /> : <ServiceUnavailablePage serviceKey="taxi" />;
       case 'car-rental':
-        return <CarRentalView />;
+        return isServiceEnabled('car-rental') ? <CarRentalView /> : <ServiceUnavailablePage serviceKey="car-rental" />;
       case 'about':
         return <AboutView />;
       case 'partnerships':
