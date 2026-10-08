@@ -698,9 +698,9 @@ export default function HomeView() {
                       </div>
                       <div className="flex items-center justify-between mt-auto">
                         <div>
-                          <span className="text-[10px] text-neutral-400 block uppercase font-mono">{t('common.startingFrom')}</span>
+                          <span className="text-[10px] text-neutral-600 block uppercase font-mono">{t('common.startingFrom')}</span>
                           <span className="text-xl font-black text-amber-600">{formatPrice(tour.startingPrice)}</span>
-                          <span className="text-[10px] text-neutral-500"> / {t('common.perPerson')}</span>
+                          <span className="text-[10px] text-neutral-600"> / {t('common.perPerson')}</span>
                         </div>
                         <button
                           onClick={() => triggerCheckout(tour)}
@@ -1047,7 +1047,7 @@ export default function HomeView() {
                         </span>
                         <ArrowRight className="h-4 w-4" />
                       </button>
-                      <span className="text-xs text-neutral-400 font-medium">
+                      <span className="text-xs text-neutral-600 font-medium">
                         ★ {language === 'zh' ? '官方保证：透明一口价，无隐形消费' : language === 'id' ? 'Jaminan Layanan Terbaik & Harga Transparan' : 'Guaranteed Best Service & Fixed Pricing'}
                       </span>
                     </div>
@@ -1511,7 +1511,7 @@ export default function HomeView() {
                           {[...Array(5 - review.rating)].map((_, i) => (
                             <Star key={i} className="h-3.5 w-3.5 text-neutral-200" />
                           ))}
-                          <span className="text-[10px] text-neutral-400 ml-2 font-mono">{review.date}</span>
+                          <span className="text-[10px] text-neutral-600 ml-2 font-mono">{review.date}</span>
                         </div>
 
                         {/* Comment text */}
@@ -1521,7 +1521,7 @@ export default function HomeView() {
                       </div>
                       
                       {/* Review footer without map link */}
-                      <div className="mt-4 pt-2 border-t border-neutral-100 flex items-center justify-between text-[9px] text-neutral-400 font-mono">
+                      <div className="mt-4 pt-2 border-t border-neutral-100 flex items-center justify-between text-[9px] text-neutral-600 font-mono">
                         <span className="flex items-center gap-1">
                           <svg className="h-3 w-3 shrink-0" viewBox="0 0 24 24">
                             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -1531,7 +1531,7 @@ export default function HomeView() {
                           </svg>
                           <span>Google Review</span>
                         </span>
-                        <span className="text-neutral-400 font-medium">
+                        <span className="text-neutral-600 font-medium">
                           {review.date}
                         </span>
                       </div>

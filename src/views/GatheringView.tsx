@@ -20,6 +20,7 @@ import {
   apiCreateGatheringRequest,
   GATHERING_STORAGE_EVENT 
 } from '../gathering/gatheringStore';
+import { SEED_GATHERING_PACKAGES } from '../gathering/gatheringData';
 import CustomerQuotationPortalModal from '../gathering/components/CustomerQuotationPortalModal';
 
 /**
@@ -388,12 +389,22 @@ export default function GatheringView() {
         ? currentPackage.notes 
         : (typeof currentPackage.notes === 'string' && currentPackage.notes.trim() ? currentPackage.notes.split('\n').filter(Boolean) : []);
 
-      const faqList = Array.isArray(currentPackage.faq)
-        ? currentPackage.faq.map(item => ({
-            question: item.question || (item as any).q || '',
-            answer: item.answer || (item as any).a || ''
-          })).filter(f => f.question.trim() !== '')
-        : [];
+      const rawFaq = (Array.isArray(currentPackage.faq) && currentPackage.faq.length > 0)
+        ? currentPackage.faq
+        : (() => {
+            const seed = SEED_GATHERING_PACKAGES.find(s => 
+              s.id === currentPackage.id || 
+              s.slug === currentPackage.slug || 
+              (currentPackage.name && s.name.toLowerCase().includes(currentPackage.name.toLowerCase())) || 
+              (currentPackage.title && s.name.toLowerCase().includes(currentPackage.title.toLowerCase()))
+            );
+            return Array.isArray(seed?.faq) ? seed.faq : [];
+          })();
+
+      const faqList = rawFaq.map(item => ({
+        question: item.question || (item as any).q || '',
+        answer: item.answer || (item as any).a || ''
+      })).filter(f => f.question.trim() !== '');
 
       return (
         <div className="min-h-screen bg-slate-50 text-neutral-900 pb-24">
@@ -497,7 +508,7 @@ export default function GatheringView() {
               <div className="lg:col-span-2 space-y-8">
                 {/* Description */}
                 <div className="bg-white rounded-3xl p-6 sm:p-8 border border-neutral-200/90 shadow-sm">
-                  <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider font-mono mb-3">
+                  <h3 className="text-xs font-bold text-neutral-600 uppercase tracking-wider font-mono mb-3">
                     Deskripsi Program
                   </h3>
                   <p className="text-neutral-700 text-sm sm:text-base leading-relaxed whitespace-pre-line">
@@ -508,7 +519,7 @@ export default function GatheringView() {
                 {/* Facilities */}
                 {facilitiesList.length > 0 && (
                   <div className="bg-white rounded-3xl p-6 sm:p-8 border border-neutral-200/90 shadow-sm">
-                    <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider font-mono mb-4">
+                    <h3 className="text-xs font-bold text-neutral-600 uppercase tracking-wider font-mono mb-4">
                       Fasilitas Unggulan Program
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -528,7 +539,7 @@ export default function GatheringView() {
                 {/* Day-by-Day Itinerary */}
                 {itineraryList.length > 0 && (
                   <div className="bg-white rounded-3xl p-6 sm:p-8 border border-neutral-200/90 shadow-sm">
-                    <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider font-mono mb-6">
+                    <h3 className="text-xs font-bold text-neutral-600 uppercase tracking-wider font-mono mb-6">
                       Itinerary Lengkap per Hari
                     </h3>
                     <div className="space-y-6">
@@ -621,7 +632,7 @@ export default function GatheringView() {
                 {/* FAQ Accordion Section */}
                 {faqList.length > 0 && (
                   <div className="bg-white rounded-3xl p-6 sm:p-8 border border-neutral-200/90 shadow-sm space-y-4">
-                    <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider font-mono flex items-center gap-2">
+                    <h3 className="text-xs font-bold text-neutral-600 uppercase tracking-wider font-mono flex items-center gap-2">
                       <HelpCircle className="w-4 h-4 text-emerald-700" />
                       <span>Pertanyaan yang Sering Diajukan (FAQ)</span>
                     </h3>
@@ -673,35 +684,35 @@ export default function GatheringView() {
                   {/* Price Tiers Grid */}
                   <div className="grid grid-cols-2 gap-2.5 mb-4 text-center">
                     <div className="bg-slate-50 p-3 rounded-2xl border border-neutral-200/80">
-                      <div className="text-[11px] font-bold text-neutral-400 font-mono">60 Pax</div>
+                      <div className="text-[11px] font-bold text-neutral-600 font-mono">60 Pax</div>
                       <div className="text-sm font-black text-neutral-900 mt-1">
                         Rp {price60.toLocaleString('id-ID')}
                       </div>
-                      <div className="text-[10px] text-neutral-400">/ orang</div>
+                      <div className="text-[10px] text-neutral-600">/ orang</div>
                     </div>
 
                     <div className="bg-slate-50 p-3 rounded-2xl border border-neutral-200/80">
-                      <div className="text-[11px] font-bold text-neutral-400 font-mono">70 Pax</div>
+                      <div className="text-[11px] font-bold text-neutral-600 font-mono">70 Pax</div>
                       <div className="text-sm font-black text-neutral-900 mt-1">
                         Rp {price70.toLocaleString('id-ID')}
                       </div>
-                      <div className="text-[10px] text-neutral-400">/ orang</div>
+                      <div className="text-[10px] text-neutral-600">/ orang</div>
                     </div>
 
                     <div className="bg-slate-50 p-3 rounded-2xl border border-neutral-200/80">
-                      <div className="text-[11px] font-bold text-neutral-400 font-mono">80 Pax</div>
+                      <div className="text-[11px] font-bold text-neutral-600 font-mono">80 Pax</div>
                       <div className="text-sm font-black text-neutral-900 mt-1">
                         Rp {price80.toLocaleString('id-ID')}
                       </div>
-                      <div className="text-[10px] text-neutral-400">/ orang</div>
+                      <div className="text-[10px] text-neutral-600">/ orang</div>
                     </div>
 
                     <div className="bg-slate-50 p-3 rounded-2xl border border-neutral-200/80">
-                      <div className="text-[11px] font-bold text-neutral-400 font-mono">90 Pax</div>
+                      <div className="text-[11px] font-bold text-neutral-600 font-mono">90 Pax</div>
                       <div className="text-sm font-black text-neutral-900 mt-1">
                         Rp {price90.toLocaleString('id-ID')}
                       </div>
-                      <div className="text-[10px] text-neutral-400">/ orang</div>
+                      <div className="text-[10px] text-neutral-600">/ orang</div>
                     </div>
                   </div>
 
@@ -1126,7 +1137,7 @@ export default function GatheringView() {
                     {/* Highlights / Facilities */}
                     {facilities.length > 0 && (
                       <div className="mb-6">
-                        <div className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider mb-2 font-mono">
+                        <div className="text-[11px] font-bold text-neutral-600 uppercase tracking-wider mb-2 font-mono">
                           Fasilitas Unggulan Termasuk:
                         </div>
                         <div className="flex flex-wrap gap-1.5">
@@ -1157,25 +1168,25 @@ export default function GatheringView() {
 
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
                         <div className="bg-white p-2.5 rounded-xl border border-neutral-200/70 shadow-xs">
-                          <div className="text-[10px] font-bold text-neutral-400 font-mono">60 Pax</div>
+                          <div className="text-[10px] font-bold text-neutral-600 font-mono">60 Pax</div>
                           <div className="text-xs font-extrabold text-neutral-800 mt-0.5">
                             Rp {price60.toLocaleString('id-ID')}
                           </div>
                         </div>
                         <div className="bg-white p-2.5 rounded-xl border border-neutral-200/70 shadow-xs">
-                          <div className="text-[10px] font-bold text-neutral-400 font-mono">70 Pax</div>
+                          <div className="text-[10px] font-bold text-neutral-600 font-mono">70 Pax</div>
                           <div className="text-xs font-extrabold text-neutral-800 mt-0.5">
                             Rp {price70.toLocaleString('id-ID')}
                           </div>
                         </div>
                         <div className="bg-white p-2.5 rounded-xl border border-neutral-200/70 shadow-xs">
-                          <div className="text-[10px] font-bold text-neutral-400 font-mono">80 Pax</div>
+                          <div className="text-[10px] font-bold text-neutral-600 font-mono">80 Pax</div>
                           <div className="text-xs font-extrabold text-neutral-800 mt-0.5">
                             Rp {price80.toLocaleString('id-ID')}
                           </div>
                         </div>
                         <div className="bg-white p-2.5 rounded-xl border border-neutral-200/70 shadow-xs">
-                          <div className="text-[10px] font-bold text-neutral-400 font-mono">90 Pax</div>
+                          <div className="text-[10px] font-bold text-neutral-600 font-mono">90 Pax</div>
                           <div className="text-xs font-extrabold text-neutral-800 mt-0.5">
                             Rp {price90.toLocaleString('id-ID')}
                           </div>

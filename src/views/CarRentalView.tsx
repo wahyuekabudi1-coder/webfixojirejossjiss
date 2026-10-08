@@ -81,7 +81,7 @@ function SearchableDropdown({
               placeholder="Type to search locations..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-neutral-900 border border-neutral-800 text-white text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-amber-500 placeholder-neutral-500"
+              className="w-full bg-neutral-900 border border-neutral-800 text-white text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-amber-500 placeholder-neutral-400"
             />
           </div>
           <div className="overflow-y-auto grow py-1 custom-scrollbar">
@@ -1382,7 +1382,7 @@ export default function CarRentalView() {
                         placeholder="Contoh: Hotel Grand Hyatt room 402, jemput di lobby jam 09:00 pagi..."
                         value={pickupDetail}
                         onChange={(e) => setPickupDetail(e.target.value)}
-                        className="w-full bg-neutral-950 border border-neutral-850 text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500/50"
+                        className="w-full bg-neutral-950 border border-neutral-850 text-white placeholder-neutral-400 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500/50"
                       />
                     </div>
                   </div>
@@ -1518,7 +1518,7 @@ export default function CarRentalView() {
                           placeholder="e.g. Robert Smith"
                           value={customerName}
                           onChange={(e) => setCustomerName(e.target.value)}
-                          className="w-full bg-neutral-950 border border-neutral-850 text-white rounded-xl px-4 py-3 text-sm focus:outline-none"
+                          className="w-full bg-neutral-950 border border-neutral-850 text-white placeholder-neutral-400 rounded-xl px-4 py-3 text-sm focus:outline-none"
                         />
                       </div>
                       <div className="space-y-1">
@@ -1529,7 +1529,7 @@ export default function CarRentalView() {
                           placeholder="smith@domain.com"
                           value={customerEmail}
                           onChange={(e) => setCustomerEmail(e.target.value)}
-                          className="w-full bg-neutral-950 border border-neutral-850 text-white rounded-xl px-4 py-3 text-sm focus:outline-none"
+                          className="w-full bg-neutral-950 border border-neutral-850 text-white placeholder-neutral-400 rounded-xl px-4 py-3 text-sm focus:outline-none"
                         />
                       </div>
                       <div className="space-y-1">
@@ -1540,7 +1540,7 @@ export default function CarRentalView() {
                           placeholder="+62 812-3456-789"
                           value={customerPhone}
                           onChange={(e) => setCustomerPhone(e.target.value)}
-                          className="w-full bg-neutral-950 border border-neutral-850 text-white rounded-xl px-4 py-3 text-sm focus:outline-none font-mono"
+                          className="w-full bg-neutral-950 border border-neutral-850 text-white placeholder-neutral-400 rounded-xl px-4 py-3 text-sm focus:outline-none font-mono"
                         />
                       </div>
                       <div className="space-y-1">
@@ -1585,7 +1585,7 @@ export default function CarRentalView() {
                             placeholder="e.g. Sarah Smith"
                             value={driverName}
                             onChange={(e) => setDriverName(e.target.value)}
-                            className="w-full bg-neutral-950 border border-neutral-850 text-white rounded-xl px-4 py-3 text-sm focus:outline-none"
+                            className="w-full bg-neutral-950 border border-neutral-850 text-white placeholder-neutral-400 rounded-xl px-4 py-3 text-sm focus:outline-none"
                           />
                         </div>
                         <div className="space-y-1">
@@ -1596,7 +1596,7 @@ export default function CarRentalView() {
                             placeholder="+62 812-9876-543"
                             value={driverPhone}
                             onChange={(e) => setDriverPhone(e.target.value)}
-                            className="w-full bg-neutral-950 border border-neutral-850 text-white rounded-xl px-4 py-3 text-sm focus:outline-none font-mono"
+                            className="w-full bg-neutral-950 border border-neutral-850 text-white placeholder-neutral-400 rounded-xl px-4 py-3 text-sm focus:outline-none font-mono"
                           />
                         </div>
                       </div>
@@ -1611,7 +1611,7 @@ export default function CarRentalView() {
                       placeholder="e.g. Request baby seat installation, non-smoking cabin, early handover preferred..."
                       value={specialRequest}
                       onChange={(e) => setSpecialRequest(e.target.value)}
-                      className="w-full bg-neutral-950 border border-neutral-850 text-white rounded-xl px-4 py-3 text-sm focus:outline-none"
+                      className="w-full bg-neutral-950 border border-neutral-850 text-white placeholder-neutral-400 rounded-xl px-4 py-3 text-sm focus:outline-none"
                     />
                   </div>
 

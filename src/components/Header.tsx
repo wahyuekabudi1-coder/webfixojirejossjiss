@@ -635,7 +635,7 @@ export default function Header() {
 
                 {/* Mobile Tours Category */}
                 <div className="border-t border-neutral-100 pt-3 my-1">
-                  <div className="px-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2 font-mono">
+                  <div className="px-4 text-[10px] font-bold text-neutral-600 uppercase tracking-widest mb-2 font-mono">
                     {t('nav.tours') || 'Tours'}
                   </div>
                   {isServiceEnabled('gathering') && (
@@ -649,7 +649,7 @@ export default function Header() {
                         <Building2 className="h-5 w-5 text-amber-500 shrink-0" />
                         <span className="font-medium">Event & Gathering</span>
                       </div>
-                      <span className="text-xs text-neutral-400">Corporate & Outing</span>
+                      <span className="text-xs text-neutral-600">Corporate & Outing</span>
                     </button>
                   )}
 
@@ -664,7 +664,7 @@ export default function Header() {
                         <Compass className="h-5 w-5 text-amber-500 shrink-0" />
                         <span className="font-medium">{t('nav.privateTour') || 'Private Tour'}</span>
                       </div>
-                      <span className="text-xs text-neutral-400">Bromo, Ijen</span>
+                      <span className="text-xs text-neutral-600">Bromo, Ijen</span>
                     </button>
                   )}
 
@@ -686,7 +686,7 @@ export default function Header() {
 
                 {/* Mobile Transportation Category */}
                 <div className="border-t border-neutral-100 pt-3 my-1">
-                  <div className="px-4 text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2 font-mono">
+                  <div className="px-4 text-[10px] font-bold text-neutral-600 uppercase tracking-widest mb-2 font-mono">
                     {t('nav.transportation') || 'Transportation'}
                   </div>
 
@@ -701,7 +701,7 @@ export default function Header() {
                         <Plane className="h-5 w-5 text-amber-500 shrink-0" />
                         <span className="font-medium">{t('nav.airport')}</span>
                       </div>
-                      <span className="text-xs text-neutral-400">SUB, DPS</span>
+                      <span className="text-xs text-neutral-600">SUB, DPS</span>
                     </button>
                   )}
 
@@ -716,7 +716,7 @@ export default function Header() {
                         <Route className="h-5 w-5 text-amber-500 shrink-0" />
                         <span className="font-medium">{t('nav.taxiService') || t('nav.taxi') || 'Taxi Service'}</span>
                       </div>
-                      <span className="text-xs text-neutral-400">{t('nav.taxiSubtitle')}</span>
+                      <span className="text-xs text-neutral-600">{t('nav.taxiSubtitle')}</span>
                     </button>
                   )}
 
@@ -731,7 +731,7 @@ export default function Header() {
                         <Car className="h-5 w-5 text-amber-500 shrink-0" />
                         <span className="font-medium">{t('nav.carRental')}</span>
                       </div>
-                      <span className="text-xs text-neutral-400">{t('nav.carRentalSubtitle')}</span>
+                      <span className="text-xs text-neutral-600">{t('nav.carRentalSubtitle')}</span>
                     </button>
                   )}
                 </div>

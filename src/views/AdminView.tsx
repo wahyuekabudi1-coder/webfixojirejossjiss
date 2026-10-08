@@ -8,7 +8,8 @@ import {
   Mail, Phone, ChevronDown, CheckCircle2, AlertTriangle, FileText, 
   ArrowUpRight, BarChart3, Database, Save, Eye, EyeOff, Building, Building2, 
   FileCheck, ShieldCheck, ShieldAlert, Download, CalendarDays, RefreshCw, CreditCard, DollarSign,
-  Plane, Plus, Trash2, Edit, Check, Copy, Clock, Image, Upload, ChevronUp, GripVertical, History, Car, Map, Star, ExternalLink, Archive, Tag
+  Plane, Plus, Trash2, Edit, Check, Copy, Clock, Image, Upload, ChevronUp, GripVertical, History, Car, Map, Star, ExternalLink, Archive, Tag,
+  HelpCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Airport } from '../types';
@@ -787,7 +788,10 @@ export default function AdminView() {
   };
 
   // Tour Form Sub-tabs, Upload Simulation and Departure Schedule States
-  const [activeFormTab, setActiveFormTab] = useState<'general' | 'highlight' | 'itinerary' | 'includes' | 'gallery'>('general');
+  const [activeFormTab, setActiveFormTab] = useState<'general' | 'highlight' | 'itinerary' | 'includes' | 'gallery' | 'faq'>('general');
+  const [newTourFaqQ, setNewTourFaqQ] = useState('');
+  const [newTourFaqA, setNewTourFaqA] = useState('');
+  const [editingTourFaqIdx, setEditingTourFaqIdx] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -1113,8 +1117,8 @@ export default function AdminView() {
     border: isDark ? 'border-neutral-800' : 'border-neutral-200',
     borderSubtle: isDark ? 'border-neutral-850' : 'border-neutral-200/60',
     textPrimary: isDark ? 'text-neutral-100' : 'text-neutral-900',
-    textSecondary: isDark ? 'text-neutral-400' : 'text-neutral-600',
-    textMuted: isDark ? 'text-neutral-600' : 'text-neutral-400',
+    textSecondary: isDark ? 'text-neutral-300' : 'text-neutral-700',
+    textMuted: isDark ? 'text-neutral-400' : 'text-neutral-600',
     input: isDark ? 'bg-neutral-950/80 border-neutral-800 text-white placeholder:text-neutral-500' : 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20',
     hover: isDark ? 'hover:bg-neutral-800/60' : 'hover:bg-slate-100',
     activeTab: isDark ? 'bg-amber-500/10 text-amber-400 font-extrabold border-amber-500/30' : 'bg-amber-500/10 text-amber-700 font-extrabold border-amber-500/30',
@@ -1496,7 +1500,8 @@ export default function AdminView() {
                   { id: 'highlight', name: '2. Highlight', icon: Sparkles },
                   { id: 'itinerary', name: '3. Itinerary', icon: Compass },
                   { id: 'includes', name: '4. Included & Excluded', icon: CheckCircle2 },
-                  { id: 'gallery', name: '5. Gallery', icon: Image }
+                  { id: 'gallery', name: '5. Gallery', icon: Image },
+                  { id: 'faq', name: '6. Tanya Jawab (FAQ)', icon: HelpCircle }
                 ].map((tab) => {
                   const IconComp = tab.icon;
                   const isActive = activeFormTab === tab.id;
@@ -2350,6 +2355,162 @@ export default function AdminView() {
                     </div>
                   )}
 
+                  {/* TAB 6: FAQ BUILDER */}
+                  {activeFormTab === 'faq' && (
+                    <div className="space-y-6 animate-fade-in">
+                      <div className={`${theme.card} border rounded-2xl p-6 space-y-5 shadow-sm`}>
+                        <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
+                          <div>
+                            <h4 className="text-sm font-black text-white flex items-center gap-2">
+                              <HelpCircle className="h-4 w-4 text-amber-500" />
+                              <span>Tanya Jawab (FAQ) Paket Tour</span>
+                            </h4>
+                            <p className="text-[11px] text-neutral-400 mt-0.5">
+                              Kelola pertanyaan umum yang sering ditanyakan tamu khusus untuk paket wisata ini.
+                            </p>
+                          </div>
+                          <span className="text-[11px] font-mono text-amber-400 font-bold px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                            {(tourForm.faq || []).length} Item
+                          </span>
+                        </div>
+
+                        {/* List of Existing FAQs */}
+                        <div className="space-y-3">
+                          {(!tourForm.faq || tourForm.faq.length === 0) ? (
+                            <div className="text-center py-6 border border-dashed border-neutral-800 rounded-xl text-neutral-500">
+                              <HelpCircle className="h-6 w-6 mx-auto mb-1.5 opacity-40 text-neutral-400" />
+                              <p className="text-xs">Belum ada FAQ khusus untuk paket tour ini.</p>
+                              <p className="text-[11px] text-neutral-600 mt-0.5">Tambahkan pertanyaan dan jawaban di bawah ini.</p>
+                            </div>
+                          ) : (
+                            tourForm.faq.map((item, fIdx) => (
+                              <div key={fIdx} className="bg-neutral-900/80 border border-neutral-800 rounded-xl p-3.5 space-y-1.5 transition-all">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-center gap-2 font-bold text-xs text-amber-400">
+                                    <span className="h-4 w-4 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-[10px] font-mono shrink-0">
+                                      {fIdx + 1}
+                                    </span>
+                                    <span>{item.question}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setNewTourFaqQ(item.question);
+                                        setNewTourFaqA(item.answer);
+                                        setEditingTourFaqIdx(fIdx);
+                                      }}
+                                      className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                                      title="Edit FAQ"
+                                    >
+                                      <Edit className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const updated = (tourForm.faq || []).filter((_, i) => i !== fIdx);
+                                        setTourForm({ ...tourForm, faq: updated });
+                                        if (editingTourFaqIdx === fIdx) {
+                                          setEditingTourFaqIdx(null);
+                                          setNewTourFaqQ('');
+                                          setNewTourFaqA('');
+                                        }
+                                        triggerToast('FAQ berhasil dihapus');
+                                      }}
+                                      className="p-1.5 rounded-lg hover:bg-rose-950/30 text-neutral-400 hover:text-rose-400 transition-colors cursor-pointer"
+                                      title="Hapus FAQ"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                                <p className="text-xs text-neutral-300 leading-relaxed pl-6">
+                                  {item.answer}
+                                </p>
+                              </div>
+                            ))
+                          )}
+                        </div>
+
+                        {/* Interactive Add / Edit Form */}
+                        <div className="bg-neutral-950/50 border border-neutral-800/80 rounded-xl p-4 space-y-3 pt-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black uppercase tracking-wider text-amber-500 font-mono">
+                              {editingTourFaqIdx !== null ? `Edit FAQ #${editingTourFaqIdx + 1}` : '+ Tambah FAQ Baru'}
+                            </span>
+                            {editingTourFaqIdx !== null && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingTourFaqIdx(null);
+                                  setNewTourFaqQ('');
+                                  setNewTourFaqA('');
+                                }}
+                                className="text-[10px] text-neutral-400 hover:text-white underline cursor-pointer"
+                              >
+                                Batal Edit
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-neutral-400 uppercase">Pertanyaan (Question) *</label>
+                            <input
+                              type="text"
+                              value={newTourFaqQ}
+                              onChange={(e) => setNewTourFaqQ(e.target.value)}
+                              placeholder="Contoh: Jam berapa penjemputan dari hotel?"
+                              className={`w-full ${theme.input} border rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-500`}
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-neutral-400 uppercase">Jawaban (Answer) *</label>
+                            <textarea
+                              rows={3}
+                              value={newTourFaqA}
+                              onChange={(e) => setNewTourFaqA(e.target.value)}
+                              placeholder="Contoh: Penjemputan dimulai pukul 00.30 dini hari langsung dari lobi hotel Anda di Malang atau Surabaya."
+                              className={`w-full ${theme.input} border rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-500 leading-relaxed resize-none`}
+                            />
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!newTourFaqQ.trim() || !newTourFaqA.trim()) {
+                                triggerToast('Pertanyaan dan jawaban FAQ wajib diisi.');
+                                return;
+                              }
+                              if (editingTourFaqIdx !== null) {
+                                const updated = [...(tourForm.faq || [])];
+                                updated[editingTourFaqIdx] = {
+                                  question: newTourFaqQ.trim(),
+                                  answer: newTourFaqA.trim()
+                                };
+                                setTourForm({ ...tourForm, faq: updated });
+                                setEditingTourFaqIdx(null);
+                                triggerToast('FAQ berhasil diperbarui.');
+                              } else {
+                                setTourForm({
+                                  ...tourForm,
+                                  faq: [...(tourForm.faq || []), { question: newTourFaqQ.trim(), answer: newTourFaqA.trim() }]
+                                });
+                                triggerToast('FAQ baru berhasil ditambahkan.');
+                              }
+                              setNewTourFaqQ('');
+                              setNewTourFaqA('');
+                            }}
+                            className="bg-amber-500 hover:bg-amber-600 text-neutral-950 font-black text-xs px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            <span>{editingTourFaqIdx !== null ? 'Simpan Perubahan FAQ' : 'Tambahkan ke Daftar FAQ'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* TAB 4: SCHEDULES & FLEET ALLOCATION WAS REMOVED AS PER COUPLING RULES */}
 
                 </div>
@@ -2487,6 +2648,27 @@ export default function AdminView() {
                         </div>
                       ) : (
                         <div className="text-[10px] text-neutral-500 text-center py-2">Ketik butir eksklusi di kiri...</div>
+                      )}
+                    </div>
+                  )}
+
+                  {activeFormTab === 'faq' && (
+                    <div className={`${theme.card} border rounded-2xl p-5 space-y-4 shadow-sm animate-fade-in`}>
+                      <h4 className="text-xs font-black uppercase tracking-wider font-mono text-amber-500 border-b border-neutral-800 pb-2.5 flex items-center gap-1.5">
+                        <HelpCircle className="h-4 w-4" />
+                        <span>Live FAQ Preview ({(tourForm.faq || []).length})</span>
+                      </h4>
+                      {(!tourForm.faq || tourForm.faq.length === 0) ? (
+                        <p className="text-xs text-neutral-500 italic">Belum ada item FAQ untuk ditampilkan.</p>
+                      ) : (
+                        <div className="space-y-2.5 max-h-60 overflow-y-auto">
+                          {tourForm.faq.map((f, i) => (
+                            <div key={i} className="border-b border-neutral-800/80 pb-2 last:border-b-0 space-y-0.5">
+                              <span className="font-bold text-xs text-amber-400 block">Q: {f.question}</span>
+                              <span className="text-[11px] text-neutral-300 block leading-relaxed">A: {f.answer}</span>
+                            </div>
+                          ))}
+                        </div>
                       )}
                     </div>
                   )}

@@ -406,7 +406,7 @@ export default function AirportTransferView() {
                 )}
               </div>
               <span className={`text-xs sm:text-sm font-bold mt-2 transition-colors ${
-                activeStep >= 1 ? 'text-emerald-600' : 'text-neutral-400'
+                activeStep >= 1 ? 'text-emerald-600' : 'text-neutral-600'
               }`}>
                 Compare
               </span>
@@ -426,7 +426,7 @@ export default function AirportTransferView() {
                   ? 'bg-emerald-500 text-white' 
                   : activeStep === 2
                     ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
-                    : 'bg-neutral-200 text-neutral-400'
+                    : 'bg-neutral-200 text-neutral-600'
               }`}>
                 {activeStep > 2 ? (
                   <Check className="h-5 w-5 stroke-[3]" />
@@ -435,7 +435,7 @@ export default function AirportTransferView() {
                 )}
               </div>
               <span className={`text-xs sm:text-sm font-bold mt-2 transition-colors ${
-                activeStep >= 2 ? 'text-emerald-600' : 'text-neutral-400'
+                activeStep >= 2 ? 'text-emerald-600' : 'text-neutral-600'
               }`}>
                 Booking Detail
               </span>
@@ -453,12 +453,12 @@ export default function AirportTransferView() {
               <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 border-white font-bold transition-all ${
                 activeStep === 3
                   ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
-                  : 'bg-neutral-200 text-neutral-400'
+                  : 'bg-neutral-200 text-neutral-600'
               }`}>
                 <span className="text-sm font-bold">3</span>
               </div>
               <span className={`text-xs sm:text-sm font-bold mt-2 transition-colors ${
-                activeStep === 3 ? 'text-emerald-600' : 'text-neutral-400'
+                activeStep === 3 ? 'text-emerald-600' : 'text-neutral-600'
               }`}>
                 Payment
               </span>
@@ -535,9 +535,9 @@ export default function AirportTransferView() {
                     
                     {/* PICK-UP COLUMN */}
                     <div className="lg:col-span-3 text-left space-y-1.5 bg-white lg:bg-[#f8fafc] p-3 lg:p-4 rounded-xl border border-neutral-100 lg:border-none">
-                      <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">PICK-UP</span>
+                      <span className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider block">PICK-UP</span>
                       <div className="flex items-center space-x-2 relative">
-                        <MapPin className="h-4 w-4 text-neutral-400 shrink-0" />
+                        <MapPin className="h-4 w-4 text-neutral-500 shrink-0" />
                         
                         {direction === 'Airport to City' ? (
                           // Airport pick-up
@@ -568,7 +568,7 @@ export default function AirportTransferView() {
                         )}
 
                         {/* Clean clear/cancel selection indicator */}
-                        <span className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-400">
+                        <span className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
                           </svg>
@@ -590,14 +590,14 @@ export default function AirportTransferView() {
 
                     {/* DROP-OFF COLUMN */}
                     <div className="lg:col-span-3 text-left space-y-1.5 bg-white lg:bg-[#f8fafc] p-3 lg:p-4 rounded-xl border border-neutral-100 lg:border-none">
-                      <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">DROP-OFF</span>
+                      <span className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider block">DROP-OFF</span>
                       <div className="flex items-center space-x-2 relative">
                         <MapPin className="h-4 w-4 text-emerald-500 shrink-0" />
 
                         {direction === 'Airport to City' ? (
                           // City Drop-off
                           availableCities.length === 0 ? (
-                            <span className="text-xs text-neutral-400 font-bold">No Routes Available</span>
+                            <span className="text-xs text-neutral-600 font-bold">No Routes Available</span>
                           ) : (
                             <select
                               value={destinationCity}
@@ -626,7 +626,7 @@ export default function AirportTransferView() {
                           </select>
                         )}
 
-                        <span className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-400">
+                        <span className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-500">
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
                           </svg>
@@ -636,11 +636,11 @@ export default function AirportTransferView() {
 
                     {/* ARRIVAL/PICKUP DATE & TIME COLUMN */}
                     <div className="lg:col-span-3 text-left space-y-1.5 bg-white lg:bg-[#f8fafc] p-3 lg:p-4 rounded-xl border border-neutral-100 lg:border-none">
-                      <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">
+                      <span className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider block">
                         {direction === 'Airport to City' ? 'ARRIVAL DATE & TIME' : 'PICK-UP DATE & TIME'}
                       </span>
                       <div className="flex items-center space-x-2">
-                        <Calendar className="h-4 w-4 text-neutral-400 shrink-0" />
+                        <Calendar className="h-4 w-4 text-neutral-500 shrink-0" />
                         <div className="flex items-center space-x-1.5 w-full">
                           <input
                             type="date"
@@ -663,9 +663,9 @@ export default function AirportTransferView() {
 
                     {/* PASSENGERS COLUMN */}
                     <div className="lg:col-span-2 text-left space-y-1.5 bg-white lg:bg-[#f8fafc] p-3 lg:p-4 rounded-xl border border-neutral-100 lg:border-none">
-                      <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">PASSENGERS</span>
+                      <span className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider block">PASSENGERS</span>
                       <div className="flex items-center space-x-2">
-                        <Users className="h-4 w-4 text-neutral-400 shrink-0" />
+                        <Users className="h-4 w-4 text-neutral-500 shrink-0" />
                         <input
                           type="number"
                           min="1"
@@ -683,7 +683,7 @@ export default function AirportTransferView() {
                   {/* DETAIL ALAMAT LENGKAP DETAIL FIELD */}
                   {destinationCity && (
                     <div className="space-y-1.5 text-left border-t border-neutral-100 pt-5">
-                      <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest pl-1 flex items-center gap-1.5">
+                      <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest pl-1 flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                         <span>Detail Alamat Lengkap ({direction === 'Airport to City' ? 'Drop-off' : 'Penjemputan'})</span>
                       </label>
@@ -693,7 +693,7 @@ export default function AirportTransferView() {
                         value={cityAddress}
                         onChange={(e) => setCityAddress(e.target.value)}
                         placeholder="Masukkan nama hotel, perumahan, nomor jalan, RT/RW, dan instruksi spesifik..."
-                        className="bg-[#f8fafc] border border-neutral-200 text-neutral-800 text-xs sm:text-sm rounded-2xl px-4 py-3 w-full focus:outline-none focus:border-emerald-500 focus:bg-white transition-all placeholder-neutral-400 font-medium"
+                        className="bg-[#f8fafc] border border-neutral-200 text-neutral-800 text-xs sm:text-sm rounded-2xl px-4 py-3 w-full focus:outline-none focus:border-emerald-500 focus:bg-white transition-all placeholder-neutral-500 font-medium"
                       />
                     </div>
                   )}
@@ -705,7 +705,7 @@ export default function AirportTransferView() {
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="text-left space-y-1.5">
-                          <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest pl-1">Flight Number</label>
+                          <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest pl-1">Flight Number</label>
                           <div className="flex items-center space-x-2.5 bg-[#f8fafc] border border-neutral-200 px-3.5 py-2.5 rounded-2xl">
                             <Plane className="h-4 w-4 text-neutral-400" />
                             <input
@@ -713,13 +713,13 @@ export default function AirportTransferView() {
                               placeholder="Contoh: SQ-938"
                               value={flightNumber}
                               onChange={(e) => setFlightNumber(e.target.value)}
-                              className="bg-transparent text-neutral-800 text-xs font-bold w-full focus:outline-none font-mono uppercase"
+                              className="bg-transparent text-neutral-800 text-xs font-bold w-full focus:outline-none font-mono uppercase placeholder-neutral-500"
                             />
                           </div>
                         </div>
 
                         <div className="text-left space-y-1.5">
-                          <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest pl-1">Jumlah Koper (Bags)</label>
+                          <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest pl-1">Jumlah Koper (Bags)</label>
                           <div className="flex items-center space-x-2.5 bg-[#f8fafc] border border-neutral-200 px-3.5 py-2.5 rounded-2xl">
                             <Briefcase className="h-4 w-4 text-neutral-400" />
                             <input
@@ -772,7 +772,7 @@ export default function AirportTransferView() {
                             </h4>
                             <div className="grid grid-cols-2 gap-3">
                               <div className="space-y-1 text-left">
-                                <label className="text-[9px] font-bold text-neutral-400 uppercase">Tanggal Return</label>
+                                <label className="text-[9px] font-bold text-neutral-600 uppercase">Tanggal Return</label>
                                 <input
                                   type="date"
                                   required
@@ -782,7 +782,7 @@ export default function AirportTransferView() {
                                 />
                               </div>
                               <div className="space-y-1 text-left">
-                                <label className="text-[9px] font-bold text-neutral-400 uppercase">Jam Return</label>
+                                <label className="text-[9px] font-bold text-neutral-600 uppercase">Jam Return</label>
                                 <input
                                   type="time"
                                   required
@@ -793,20 +793,20 @@ export default function AirportTransferView() {
                               </div>
                             </div>
                             <div className="space-y-1 text-left">
-                              <label className="text-[9px] font-bold text-neutral-400 uppercase">Return Flight Number</label>
+                              <label className="text-[9px] font-bold text-neutral-600 uppercase">Return Flight Number</label>
                               <input
                                   type="text"
                                   placeholder="Contoh: SQ-931"
                                   value={returnFlightNumber}
                                   onChange={(e) => setReturnFlightNumber(e.target.value)}
-                                  className="bg-white border border-neutral-200 rounded-xl px-2.5 py-2 text-xs w-full focus:outline-none font-semibold font-mono uppercase"
+                                  className="bg-white border border-neutral-200 rounded-xl px-2.5 py-2 text-xs w-full focus:outline-none font-semibold font-mono uppercase placeholder-neutral-500"
                                 />
                             </div>
                           </motion.div>
                         ) : (
                           <div className="h-full flex items-center justify-center p-6 bg-neutral-50 rounded-2xl border border-dashed border-neutral-200">
-                            <p className="text-xs text-neutral-400 text-center font-medium leading-relaxed">
-                              Anda memilih Sekali Jalan.<br />Aktifkan <strong className="text-neutral-600">Roundtrip</strong> untuk diskon 5% perjalanan pulang-pergi.
+                            <p className="text-xs text-neutral-600 text-center font-medium leading-relaxed">
+                              Anda memilih Sekali Jalan.<br />Aktifkan <strong className="text-neutral-700">Roundtrip</strong> untuk diskon 5% perjalanan pulang-pergi.
                             </p>
                           </div>
                         )}
@@ -988,7 +988,7 @@ export default function AirportTransferView() {
                       {/* Pick-up Location */}
                       <div className="relative">
                         <span className="absolute -left-[31px] top-0 w-4.5 h-4.5 rounded-full bg-emerald-50 border-4 border-emerald-500 flex items-center justify-center" />
-                        <span className="text-[9px] text-neutral-400 font-bold uppercase block tracking-wider font-mono">TITIK JEMPUT</span>
+                        <span className="text-[9px] text-neutral-600 font-bold uppercase block tracking-wider font-mono">TITIK JEMPUT</span>
                         <p className="text-xs sm:text-sm font-extrabold text-neutral-800 leading-snug">
                           {direction === 'Airport to City' 
                             ? (airportNames[selectedAirport] || `${selectedAirport} Airport`)
@@ -1000,7 +1000,7 @@ export default function AirportTransferView() {
                       {/* Drop-off Location */}
                       <div className="relative">
                         <span className="absolute -left-[31px] top-0 w-4.5 h-4.5 rounded-full bg-emerald-50 border-4 border-emerald-500 flex items-center justify-center" />
-                        <span className="text-[9px] text-neutral-400 font-bold uppercase block tracking-wider font-mono">TITIK ANTAR</span>
+                        <span className="text-[9px] text-neutral-600 font-bold uppercase block tracking-wider font-mono">TITIK ANTAR</span>
                         <p className="text-xs sm:text-sm font-extrabold text-neutral-800 leading-snug">
                           {direction === 'Airport to City'
                             ? `${cityAddress ? `${cityAddress}, ` : ''}${destinationCity} Area`
@@ -1014,13 +1014,13 @@ export default function AirportTransferView() {
                     {/* Schedule Date & Time Row */}
                     <div className="grid grid-cols-2 gap-4 bg-neutral-50 p-3 rounded-2xl border border-neutral-100 text-xs">
                       <div>
-                        <span className="text-[8px] text-neutral-400 font-bold block uppercase font-mono">TANGGAL &amp; JAM</span>
+                        <span className="text-[8px] text-neutral-600 font-bold block uppercase font-mono">TANGGAL &amp; JAM</span>
                         <span className="font-bold text-neutral-800 font-mono block mt-0.5">
                           {pickupDate || 'Belum dipilih'} | {pickupTime || '-'}
                         </span>
                       </div>
                       <div>
-                        <span className="text-[8px] text-neutral-400 font-bold block uppercase font-mono">PENERBANGAN</span>
+                        <span className="text-[8px] text-neutral-600 font-bold block uppercase font-mono">PENERBANGAN</span>
                         <span className="font-bold text-neutral-800 font-mono block mt-0.5 uppercase">
                           {flightNumber || 'N/A'}
                         </span>
@@ -1064,7 +1064,7 @@ export default function AirportTransferView() {
                     {/* Pricing Detail Card */}
                     <div className="border-t border-neutral-100 pt-4 flex items-center justify-between">
                       <div>
-                        <span className="text-[9px] text-neutral-400 uppercase font-black tracking-widest font-mono">TARIF ALL-IN NETT</span>
+                        <span className="text-[9px] text-neutral-600 uppercase font-black tracking-widest font-mono">TARIF ALL-IN NETT</span>
                         <span className="text-neutral-500 text-[10px] block font-medium">Sudah termasuk pajak &amp; biaya tol</span>
                       </div>
                       <div className="text-right">
@@ -1101,7 +1101,7 @@ export default function AirportTransferView() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {/* Name Input */}
                       <div className="space-y-1.5 text-left">
-                        <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest font-mono">NAMA LENGKAP</label>
+                        <label className="text-[10px] font-black text-neutral-600 uppercase tracking-widest font-mono">NAMA LENGKAP</label>
                         <div className="relative">
                           <Users className="absolute left-4 top-3.5 h-4 w-4 text-neutral-400" />
                           <input
@@ -1117,7 +1117,7 @@ export default function AirportTransferView() {
 
                       {/* Email Input */}
                       <div className="space-y-1.5 text-left">
-                        <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest font-mono">ALAMAT EMAIL</label>
+                        <label className="text-[10px] font-black text-neutral-600 uppercase tracking-widest font-mono">ALAMAT EMAIL</label>
                         <div className="relative">
                           <Mail className="absolute left-4 top-3.5 h-4 w-4 text-neutral-400" />
                           <input
@@ -1133,7 +1133,7 @@ export default function AirportTransferView() {
 
                       {/* Phone Input */}
                       <div className="space-y-1.5 text-left sm:col-span-2">
-                        <label className="text-[10px] font-black text-neutral-400 uppercase tracking-widest font-mono">NOMOR WHATSAPP (AKTIF)</label>
+                        <label className="text-[10px] font-black text-neutral-600 uppercase tracking-widest font-mono">NOMOR WHATSAPP (AKTIF)</label>
                         <div className="relative">
                           <Phone className="absolute left-4 top-3.5 h-4 w-4 text-neutral-400" />
                           <input
@@ -1238,13 +1238,13 @@ export default function AirportTransferView() {
                   {/* Reservation Ticket Header */}
                   <div className="border-b border-dashed border-neutral-200 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                      <span className="text-[9px] text-neutral-400 font-bold uppercase block tracking-wider font-mono">KODE RESERVASI</span>
+                      <span className="text-[9px] text-neutral-600 font-bold uppercase block tracking-wider font-mono">KODE RESERVASI</span>
                       <span className="text-xl sm:text-2xl font-black text-neutral-900 tracking-wider font-mono">
                         {confirmedBooking.id}
                       </span>
                     </div>
                     <div className="text-left sm:text-right space-y-1">
-                      <span className="text-[9px] text-neutral-400 font-bold uppercase block tracking-wider font-mono">LAYANAN &amp; ARMADA</span>
+                      <span className="text-[9px] text-neutral-600 font-bold uppercase block tracking-wider font-mono">LAYANAN &amp; ARMADA</span>
                       <span className="inline-block bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold px-3 py-1 rounded-xl font-mono">
                         {selectedVehicle?.name || 'Mobil'} · {routeType}
                       </span>
@@ -1288,15 +1288,15 @@ export default function AirportTransferView() {
                   {/* Customer Information Grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                     <div>
-                      <span className="text-[8px] text-neutral-400 font-bold block uppercase font-mono tracking-wider">NAMA PELANGGAN</span>
+                      <span className="text-[8px] text-neutral-600 font-bold block uppercase font-mono tracking-wider">NAMA PELANGGAN</span>
                       <span className="font-bold text-neutral-800 text-sm">{confirmedBooking.customerName}</span>
                     </div>
                     <div>
-                      <span className="text-[8px] text-neutral-400 font-bold block uppercase font-mono tracking-wider">WHATSAPP</span>
+                      <span className="text-[8px] text-neutral-600 font-bold block uppercase font-mono tracking-wider">WHATSAPP</span>
                       <span className="font-bold text-neutral-800 text-sm">{confirmedBooking.customerPhone}</span>
                     </div>
                     <div className="sm:col-span-2">
-                      <span className="text-[8px] text-neutral-400 font-bold block uppercase font-mono tracking-wider">ALAMAT EMAIL</span>
+                      <span className="text-[8px] text-neutral-600 font-bold block uppercase font-mono tracking-wider">ALAMAT EMAIL</span>
                       <span className="font-bold text-neutral-700">{confirmedBooking.customerEmail}</span>
                     </div>
                   </div>

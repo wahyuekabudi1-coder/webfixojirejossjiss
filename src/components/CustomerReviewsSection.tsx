@@ -95,14 +95,14 @@ export default function CustomerReviewsSection({ serviceType, serviceId, service
             <MessageSquare className="h-5 w-5 text-amber-500" />
             <span>Ulasan Pelanggan</span>
           </h3>
-          <p className="text-xs text-neutral-500 leading-relaxed">
+          <p className="text-xs text-neutral-600 leading-relaxed">
             Pendapat jujur dari para pelancong yang telah menggunakan layanan <strong>{serviceName}</strong> kami.
           </p>
 
           <div className="bg-neutral-50 rounded-2xl p-5 border border-neutral-100 flex items-center gap-4">
             <div className="text-center">
               <span className="text-4xl font-black text-neutral-900 font-mono">{averageRating}</span>
-              <span className="text-neutral-400 text-xs block font-semibold mt-0.5">dari 5.0</span>
+              <span className="text-neutral-600 text-xs block font-semibold mt-0.5">dari 5.0</span>
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-0.5 text-amber-500">
@@ -113,7 +113,7 @@ export default function CustomerReviewsSection({ serviceType, serviceId, service
                   />
                 ))}
               </div>
-              <span className="text-xs text-neutral-500 font-bold block mt-1">
+              <span className="text-xs text-neutral-600 font-bold block mt-1">
                 {approvedReviews.length} Ulasan Terverifikasi
               </span>
             </div>
@@ -137,16 +137,16 @@ export default function CustomerReviewsSection({ serviceType, serviceId, service
               <span className="text-sm font-extrabold text-neutral-800">
                 Daftar Ulasan ({approvedReviews.length})
               </span>
-              <span className="text-xs text-neutral-400 font-mono">Smart Journey</span>
+              <span className="text-xs text-neutral-600 font-mono">Smart Journey</span>
             </div>
           </div>
 
           <div className="space-y-4 max-h-[350px] overflow-y-auto pr-2 scrollbar-thin">
             {approvedReviews.length === 0 ? (
-              <div className="text-center py-8 text-neutral-400 space-y-2">
-                <MessageSquare className="h-8 w-8 mx-auto text-neutral-300" />
-                <p className="text-xs font-semibold">Belum ada ulasan untuk layanan ini.</p>
-                <p className="text-[11px] text-neutral-400">Jadilah yang pertama memberikan ulasan positif Anda!</p>
+              <div className="text-center py-8 text-neutral-600 space-y-2">
+                <MessageSquare className="h-8 w-8 mx-auto text-neutral-400" />
+                <p className="text-xs font-semibold text-neutral-700">Belum ada ulasan untuk layanan ini.</p>
+                <p className="text-[11px] text-neutral-600">Jadilah yang pertama memberikan ulasan positif Anda!</p>
               </div>
             ) : (
               approvedReviews.map((review, idx) => {
@@ -163,10 +163,10 @@ export default function CustomerReviewsSection({ serviceType, serviceId, service
                         </div>
                         <div>
                           <h4 className="font-extrabold text-xs text-neutral-900">{review.name}</h4>
-                          <span className="text-[10px] text-neutral-400 font-semibold uppercase">{review.country}</span>
+                          <span className="text-[10px] text-neutral-600 font-semibold uppercase">{review.country}</span>
                         </div>
                       </div>
-                      <span className="text-[10px] text-neutral-400 font-mono">{review.date}</span>
+                      <span className="text-[10px] text-neutral-600 font-mono">{review.date}</span>
                     </div>
 
                     <div className="flex items-center gap-0.5 text-amber-500">
@@ -200,13 +200,13 @@ export default function CustomerReviewsSection({ serviceType, serviceId, service
                   <CheckCircle className="h-10 w-10 text-emerald-500 mx-auto" />
                   <div className="space-y-1">
                     <h4 className="text-sm font-extrabold text-neutral-900">Ulasan Berhasil Dikirim!</h4>
-                    <p className="text-xs text-neutral-500 max-w-md mx-auto leading-relaxed">
-                      Terima kasih atas masukan Anda. Ulasan Anda telah masuk antrean moderasi dengan status <strong className="text-amber-600 uppercase">Pending</strong> dan akan segera tampil setelah disetujui oleh admin kami.
+                    <p className="text-xs text-neutral-600 max-w-md mx-auto leading-relaxed">
+                      Terima kasih atas masukan Anda. Ulasan Anda telah masuk antrean moderasi dengan status <strong className="text-amber-800 uppercase">Pending</strong> dan akan segera tampil setelah disetujui oleh admin kami.
                     </p>
                   </div>
                   <button 
                     onClick={() => setIsSubmitted(false)}
-                    className="text-xs text-amber-500 font-black hover:underline cursor-pointer"
+                    className="text-xs text-amber-800 font-black hover:underline cursor-pointer"
                   >
                     Tulis Ulasan Lainnya
                   </button>
@@ -223,7 +223,7 @@ export default function CustomerReviewsSection({ serviceType, serviceId, service
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black text-neutral-500 uppercase flex items-center gap-1">
+                      <label className="text-[10px] font-black text-neutral-700 uppercase flex items-center gap-1">
                         <User className="h-3 w-3" />
                         <span>Nama Lengkap</span>
                       </label>
@@ -232,11 +232,11 @@ export default function CustomerReviewsSection({ serviceType, serviceId, service
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Contoh: Alex Carter"
-                        className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-amber-500 outline-none transition-all"
+                        className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs placeholder:text-neutral-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black text-neutral-500 uppercase flex items-center gap-1">
+                      <label className="text-[10px] font-black text-neutral-700 uppercase flex items-center gap-1">
                         <Globe className="h-3 w-3" />
                         <span>Negara Asal</span>
                       </label>
@@ -245,11 +245,11 @@ export default function CustomerReviewsSection({ serviceType, serviceId, service
                         value={country}
                         onChange={(e) => setCountry(e.target.value)}
                         placeholder="Contoh: Australia"
-                        className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-amber-500 outline-none transition-all"
+                        className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs placeholder:text-neutral-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black text-neutral-500 uppercase flex items-center gap-1">
+                      <label className="text-[10px] font-black text-neutral-700 uppercase flex items-center gap-1">
                         <CheckCircle className="h-3 w-3 text-amber-500" />
                         <span>Kode Booking *</span>
                       </label>
@@ -258,13 +258,13 @@ export default function CustomerReviewsSection({ serviceType, serviceId, service
                         value={bookingCode}
                         onChange={(e) => setBookingCode(e.target.value)}
                         placeholder="Contoh: SJ-ABC123"
-                        className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs font-mono uppercase focus:ring-1 focus:ring-amber-500 outline-none transition-all"
+                        className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs font-mono uppercase placeholder:text-neutral-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-neutral-500 uppercase">Bintang Penilaian (Rating)</label>
+                    <label className="text-[10px] font-black text-neutral-700 uppercase">Bintang Penilaian (Rating)</label>
                     <div className="flex items-center gap-1">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
@@ -280,13 +280,13 @@ export default function CustomerReviewsSection({ serviceType, serviceId, service
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-neutral-500 uppercase">Ulasan Pengalaman Anda</label>
+                    <label className="text-[10px] font-black text-neutral-700 uppercase">Ulasan Pengalaman Anda</label>
                     <textarea 
                       rows={3}
                       value={text}
                       onChange={(e) => setText(e.target.value)}
                       placeholder="Ceritakan pengalaman Anda menggunakan layanan kami..."
-                      className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-amber-500 outline-none transition-all resize-none"
+                      className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs placeholder:text-neutral-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all resize-none"
                     />
                   </div>
 

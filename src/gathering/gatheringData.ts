@@ -73,6 +73,20 @@ export const SEED_GATHERING_PACKAGES: GatheringPackage[] = [
       'Suhu udara Bromo berkisar 5 - 12°C, peserta disarankan membawa jaket tebal, sarung tangan, kupluk, dan sepatu yang nyaman.',
       'Jadwal itinerary fleksibel dan dapat dikustomisasi sesuai jam kedatangan penerbangan atau kereta rombongan.'
     ],
+    faq: [
+      {
+        question: 'Berapa jumlah peserta minimal dan maksimal untuk paket gathering ini?',
+        answer: 'Paket dirancang untuk kapasitas rombongan mulai dari 60 pax hingga 500+ pax dengan dukungan armada bus pariwisata executive dan puluhan armada Jeep 4x4 resmi.'
+      },
+      {
+        question: 'Apakah paket sudah mencakup izin kegiatan korporasi dan tiket TNBTS Bromo?',
+        answer: 'Ya, seluruh perizinan resmi kegiatan event korporasi, tiket masuk TNBTS Bromo untuk seluruh peserta, dan asuransi perjalanan sudah termasuk dalam paket.'
+      },
+      {
+        question: 'Bagaimana jika ada peserta yang tidak kuat mendaki tangga kawah Bromo?',
+        answer: 'Peserta dapat menikmati panorama indah dari Lautan Pasir dan Bukit Teletubbies, atau menyewa kuda lokal dengan panduan tim kami yang selalu mendampingi.'
+      }
+    ],
     estimatedPrices: {
       pax60: 950000,
       pax70: 890000,
@@ -161,6 +175,20 @@ export const SEED_GATHERING_PACKAGES: GatheringPackage[] = [
       'Harga adalah estimasi per pax untuk pemesanan rombongan minimal 60 orang.',
       'Dapat menyertakan tema custom teambuilding sesuai value korporasi.'
     ],
+    faq: [
+      {
+        question: 'Apakah tema dan modul outbound teambuilding dapat dikustomisasi?',
+        answer: 'Tentu. Master Game kami akan berkoordinasi dengan tim panitia/HR perusahaan Anda untuk menyesuaikan modul simulasi outbound dengan target dan core values perusahaan.'
+      },
+      {
+        question: 'Apakah fasilitas Gala Dinner sudah termasuk panggung, sound system, dan hiburan?',
+        answer: 'Ya, kami menyediakan ballroom resort berbintang lengkap dengan panggung, sound system profesional, wireless mic, operator audio visual, dan hiburan live music.'
+      },
+      {
+        question: 'Apakah menu makanan dapat disesuaikan dengan kebutuhan rombongan?',
+        answer: 'Bisa. Menu prasmanan dapat disesuaikan (misal: menu halal nusantara, menu vegetarian, atau request menu tradisional khas Jawa Timur).'
+      }
+    ],
     estimatedPrices: {
       pax60: 1650000,
       pax70: 1550000,
@@ -246,6 +274,20 @@ export const SEED_GATHERING_PACKAGES: GatheringPackage[] = [
     notes: [
       'Pendakian Ijen membutuhkan kondisi fisik sehat tanpa riwayat asma berat atau penyakit jantung.',
       'Tersedia ojek troli manusia (trolley) bagi peserta yang ingin naik tanpa mendaki.'
+    ],
+    faq: [
+      {
+        question: 'Apakah pendakian Blue Fire Kawah Ijen aman untuk rombongan gathering perusahaan?',
+        answer: 'Aman dengan panduan Ranger lokal berlisensi dan masker respirator gas standar yang kami sediakan untuk setiap peserta.'
+      },
+      {
+        question: 'Apakah tersedia troli dorong (trolley) bagi peserta yang ingin naik tanpa mendaki?',
+        answer: 'Tersedia jasa sewa troli lokal di Pos Paltuding yang siap mengantar peserta naik dan turun kawah dengan biaya sewa langsung di lokasi.'
+      },
+      {
+        question: 'Dari mana saja titik penjemputan peserta yang dapat difasilitasi?',
+        answer: 'Penjemputan fleksibel dapat dimulai dari Bandara Banyuwangi (BWX), Stasiun Ketapang, maupun penjemputan langsung dari Surabaya atau Malang.'
+      }
     ],
     estimatedPrices: {
       pax60: 1750000,

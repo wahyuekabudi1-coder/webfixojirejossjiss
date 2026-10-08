@@ -256,7 +256,7 @@ export default function Sidebar({
           {navSections.map((section) => (
             <div key={section.label} className="space-y-1">
               {!collapsed && (
-                <span className={`text-[9px] font-mono font-extrabold ${isDark ? 'text-neutral-500' : 'text-neutral-400'} uppercase tracking-wider px-2.5 block mb-1`}>
+                <span className={`text-[9px] font-mono font-extrabold ${isDark ? 'text-neutral-400' : 'text-neutral-600'} uppercase tracking-wider px-2.5 block mb-1`}>
                   {section.label}
                 </span>
               )}
@@ -294,7 +294,7 @@ export default function Sidebar({
                         }`}
                         title={collapsed ? (isPermitted ? item.label : `${item.label} (Terkunci oleh RBAC)`) : undefined}
                       >
-                        <Icon className={`h-4.5 w-4.5 shrink-0 ${!isPermitted ? 'text-neutral-600' : isActive ? 'text-amber-500' : isDark ? 'text-neutral-400' : 'text-neutral-500'}`} />
+                        <Icon className={`h-4.5 w-4.5 shrink-0 ${!isPermitted ? 'text-neutral-600' : isActive ? 'text-amber-500' : isDark ? 'text-neutral-400' : 'text-neutral-600'}`} />
                         
                         {!collapsed && (
                           <div className="flex items-center justify-between flex-grow min-w-0">

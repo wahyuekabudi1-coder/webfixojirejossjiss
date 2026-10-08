@@ -241,7 +241,7 @@ export default function TripDetail({
               <span className="text-[10px] text-[#315B4F] font-mono tracking-wider font-bold block uppercase">
                 🏷️ Klik Foto untuk Ganti Cover Utama
               </span>
-              <span className="text-[9px] text-gray-400 font-sans hidden sm:block">
+              <span className="text-[9px] text-gray-600 font-sans hidden sm:block">
                 {galleryPhotos.length} Destinasi
               </span>
             </div>
@@ -469,7 +469,7 @@ export default function TripDetail({
                     </li>
                   ))
                 ) : (
-                  <li className="text-gray-400 italic text-xs">Informasi fasilitas termasuk akan dikonfirmasi.</li>
+                  <li className="text-gray-600 italic text-xs">Informasi fasilitas termasuk akan dikonfirmasi.</li>
                 )}
               </ul>
             </div>
@@ -491,7 +491,7 @@ export default function TripDetail({
                     </li>
                   ))
                 ) : (
-                  <li className="text-gray-400 italic text-xs">Tidak ada catatan fasilitas yang dikecualikan.</li>
+                  <li className="text-gray-600 italic text-xs">Tidak ada catatan fasilitas yang dikecualikan.</li>
                 )}
               </ul>
             </div>
@@ -762,7 +762,7 @@ export default function TripDetail({
               </div>
 
               {/* Legends explanation */}
-              <div className="flex items-center justify-between text-[9px] text-gray-400 font-mono border-t border-gray-100 pt-2.5">
+              <div className="flex items-center justify-between text-[9px] text-gray-600 font-mono border-t border-gray-100 pt-2.5">
                 <span className="flex items-center gap-1">
                   <span className="w-2.5 h-2.5 bg-emerald-50 border border-emerald-100 rounded block" />
                   <span>{t("Tersedia")}</span>
@@ -829,7 +829,7 @@ export default function TripDetail({
                     {nationalityType === 'WNI' && <Check className="w-4 h-4 text-[#D6B16D]" />}
                   </div>
                   <div className="mt-1">
-                    <span className={`block text-[10px] ${nationalityType === 'WNI' ? "text-emerald-100" : "text-gray-400"}`}>
+                    <span className={`block text-[10px] ${nationalityType === 'WNI' ? "text-emerald-100" : "text-gray-600"}`}>
                       KTP / Paspor RI
                     </span>
                     <span className={`block text-[11px] font-bold font-mono ${nationalityType === 'WNI' ? "text-[#D6B16D]" : "text-[#315B4F]"}`}>
@@ -861,7 +861,7 @@ export default function TripDetail({
                     )}
                   </div>
                   <div className="mt-1">
-                    <span className={`block text-[10px] ${(nationalityType === 'WNA_CHINA' || nationalityType === 'WNA_EUROPE' || nationalityType === 'WNA') ? "text-emerald-100" : "text-gray-400"}`}>
+                    <span className={`block text-[10px] ${(nationalityType === 'WNA_CHINA' || nationalityType === 'WNA_EUROPE' || nationalityType === 'WNA') ? "text-emerald-100" : "text-gray-600"}`}>
                       Non-Indonesian
                     </span>
                     <span className={`block text-[11px] font-bold font-mono ${(nationalityType === 'WNA_CHINA' || nationalityType === 'WNA_EUROPE' || nationalityType === 'WNA') ? "text-[#D6B16D]" : "text-[#315B4F]"}`}>
@@ -892,7 +892,7 @@ export default function TripDetail({
                         </span>
                         {nationalityType === 'WNA_CHINA' && <Check className="w-3.5 h-3.5 text-[#D6B16D]" />}
                       </div>
-                      <span className={`text-[9px] mt-0.5 block ${nationalityType === 'WNA_CHINA' ? "text-emerald-200" : "text-gray-400"}`}>
+                      <span className={`text-[9px] mt-0.5 block ${nationalityType === 'WNA_CHINA' ? "text-emerald-200" : "text-gray-600"}`}>
                         WeChat / RED ID
                       </span>
                     </button>
@@ -913,7 +913,7 @@ export default function TripDetail({
                         </span>
                         {nationalityType === 'WNA_EUROPE' && <Check className="w-3.5 h-3.5 text-[#D6B16D]" />}
                       </div>
-                      <span className={`text-[9px] mt-0.5 block ${nationalityType === 'WNA_EUROPE' ? "text-emerald-200" : "text-gray-400"}`}>
+                      <span className={`text-[9px] mt-0.5 block ${nationalityType === 'WNA_EUROPE' ? "text-emerald-200" : "text-gray-600"}`}>
                         Global / WhatsApp
                       </span>
                     </button>
@@ -1055,13 +1055,13 @@ export default function TripDetail({
                     <h3 className="font-display font-bold text-gray-900 text-sm group-hover:text-[#315B4F] transition-colors leading-snug line-clamp-1">
                       {t(otherTrip.title)}
                     </h3>
-                    <p className="text-xs text-gray-400 flex items-center space-x-1 font-sans">
+                    <p className="text-xs text-gray-600 flex items-center space-x-1 font-sans">
                       <MapPin className="w-3 h-3 text-[#D6B16D]" />
                       <span>{t(otherTrip.location)}</span>
                     </p>
                   </div>
                   <div className="flex items-center justify-between border-t border-gray-50 pt-2.5 mt-auto">
-                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider font-mono">{t("starting rate") === "starting rate" ? "From" : t("starting rate")}</span>
+                    <span className="text-[10px] text-gray-600 font-bold uppercase tracking-wider font-mono">{t("starting rate") === "starting rate" ? "From" : t("starting rate")}</span>
                     <span className="font-display font-extrabold text-[#315B4F] text-xs sm:text-sm">
                       {formatPrice(otherTrip.startingPrice || 150)}
                     </span>

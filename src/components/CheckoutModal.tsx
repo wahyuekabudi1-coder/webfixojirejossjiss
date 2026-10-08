@@ -381,7 +381,7 @@ export default function CheckoutModal({
                           ≈ Rp {finalPrice.idr.toLocaleString('id-ID')} IDR
                         </div>
                       )}
-                      <div className="text-[10px] text-neutral-500">All-Inclusive Fixed Pricing</div>
+                      <div className="text-[10px] text-neutral-300">All-Inclusive Fixed Pricing</div>
                     </div>
                   </div>
 
@@ -493,7 +493,7 @@ export default function CheckoutModal({
                           className={`px-3 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                             nationalityType === 'WNI'
                               ? 'bg-amber-500/20 border-amber-400 text-amber-300 shadow-sm'
-                              : 'bg-white/5 border-white/10 text-neutral-400 hover:text-white'
+                              : 'bg-white/5 border-white/10 text-neutral-300 hover:text-white'
                           }`}
                         >
                           <span className="text-sm">🇮🇩</span>
@@ -506,7 +506,7 @@ export default function CheckoutModal({
                           className={`px-3 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                             nationalityType === 'WNA_CHINA'
                               ? 'bg-amber-500/20 border-amber-400 text-amber-300 shadow-sm'
-                              : 'bg-white/5 border-white/10 text-neutral-400 hover:text-white'
+                              : 'bg-white/5 border-white/10 text-neutral-300 hover:text-white'
                           }`}
                         >
                           <span className="text-sm">🇨🇳</span>
@@ -519,7 +519,7 @@ export default function CheckoutModal({
                           className={`px-3 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                             nationalityType === 'WNA_EUROPE'
                               ? 'bg-amber-500/20 border-amber-400 text-amber-300 shadow-sm'
-                              : 'bg-white/5 border-white/10 text-neutral-400 hover:text-white'
+                              : 'bg-white/5 border-white/10 text-neutral-300 hover:text-white'
                           }`}
                         >
                           <Globe className="w-3.5 h-3.5 text-blue-400" />
@@ -548,7 +548,7 @@ export default function CheckoutModal({
                             placeholder={nationalityType === 'WNA_CHINA' ? "Hanzi / Sesuai paspor (e.g. 陈智华)" : "Sesuai KTP / Paspor"}
                             value={customerName}
                             onChange={(e) => setCustomerName(e.target.value)}
-                            className="bg-white/5 border border-white/10 rounded-2xl pl-10 pr-4 py-3 text-base sm:text-sm text-white w-full focus:outline-none focus:border-amber-500 placeholder-neutral-500 min-h-[44px]"
+                            className="bg-white/5 border border-white/10 rounded-2xl pl-10 pr-4 py-3 text-base sm:text-sm text-white w-full focus:outline-none focus:border-amber-500 placeholder-neutral-300 min-h-[44px]"
                           />
                         </div>
                       </div>
@@ -566,7 +566,7 @@ export default function CheckoutModal({
                             placeholder={nationalityType === 'WNA_CHINA' ? "Pinyin (e.g. CHEN ZHIHUA)" : "Passport Name (e.g. TONY TAN)"}
                             value={englishName}
                             onChange={(e) => setEnglishName(e.target.value)}
-                            className="bg-white/5 border border-white/10 rounded-2xl pl-10 pr-4 py-3 text-base sm:text-sm text-white w-full focus:outline-none focus:border-amber-500 placeholder-neutral-500 min-h-[44px]"
+                            className="bg-white/5 border border-white/10 rounded-2xl pl-10 pr-4 py-3 text-base sm:text-sm text-white w-full focus:outline-none focus:border-amber-500 placeholder-neutral-300 min-h-[44px]"
                           />
                         </div>
                       </div>
@@ -585,7 +585,7 @@ export default function CheckoutModal({
                               placeholder="ID WeChat Aktif (e.g. tony_wx)"
                               value={weChatId}
                               onChange={(e) => setWeChatId(e.target.value)}
-                              className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-base sm:text-sm text-white w-full focus:outline-none focus:border-amber-500 placeholder-neutral-500 min-h-[44px]"
+                              className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-base sm:text-sm text-white w-full focus:outline-none focus:border-amber-500 placeholder-neutral-300 min-h-[44px]"
                             />
                           </div>
 
@@ -600,7 +600,7 @@ export default function CheckoutModal({
                               placeholder="ID XiaoHongShu (e.g. user_red)"
                               value={xiaoHongShuId}
                               onChange={(e) => setXiaoHongShuId(e.target.value)}
-                              className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-base sm:text-sm text-white w-full focus:outline-none focus:border-amber-500 placeholder-neutral-500 min-h-[44px]"
+                              className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-base sm:text-sm text-white w-full focus:outline-none focus:border-amber-500 placeholder-neutral-300 min-h-[44px]"
                             />
                           </div>
                         </>
@@ -618,7 +618,7 @@ export default function CheckoutModal({
                           placeholder={nationalityType === 'WNA_EUROPE' ? "e.g. Paris, France" : "e.g. Shanghai / Jakarta"}
                           value={city}
                           onChange={(e) => setCity(e.target.value)}
-                          className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-base sm:text-sm text-white w-full focus:outline-none focus:border-amber-500 placeholder-neutral-500 min-h-[44px]"
+                          className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-base sm:text-sm text-white w-full focus:outline-none focus:border-amber-500 placeholder-neutral-300 min-h-[44px]"
                         />
                       </div>
 
@@ -626,17 +626,17 @@ export default function CheckoutModal({
                       <div className="space-y-1">
                         <label className="text-[11px] font-bold text-neutral-300 block">
                           {nationalityType === 'WNA_CHINA' ? '6. ' : '4. '}
-                          No. WhatsApp {nationalityType === 'WNA_CHINA' ? <span className="text-neutral-500 font-normal">(Opsional)</span> : <span className="text-rose-400">*</span>}
+                          No. WhatsApp {nationalityType === 'WNA_CHINA' ? <span className="text-neutral-400 font-normal">(Opsional)</span> : <span className="text-rose-400">*</span>}
                         </label>
                         <div className="relative">
-                          <Phone className="absolute left-3.5 top-3.5 h-4 w-4 text-neutral-500" />
+                          <Phone className="absolute left-3.5 top-3.5 h-4 w-4 text-neutral-400" />
                           <input
                             type="tel"
                             required={nationalityType !== 'WNA_CHINA'}
                             placeholder="e.g. +62 812-3456-7890 / +33 6 12 34 56 78"
                             value={customerPhone}
                             onChange={(e) => setCustomerPhone(e.target.value)}
-                            className="bg-white/5 border border-white/10 rounded-2xl pl-10 pr-4 py-3 text-base sm:text-sm text-white w-full focus:outline-none focus:border-amber-500 placeholder-neutral-500 min-h-[44px]"
+                            className="bg-white/5 border border-white/10 rounded-2xl pl-10 pr-4 py-3 text-base sm:text-sm text-white w-full focus:outline-none focus:border-amber-500 placeholder-neutral-300 min-h-[44px]"
                           />
                         </div>
                       </div>
@@ -648,14 +648,14 @@ export default function CheckoutModal({
                           Email Address <span className="text-rose-400">*</span>
                         </label>
                         <div className="relative">
-                          <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-neutral-500" />
+                          <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-neutral-400" />
                           <input
                             type="email"
                             required
                             placeholder="traveller@example.com"
                             value={customerEmail}
                             onChange={(e) => setCustomerEmail(e.target.value)}
-                            className="bg-white/5 border border-white/10 rounded-2xl pl-10 pr-4 py-3 text-base sm:text-sm text-white w-full focus:outline-none focus:border-amber-500 placeholder-neutral-500 min-h-[44px]"
+                            className="bg-white/5 border border-white/10 rounded-2xl pl-10 pr-4 py-3 text-base sm:text-sm text-white w-full focus:outline-none focus:border-amber-500 placeholder-neutral-300 min-h-[44px]"
                           />
                         </div>
                       </div>
@@ -664,14 +664,14 @@ export default function CheckoutModal({
                       <div className="space-y-1">
                         <label className="text-[11px] font-bold text-neutral-300 block">
                           {nationalityType === 'WNA_CHINA' ? '8. ' : '6. '}
-                          No. Penerbangan <span className="text-neutral-500 font-normal">(Opsional)</span>
+                          No. Penerbangan <span className="text-neutral-400 font-normal">(Opsional)</span>
                         </label>
                         <input
                           type="text"
                           placeholder="e.g. GA 312 / SQ 922"
                           value={flightNumber}
                           onChange={(e) => setFlightNumber(e.target.value)}
-                          className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-base sm:text-sm text-white w-full focus:outline-none focus:border-amber-500 placeholder-neutral-500 min-h-[44px]"
+                          className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-base sm:text-sm text-white w-full focus:outline-none focus:border-amber-500 placeholder-neutral-300 min-h-[44px]"
                         />
                       </div>
                     </div>
@@ -695,7 +695,7 @@ export default function CheckoutModal({
                                   next[idx] = e.target.value;
                                   setCompanionNames(next);
                                 }}
-                                className="bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white w-full focus:outline-none focus:border-amber-500 placeholder-neutral-500"
+                                className="bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white w-full focus:outline-none focus:border-amber-500 placeholder-neutral-300"
                               />
                             </div>
                           ))}
@@ -784,26 +784,26 @@ export default function CheckoutModal({
                       <h5 className="font-bold text-sm text-white mt-1">{serviceName}</h5>
                     </div>
                     <div className="text-right">
-                      <span className="text-[9px] text-neutral-500 font-mono block">RESERVATION ID</span>
+                      <span className="text-[9px] text-neutral-300 font-mono block">RESERVATION ID</span>
                       <span className="text-xs font-mono font-bold text-white">{confirmedBooking?.bookingCode || confirmedBooking?.id}</span>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-y-3 text-xs mb-4">
                     <div>
-                      <span className="text-neutral-500 block">Lead Passenger</span>
+                      <span className="text-neutral-300 block">Lead Passenger</span>
                       <span className="text-white font-medium">{customerName}</span>
                     </div>
                     <div>
-                      <span className="text-neutral-500 block">WhatsApp Contact</span>
+                      <span className="text-neutral-300 block">WhatsApp Contact</span>
                       <span className="text-white font-medium">{customerPhone}</span>
                     </div>
                     <div>
-                      <span className="text-neutral-500 block">Departure Date</span>
+                      <span className="text-neutral-300 block">Departure Date</span>
                       <span className="text-white font-medium">{initialDetails.date} {initialDetails.time ? `at ${initialDetails.time}` : ''}</span>
                     </div>
                     <div>
-                      <span className="text-neutral-500 block">
+                      <span className="text-neutral-300 block">
                         {serviceType === 'tour' ? 'Package Option' : 'Vehicle Class'}
                       </span>
                       <span className="text-white font-medium">
@@ -814,7 +814,7 @@ export default function CheckoutModal({
                     </div>
                     {initialDetails.cityAddress && (
                       <div className="col-span-2">
-                        <span className="text-neutral-500 block">📍 Detail Alamat Kota</span>
+                        <span className="text-neutral-300 block">📍 Detail Alamat Kota</span>
                         <span className="text-white font-medium font-mono">{initialDetails.cityAddress}</span>
                       </div>
                     )}

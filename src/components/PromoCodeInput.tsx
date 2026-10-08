@@ -204,8 +204,8 @@ export default function PromoCodeInput({
                 placeholder="Contoh: SMARTBALI10"
                 className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-mono uppercase font-bold transition-all outline-none ${
                   isDark
-                    ? 'bg-neutral-900 border border-neutral-700 text-white placeholder:text-neutral-500 focus:border-amber-500'
-                    : 'bg-neutral-50 border border-neutral-300 text-neutral-900 placeholder:text-neutral-400 focus:bg-white focus:border-[#315B4F]'
+                    ? 'bg-neutral-900 border border-neutral-700 text-white placeholder:text-neutral-400 focus:border-amber-500'
+                    : 'bg-neutral-50 border border-neutral-300 text-neutral-900 placeholder:text-neutral-500 focus:bg-white focus:border-[#315B4F]'
                 }`}
                 disabled={isValidating}
               />

@@ -2166,6 +2166,7 @@ app.post('/api/reviews', loginLimiter, async (req, res) => {
     const serviceId = newRev.serviceId ? sanitizeHtml(String(newRev.serviceId)).slice(0, 128) : undefined;
     const serviceName = newRev.serviceName ? sanitizeHtml(String(newRev.serviceName)).slice(0, 255) : undefined;
     const bookingCode = newRev.bookingCode ? sanitizeHtml(String(newRev.bookingCode).trim()).slice(0, 64) : undefined;
+    let resolvedServiceId = serviceId;
 
     // NON-ADMIN BOOKING VALIDATION ENFORCEMENT
     // Required to prevent fabricated/spam reviews
@@ -2192,6 +2193,22 @@ app.post('/api/reviews', loginLimiter, async (req, res) => {
         });
       }
 
+      // Hardened Reviewer Identity Validation
+      // Ensures possession of booking code alone cannot impersonate another customer
+      const bCustomerName = String(booking.fullName || booking.customerName || '').trim().toLowerCase();
+      if (bCustomerName) {
+        const aName = author.trim().toLowerCase();
+        const aTokens = aName.split(/[\s\-_,()]+/).filter(t => t.length >= 2);
+        const bTokens = bCustomerName.split(/[\s\-_,()]+/).filter(t => t.length >= 2);
+        const isExactOrSubstring = bCustomerName === aName || bCustomerName.includes(aName) || aName.includes(bCustomerName);
+        const hasTokenOverlap = aTokens.some(at => bTokens.some(bt => bt === at || (at.length >= 3 && (bt.includes(at) || at.includes(bt)))));
+        if (!isExactOrSubstring && !hasTokenOverlap) {
+          return res.status(400).json({
+            error: 'Nama pada ulasan tidak sesuai dengan data pemesan pada kode booking ini.'
+          });
+        }
+      }
+
       // Check service type compatibility
       const bType = String(booking.serviceType || booking.bookingType || (booking as any).type || '').toLowerCase();
       const reqType = serviceType.toLowerCase();
@@ -2206,19 +2223,113 @@ app.post('/api/reviews', loginLimiter, async (req, res) => {
         });
       }
 
-      // Check serviceId match if provided
-      if (serviceId) {
-        const bSvcId = String(booking.serviceId || booking.tripId || (booking.details && (booking.details.tripId || booking.details.packageId)) || '');
-        if (bSvcId && bSvcId !== serviceId) {
-          // If booking is for a different package
+      // Auto-derive and validate package/trip match using canonical identifier resolution
+      if (reqType === 'sharetour' || reqType === 'shared') {
+        const potentialBatchId = String(booking.batchId || booking.details?.batchId || booking.serviceId || '');
+        const validTripIds = [
+          String(booking.tripId || ''),
+          String(booking.details?.tripId || ''),
+          String(booking.serviceId || ''),
+          String(booking.batchId || ''),
+          String(booking.details?.batchId || '')
+        ].filter(Boolean);
+
+        if (potentialBatchId) {
+          try {
+            const b = await shareToursRepo.getBatchById(potentialBatchId);
+            if (b?.tripId) {
+              validTripIds.push(String(b.tripId));
+            }
+          } catch {}
+        }
+
+        // Auto-derive if omitted
+        if (!resolvedServiceId) {
+          resolvedServiceId = String(booking.tripId || booking.details?.tripId || '');
+          if (!resolvedServiceId && potentialBatchId) {
+            try {
+              const b = await shareToursRepo.getBatchById(potentialBatchId);
+              if (b?.tripId) resolvedServiceId = String(b.tripId);
+            } catch {}
+          }
+          if (!resolvedServiceId) {
+            resolvedServiceId = String(booking.serviceId || '');
+          }
+        }
+
+        const isPackageMatched = validTripIds.includes(resolvedServiceId);
+        if (!isPackageMatched) {
+          return res.status(400).json({
+            error: 'Kode booking ini terdaftar untuk paket/trip yang berbeda.'
+          });
+        }
+      } else if (reqType === 'gathering' || reqType === 'event-gathering') {
+        const potentialQuoId = String(booking.gatheringQuotationId || booking.details?.quotationId || booking.serviceId || '');
+        const validPkgIds = [
+          String(booking.details?.packageId || ''),
+          String(booking.serviceId || ''),
+          String(booking.details?.tripId || ''),
+          String(booking.gatheringQuotationId || ''),
+          String(booking.details?.quotationId || '')
+        ].filter(Boolean);
+
+        if (potentialQuoId) {
+          try {
+            const q = await gatheringRepo.getQuotationById(potentialQuoId);
+            if (q?.packageId) {
+              validPkgIds.push(String(q.packageId));
+            }
+          } catch {}
+        }
+
+        // Auto-derive if omitted
+        if (!resolvedServiceId) {
+          resolvedServiceId = String(booking.details?.packageId || '');
+          if (!resolvedServiceId && potentialQuoId) {
+            try {
+              const q = await gatheringRepo.getQuotationById(potentialQuoId);
+              if (q?.packageId) resolvedServiceId = String(q.packageId);
+            } catch {}
+          }
+          if (!resolvedServiceId) {
+            resolvedServiceId = String(booking.serviceId || '');
+          }
+        }
+
+        const isPackageMatched = validPkgIds.includes(resolvedServiceId);
+        if (!isPackageMatched) {
+          return res.status(400).json({
+            error: 'Kode booking ini terdaftar untuk paket/trip yang berbeda.'
+          });
+        }
+      } else {
+        // Tour / Default service
+        if (!resolvedServiceId) {
+          resolvedServiceId = String(booking.serviceId || booking.tripId || booking.details?.tourId || '');
+        }
+
+        const validTourIds = [
+          String(booking.serviceId || ''),
+          String(booking.tripId || ''),
+          String(booking.details?.tourId || ''),
+          String(booking.details?.tripId || ''),
+          String(booking.details?.vehicleId || '')
+        ].filter(Boolean);
+
+        const isPackageMatched = validTourIds.length === 0 || validTourIds.includes(resolvedServiceId);
+        if (!isPackageMatched) {
           return res.status(400).json({
             error: 'Kode booking ini terdaftar untuk paket/trip yang berbeda.'
           });
         }
       }
 
+      if (!resolvedServiceId) {
+        resolvedServiceId = String(booking.serviceId || booking.tripId || booking.bookingCode || 'general');
+      }
+
       // Check duplicate review for the same booking + package
-      const existingReviews = await reviewsRepo.findByBookingCodeAndServiceId(bookingCode, serviceId);
+      const existingReviews = await reviewsRepo.findByBookingCodeAndServiceId(bookingCode, resolvedServiceId);
       if (existingReviews.length > 0) {
         return res.status(400).json({
           error: 'Anda sudah pernah mengirimkan ulasan untuk pesanan ini.'
@@ -2236,7 +2347,7 @@ app.post('/api/reviews', loginLimiter, async (req, res) => {
       date: newRev.date || new Date().toISOString().split('T')[0],
       service: serviceType,
       serviceType: serviceType,
-      serviceId,
+      serviceId: resolvedServiceId || undefined,
       serviceName,
       bookingCode,
       status,
@@ -2741,6 +2852,46 @@ app.post('/api/bookings', async (req, res) => {
       const sanitizedPhone = String(
         payload.phone || payload.customerPhone || payload.participantData?.whatsapp || payload.details?.whatsapp || 'N/A'
       ).trim().slice(0, 30);
+
+      const isAdmin = checkIsAdmin(req);
+      if (isAdmin && payload.bookingCode) {
+        const adminBooking = {
+          id: payload.id || generateEntityId('book'),
+          bookingCode: String(payload.bookingCode).trim().toUpperCase(),
+          serviceType: payload.serviceType || 'tour',
+          serviceId: payload.serviceId || undefined,
+          serviceName: payload.serviceName || 'Direct Booking',
+          bookingType: payload.bookingType || payload.serviceType || 'tour',
+          tourBookingType: payload.tourBookingType || payload.bookingType || undefined,
+          departureDate: payload.departureDate || payload.details?.departureDate || new Date().toISOString().split('T')[0],
+          fullName: sanitizedName || payload.fullName || payload.customerName || 'Customer',
+          customerName: sanitizedName || payload.customerName || payload.fullName || 'Customer',
+          email: cleanEmail || payload.email || 'customer@example.com',
+          customerEmail: cleanEmail || payload.customerEmail || payload.email || 'customer@example.com',
+          phone: sanitizedPhone || payload.phone || payload.customerPhone || '-',
+          customerPhone: sanitizedPhone || payload.customerPhone || payload.phone || '-',
+          participantsCount: Math.max(1, count || 1),
+          participantsNames: payload.participantsNames || [sanitizedName || 'Customer'],
+          status: payload.status || 'Confirmed',
+          paymentStatus: payload.paymentStatus || 'Paid',
+          totalPrice: Number(payload.totalPrice) || 0,
+          totalPriceIDR: Number(payload.totalPriceIDR) || Number(payload.totalPrice) || 0,
+          baseAmount: Number(payload.baseAmount) || 0,
+          uniqueCode: Number(payload.uniqueCode) || 0,
+          paymentAmount: Number(payload.paymentAmount) || Number(payload.totalPriceIDR) || 0,
+          currency: payload.currency || 'IDR',
+          createdAt: payload.createdAt || new Date().toISOString(),
+          tripId: payload.tripId || payload.details?.tripId || undefined,
+          tripTitle: payload.tripTitle || payload.details?.tripTitle || undefined,
+          batchId: payload.batchId || payload.details?.batchId || undefined,
+          gatheringRequestId: payload.gatheringRequestId || payload.details?.requestId || undefined,
+          gatheringQuotationId: payload.gatheringQuotationId || payload.details?.quotationId || undefined,
+          gatheringQuotationVersion: payload.gatheringQuotationVersion || payload.details?.currentVersion || undefined,
+          details: payload.details || {}
+        };
+        const savedBooking = await bookingsRepo.create(adminBooking as any);
+        return res.status(201).json(savedBooking);
+      }
 
       // Determine booking type explicitly: 'shared' (Open Trip) vs 'private' (Private Tour / Services)
       const isShared = payload.bookingType === 'shared' || payload.tourBookingType === 'shared' || (Boolean(payload.batchId) && payload.bookingType !== 'private');

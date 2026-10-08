@@ -132,12 +132,12 @@ export default function TripListing({ trips, batches, onSelectTrip, onNavigateTo
             placeholder={t("Search and filter tours...")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full py-2 bg-transparent text-gray-800 font-sans text-sm placeholder-gray-400 focus:outline-none"
+            className="w-full py-2 bg-transparent text-gray-800 font-sans text-sm placeholder-gray-500 focus:outline-none"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 cursor-pointer font-bold"
+              className="text-xs text-gray-600 hover:text-gray-900 px-2 py-1 cursor-pointer font-bold"
             >
               Clear
             </button>
@@ -218,7 +218,7 @@ export default function TripListing({ trips, batches, onSelectTrip, onNavigateTo
                       {openBatchesCount > 0 ? (
                         <span className="text-emerald-700">{openBatchesCount} {t("Batches Open")}</span>
                       ) : (
-                        <span className="text-gray-400">{t("Sold Out")}</span>
+                        <span className="text-gray-600 font-bold">{t("Sold Out")}</span>
                       )}
                     </div>
                   </div>
@@ -245,7 +245,7 @@ export default function TripListing({ trips, batches, onSelectTrip, onNavigateTo
                     {/* Card Price Line & Explore Details */}
                     <div className="border-t border-gray-50 pt-3 flex items-center justify-between">
                       <div>
-                        <span className="text-[9px] text-gray-400 block uppercase tracking-wider font-bold">{t("Starting rate")}</span>
+                        <span className="text-[9px] text-gray-600 block uppercase tracking-wider font-bold">{t("Starting rate")}</span>
                         <span className="text-[#315B4F] font-display font-black text-sm sm:text-base leading-none block">
                           {formatPrice(trip?.startingPrice || 150)}
                         </span>

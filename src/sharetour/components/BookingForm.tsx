@@ -511,7 +511,7 @@ export default function BookingForm({
 
             <div className="space-y-3.5 text-xs">
               <div>
-                <span className="text-[10px] text-gray-400 uppercase font-mono block">Tour</span>
+                <span className="text-[10px] text-gray-600 uppercase font-mono block">Tour</span>
                 <span className="font-bold text-gray-900 text-sm block leading-snug">{trip.title}</span>
                 <span className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                   <MapPin className="w-3 h-3 text-[#315B4F] shrink-0" />
@@ -521,17 +521,17 @@ export default function BookingForm({
 
               <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-100">
                 <div>
-                  <span className="text-[10px] text-gray-400 uppercase font-mono block">Date</span>
+                  <span className="text-[10px] text-gray-600 uppercase font-mono block">Date</span>
                   <span className="font-bold text-gray-800">{formatDate(selectedDepartureDate)}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-gray-400 uppercase font-mono block">Duration</span>
+                  <span className="text-[10px] text-gray-600 uppercase font-mono block">Duration</span>
                   <span className="font-bold text-gray-800">{trip.duration}</span>
                 </div>
               </div>
 
               <div className="pt-2 border-t border-gray-100">
-                <span className="text-[10px] text-gray-400 uppercase font-mono block">Guest Category</span>
+                <span className="text-[10px] text-gray-600 uppercase font-mono block">Guest Category</span>
                 <span className="font-bold text-[#315B4F] text-xs">
                   {currentNationality === 'WNI' 
                     ? "🇮🇩 Domestic" 
@@ -544,11 +544,11 @@ export default function BookingForm({
 
               <div className="flex justify-between items-center pt-2 border-t border-gray-100">
                 <div>
-                  <span className="text-[10px] text-gray-400 uppercase font-mono block">Guests</span>
+                  <span className="text-[10px] text-gray-600 uppercase font-mono block">Guests</span>
                   <span className="font-bold text-gray-800">{numParticipants} Pax</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] text-gray-400 uppercase font-mono block">Tarif / Orang</span>
+                  <span className="text-[10px] text-gray-600 uppercase font-mono block">Tarif / Orang</span>
                   <span className="font-bold text-gray-800">{unitPriceFormatted}</span>
                 </div>
               </div>
@@ -618,7 +618,7 @@ export default function BookingForm({
                   }
                 </span>
               </div>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-gray-600">
                 {currentNationality === 'WNA_CHINA'
                   ? "Form registrasi wisatawan China Daratan (memerlukan ID WeChat & ID XiaoHongShu)."
                   : currentNationality === 'WNA_EUROPE'
@@ -642,7 +642,7 @@ export default function BookingForm({
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-gray-700 block">
                   1. {t("Nama Lengkap")} <span className="text-rose-500">*</span>
-                  <span className="text-[10px] text-gray-400 font-normal block">
+                  <span className="text-[10px] text-gray-600 font-normal block">
                     {currentNationality === 'WNA_CHINA' ? "Hanzi atau sesuai paspor (e.g. 陈智华 / Tony Tan)" : "Sesuai KTP / Paspor (Full Name)"}
                   </span>
                 </label>
@@ -661,7 +661,7 @@ export default function BookingForm({
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-gray-700 block">
                   2. {t("English Name")} <span className="text-rose-500">*</span>
-                  <span className="text-[10px] text-gray-400 font-normal block">
+                  <span className="text-[10px] text-gray-600 font-normal block">
                     {currentNationality === 'WNA_CHINA' ? "Pinyin / Sesuai paspor (e.g. CHEN ZHIHUA)" : "English Name in Passport (e.g. TONY TAN)"}
                   </span>
                 </label>
@@ -683,7 +683,7 @@ export default function BookingForm({
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-gray-700 block">
                       3. {t("WeChat ID")} <span className="text-rose-500">*</span>
-                      <span className="text-[10px] text-gray-400 font-normal block">{t("ID WeChat Aktif (e.g. tony_wx)")}</span>
+                      <span className="text-[10px] text-gray-600 font-normal block">{t("ID WeChat Aktif (e.g. tony_wx)")}</span>
                     </label>
                     <input
                       id="book-weChatId"
@@ -700,7 +700,7 @@ export default function BookingForm({
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-gray-700 block">
                       4. {t("XiaoHongShu ID (Red ID)")} <span className="text-rose-500">*</span>
-                      <span className="text-[10px] text-gray-400 font-normal block">{t("ID XiaoHongShu / Red ID (e.g. user_red)")}</span>
+                      <span className="text-[10px] text-gray-600 font-normal block">{t("ID XiaoHongShu / Red ID (e.g. user_red)")}</span>
                     </label>
                     <input
                       id="book-redId"
@@ -721,7 +721,7 @@ export default function BookingForm({
                   {currentNationality === 'WNA_CHINA' ? "5. " : "3. "}
                   {currentNationality === 'WNA_EUROPE' ? t("City & Country of Residence") : t("Kota Tinggal Saat Ini")}{" "}
                   <span className="text-rose-500">*</span>
-                  <span className="text-[10px] text-gray-400 font-normal block">
+                  <span className="text-[10px] text-gray-600 font-normal block">
                     {currentNationality === 'WNA_EUROPE' ? "City & Country (e.g. Paris, France / Munich, Germany)" : "Kota tinggal saat ini (e.g. Shanghai / Jakarta)"}
                   </span>
                 </label>
@@ -742,11 +742,11 @@ export default function BookingForm({
                   {currentNationality === 'WNA_CHINA' ? "6. " : "4. "}
                   {t("No WhatsApp (Aktif)")}{" "}
                   {currentNationality === 'WNA_CHINA' ? (
-                    <span className="text-xs text-gray-400 font-normal">({t("Optional")})</span>
+                    <span className="text-xs text-gray-600 font-normal">({t("Optional")})</span>
                   ) : (
                     <span className="text-rose-500">*</span>
                   )}
-                  <span className="text-[10px] text-gray-400 font-normal block">
+                  <span className="text-[10px] text-gray-600 font-normal block">
                     {currentNationality === 'WNA_EUROPE' 
                       ? "Active WhatsApp with country code (e.g. +33 6 12 34 56 78)" 
                       : "No. WhatsApp aktif dengan kode negara (e.g. +62 812-3456-7890)"}
@@ -768,7 +768,7 @@ export default function BookingForm({
                 <label className="text-xs font-bold text-gray-700 block">
                   {currentNationality === 'WNA_CHINA' ? "7. " : "5. "}
                   {t("Email Address")} <span className="text-rose-500">*</span>
-                  <span className="text-[10px] text-gray-400 font-normal block">{t("Primary contact email (e.g. traveller@example.com)")}</span>
+                  <span className="text-[10px] text-gray-600 font-normal block">{t("Primary contact email (e.g. traveller@example.com)")}</span>
                 </label>
                 <input
                   id="book-email"
@@ -785,8 +785,8 @@ export default function BookingForm({
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-gray-700 block">
                   {currentNationality === 'WNA_CHINA' ? "8. " : "6. "}
-                  {t("Nomor Penerbangan")} <span className="text-xs text-gray-400 font-normal">({t("Optional")})</span>
-                  <span className="text-[10px] text-gray-400 font-normal block">{t("Arrival Flight Number (e.g. SQ956 or GA412)")}</span>
+                  {t("Nomor Penerbangan")} <span className="text-xs text-gray-600 font-normal">({t("Optional")})</span>
+                  <span className="text-[10px] text-gray-600 font-normal block">{t("Arrival Flight Number (e.g. SQ956 or GA412)")}</span>
                 </label>
                 <input
                   id="book-flightNumber"
@@ -803,7 +803,7 @@ export default function BookingForm({
                 <label className="text-xs font-bold text-gray-700 block">
                   {currentNationality === 'WNA_CHINA' ? "9. " : "7. "}
                   {t("Lokasi Penjemputan")} <span className="text-rose-500">*</span>
-                  <span className="text-[10px] text-gray-400 font-normal block">
+                  <span className="text-[10px] text-gray-600 font-normal block">
                     Nama hotel, alamat villa, atau nama stasiun/bandara kedatangan (e.g. Hotel Tugu Malang, Bandara Juanda T2 Surabaya)
                   </span>
                 </label>
@@ -825,8 +825,8 @@ export default function BookingForm({
               <div className="space-y-1.5 md:col-span-2">
                 <label className="text-xs font-bold text-gray-700 block">
                   {currentNationality === 'WNA_CHINA' ? "10. " : "8. "}
-                  {t("Special Request / Catatan Khusus")} <span className="text-xs text-gray-400 font-normal">({t("Optional")})</span>
-                  <span className="text-[10px] text-gray-400 font-normal block">
+                  {t("Special Request / Catatan Khusus")} <span className="text-xs text-gray-600 font-normal">({t("Optional")})</span>
+                  <span className="text-[10px] text-gray-600 font-normal block">
                     Permintaan khusus, preferensi makanan/vegetarian, kursi bayi, atau kebutuhan lainnya
                   </span>
                 </label>
@@ -883,7 +883,7 @@ export default function BookingForm({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {companionNames.map((cName, cIdx) => (
                       <div key={cIdx} className="space-y-1">
-                        <label className="text-[10px] text-gray-400 font-mono font-bold uppercase">{t("Companion")} #{cIdx + 2} {t("Name")}</label>
+                        <label className="text-[10px] text-gray-600 font-mono font-bold uppercase">{t("Companion")} #{cIdx + 2} {t("Name")}</label>
                         <input
                           id={`companion-${cIdx}`}
                           type="text"

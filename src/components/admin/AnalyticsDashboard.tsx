@@ -142,12 +142,12 @@ export default function AnalyticsDashboard({
     card: isDark ? 'bg-neutral-900/80 border-neutral-800' : 'bg-white border-neutral-200 shadow-sm',
     innerCard: isDark ? 'bg-neutral-950/60 border-neutral-850' : 'bg-neutral-50 border-neutral-200',
     textPrimary: isDark ? 'text-neutral-100' : 'text-neutral-900',
-    textSecondary: isDark ? 'text-neutral-400' : 'text-neutral-500',
-    textMuted: isDark ? 'text-neutral-500' : 'text-neutral-400',
+    textSecondary: isDark ? 'text-neutral-300' : 'text-neutral-700',
+    textMuted: isDark ? 'text-neutral-400' : 'text-neutral-600',
     border: isDark ? 'border-neutral-800' : 'border-neutral-200',
     input: isDark ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-white border-neutral-200 text-neutral-900',
     hover: isDark ? 'hover:bg-neutral-800/60' : 'hover:bg-neutral-100',
-    tableHeader: isDark ? 'bg-neutral-950/70 text-neutral-400' : 'bg-neutral-100 text-neutral-600',
+    tableHeader: isDark ? 'bg-neutral-950/70 text-neutral-300' : 'bg-neutral-100 text-neutral-700',
     tableRowHover: isDark ? 'hover:bg-neutral-850/50' : 'hover:bg-neutral-50'
   };
 

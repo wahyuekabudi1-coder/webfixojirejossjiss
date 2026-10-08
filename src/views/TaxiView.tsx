@@ -837,12 +837,12 @@ export default function TaxiView() {
           
           <div className="flex items-center space-x-3 w-full md:w-auto">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
-              step >= 1 ? 'bg-amber-500 text-neutral-950 font-black' : 'bg-neutral-100 text-neutral-400'
+              step >= 1 ? 'bg-amber-500 text-neutral-950 font-black' : 'bg-neutral-100 text-neutral-600'
             }`}>
               {step > 1 ? <Check className="w-4 h-4 text-neutral-950 stroke-[3]" /> : '1'}
             </div>
             <div className="text-left">
-              <span className="text-[10px] text-neutral-400 font-bold block uppercase tracking-wider font-mono">STEP 1</span>
+              <span className="text-[10px] text-neutral-600 font-bold block uppercase tracking-wider font-mono">STEP 1</span>
               <span className={`text-xs font-extrabold ${step === 1 ? 'text-amber-600' : 'text-neutral-700'}`}>Route &amp; Live Map</span>
             </div>
           </div>
@@ -853,12 +853,12 @@ export default function TaxiView() {
 
           <div className="flex items-center space-x-3 w-full md:w-auto">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
-              step >= 2 ? 'bg-amber-500 text-neutral-950 font-black' : 'bg-neutral-100 text-neutral-400'
+              step >= 2 ? 'bg-amber-500 text-neutral-950 font-black' : 'bg-neutral-100 text-neutral-600'
             }`}>
               {step > 2 ? <Check className="w-4 h-4 text-neutral-950 stroke-[3]" /> : '2'}
             </div>
             <div className="text-left">
-              <span className="text-[10px] text-neutral-400 font-bold block uppercase tracking-wider font-mono">STEP 2</span>
+              <span className="text-[10px] text-neutral-600 font-bold block uppercase tracking-wider font-mono">STEP 2</span>
               <span className={`text-xs font-extrabold ${step === 2 ? 'text-amber-600' : 'text-neutral-700'}`}>Select Vehicle</span>
             </div>
           </div>
@@ -869,12 +869,12 @@ export default function TaxiView() {
 
           <div className="flex items-center space-x-3 w-full md:w-auto">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
-              step >= 3 ? 'bg-amber-500 text-neutral-950 font-black' : 'bg-neutral-100 text-neutral-400'
+              step >= 3 ? 'bg-amber-500 text-neutral-950 font-black' : 'bg-neutral-100 text-neutral-600'
             }`}>
               3
             </div>
             <div className="text-left">
-              <span className="text-[10px] text-neutral-400 font-bold block uppercase tracking-wider font-mono">STEP 3</span>
+              <span className="text-[10px] text-neutral-600 font-bold block uppercase tracking-wider font-mono">STEP 3</span>
               <span className={`text-xs font-extrabold ${step === 3 ? 'text-amber-600' : 'text-neutral-700'}`}>Passenger Details</span>
             </div>
           </div>
@@ -921,7 +921,7 @@ export default function TaxiView() {
                             setPickupInput(e.target.value);
                             setPickupSelected(false);
                           }}
-                          className="bg-neutral-50 border border-neutral-200 text-neutral-800 text-sm rounded-xl pl-10 pr-12 py-3 w-full focus:outline-none focus:border-amber-500 focus:bg-white transition-all placeholder-neutral-400 font-medium"
+                          className="bg-neutral-50 border border-neutral-200 text-neutral-800 text-sm rounded-xl pl-10 pr-12 py-3 w-full focus:outline-none focus:border-amber-500 focus:bg-white transition-all placeholder-neutral-500 font-medium"
                         />
                         <button
                           type="button"
@@ -1005,7 +1005,7 @@ export default function TaxiView() {
                             setDestInput(e.target.value);
                             setDestSelected(false);
                           }}
-                          className="bg-neutral-50 border border-neutral-200 text-neutral-800 text-sm rounded-xl pl-10 pr-4 py-3 w-full focus:outline-none focus:border-amber-500 focus:bg-white transition-all placeholder-neutral-400 font-medium"
+                          className="bg-neutral-50 border border-neutral-200 text-neutral-800 text-sm rounded-xl pl-10 pr-4 py-3 w-full focus:outline-none focus:border-amber-500 focus:bg-white transition-all placeholder-neutral-500 font-medium"
                         />
                       </div>
 
@@ -1058,7 +1058,7 @@ export default function TaxiView() {
                   <div className="bg-white border border-neutral-200/80 p-6 rounded-3xl shadow-xl shadow-neutral-100 text-center space-y-3">
                     <Info className="h-5 w-5 text-amber-500 mx-auto" />
                     <h4 className="font-bold text-neutral-900 text-sm">Awaiting Locations</h4>
-                    <p className="text-xs text-neutral-400 leading-relaxed">
+                    <p className="text-xs text-neutral-600 leading-relaxed">
                       Please enter your pickup point and final destination above to calculate path details.
                     </p>
                   </div>
@@ -1087,13 +1087,13 @@ export default function TaxiView() {
                   {pickupCoords && destCoords && (
                     <div className="grid grid-cols-2 gap-4 bg-neutral-50 p-4 rounded-2xl border border-neutral-150">
                       <div className="space-y-0.5">
-                        <span className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider font-mono">ESTIMATED ROAD DISTANCE</span>
+                        <span className="text-[9px] text-neutral-600 font-bold uppercase tracking-wider font-mono">ESTIMATED ROAD DISTANCE</span>
                         <div className="text-xl font-black text-neutral-900 font-mono">
                           {distance ? `${distance} km` : 'Computing...'}
                         </div>
                       </div>
                       <div className="space-y-0.5">
-                        <span className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider font-mono">DRIVING DURATION</span>
+                        <span className="text-[9px] text-neutral-600 font-bold uppercase tracking-wider font-mono">DRIVING DURATION</span>
                         <div className="text-xl font-black text-neutral-900 font-mono">
                           {formatDuration(duration)}
                         </div>
@@ -1232,7 +1232,7 @@ export default function TaxiView() {
                 <form onSubmit={handleConfirmBooking} className="space-y-4">
                   {/* Name */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider pl-1">Full Name</label>
+                    <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider pl-1">Full Name</label>
                     <div className="relative">
                       <User className="absolute left-3.5 top-3.5 h-4 w-4 text-neutral-400" />
                       <input
@@ -1241,7 +1241,7 @@ export default function TaxiView() {
                         placeholder="e.g. Alex Carter"
                         value={customerName}
                         onChange={(e) => setCustomerName(e.target.value)}
-                        className="bg-neutral-50 border border-neutral-200 rounded-xl pl-10 pr-4 py-3 text-sm text-neutral-800 w-full focus:outline-none focus:border-amber-500 focus:bg-white transition-all placeholder-neutral-400 font-medium"
+                        className="bg-neutral-50 border border-neutral-200 rounded-xl pl-10 pr-4 py-3 text-sm text-neutral-800 w-full focus:outline-none focus:border-amber-500 focus:bg-white transition-all placeholder-neutral-500 font-medium"
                       />
                     </div>
                   </div>
@@ -1249,7 +1249,7 @@ export default function TaxiView() {
                   {/* Email & Phone */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider pl-1">Email</label>
+                      <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider pl-1">Email</label>
                       <div className="relative">
                         <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-neutral-400" />
                         <input
@@ -1258,13 +1258,13 @@ export default function TaxiView() {
                           placeholder="alex@gmail.com"
                           value={customerEmail}
                           onChange={(e) => setCustomerEmail(e.target.value)}
-                          className="bg-neutral-50 border border-neutral-200 rounded-xl pl-10 pr-4 py-3 text-xs text-neutral-800 w-full focus:outline-none focus:border-amber-500 focus:bg-white transition-all placeholder-neutral-400 font-medium"
+                          className="bg-neutral-50 border border-neutral-200 rounded-xl pl-10 pr-4 py-3 text-xs text-neutral-800 w-full focus:outline-none focus:border-amber-500 focus:bg-white transition-all placeholder-neutral-500 font-medium"
                         />
                       </div>
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider pl-1">WhatsApp Phone</label>
+                      <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider pl-1">WhatsApp Phone</label>
                       <div className="relative">
                         <Phone className="absolute left-3.5 top-3.5 h-4 w-4 text-neutral-400" />
                         <input
@@ -1273,7 +1273,7 @@ export default function TaxiView() {
                           placeholder="+62 812 345 678"
                           value={customerPhone}
                           onChange={(e) => setCustomerPhone(e.target.value)}
-                          className="bg-neutral-50 border border-neutral-200 rounded-xl pl-10 pr-4 py-3 text-xs text-neutral-800 w-full focus:outline-none focus:border-amber-500 focus:bg-white transition-all placeholder-neutral-400 font-medium"
+                          className="bg-neutral-50 border border-neutral-200 rounded-xl pl-10 pr-4 py-3 text-xs text-neutral-800 w-full focus:outline-none focus:border-amber-500 focus:bg-white transition-all placeholder-neutral-500 font-medium"
                         />
                       </div>
                     </div>
@@ -1282,7 +1282,7 @@ export default function TaxiView() {
                   {/* Travel Date & Departure Time */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider pl-1">Travel Date</label>
+                      <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider pl-1">Travel Date</label>
                       <div className="relative">
                         <Calendar className="absolute right-3.5 top-3.5 h-4 w-4 text-neutral-400 pointer-events-none" />
                         <input
@@ -1296,7 +1296,7 @@ export default function TaxiView() {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider pl-1">Departure Time</label>
+                      <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider pl-1">Departure Time</label>
                       <div className="relative">
                         <Clock className="absolute right-3.5 top-3.5 h-4 w-4 text-neutral-400 pointer-events-none" />
                         <input
@@ -1312,7 +1312,7 @@ export default function TaxiView() {
 
                   {/* Flight Number */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider pl-1">Flight Number (Optional)</label>
+                    <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider pl-1">Flight Number (Optional)</label>
                     <div className="relative">
                       <Plane className="absolute left-3.5 top-3.5 h-4 w-4 text-neutral-400" />
                       <input
@@ -1320,20 +1320,20 @@ export default function TaxiView() {
                         placeholder="e.g. GA-251"
                         value={flightNumber}
                         onChange={(e) => setFlightNumber(e.target.value)}
-                        className="bg-neutral-50 border border-neutral-200 rounded-xl pl-10 pr-4 py-3 text-sm text-neutral-800 w-full focus:outline-none focus:border-amber-500 focus:bg-white transition-all placeholder-neutral-400 uppercase font-mono"
+                        className="bg-neutral-50 border border-neutral-200 rounded-xl pl-10 pr-4 py-3 text-sm text-neutral-800 w-full focus:outline-none focus:border-amber-500 focus:bg-white transition-all placeholder-neutral-500 uppercase font-mono"
                       />
                     </div>
                   </div>
 
                   {/* Extra notes */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider pl-1">Special Instructions / Child Seat</label>
+                    <label className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider pl-1">Special Instructions / Child Seat</label>
                     <textarea
                       rows={2}
                       placeholder="Specify child seat requirements, extra bags, hotel room details..."
                       value={extraNotes}
                       onChange={(e) => setExtraNotes(e.target.value)}
-                      className="bg-neutral-50 border border-neutral-200 text-neutral-800 text-xs rounded-xl px-3 py-2.5 w-full focus:outline-none focus:border-amber-500 focus:bg-white transition-all placeholder-neutral-400 font-medium"
+                      className="bg-neutral-50 border border-neutral-200 text-neutral-800 text-xs rounded-xl px-3 py-2.5 w-full focus:outline-none focus:border-amber-500 focus:bg-white transition-all placeholder-neutral-500 font-medium"
                     />
                   </div>
 
@@ -1345,7 +1345,7 @@ export default function TaxiView() {
                         <p className="text-xs text-neutral-500 font-semibold mt-0.5">{matchedRoute?.airport} ⇄ {matchedRoute?.city}</p>
                       </div>
                       <div className="text-right">
-                        <span className="text-[9px] text-neutral-400 block font-mono">ARMADA: {selectedVehicle.name}</span>
+                        <span className="text-[9px] text-neutral-600 block font-mono">ARMADA: {selectedVehicle.name}</span>
                         <strong className="text-base font-black text-amber-600 font-mono">
                           {formatPrice(currentPrice.usd, currentPrice.idr)}
                         </strong>
@@ -1380,7 +1380,7 @@ export default function TaxiView() {
                     </button>
                   </div>
 
-                  <p className="text-[9px] text-neutral-400 text-center font-medium leading-relaxed mt-2">
+                  <p className="text-[9px] text-neutral-600 text-center font-medium leading-relaxed mt-2">
                     No prepayment required. Cash is accepted directly on arrival by your private chauffeur. Rescheduling or cancellation is 100% free.
                   </p>
 
@@ -1415,7 +1415,7 @@ export default function TaxiView() {
                 </div>
                 <button
                   onClick={() => setBookingSuccess(null)}
-                  className="text-neutral-400 hover:text-neutral-600 bg-neutral-100 hover:bg-neutral-200 p-1.5 rounded-full transition-colors"
+                  className="text-neutral-500 hover:text-neutral-700 bg-neutral-100 hover:bg-neutral-200 p-1.5 rounded-full transition-colors"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -1429,28 +1429,28 @@ export default function TaxiView() {
 
                 <div className="border border-neutral-150 p-4 rounded-2xl bg-neutral-50 space-y-2.5 text-xs">
                   <div className="flex justify-between border-b border-neutral-200/60 pb-2">
-                    <span className="text-neutral-400 font-medium">Passenger Name</span>
+                    <span className="text-neutral-600 font-medium">Passenger Name</span>
                     <span className="text-neutral-800 font-bold">{bookingSuccess.customerName}</span>
                   </div>
                   <div className="flex justify-between border-b border-neutral-200/60 pb-2">
-                    <span className="text-neutral-400 font-medium">WhatsApp Phone</span>
+                    <span className="text-neutral-600 font-medium">WhatsApp Phone</span>
                     <span className="text-neutral-800 font-bold font-mono">{bookingSuccess.customerPhone}</span>
                   </div>
                   <div className="flex justify-between border-b border-neutral-200/60 pb-2 flex-wrap gap-2">
-                    <span className="text-neutral-400 font-medium">Route Selected</span>
+                    <span className="text-neutral-600 font-medium">Route Selected</span>
                     <span className="text-neutral-800 font-bold font-mono max-w-xs truncate">{pickupInput} ➔ {destInput}</span>
                   </div>
                   <div className="flex justify-between border-b border-neutral-200/60 pb-2">
-                    <span className="text-neutral-400 font-medium">Travel Date &amp; Time</span>
+                    <span className="text-neutral-600 font-medium">Travel Date &amp; Time</span>
                     <span className="text-neutral-800 font-bold font-mono">{travelDate} @ {travelTime}</span>
                   </div>
                   <div className="flex justify-between border-b border-neutral-200/60 pb-2">
-                    <span className="text-neutral-400 font-medium">Private Vehicle</span>
+                    <span className="text-neutral-600 font-medium">Private Vehicle</span>
                     <span className="text-neutral-800 font-bold">{selectedVehicle.name}</span>
                   </div>
                   {flightNumber && (
                     <div className="flex justify-between border-b border-neutral-200/60 pb-2">
-                      <span className="text-neutral-400 font-medium">Flight Track</span>
+                      <span className="text-neutral-600 font-medium">Flight Track</span>
                       <span className="text-neutral-800 font-bold font-mono uppercase">{flightNumber}</span>
                     </div>
                   )}

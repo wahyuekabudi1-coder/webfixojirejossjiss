@@ -644,21 +644,21 @@ export default function TourDetailView({ tourId, onBack }: TourDetailViewProps) 
               {/* Quick Spec Tags */}
               <div className="grid grid-cols-3 gap-3 border-t border-b border-neutral-100 py-4 text-center">
                 <div className="space-y-1">
-                  <span className="text-[10px] uppercase font-mono text-neutral-400 block font-bold">Duration</span>
+                  <span className="text-[10px] uppercase font-mono text-neutral-600 block font-bold">Duration</span>
                   <div className="flex items-center justify-center gap-1 text-xs sm:text-sm font-extrabold text-neutral-800">
                     <Clock className="h-4 w-4 text-amber-500" />
                     <span>{tour.duration}</span>
                   </div>
                 </div>
                 <div className="space-y-1 border-l border-r border-neutral-100">
-                  <span className="text-[10px] uppercase font-mono text-neutral-400 block font-bold">Group Type</span>
+                  <span className="text-[10px] uppercase font-mono text-neutral-600 block font-bold">Group Type</span>
                   <div className="flex items-center justify-center gap-1 text-xs sm:text-sm font-extrabold text-neutral-800">
                     <Users className="h-4 w-4 text-amber-500" />
                     <span>Private &amp; Share</span>
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[10px] uppercase font-mono text-neutral-400 block font-bold">Transport</span>
+                  <span className="text-[10px] uppercase font-mono text-neutral-600 block font-bold">Transport</span>
                   <div className="flex items-center justify-center gap-1 text-xs sm:text-sm font-extrabold text-neutral-800">
                     <Car className="h-4 w-4 text-amber-500" />
                     <span>4x4 Jeep &amp; SUV</span>
@@ -977,7 +977,7 @@ export default function TourDetailView({ tourId, onBack }: TourDetailViewProps) 
                 </div>
 
                 {/* Calendar Legends */}
-                <div className="flex items-center justify-between text-[9px] text-gray-400 font-mono border-t border-gray-100 pt-2.5">
+                <div className="flex items-center justify-between text-[9px] text-gray-600 font-mono border-t border-gray-100 pt-2.5">
                   <span className="flex items-center gap-1">
                     <span className="w-2.5 h-2.5 bg-emerald-50 border border-emerald-100 rounded block" />
                     <span>Bebas Dipilih (Setiap Hari)</span>
@@ -1034,7 +1034,7 @@ export default function TourDetailView({ tourId, onBack }: TourDetailViewProps) 
                       {selectedTierId === 'WNI' && <Check className="w-4 h-4 text-[#D6B16D]" />}
                     </div>
                     <div className="mt-1">
-                      <span className={`block text-[10px] ${selectedTierId === 'WNI' ? "text-emerald-100" : "text-gray-400"}`}>
+                      <span className={`block text-[10px] ${selectedTierId === 'WNI' ? "text-emerald-100" : "text-gray-600"}`}>
                         KTP / Paspor RI
                       </span>
                       <span className={`block text-[11px] font-bold font-mono ${selectedTierId === 'WNI' ? "text-[#D6B16D]" : "text-[#315B4F]"}`}>
@@ -1066,7 +1066,7 @@ export default function TourDetailView({ tourId, onBack }: TourDetailViewProps) 
                       )}
                     </div>
                     <div className="mt-1">
-                      <span className={`block text-[10px] ${(selectedTierId === 'WNA_CHINA' || selectedTierId === 'WNA_EUROPE') ? "text-emerald-100" : "text-gray-400"}`}>
+                      <span className={`block text-[10px] ${(selectedTierId === 'WNA_CHINA' || selectedTierId === 'WNA_EUROPE') ? "text-emerald-100" : "text-gray-600"}`}>
                         Non-Indonesian
                       </span>
                       <span className={`block text-[11px] font-bold font-mono ${(selectedTierId === 'WNA_CHINA' || selectedTierId === 'WNA_EUROPE') ? "text-[#D6B16D]" : "text-[#315B4F]"}`}>
@@ -1097,7 +1097,7 @@ export default function TourDetailView({ tourId, onBack }: TourDetailViewProps) 
                           </span>
                           {selectedTierId === 'WNA_CHINA' && <Check className="w-3.5 h-3.5 text-[#D6B16D]" />}
                         </div>
-                        <span className={`text-[9px] mt-0.5 block ${selectedTierId === 'WNA_CHINA' ? "text-emerald-200" : "text-gray-400"}`}>
+                        <span className={`text-[9px] mt-0.5 block ${selectedTierId === 'WNA_CHINA' ? "text-emerald-200" : "text-gray-600"}`}>
                           WeChat / RED ID
                         </span>
                       </button>
@@ -1118,7 +1118,7 @@ export default function TourDetailView({ tourId, onBack }: TourDetailViewProps) 
                           </span>
                           {selectedTierId === 'WNA_EUROPE' && <Check className="w-3.5 h-3.5 text-[#D6B16D]" />}
                         </div>
-                        <span className={`text-[9px] mt-0.5 block ${selectedTierId === 'WNA_EUROPE' ? "text-emerald-200" : "text-gray-400"}`}>
+                        <span className={`text-[9px] mt-0.5 block ${selectedTierId === 'WNA_EUROPE' ? "text-emerald-200" : "text-gray-600"}`}>
                           Global / WhatsApp
                         </span>
                       </button>
@@ -1187,7 +1187,7 @@ export default function TourDetailView({ tourId, onBack }: TourDetailViewProps) 
                   <div className="flex items-center justify-between border-t border-gray-200 pt-2 font-bold">
                     <div className="flex flex-col">
                       <span className="text-gray-900 font-extrabold uppercase text-xs tracking-wider">TOTAL HARGA</span>
-                      <span className="text-[10px] text-gray-400 font-mono">Total Booking ({guestCount} Pax)</span>
+                      <span className="text-[10px] text-gray-600 font-mono">Total Booking ({guestCount} Pax)</span>
                     </div>
                     <span className="text-base sm:text-lg font-black text-[#315B4F]">
                       {formatPrice(selectedTier.priceUSD * guestCount, selectedTier.priceIDR * guestCount)}
@@ -1329,7 +1329,7 @@ export default function TourDetailView({ tourId, onBack }: TourDetailViewProps) 
                   </div>
                   <div className="flex items-center justify-between pt-2 border-t border-neutral-100">
                     <div>
-                      <span className="text-[9px] text-neutral-400 block uppercase font-mono">From</span>
+                      <span className="text-[9px] text-neutral-600 block uppercase font-mono">From</span>
                       <span className="text-sm font-black text-amber-600">
                         {formatPrice(simTour.startingPrice, simTour.startingPriceIDR)}
                       </span>

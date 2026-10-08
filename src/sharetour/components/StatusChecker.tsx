@@ -209,11 +209,11 @@ export default function StatusChecker({
               className="space-y-5"
             >
               <div className="flex items-center justify-between">
-                <h2 className="text-xs font-display font-bold uppercase text-gray-400 tracking-wider font-sans">{t("Lacak Reservasi")}</h2>
+                <h2 className="text-xs font-display font-bold uppercase text-gray-600 tracking-wider font-sans">{t("Lacak Reservasi")}</h2>
                 <button
                   type="button"
                   onClick={handleReload}
-                  className="text-gray-400 hover:text-[#315B4F] flex items-center space-x-1 text-xs cursor-pointer"
+                  className="text-gray-600 hover:text-[#315B4F] flex items-center space-x-1 text-xs cursor-pointer"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
                   <span>{t("Sync")}</span>
@@ -232,7 +232,7 @@ export default function StatusChecker({
                     onChange={(e) => setBookingCode(e.target.value)}
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-[#315B4F]/40 focus:border-[#315B4F] font-bold text-gray-900"
                   />
-                  <span className="text-[10px] text-gray-400 block font-light leading-snug font-sans">
+                  <span className="text-[10px] text-gray-600 block font-light leading-snug font-sans">
                     {t("Enter your exact 6-character custom code (e.g. SJ-W8F3T) to fetch real-time updates.")}
                   </span>
                 </div>
@@ -250,7 +250,7 @@ export default function StatusChecker({
 
             {/* Subtle Inline Help Demo Codes */}
             <div className="pt-4 border-t border-gray-100 text-center">
-              <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block mb-2">{t("Demo Testing Codes")}</span>
+              <span className="text-[10px] font-semibold text-gray-600 uppercase tracking-widest block mb-2">{t("Demo Testing Codes")}</span>
               <div className="flex flex-wrap gap-2 justify-center">
                 <button 
                   onClick={() => { setBookingCode("SJ-W8F3T"); handleSearch("SJ-W8F3T"); }}

@@ -577,7 +577,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow, hi
                   <div className={`p-3 rounded-xl border transition-all ${
                     currentStep >= 1 
                       ? 'bg-slate-50 border-slate-300 text-slate-900' 
-                      : 'bg-slate-50/50 border-slate-200 text-slate-400'
+                      : 'bg-slate-50/50 border-slate-200 text-slate-600'
                   }`}>
                     <div className="flex items-center sm:flex-col sm:items-center text-left sm:text-center gap-3 sm:gap-2">
                       <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
@@ -600,7 +600,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow, hi
                   <div className={`p-3 rounded-xl border transition-all ${
                     currentStep >= 2 
                       ? 'bg-slate-50 border-slate-300 text-slate-900' 
-                      : 'bg-slate-50/50 border-slate-200 text-slate-400'
+                      : 'bg-slate-50/50 border-slate-200 text-slate-600'
                   }`}>
                     <div className="flex items-center sm:flex-col sm:items-center text-left sm:text-center gap-3 sm:gap-2">
                       <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
@@ -623,7 +623,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow, hi
                   <div className={`p-3 rounded-xl border transition-all ${
                     currentStep >= 3 
                       ? 'bg-slate-50 border-slate-300 text-slate-900' 
-                      : 'bg-slate-50/50 border-slate-200 text-slate-400'
+                      : 'bg-slate-50/50 border-slate-200 text-slate-600'
                   }`}>
                     <div className="flex items-center sm:flex-col sm:items-center text-left sm:text-center gap-3 sm:gap-2">
                       <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
@@ -646,7 +646,7 @@ export default function PrivateTourCheckBooking({ initialCode = '', onPayNow, hi
                   <div className={`p-3 rounded-xl border transition-all ${
                     currentStep >= 4 
                       ? 'bg-emerald-50 border-emerald-300 text-emerald-950' 
-                      : 'bg-slate-50/50 border-slate-200 text-slate-400'
+                      : 'bg-slate-50/50 border-slate-200 text-slate-600'
                   }`}>
                     <div className="flex items-center sm:flex-col sm:items-center text-left sm:text-center gap-3 sm:gap-2">
                       <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${

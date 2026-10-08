@@ -114,7 +114,7 @@ export default function Footer() {
                 <span className="text-base sm:text-lg font-bold tracking-tight text-neutral-900 group-hover:text-amber-600 transition-colors duration-200 block">
                   Smart<span className="text-amber-500"> Journey</span>
                 </span>
-                <span className="text-[10px] text-neutral-400 font-mono tracking-wider uppercase font-semibold block">
+                <span className="text-[10px] text-neutral-600 font-mono tracking-wider uppercase font-semibold block">
                   PT Sawah Jaya Trans
                 </span>
               </div>
@@ -455,7 +455,7 @@ export default function Footer() {
                 </div>
                 <div>
                   <h3 className="font-bold text-neutral-800 text-sm sm:text-base leading-tight">Smart Journey</h3>
-                  <p className="text-xs text-neutral-500 font-medium">{t('wechat.title')}</p>
+                  <p className="text-xs text-neutral-600 font-medium">{t('wechat.title')}</p>
                 </div>
               </div>
               
@@ -463,7 +463,7 @@ export default function Footer() {
               <button 
                 id="close-wechat-modal-btn"
                 onClick={() => setIsWeChatModalOpen(false)}
-                className="flex items-center justify-center p-2 rounded-full text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-all border border-neutral-200/50"
+                className="flex items-center justify-center p-2 rounded-full text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 transition-all border border-neutral-200"
                 title={t('common.close')}
               >
                 <X className="h-5 w-5" />
@@ -500,7 +500,7 @@ export default function Footer() {
               ) : (
                 <div className="flex flex-col items-center justify-center py-16 text-emerald-600 w-full bg-neutral-50 rounded-xl">
                   <QrCode className="h-32 w-32 text-neutral-800 mb-2 animate-pulse" />
-                  <span className="text-xs text-neutral-500 text-center px-6 leading-relaxed">
+                  <span className="text-xs text-neutral-600 text-center px-6 leading-relaxed">
                     Unggah file QR Code Anda ke folder <code className="bg-white px-1.5 py-0.5 rounded border border-neutral-200 text-amber-600 font-mono font-semibold">public</code> dengan nama <code className="bg-white px-1.5 py-0.5 rounded border border-neutral-200 text-amber-600 font-mono font-semibold">wechat-qr.png</code>
                   </span>
                 </div>
@@ -512,7 +512,7 @@ export default function Footer() {
               onClick={(e) => e.stopPropagation()}
               className="bg-neutral-50 p-3.5 rounded-2xl border border-neutral-200/60 space-y-2"
             >
-              <div className="text-[10px] uppercase tracking-widest font-semibold text-neutral-400">WeChat ID / Username</div>
+              <div className="text-[10px] uppercase tracking-widest font-semibold text-neutral-600">WeChat ID / Username</div>
               <div className="flex items-center justify-between gap-2 bg-white px-3.5 py-2.5 rounded-xl border border-neutral-200/40 shadow-sm">
                 <span className="font-mono text-sm font-bold text-neutral-800">sjtrans</span>
                 <button 

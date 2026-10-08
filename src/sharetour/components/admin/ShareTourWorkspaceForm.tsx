@@ -152,8 +152,8 @@ export default function ShareTourWorkspaceForm({
     border: isDark ? 'border-neutral-800' : 'border-neutral-200',
     borderSubtle: isDark ? 'border-neutral-850' : 'border-neutral-200/60',
     textPrimary: isDark ? 'text-neutral-100' : 'text-neutral-900',
-    textSecondary: isDark ? 'text-neutral-400' : 'text-neutral-600',
-    textMuted: isDark ? 'text-neutral-600' : 'text-neutral-400',
+    textSecondary: isDark ? 'text-neutral-300' : 'text-neutral-700',
+    textMuted: isDark ? 'text-neutral-400' : 'text-neutral-600',
     input: isDark ? 'bg-neutral-950/80 border-neutral-800 text-white placeholder:text-neutral-500' : 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20',
     hover: isDark ? 'hover:bg-neutral-800/60' : 'hover:bg-slate-100',
     activeTab: 'bg-amber-500/10 text-amber-500 font-extrabold border-amber-500/30'

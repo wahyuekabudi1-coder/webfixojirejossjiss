@@ -4,7 +4,7 @@ import {
   Plus, Edit, Trash2, Eye, EyeOff, Archive, Search, Filter, 
   Send, ExternalLink, Calendar, MapPin, DollarSign, Check, X,
   MessageSquare, Copy, ShieldCheck, ArrowRight, RefreshCw, Printer,
-  Sparkles
+  Sparkles, HelpCircle
 } from 'lucide-react';
 import { 
   GatheringPackage, 
@@ -101,6 +101,10 @@ export default function GatheringAdminWorkspace({
   const [pkgPrice90, setPkgPrice90] = useState(795000);
   const [pkgPrice90PlusNote, setPkgPrice90PlusNote] = useState('Hubungi Admin untuk Penawaran Khusus');
   const [pkgStatus, setPkgStatus] = useState<'published' | 'draft' | 'archived'>('published');
+  const [pkgFaq, setPkgFaq] = useState<Array<{ question: string; answer: string }>>([]);
+  const [newPkgFaqQ, setNewPkgFaqQ] = useState('');
+  const [newPkgFaqA, setNewPkgFaqA] = useState('');
+  const [editingPkgFaqIdx, setEditingPkgFaqIdx] = useState<number | null>(null);
 
   const filteredPackages = useMemo(() => {
     return packages.filter(p => {
@@ -132,6 +136,10 @@ export default function GatheringAdminWorkspace({
     setPkgPrice90(795000);
     setPkgPrice90PlusNote('Hubungi Admin untuk Penawaran Khusus');
     setPkgStatus('published');
+    setPkgFaq([]);
+    setNewPkgFaqQ('');
+    setNewPkgFaqA('');
+    setEditingPkgFaqIdx(null);
     setIsPkgModalOpen(true);
   };
 
@@ -154,6 +162,10 @@ export default function GatheringAdminWorkspace({
     setPkgPrice90(pkg.estimatedPrices.pax90);
     setPkgPrice90PlusNote(pkg.estimatedPrices.pax90PlusNote || 'Hubungi Admin untuk Penawaran Khusus');
     setPkgStatus(pkg.status);
+    setPkgFaq(Array.isArray(pkg.faq) ? pkg.faq.map(f => ({ question: f.question || (f as any).q || '', answer: f.answer || (f as any).a || '' })) : []);
+    setNewPkgFaqQ('');
+    setNewPkgFaqA('');
+    setEditingPkgFaqIdx(null);
     setIsPkgModalOpen(true);
   };
 
@@ -197,6 +209,7 @@ export default function GatheringAdminWorkspace({
       excludes,
       facilities,
       notes,
+      faq: pkgFaq,
       estimatedPrices: {
         pax60: Number(pkgPrice60) || 0,
         pax70: Number(pkgPrice70) || 0,
@@ -1123,6 +1136,109 @@ export default function GatheringAdminWorkspace({
                     onChange={e => setPkgNotesRaw(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-neutral-300 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-900 font-mono"
                   />
+                </div>
+              </div>
+
+              {/* FAQ Section */}
+              <div className="bg-slate-50 dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-neutral-800 dark:text-neutral-200 text-xs flex items-center gap-1.5">
+                    <HelpCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <span>Tanya Jawab (FAQ) Paket Gathering ({pkgFaq.length})</span>
+                  </div>
+                </div>
+
+                {pkgFaq.length > 0 && (
+                  <div className="space-y-2">
+                    {pkgFaq.map((item, fIdx) => (
+                      <div key={fIdx} className="bg-white dark:bg-neutral-800 p-3 rounded-xl border border-neutral-200 dark:border-neutral-700 space-y-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-bold text-xs text-emerald-800 dark:text-emerald-400">Q: {item.question}</span>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setNewPkgFaqQ(item.question);
+                                setNewPkgFaqA(item.answer);
+                                setEditingPkgFaqIdx(fIdx);
+                              }}
+                              className="p-1 text-neutral-500 hover:text-neutral-800 dark:hover:text-white cursor-pointer"
+                              title="Edit FAQ"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPkgFaq(prev => prev.filter((_, i) => i !== fIdx));
+                                if (editingPkgFaqIdx === fIdx) {
+                                  setEditingPkgFaqIdx(null);
+                                  setNewPkgFaqQ('');
+                                  setNewPkgFaqA('');
+                                }
+                              }}
+                              className="p-1 text-rose-500 hover:text-rose-700 cursor-pointer"
+                              title="Hapus FAQ"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-neutral-600 dark:text-neutral-300">A: {item.answer}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="bg-white dark:bg-neutral-800 p-3 rounded-xl border border-neutral-200 dark:border-neutral-700 space-y-2">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-neutral-600 dark:text-neutral-400">
+                    <span>{editingPkgFaqIdx !== null ? `Edit FAQ #${editingPkgFaqIdx + 1}` : '+ Tambah FAQ Baru'}</span>
+                    {editingPkgFaqIdx !== null && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingPkgFaqIdx(null);
+                          setNewPkgFaqQ('');
+                          setNewPkgFaqA('');
+                        }}
+                        className="text-[10px] text-neutral-400 hover:underline cursor-pointer"
+                      >
+                        Batal
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Pertanyaan FAQ..."
+                    value={newPkgFaqQ}
+                    onChange={e => setNewPkgFaqQ(e.target.value)}
+                    className="w-full px-3 py-1.5 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-900 text-xs"
+                  />
+                  <textarea
+                    rows={2}
+                    placeholder="Jawaban FAQ..."
+                    value={newPkgFaqA}
+                    onChange={e => setNewPkgFaqA(e.target.value)}
+                    className="w-full px-3 py-1.5 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-900 text-xs resize-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!newPkgFaqQ.trim() || !newPkgFaqA.trim()) return;
+                      if (editingPkgFaqIdx !== null) {
+                        setPkgFaq(prev => prev.map((f, i) => i === editingPkgFaqIdx ? { question: newPkgFaqQ.trim(), answer: newPkgFaqA.trim() } : f));
+                        setEditingPkgFaqIdx(null);
+                      } else {
+                        setPkgFaq(prev => [...prev, { question: newPkgFaqQ.trim(), answer: newPkgFaqA.trim() }]);
+                      }
+                      setNewPkgFaqQ('');
+                      setNewPkgFaqA('');
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-800 text-white font-bold text-[11px] hover:bg-emerald-900 cursor-pointer flex items-center gap-1"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>{editingPkgFaqIdx !== null ? 'Simpan Perubahan' : 'Tambah ke FAQ'}</span>
+                  </button>
                 </div>
               </div>
 
