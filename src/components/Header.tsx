@@ -189,7 +189,7 @@ export default function Header() {
                           <div className="text-sm font-semibold flex items-center gap-1.5">
                             <span>Event & Gathering</span>
                           </div>
-                          <div className="text-[10px] text-neutral-500">Corporate outing, teambuilding & gathering</div>
+                          <div className="text-[10px] text-neutral-600">Corporate outing, teambuilding & gathering</div>
                         </div>
                       </button>
                     )}
@@ -203,7 +203,7 @@ export default function Header() {
                           <div className="text-sm font-semibold">
                             <span>{t('nav.privateTour') || 'Private Tour'}</span>
                           </div>
-                          <div className="text-[10px] text-neutral-500">{t('nav.toursSubtitle')}</div>
+                          <div className="text-[10px] text-neutral-600">{t('nav.toursSubtitle')}</div>
                         </div>
                       </button>
                     )}
@@ -218,7 +218,7 @@ export default function Header() {
                             <span>{t('nav.shareTour') || 'Open Trip / Share Tour'}</span>
                             <span className="text-[8px] bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-1 py-0.5 rounded font-mono font-black uppercase tracking-wider">{t('nav.newBadge')}</span>
                           </div>
-                          <div className="text-[10px] text-neutral-500">{t('nav.shareTourSubtitle')}</div>
+                          <div className="text-[10px] text-neutral-600">{t('nav.shareTourSubtitle')}</div>
                         </div>
                       </button>
                     )}
@@ -266,7 +266,7 @@ export default function Header() {
                           <div className="text-sm font-semibold flex items-center gap-1.5">
                             <span>{t('nav.airport')}</span>
                           </div>
-                          <div className="text-[10px] text-neutral-500">{t('nav.airportSubtitle')}</div>
+                          <div className="text-[10px] text-neutral-600">{t('nav.airportSubtitle')}</div>
                         </div>
                       </button>
                     )}
@@ -280,7 +280,7 @@ export default function Header() {
                           <div className="text-sm font-semibold flex items-center gap-1.5">
                             <span>{t('nav.taxiService') || t('nav.taxi') || 'Taxi Service'}</span>
                           </div>
-                          <div className="text-[10px] text-neutral-500">{t('nav.taxiSubtitle')}</div>
+                          <div className="text-[10px] text-neutral-600">{t('nav.taxiSubtitle')}</div>
                         </div>
                       </button>
                     )}
@@ -294,7 +294,7 @@ export default function Header() {
                           <div className="text-sm font-semibold flex items-center gap-1.5">
                             <span>{t('nav.carRental')}</span>
                           </div>
-                          <div className="text-[10px] text-neutral-500">{t('nav.carRentalSubtitle')}</div>
+                          <div className="text-[10px] text-neutral-600">{t('nav.carRentalSubtitle')}</div>
                         </div>
                       </button>
                     )}
@@ -750,7 +750,7 @@ export default function Header() {
                   
                   {/* Separate Dropdown 1: Bahasa */}
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                    <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider font-mono flex items-center gap-1.5">
                       <Globe className="h-3.5 w-3.5 text-amber-600" />
                       {language === 'id' ? 'Pilih Bahasa' : language === 'zh' ? '选择语言' : 'Choose Language'}
                     </label>
@@ -765,7 +765,7 @@ export default function Header() {
                         <span className="font-bold">
                           {language === 'id' ? 'ID (Bahasa Indonesia)' : language === 'en' ? 'EN (English)' : 'ZH (简体中文)'}
                         </span>
-                        <ChevronDown className={`h-4 w-4 text-neutral-400 transition-transform duration-200 ${isDrawerLangOpen ? 'rotate-180' : ''}`} />
+                        <ChevronDown className={`h-4 w-4 text-neutral-600 transition-transform duration-200 ${isDrawerLangOpen ? 'rotate-180' : ''}`} />
                       </button>
 
                       <AnimatePresence>
@@ -812,7 +812,7 @@ export default function Header() {
 
                   {/* Separate Dropdown 2: Mata Uang */}
                   <div className="space-y-1.5 pt-1 border-t border-neutral-200/60">
-                    <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                    <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider font-mono flex items-center gap-1.5">
                       <span className="font-black text-amber-600 font-mono">$</span>
                       {language === 'id' ? 'Pilih Mata Uang' : language === 'zh' ? '选择结算货币' : 'Choose Currency'}
                     </label>
@@ -827,7 +827,7 @@ export default function Header() {
                         <span className="font-bold font-mono">
                           {currency}
                         </span>
-                        <ChevronDown className={`h-4 w-4 text-neutral-400 transition-transform duration-200 ${isDrawerCurrOpen ? 'rotate-180' : ''}`} />
+                        <ChevronDown className={`h-4 w-4 text-neutral-600 transition-transform duration-200 ${isDrawerCurrOpen ? 'rotate-180' : ''}`} />
                       </button>
 
                       <AnimatePresence>

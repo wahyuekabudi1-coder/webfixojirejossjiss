@@ -1385,7 +1385,7 @@ export default function HomeView() {
                     {[...Array(5)].map((_, i) => (
                       <Star key={i} className="h-5 w-5 fill-amber-400 text-amber-400 stroke-amber-400" />
                     ))}
-                    <span className="text-xs text-neutral-400 ml-2 font-mono">(4.93 / 5)</span>
+                    <span className="text-xs text-neutral-600 ml-2 font-mono">(4.93 / 5)</span>
                   </div>
                 </div>
                 <p className="text-xs sm:text-sm text-neutral-500 mt-1 font-medium flex items-center justify-center sm:justify-start gap-1">
@@ -1447,7 +1447,7 @@ export default function HomeView() {
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
               {localReviews.length === 0 ? (
-                <div className="w-full text-center py-12 text-neutral-400 font-medium">
+                <div className="w-full text-center py-12 text-neutral-600 font-medium">
                   {language === 'zh' ? '暂无评价' : language === 'id' ? 'Belum ada ulasan saat ini.' : 'No reviews available yet.'}
                 </div>
               ) : (

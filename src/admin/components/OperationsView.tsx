@@ -743,7 +743,11 @@ export default function OperationsView({
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={prevMonth}
-                    className="p-1.5 rounded-lg border border-neutral-700/60 hover:bg-neutral-800 text-neutral-300 cursor-pointer"
+                    className={`p-1.5 rounded-lg border ${
+                      isDark 
+                        ? 'border-neutral-700/60 hover:bg-neutral-800 text-neutral-300 hover:text-white' 
+                        : 'border-slate-300 hover:bg-slate-100 text-slate-700 hover:text-slate-900 bg-white'
+                    } cursor-pointer transition-all`}
                     title="Bulan Sebelumnya"
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -754,13 +758,21 @@ export default function OperationsView({
                       setCurrentDate(now);
                       setSelectedDay(now.toISOString().slice(0, 10));
                     }}
-                    className="px-2.5 py-1 text-[11px] font-mono font-bold rounded-lg border border-neutral-700/60 hover:bg-neutral-800 text-neutral-300 cursor-pointer"
+                    className={`px-2.5 py-1 text-[11px] font-mono font-bold rounded-lg border ${
+                      isDark 
+                        ? 'border-neutral-700/60 hover:bg-neutral-800 text-neutral-300 hover:text-white' 
+                        : 'border-slate-300 hover:bg-slate-100 text-slate-700 hover:text-slate-900 bg-white'
+                    } cursor-pointer transition-all`}
                   >
                     Hari Ini
                   </button>
                   <button
                     onClick={nextMonth}
-                    className="p-1.5 rounded-lg border border-neutral-700/60 hover:bg-neutral-800 text-neutral-300 cursor-pointer"
+                    className={`p-1.5 rounded-lg border ${
+                      isDark 
+                        ? 'border-neutral-700/60 hover:bg-neutral-800 text-neutral-300 hover:text-white' 
+                        : 'border-slate-300 hover:bg-slate-100 text-slate-700 hover:text-slate-900 bg-white'
+                    } cursor-pointer transition-all`}
                     title="Bulan Berikutnya"
                   >
                     <ChevronRight className="h-4 w-4" />
@@ -1184,7 +1196,11 @@ export default function OperationsView({
                                 </button>
                                 <button
                                   onClick={() => onOpenDetail(item)}
-                                  className="p-1 rounded-lg border border-neutral-700/60 hover:bg-neutral-800 text-neutral-300"
+                                  className={`p-1 rounded-lg border ${
+                                    isDark 
+                                      ? 'border-neutral-700/60 hover:bg-neutral-800 text-neutral-300 hover:text-white' 
+                                      : 'border-slate-300 hover:bg-slate-100 text-slate-700 hover:text-slate-900 bg-white'
+                                  } cursor-pointer transition-all`}
                                   title="Lihat Detail Pesanan"
                                 >
                                   <Eye className="h-3.5 w-3.5" />
@@ -1256,7 +1272,11 @@ export default function OperationsView({
             <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={() => window.print()}
-                className="px-3.5 py-2 rounded-xl border border-neutral-700/60 hover:bg-neutral-800 text-neutral-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                className={`px-3.5 py-2 rounded-xl border ${
+                  isDark 
+                    ? 'border-neutral-700/60 hover:bg-neutral-800 text-neutral-300 hover:text-white' 
+                    : 'border-slate-300 hover:bg-slate-100 text-slate-700 hover:text-slate-900 bg-white'
+                } text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all`}
                 title="Cetak Manifest Dokumen Resmi"
               >
                 <Printer className="h-3.5 w-3.5" />
@@ -1375,7 +1395,11 @@ export default function OperationsView({
                                 e.stopPropagation();
                                 onOpenDetail(item);
                               }}
-                              className="p-1.5 rounded-lg border border-neutral-700/60 hover:bg-neutral-800 text-neutral-300"
+                              className={`p-1.5 rounded-lg border ${
+                                isDark 
+                                  ? 'border-neutral-700/60 hover:bg-neutral-800 text-neutral-300 hover:text-white' 
+                                  : 'border-slate-300 hover:bg-slate-100 text-slate-700 hover:text-slate-900 bg-white'
+                              } cursor-pointer transition-all`}
                               title="Lihat Detail Pesanan"
                             >
                               <Eye className="h-3.5 w-3.5" />
@@ -1537,7 +1561,11 @@ export default function OperationsView({
                               </button>
                               <button
                                 onClick={() => onOpenDetail(item)}
-                                className="p-1 rounded-lg border border-neutral-700/60 hover:bg-neutral-800 text-neutral-300 cursor-pointer"
+                                className={`p-1 rounded-lg border ${
+                                  isDark 
+                                    ? 'border-neutral-700/60 hover:bg-neutral-800 text-neutral-300 hover:text-white' 
+                                    : 'border-slate-300 hover:bg-slate-100 text-slate-700 hover:text-slate-900 bg-white'
+                                } cursor-pointer transition-all`}
                                 title="Lihat Detail Pesanan"
                               >
                                 <Eye className="h-3.5 w-3.5" />
@@ -1573,7 +1601,11 @@ export default function OperationsView({
               </div>
               <button 
                 onClick={() => setIsAssignModalOpen(false)}
-                className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 cursor-pointer"
+                className={`p-1.5 rounded-lg ${
+                  isDark 
+                    ? 'text-neutral-400 hover:text-white hover:bg-neutral-800' 
+                    : 'text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100'
+                } cursor-pointer transition-colors`}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -1753,7 +1785,11 @@ export default function OperationsView({
                   <button
                     type="button"
                     onClick={() => setIsAssignModalOpen(false)}
-                    className="px-4 py-2 rounded-xl border border-neutral-700 hover:bg-neutral-800 text-neutral-300 text-xs font-bold cursor-pointer"
+                    className={`px-4 py-2 rounded-xl border ${
+                      isDark 
+                        ? 'border-neutral-700 hover:bg-neutral-800 text-neutral-300 hover:text-white' 
+                        : 'border-slate-300 hover:bg-slate-100 text-slate-700 hover:text-slate-900 bg-white'
+                    } text-xs font-bold cursor-pointer transition-all`}
                   >
                     Batal
                   </button>

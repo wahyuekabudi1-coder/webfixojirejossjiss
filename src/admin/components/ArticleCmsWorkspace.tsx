@@ -485,7 +485,9 @@ export default function ArticleCmsWorkspace({
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white"
+                className={`absolute right-3 top-1/2 -translate-y-1/2 ${
+                  isDark ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-800'
+                } transition-colors cursor-pointer`}
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -494,7 +496,7 @@ export default function ArticleCmsWorkspace({
 
           <div className="flex flex-wrap items-center gap-2">
             {/* Status Tabs */}
-            <div className="flex rounded-xl bg-neutral-900 border border-neutral-800 p-0.5 text-xs">
+            <div className={`flex rounded-xl ${isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-slate-100 border-slate-200'} border p-0.5 text-xs`}>
               {(['all', 'published', 'draft', 'archived'] as const).map(status => (
                 <button
                   key={status}
@@ -502,7 +504,9 @@ export default function ArticleCmsWorkspace({
                   className={`px-3 py-1.5 rounded-lg font-bold text-[11px] capitalize transition cursor-pointer ${
                     statusFilter === status 
                       ? 'bg-amber-500 text-neutral-950 font-black shadow-sm' 
-                      : 'text-neutral-400 hover:text-white'
+                      : isDark
+                      ? 'text-neutral-400 hover:text-white'
+                      : 'text-neutral-600 hover:text-neutral-900'
                   }`}
                 >
                   {status}
@@ -696,14 +700,18 @@ export default function ArticleCmsWorkspace({
               </div>
               <button
                 onClick={() => setIsEditorOpen(false)}
-                className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition cursor-pointer"
+                className={`p-1.5 rounded-lg ${
+                  isDark
+                    ? 'text-neutral-400 hover:text-white hover:bg-neutral-800'
+                    : 'text-neutral-500 hover:text-neutral-900 hover:bg-slate-200'
+                } transition cursor-pointer`}
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             {/* Modal Tabs Bar */}
-            <div className="flex border-b border-neutral-850 px-6 bg-neutral-900 overflow-x-auto no-scrollbar gap-2 text-xs">
+            <div className={`flex border-b border-neutral-850 px-6 ${isDark ? 'bg-neutral-900' : 'bg-slate-100'} overflow-x-auto no-scrollbar gap-2 text-xs`}>
               {[
                 { id: 'basic', label: '1. Info Utama & Meta', icon: Sparkles },
                 { id: 'content', label: '2. Konten Lengkap', icon: Layers },
@@ -719,7 +727,9 @@ export default function ArticleCmsWorkspace({
                     className={`flex items-center gap-2 py-3 px-3 border-b-2 font-bold transition cursor-pointer whitespace-nowrap ${
                       editorTab === t.id
                         ? 'border-amber-500 text-amber-500 font-extrabold'
-                        : 'border-transparent text-neutral-400 hover:text-white'
+                        : isDark
+                        ? 'border-transparent text-neutral-400 hover:text-white'
+                        : 'border-transparent text-neutral-600 hover:text-neutral-900'
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5" />

@@ -194,7 +194,7 @@ export default function StatusChecker({
         <h1 className="text-2xl sm:text-3xl font-display font-extrabold text-gray-900 tracking-tight">
           {t("Booking Status Tracker")}
         </h1>
-        <p className="text-sm text-gray-500 font-sans leading-relaxed">
+        <p className="text-sm text-gray-700 font-sans leading-relaxed">
           {t("Enter your Smart Journey unique Booking Code below to check your active travel scheduling and registration status live.")}
         </p>
       </section>

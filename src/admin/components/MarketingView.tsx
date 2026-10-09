@@ -410,13 +410,15 @@ export default function MarketingView({
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-neutral-900 border border-neutral-800 shrink-0">
+        <div className={`flex items-center gap-1.5 p-1 rounded-xl ${isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-slate-100 border-slate-200'} border shrink-0`}>
           <button
             onClick={() => setActiveTab('promo')}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'promo'
                 ? 'bg-amber-500 text-neutral-950 font-black shadow-sm'
-                : 'text-neutral-400 hover:text-white'
+                : isDark
+                ? 'text-neutral-400 hover:text-white'
+                : 'text-neutral-600 hover:text-neutral-900'
             }`}
           >
             <Tag className="h-3.5 w-3.5" />
@@ -427,7 +429,9 @@ export default function MarketingView({
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'content'
                 ? 'bg-amber-500 text-neutral-950 font-black shadow-sm'
-                : 'text-neutral-400 hover:text-white'
+                : isDark
+                ? 'text-neutral-400 hover:text-white'
+                : 'text-neutral-600 hover:text-neutral-900'
             }`}
           >
             <Globe className="h-3.5 w-3.5" />
@@ -494,7 +498,7 @@ export default function MarketingView({
                 />
               </div>
 
-              <div className="flex items-center gap-1 bg-neutral-900 p-1 rounded-xl border border-neutral-800">
+              <div className={`flex items-center gap-1 ${isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-slate-100 border-slate-200'} p-1 rounded-xl border`}>
                 {(['all', 'active', 'paused', 'expired'] as const).map((filterId) => (
                   <button
                     key={filterId}
@@ -502,7 +506,9 @@ export default function MarketingView({
                     className={`px-3 py-1 rounded-lg text-xs font-bold transition-all capitalize cursor-pointer ${
                       promoStatusFilter === filterId
                         ? 'bg-amber-500 text-neutral-950 font-black'
-                        : 'text-neutral-400 hover:text-white'
+                        : isDark
+                        ? 'text-neutral-400 hover:text-white'
+                        : 'text-neutral-600 hover:text-neutral-900'
                     }`}
                   >
                     {filterId === 'all' ? 'Semua' : filterId === 'active' ? 'Aktif' : filterId === 'paused' ? 'Non-aktif' : 'Expired'}
@@ -515,7 +521,11 @@ export default function MarketingView({
               <button
                 onClick={fetchPromos}
                 disabled={loadingPromos}
-                className="px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer border border-neutral-700 disabled:opacity-50"
+                className={`px-3 py-2 rounded-xl ${
+                  isDark 
+                    ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white border-neutral-700' 
+                    : 'bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border-slate-300'
+                } font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer border disabled:opacity-50`}
                 title="Segarkan data dari database"
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${loadingPromos ? 'animate-spin text-amber-500' : ''}`} />
@@ -725,7 +735,7 @@ export default function MarketingView({
                   </div>
                   <button 
                     onClick={() => setIsPromoModalOpen(false)} 
-                    className="text-neutral-400 hover:text-white cursor-pointer"
+                    className={`${isDark ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-800'} cursor-pointer transition-colors`}
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -871,7 +881,11 @@ export default function MarketingView({
                     <button
                       type="button"
                       onClick={() => setIsPromoModalOpen(false)}
-                      className="px-4 py-2 rounded-xl border border-neutral-700 text-xs font-bold text-neutral-300 hover:bg-neutral-800 cursor-pointer"
+                      className={`px-4 py-2 rounded-xl border ${
+                        isDark 
+                          ? 'border-neutral-700 text-neutral-300 hover:bg-neutral-800 hover:text-white' 
+                          : 'border-slate-300 text-slate-700 hover:bg-slate-100 hover:text-slate-900 bg-white'
+                      } text-xs font-bold cursor-pointer transition-all`}
                     >
                       Batal
                     </button>
@@ -921,7 +935,9 @@ export default function MarketingView({
                   className={`flex items-center gap-2 px-4 py-2 border-b-2 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                     cmsSubTab === tab.id 
                       ? 'border-amber-500 text-amber-500 font-extrabold' 
-                      : 'border-transparent text-neutral-400 hover:text-white'
+                      : isDark
+                      ? 'border-transparent text-neutral-400 hover:text-white'
+                      : 'border-transparent text-neutral-600 hover:text-neutral-900'
                   }`}
                 >
                   <Icon className="h-3.5 w-3.5" />
@@ -951,7 +967,7 @@ export default function MarketingView({
                 <div className="flex gap-3">
                   <div className={`px-3 py-1.5 rounded-xl border border-neutral-800 ${theme.innerCard} text-center`}>
                     <span className="text-[10px] font-bold text-neutral-400 block font-mono">TOTAL</span>
-                    <span className="text-sm font-black text-white font-mono">{reviewsSummary.total}</span>
+                    <span className={`text-sm font-black ${isDark ? 'text-white' : 'text-neutral-900'} font-mono`}>{reviewsSummary.total}</span>
                   </div>
                   <div className="px-3 py-1.5 rounded-xl border border-amber-500/30 bg-amber-950/20 text-center">
                     <span className="text-[10px] font-bold text-amber-400 block font-mono">PENDING</span>
@@ -965,7 +981,7 @@ export default function MarketingView({
               </div>
 
               {/* Filter tabs */}
-              <div className="flex gap-1 bg-neutral-900 p-1 rounded-xl border border-neutral-800 w-fit">
+              <div className={`flex gap-1 ${isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-slate-100 border-slate-200'} p-1 rounded-xl border w-fit`}>
                 {[
                   { id: 'all', label: 'Semua Ulasan' },
                   { id: 'pending', label: `Menunggu Persetujuan (${reviewsSummary.pending})` },
@@ -977,7 +993,9 @@ export default function MarketingView({
                     className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold cursor-pointer transition-all ${
                       reviewsFilter === tab.id
                         ? 'bg-amber-500 text-neutral-950 shadow-md'
-                        : 'text-neutral-400 hover:text-white'
+                        : isDark
+                        ? 'text-neutral-400 hover:text-white'
+                        : 'text-neutral-600 hover:text-neutral-900'
                     }`}
                   >
                     {tab.label}
@@ -1017,7 +1035,7 @@ export default function MarketingView({
                       >
                         <div className="space-y-2 flex-1 text-left">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-extrabold text-xs text-white">{r.name}</span>
+                            <span className={`font-extrabold text-xs ${isDark ? 'text-white' : 'text-neutral-900'}`}>{r.name}</span>
                             <span className="text-[10px] text-neutral-400">({r.country || 'Indonesia'})</span>
                             <span className="text-[10px] text-neutral-500 font-mono">· {r.date}</span>
                             
@@ -1224,7 +1242,7 @@ export default function MarketingView({
                           <Upload className="h-6 w-6" />
                         </div>
                         <div>
-                          <p className="text-xs font-extrabold text-white">
+                          <p className={`text-xs font-extrabold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
                             Seret &amp; Lepas Gambar Logo PNG di Sini
                           </p>
                           <p className="text-[11px] text-neutral-400 mt-0.5">
@@ -1258,7 +1276,11 @@ export default function MarketingView({
                         setPartnerForm({ id: '', name: '', url: '', logoUrl: '', category: 'Travel Platform' });
                         setIsEditingPartner(false);
                       }}
-                      className="px-4 py-2 rounded-xl text-xs font-bold bg-neutral-800 hover:bg-neutral-700 text-neutral-300 transition-all cursor-pointer"
+                      className={`px-4 py-2 rounded-xl text-xs font-bold ${
+                        isDark
+                          ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-300'
+                      } transition-all cursor-pointer`}
                     >
                       Batal
                     </button>
@@ -1302,7 +1324,7 @@ export default function MarketingView({
                             />
                           </div>
                           <div className="min-w-0">
-                            <h6 className="text-xs font-extrabold text-white truncate">{p.name}</h6>
+                            <h6 className={`text-xs font-extrabold ${isDark ? 'text-white' : 'text-neutral-900'} truncate`}>{p.name}</h6>
                             <a
                               href={p.url}
                               target="_blank"

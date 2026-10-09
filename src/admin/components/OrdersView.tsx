@@ -336,7 +336,11 @@ export default function OrdersView({
           {isFilterActive && (
             <button
               onClick={resetAllFilters}
-              className="px-3.5 py-2 rounded-xl border border-neutral-700/60 hover:bg-neutral-800 text-neutral-300 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+              className={`px-3.5 py-2 rounded-xl border ${
+                isDark 
+                  ? 'border-neutral-700/60 hover:bg-neutral-800 text-neutral-300 hover:text-white' 
+                  : 'border-slate-300 hover:bg-slate-100 text-slate-700 hover:text-slate-900 bg-white'
+              } font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer`}
               title="Reset semua filter ke kondisi awal"
             >
               <RotateCcw className="h-3.5 w-3.5" />
@@ -357,20 +361,20 @@ export default function OrdersView({
       {/* 2. SUMMARY METRIC CARDS */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className={`${theme.card} border rounded-xl p-3 space-y-1 shadow-xs`}>
-          <span className="text-[10px] font-mono text-neutral-400 uppercase font-bold block">
+          <span className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-600'} uppercase font-bold block`}>
             Total Seluruh Pesanan
           </span>
-          <div className="text-lg font-black font-mono text-neutral-100">
-            {counts.all} <span className="text-xs text-neutral-500 font-normal">booking</span>
+          <div className={`text-lg font-black font-mono ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
+            {counts.all} <span className={`text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-600'} font-normal`}>booking</span>
           </div>
         </div>
 
         <div className={`${theme.card} border rounded-xl p-3 space-y-1 shadow-xs`}>
-          <span className="text-[10px] font-mono text-amber-500 uppercase font-bold block">
+          <span className={`text-[10px] font-mono ${isDark ? 'text-amber-500' : 'text-amber-700'} uppercase font-bold block`}>
             Menunggu Pembayaran
           </span>
-          <div className="text-lg font-black font-mono text-amber-400">
-            {counts.pending_payment} <span className="text-xs text-neutral-500 font-normal">unpaid</span>
+          <div className={`text-lg font-black font-mono ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
+            {counts.pending_payment} <span className={`text-xs ${isDark ? 'text-neutral-500' : 'text-neutral-600'} font-normal`}>unpaid</span>
           </div>
         </div>
 
@@ -608,44 +612,44 @@ export default function OrdersView({
           <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px]">
             <span className="text-neutral-400 font-mono font-semibold">Filter Aktif:</span>
             {searchQuery && (
-              <span className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono flex items-center gap-1">
+              <span className={`px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 ${isDark ? 'text-amber-400' : 'text-amber-800'} font-mono flex items-center gap-1`}>
                 Pencarian: "{searchQuery}"
                 <X className="h-3 w-3 cursor-pointer" onClick={() => setSearchQuery('')} />
               </span>
             )}
             {serviceFilter !== 'all' && (
-              <span className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono flex items-center gap-1">
+              <span className={`px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 ${isDark ? 'text-amber-400' : 'text-amber-800'} font-mono flex items-center gap-1`}>
                 Layanan: {serviceFilter}
                 <X className="h-3 w-3 cursor-pointer" onClick={() => setServiceFilter('all')} />
               </span>
             )}
             {dateFilter !== 'all' && (
-              <span className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono flex items-center gap-1">
+              <span className={`px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 ${isDark ? 'text-amber-400' : 'text-amber-800'} font-mono flex items-center gap-1`}>
                 Tanggal: {dateFilter}
                 <X className="h-3 w-3 cursor-pointer" onClick={() => setDateFilter('all')} />
               </span>
             )}
             {paymentStatusFilter !== 'all' && (
-              <span className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono flex items-center gap-1">
+              <span className={`px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 ${isDark ? 'text-amber-400' : 'text-amber-800'} font-mono flex items-center gap-1`}>
                 Bayar: {paymentStatusFilter}
                 <X className="h-3 w-3 cursor-pointer" onClick={() => setPaymentStatusFilter('all')} />
               </span>
             )}
             {bookingStatusFilter !== 'all' && (
-              <span className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono flex items-center gap-1">
+              <span className={`px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 ${isDark ? 'text-amber-400' : 'text-amber-800'} font-mono flex items-center gap-1`}>
                 Booking: {bookingStatusFilter}
                 <X className="h-3 w-3 cursor-pointer" onClick={() => setBookingStatusFilter('all')} />
               </span>
             )}
             {sortBy !== 'newest' && (
-              <span className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono flex items-center gap-1">
+              <span className={`px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 ${isDark ? 'text-amber-400' : 'text-amber-800'} font-mono flex items-center gap-1`}>
                 Urutan: {sortBy}
                 <X className="h-3 w-3 cursor-pointer" onClick={() => setSortBy('newest')} />
               </span>
             )}
             <button
               onClick={resetAllFilters}
-              className="text-amber-500 hover:text-amber-400 font-bold underline ml-1 cursor-pointer"
+              className={`${isDark ? 'text-amber-400' : 'text-amber-800'} hover:underline font-bold underline ml-1 cursor-pointer`}
             >
               Hapus Semua
             </button>
@@ -657,7 +661,7 @@ export default function OrdersView({
       <div className={`${theme.card} border rounded-2xl overflow-hidden shadow-sm`}>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className={`${theme.innerCard} border-b text-[10px] font-mono uppercase text-neutral-400 font-bold`}>
+            <thead className={`${theme.innerCard} border-b text-[10px] font-mono uppercase ${isDark ? 'text-neutral-400' : 'text-neutral-600'} font-bold`}>
               <tr>
                 <th className="p-3.5">Kode Booking</th>
                 <th className="p-3.5">Layanan</th>
@@ -755,7 +759,7 @@ export default function OrdersView({
                       <td className="p-3.5 font-semibold text-neutral-200 max-w-[200px] truncate" title={item.serviceTitle}>
                         <div className="truncate font-bold">{item.serviceTitle}</div>
                         {item.flightNumber && (
-                          <div className="text-[10px] text-amber-400 font-mono">Flight: {item.flightNumber}</div>
+                          <div className={`text-[10px] ${isDark ? 'text-amber-400' : 'text-amber-800'} font-mono`}>Flight: {item.flightNumber}</div>
                         )}
                         {item.vehicleName && item.serviceType !== 'tour' && (
                           <div className="text-[10px] text-neutral-500 font-mono">{item.vehicleName}</div>
@@ -794,7 +798,9 @@ export default function OrdersView({
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase ${
                             isPaid 
                               ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' 
-                              : 'bg-amber-500/10 text-amber-400 border border-amber-500/30 animate-pulse'
+                              : (isDark 
+                                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30 animate-pulse' 
+                                  : 'bg-amber-500/15 text-amber-800 border border-amber-500/40 animate-pulse')
                           }`}>
                             {isPaid ? 'Paid' : (item.paymentStatus || 'Pending')}
                           </span>
@@ -817,7 +823,7 @@ export default function OrdersView({
                           isCompleted ? 'bg-purple-500/10 text-purple-400 border border-purple-500/30' :
                           isCancelled ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30' :
                           isPendingConfirmation ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 animate-pulse' :
-                          'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                          (isDark ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'bg-amber-500/15 text-amber-800 border border-amber-500/40')
                         }`}>
                           {isPendingConfirmation ? 'Pending Confirmation' : item.bookingStatus}
                         </span>
@@ -829,7 +835,11 @@ export default function OrdersView({
                           {/* Open Detail Eye */}
                           <button
                             onClick={() => onOpenDetail(item)}
-                            className="p-1.5 rounded-lg border border-neutral-700/60 hover:bg-neutral-800 text-neutral-300 hover:text-white transition-all cursor-pointer"
+                            className={`p-1.5 rounded-lg border ${
+                              isDark
+                                ? 'border-neutral-700/60 hover:bg-neutral-800 text-neutral-300 hover:text-white'
+                                : 'border-slate-300 hover:bg-slate-100 text-slate-700 hover:text-slate-900 bg-white'
+                            } transition-all cursor-pointer`}
                             title="Buka Booking Detail Terpadu"
                           >
                             <Eye className="h-3.5 w-3.5" />
@@ -852,8 +862,12 @@ export default function OrdersView({
                               }}
                               className={`p-1.5 rounded-lg border transition-all ${
                                 isPaymentVerified
-                                  ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30 cursor-pointer shadow-xs'
-                                  : 'bg-neutral-850 text-neutral-600 border-neutral-800 cursor-not-allowed opacity-50'
+                                  ? (isDark 
+                                      ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30 cursor-pointer shadow-xs' 
+                                      : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-300 cursor-pointer shadow-xs')
+                                  : (isDark 
+                                      ? 'bg-neutral-850 text-neutral-600 border-neutral-800 cursor-not-allowed opacity-50' 
+                                      : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-50')
                               }`}
                               title={
                                 !isPaid 
@@ -871,7 +885,11 @@ export default function OrdersView({
                           {isConfirmed && !isCompleted && (
                             <button
                               onClick={() => onCompleteBooking(item.id, item.source)}
-                              className="p-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 cursor-pointer transition-all"
+                              className={`p-1.5 rounded-lg border transition-all ${
+                                isDark
+                                  ? 'bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border-blue-500/30'
+                                  : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-300'
+                              } cursor-pointer`}
                               title="Tandai Selesai (Completed)"
                             >
                               <ShieldCheck className="h-3.5 w-3.5 stroke-[2.5]" />
@@ -886,7 +904,11 @@ export default function OrdersView({
                                   onCancelBooking(item.id, item.source);
                                 }
                               }}
-                              className="p-1.5 rounded-lg border border-neutral-800 hover:border-rose-500/40 hover:bg-rose-500/10 text-neutral-500 hover:text-rose-400 transition-all cursor-pointer"
+                              className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                                isDark
+                                  ? 'border-neutral-800 hover:border-rose-500/40 hover:bg-rose-500/10 text-neutral-500 hover:text-rose-400'
+                                  : 'border-slate-300 hover:border-rose-300 hover:bg-rose-50 text-slate-500 hover:text-rose-600 bg-white'
+                              }`}
                               title="Batalkan Booking"
                             >
                               <Ban className="h-3.5 w-3.5" />

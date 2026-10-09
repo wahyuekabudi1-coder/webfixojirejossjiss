@@ -433,7 +433,7 @@ export default function AnalyticsDashboard({
 
         {/* Action Controls: Range Selector, Refresh, Export */}
         <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
-          <div className="flex items-center gap-1 bg-neutral-950 p-1 rounded-xl border border-neutral-800">
+          <div className={`flex items-center gap-1 ${isDark ? 'bg-neutral-950 border-neutral-800' : 'bg-slate-100 border-slate-200'} p-1 rounded-xl border`}>
             {[
               { id: 'today', label: 'Hari Ini' },
               { id: 'yesterday', label: 'Kemarin' },
@@ -449,7 +449,9 @@ export default function AnalyticsDashboard({
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   dateRange === r.id
                     ? 'bg-amber-500 text-neutral-950 font-black shadow'
-                    : 'text-neutral-400 hover:text-white'
+                    : isDark
+                    ? 'text-neutral-400 hover:text-white'
+                    : 'text-neutral-600 hover:text-neutral-900'
                 }`}
               >
                 {r.label}
@@ -458,19 +460,19 @@ export default function AnalyticsDashboard({
           </div>
 
           {dateRange === 'custom' && (
-            <div className="flex items-center gap-2 bg-neutral-950 px-3 py-1.5 rounded-xl border border-neutral-800 text-xs">
+            <div className={`flex items-center gap-2 ${isDark ? 'bg-neutral-950 border-neutral-800' : 'bg-white border-slate-300'} px-3 py-1.5 rounded-xl border text-xs`}>
               <input
                 type="date"
                 value={customStartDate}
                 onChange={(e) => setCustomStartDate(e.target.value)}
-                className="bg-transparent text-neutral-200 outline-none text-xs"
+                className={`bg-transparent ${isDark ? 'text-neutral-200' : 'text-neutral-800'} outline-none text-xs`}
               />
               <span className="text-neutral-500">s/d</span>
               <input
                 type="date"
                 value={customEndDate}
                 onChange={(e) => setCustomEndDate(e.target.value)}
-                className="bg-transparent text-neutral-200 outline-none text-xs"
+                className={`bg-transparent ${isDark ? 'text-neutral-200' : 'text-neutral-800'} outline-none text-xs`}
               />
             </div>
           )}
@@ -478,7 +480,9 @@ export default function AnalyticsDashboard({
           <button
             onClick={() => fetchAnalytics(false)}
             disabled={isRefreshing}
-            className={`p-2.5 rounded-xl border ${theme.border} ${theme.hover} text-neutral-300 hover:text-white transition-all cursor-pointer`}
+            className={`p-2.5 rounded-xl border ${theme.border} ${theme.hover} ${
+              isDark ? 'text-neutral-300 hover:text-white' : 'text-slate-700 hover:text-slate-900 bg-white'
+            } transition-all cursor-pointer`}
             title="Muat Ulang Data"
           >
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin text-amber-500' : ''}`} />
@@ -547,7 +551,7 @@ export default function AnalyticsDashboard({
             <h3 className="text-2xl font-black font-mono text-neutral-100">
               {isLoading ? '...' : (summaryData?.totalVisitors || 0).toLocaleString()}
             </h3>
-            <span className="text-[10px] text-neutral-400 font-semibold block mt-0.5">
+            <span className={`text-[10px] ${theme.textMuted} font-semibold block mt-0.5`}>
               Unik: {(summaryData?.uniqueVisitors || 0).toLocaleString()}
             </span>
           </div>
@@ -563,7 +567,7 @@ export default function AnalyticsDashboard({
             <h3 className="text-2xl font-black font-mono text-neutral-100">
               {isLoading ? '...' : (summaryData?.pageViews || 0).toLocaleString()}
             </h3>
-            <span className="text-[10px] text-neutral-400 font-semibold block mt-0.5">
+            <span className={`text-[10px] ${theme.textMuted} font-semibold block mt-0.5`}>
               Sesi: {(summaryData?.sessions || 0).toLocaleString()}
             </span>
           </div>
@@ -585,7 +589,7 @@ export default function AnalyticsDashboard({
                 {isLoading ? '...' : summaryData?.returningVisitors || 0}
               </span>
             </div>
-            <span className="text-[10px] text-neutral-400 font-semibold block mt-0.5">
+            <span className={`text-[10px] ${theme.textMuted} font-semibold block mt-0.5`}>
               {summaryData?.totalVisitors ? Math.round(((summaryData.newVisitors || 0) / summaryData.totalVisitors) * 100) : 0}% Pengunjung Baru
             </span>
           </div>
@@ -601,7 +605,7 @@ export default function AnalyticsDashboard({
             <h3 className="text-xl font-black font-mono text-neutral-100">
               {isLoading ? '...' : formatDuration(summaryData?.avgDurationSeconds || 0)}
             </h3>
-            <span className="text-[10px] text-neutral-400 font-semibold block mt-0.5">
+            <span className={`text-[10px] ${theme.textMuted} font-semibold block mt-0.5`}>
               Bounce: {summaryData?.bounceRate || 0}%
             </span>
           </div>
@@ -617,7 +621,7 @@ export default function AnalyticsDashboard({
             <h3 className="text-2xl font-black font-mono text-emerald-400">
               {isLoading ? '...' : (summaryData?.whatsappClicks || 0).toLocaleString()}
             </h3>
-            <span className="text-[10px] text-neutral-400 font-semibold block mt-0.5">
+            <span className={`text-[10px] ${theme.textMuted} font-semibold block mt-0.5`}>
               Inquiry / Form: {summaryData?.inquirySubmissions || 0}
             </span>
           </div>
@@ -635,7 +639,7 @@ export default function AnalyticsDashboard({
                 {isLoading ? '...' : `${summaryData?.conversionRate || 0}%`}
               </h3>
             </div>
-            <span className="text-[10px] text-neutral-400 font-semibold block mt-0.5">
+            <span className={`text-[10px] ${theme.textMuted} font-semibold block mt-0.5`}>
               {summaryData?.totalBookings || 0} Booking Berhasil
             </span>
           </div>
@@ -1239,15 +1243,15 @@ export default function AnalyticsDashboard({
                       summaryData.utmCampaigns.map((c, idx) => (
                         <tr key={idx} className={theme.tableRowHover}>
                           <td className="py-3 px-4 font-bold text-amber-400">{c.campaign || 'N/A'}</td>
-                          <td className="py-3 px-4 text-neutral-300">{c.source || 'Direct'}</td>
-                          <td className="py-3 px-4 text-neutral-400">{c.medium || 'None'}</td>
-                          <td className="py-3 px-4 text-neutral-200 font-bold">{c.visitors}</td>
+                          <td className={`py-3 px-4 ${theme.textSecondary}`}>{c.source || 'Direct'}</td>
+                          <td className={`py-3 px-4 ${theme.textSecondary}`}>{c.medium || 'None'}</td>
+                          <td className={`py-3 px-4 ${theme.textPrimary} font-bold`}>{c.visitors}</td>
                           <td className="py-3 px-4 text-right text-emerald-400 font-bold">{c.conversions}</td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={5} className="py-8 text-center text-neutral-500">
+                        <td colSpan={5} className={`py-8 text-center ${theme.textMuted}`}>
                           Belum ada kunjungan dengan parameter UTM khusus tercatat.
                         </td>
                       </tr>

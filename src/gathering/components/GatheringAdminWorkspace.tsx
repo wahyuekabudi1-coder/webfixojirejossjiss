@@ -544,7 +544,7 @@ export default function GatheringAdminWorkspace({
 
                   <div className="p-5 space-y-3">
                     <div>
-                      <span className="text-[10px] font-mono font-bold text-neutral-400">
+                      <span className="text-[10px] font-mono font-bold text-neutral-600 dark:text-neutral-400">
                         {pkg.duration} • {pkg.destination}
                       </span>
                       <h4 className="font-bold text-neutral-900 dark:text-white text-base leading-snug mt-0.5">
@@ -558,7 +558,7 @@ export default function GatheringAdminWorkspace({
 
                     {/* Estimated pricing preview */}
                     <div className="bg-slate-50 dark:bg-neutral-900/60 p-3 rounded-2xl border border-neutral-100 dark:border-neutral-700/60">
-                      <div className="text-[10px] font-bold font-mono text-neutral-400 mb-1">
+                      <div className="text-[10px] font-bold font-mono text-neutral-600 dark:text-neutral-400 mb-1">
                         Estimasi Harga (60 - 90 Pax):
                       </div>
                       <div className="grid grid-cols-2 gap-1 text-[11px] font-semibold text-neutral-700 dark:text-neutral-300">
@@ -638,7 +638,7 @@ export default function GatheringAdminWorkspace({
             </div>
 
             {requests.length === 0 ? (
-              <div className="p-12 text-center text-neutral-400">
+              <div className="p-12 text-center text-neutral-500 dark:text-neutral-400">
                 <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="text-sm font-semibold">Belum ada permintaan penawaran masuk.</p>
               </div>
@@ -660,7 +660,7 @@ export default function GatheringAdminWorkspace({
                       <tr key={req.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-700/20">
                         <td className="py-4 px-4 font-mono">
                           <div className="font-bold text-neutral-900 dark:text-white">{req.id}</div>
-                          <div className="text-[10px] text-neutral-400">{req.createdAt.slice(0, 10)}</div>
+                          <div className="text-[10px] text-neutral-600 dark:text-neutral-400">{req.createdAt.slice(0, 10)}</div>
                         </td>
 
                         <td className="py-4 px-4">
@@ -673,7 +673,7 @@ export default function GatheringAdminWorkspace({
 
                         <td className="py-4 px-4">
                           <div className="font-bold text-neutral-800 dark:text-neutral-200">{req.packageName}</div>
-                          <div className="text-[10px] text-neutral-400">{req.duration}</div>
+                          <div className="text-[10px] text-neutral-600 dark:text-neutral-400">{req.duration}</div>
                           {req.notes && (
                             <div className="text-[10px] text-amber-700 dark:text-amber-400 mt-1 italic max-w-xs truncate" title={req.notes}>
                               Notes: "{req.notes}"
@@ -745,20 +745,20 @@ export default function GatheringAdminWorkspace({
               <h3 className="font-bold text-base text-neutral-900 dark:text-white">
                 Daftar Penawaran Resmi (Official Quotations)
               </h3>
-              <p className="text-xs text-neutral-500 mt-0.5">
+              <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">
                 Quotation yang telah diterbitkan untuk klien korporasi. Dapat dibagikan via WhatsApp atau langsung dikonversi menjadi Booking Resmi.
               </p>
             </div>
 
             {quotations.length === 0 ? (
-              <div className="p-12 text-center text-neutral-400">
+              <div className="p-12 text-center text-neutral-500 dark:text-neutral-400">
                 <Sparkles className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="text-sm font-semibold">Belum ada quotation diterbitkan.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 dark:bg-neutral-900 text-neutral-500 font-mono uppercase tracking-wider text-[11px] border-b border-neutral-200 dark:border-neutral-700">
+                  <thead className="bg-slate-50 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 font-mono uppercase tracking-wider text-[11px] font-bold border-b border-neutral-200 dark:border-neutral-700">
                     <tr>
                       <th className="py-3.5 px-4">No. Quotation</th>
                       <th className="py-3.5 px-4">Klien & PIC</th>
@@ -774,17 +774,17 @@ export default function GatheringAdminWorkspace({
                       <tr key={quo.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-700/20">
                         <td className="py-4 px-4 font-mono">
                           <div className="font-bold text-neutral-900 dark:text-white">{quo.id}</div>
-                          <div className="text-[10px] text-neutral-400">{quo.createdAt.slice(0, 10)}</div>
+                          <div className="text-[10px] text-neutral-600 dark:text-neutral-400">{quo.createdAt.slice(0, 10)}</div>
                         </td>
 
                         <td className="py-4 px-4">
                           <div className="font-bold text-neutral-900 dark:text-white">{quo.company}</div>
-                          <div className="text-[11px] text-neutral-500">{quo.picName} ({quo.whatsapp})</div>
+                          <div className="text-[11px] text-neutral-600 dark:text-neutral-400">{quo.picName} ({quo.whatsapp})</div>
                         </td>
 
                         <td className="py-4 px-4">
                           <div className="font-bold text-neutral-800 dark:text-neutral-200">{quo.packageName}</div>
-                          <div className="text-[11px] text-neutral-500">
+                          <div className="text-[11px] text-neutral-600 dark:text-neutral-400">
                             {quo.participants} • Tgl: {quo.eventDate}
                           </div>
                         </td>
@@ -793,7 +793,7 @@ export default function GatheringAdminWorkspace({
                           <div className="font-bold text-emerald-800 dark:text-emerald-400 text-sm">
                             Rp {quo.totalPriceIDR.toLocaleString('id-ID')}
                           </div>
-                          <div className="text-[10px] text-neutral-400">
+                          <div className="text-[10px] text-neutral-600 dark:text-neutral-400">
                             @ Rp {quo.pricePerPaxIDR.toLocaleString('id-ID')} / pax
                           </div>
                         </td>
@@ -813,7 +813,7 @@ export default function GatheringAdminWorkspace({
                             {quo.status}
                           </span>
                           {quo.bookingId && (
-                            <div className="text-[10px] font-mono text-neutral-400 mt-1">
+                            <div className="text-[10px] font-mono text-neutral-600 dark:text-neutral-400 mt-1">
                               Booking: {quo.bookingId}
                             </div>
                           )}
@@ -860,20 +860,20 @@ export default function GatheringAdminWorkspace({
               <h3 className="font-bold text-base text-neutral-900 dark:text-white">
                 Daftar Booking Gathering Terkonfirmasi
               </h3>
-              <p className="text-xs text-neutral-500 mt-0.5">
+              <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">
                 Semua booking dari divisi Event & Gathering otomatis terintegrasi ke modul Orders, Finance, dan Operations.
               </p>
             </div>
 
             {confirmedGatheringBookings.length === 0 ? (
-              <div className="p-12 text-center text-neutral-400">
+              <div className="p-12 text-center text-neutral-500 dark:text-neutral-400">
                 <CheckCircle2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="text-sm font-semibold">Belum ada booking gathering yang dikonfirmasi.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 dark:bg-neutral-900 text-neutral-500 font-mono uppercase tracking-wider text-[11px] border-b border-neutral-200 dark:border-neutral-700">
+                  <thead className="bg-slate-50 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 font-mono uppercase tracking-wider text-[11px] font-bold border-b border-neutral-200 dark:border-neutral-700">
                     <tr>
                       <th className="py-3.5 px-4">Kode Booking</th>
                       <th className="py-3.5 px-4">Customer / Perusahaan</th>
@@ -892,11 +892,11 @@ export default function GatheringAdminWorkspace({
                         </td>
                         <td className="py-4 px-4">
                           <div className="font-bold text-neutral-900 dark:text-white">{b.customerName}</div>
-                          <div className="text-[10px] text-neutral-500">{b.customerPhone}</div>
+                          <div className="text-[10px] text-neutral-600 dark:text-neutral-400">{b.customerPhone}</div>
                         </td>
                         <td className="py-4 px-4">
                           <div className="font-bold text-neutral-800 dark:text-neutral-200">{b.serviceName}</div>
-                          <div className="text-[10px] text-neutral-400">{b.details?.destination || '-'}</div>
+                          <div className="text-[10px] text-neutral-600 dark:text-neutral-400">{b.details?.destination || '-'}</div>
                         </td>
                         <td className="py-4 px-4 font-mono">
                           {b.details?.date || b.bookingDate}

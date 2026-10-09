@@ -323,10 +323,10 @@ export default function TripDetail({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
               {/* Left Item Description */}
               <div className="space-y-3">
-                <h3 className="text-xs font-mono font-bold text-gray-400 uppercase tracking-widest">
+                <h3 className="text-xs font-mono font-bold text-gray-700 uppercase tracking-widest">
                   {t("Comprehensive Description")}
                 </h3>
-                <p className="text-sm text-gray-600 leading-relaxed font-sans whitespace-pre-line">
+                <p className="text-sm text-gray-700 leading-relaxed font-sans whitespace-pre-line">
                   {t(trip.description)}
                 </p>
               </div>
@@ -342,7 +342,7 @@ export default function TripDetail({
                     {t(highlightText || "Experience pristine tropical lookouts, professional explorer-grade catamaran transfers, and authentic cultural encounters.")}
                   </p>
                 </div>
-                <div className="flex items-center space-x-3 text-xs text-gray-400 font-mono border-t border-emerald-900/10 pt-3">
+                <div className="flex items-center space-x-3 text-xs text-gray-600 font-mono border-t border-emerald-900/10 pt-3">
                   <span>{t("Editable by Authorized Admin only")}</span>
                 </div>
               </div>
@@ -357,7 +357,7 @@ export default function TripDetail({
                   <Calendar className="w-5 h-5 text-[#315B4F]" />
                   <span>{t("Interactive Day-by-Day Itinerary")}</span>
                 </h2>
-                <p className="text-xs text-gray-400">{t("Ketuk setiap hari di bawah untuk memperluas rute detail & jadwal lengkap.")}</p>
+                <p className="text-xs text-gray-600">{t("Ketuk setiap hari di bawah untuk memperluas rute detail & jadwal lengkap.")}</p>
               </div>
 
               {/* Convenience expand/collapse all trigger */}
@@ -506,7 +506,7 @@ export default function TripDetail({
                     <Briefcase className="w-4 h-4 text-blue-600" />
                     <span>{t("What's to Bring & Checklist")}</span>
                   </h2>
-                  <p className="text-[11px] text-gray-500 font-medium">
+                  <p className="text-[11px] text-gray-700 font-medium">
                     {t("Rekomendasi / checklist barang bawaan para peserta. Ketuk item jika sudah Anda siapkan!")}
                   </p>
                 </div>
@@ -596,7 +596,7 @@ export default function TripDetail({
                 👥 SHARE TOUR — JADWAL BATCH RESMI
               </span>
               <h3 className="font-display font-bold text-gray-900 text-lg">{t("Departure Calendar")}</h3>
-              <p className="text-xs text-gray-500 leading-relaxed">
+              <p className="text-xs text-gray-700 leading-relaxed">
                 {t("Jadwal keberangkatan Share Tour berdasarkan tanggal batch resmi yang dibuka oleh Admin.")}
               </p>
             </div>
@@ -921,7 +921,7 @@ export default function TripDetail({
                 </div>
               )}
 
-              <p className="text-[10px] text-gray-500 italic">
+              <p className="text-[10px] text-gray-700 italic">
                 *{t("Tarif Foreigner mencakup biaya tiket masuk Taman Nasional Bromo / Ijen untuk wisatawan mancanegara.")}
               </p>
             </div>
@@ -929,11 +929,11 @@ export default function TripDetail({
             {/* Dynamic visual price and status readout of selected batch */}
             {selectedBatch && (
               <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100/70 space-y-2.5 animate-fade-in text-xs font-medium">
-                <div className="flex items-center justify-between text-gray-500">
+                <div className="flex items-center justify-between text-gray-700">
                   <span>{t("Selected Date")}</span>
                   <span className="font-bold text-[#315B4F] font-mono">{formatDate(selectedBatch.departureDate)}</span>
                 </div>
-                <div className="flex items-center justify-between text-gray-500">
+                <div className="flex items-center justify-between text-gray-700">
                   <span>{t("Kategori Tamu")}</span>
                   <span className={`font-mono font-bold rounded-md px-2 py-0.5 text-[10px] ${
                     nationalityType === 'WNI' 
@@ -950,13 +950,13 @@ export default function TripDetail({
                     }
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-gray-500">
+                <div className="flex items-center justify-between text-gray-700">
                   <span>{t("Jumlah Peserta Terisi")}</span>
                   <span className="font-mono font-bold text-gray-800">
                     {Math.max(0, selectedBatch.quota - selectedBatch.availableSeats)} / {selectedBatch.quota} Peserta
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-gray-500">
+                <div className="flex items-center justify-between text-gray-700">
                   <span>{t("Sisa Tempat Duduk")}</span>
                   <span className={`font-mono font-bold uppercase rounded-md px-2 py-0.5 text-[9px] ${
                     selectedBatch.availableSeats <= 0
@@ -968,7 +968,7 @@ export default function TripDetail({
                     {selectedBatch.availableSeats <= 0 ? "FULL / Kuota Habis" : `${selectedBatch.availableSeats} ${t("Left")}`}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-gray-500">
+                <div className="flex items-center justify-between text-gray-700">
                   <span>{t("Tarif per Orang")}</span>
                   <span className="font-bold text-gray-800">{formatPrice(getEffectiveUnitPrice(selectedBatch))}</span>
                 </div>
@@ -1005,7 +1005,7 @@ export default function TripDetail({
               }
             </button>
 
-            <div className="flex items-center justify-center space-x-1.5 text-[10px] text-gray-400 font-mono text-center">
+            <div className="flex items-center justify-center space-x-1.5 text-[10px] text-gray-600 font-mono text-center">
               <Sparkles className="w-3.5 h-3.5 text-[#D6B16D]" />
               <span>{t("Real-time Secure Checkouts Locked")}</span>
             </div>
@@ -1029,7 +1029,7 @@ export default function TripDetail({
               <Layers className="w-5 h-5 text-[#315B4F]" />
               <span>{t("Trip Serupa (Similar Trips)")}</span>
             </h2>
-            <p className="text-xs text-gray-400">{t("Explore other breathtaking destinations offered by Smart Journey Travel.")}</p>
+            <p className="text-xs text-gray-600">{t("Explore other breathtaking destinations offered by Smart Journey Travel.")}</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

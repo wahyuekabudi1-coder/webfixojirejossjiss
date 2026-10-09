@@ -612,7 +612,9 @@ export default function FinanceView({
               {paymentsSearch && (
                 <button
                   onClick={() => setPaymentsSearch('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white"
+                  className={`absolute right-2.5 top-1/2 -translate-y-1/2 ${
+                    isDark ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-800'
+                  } transition-colors cursor-pointer`}
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -665,16 +667,20 @@ export default function FinanceView({
           </div>
 
           {/* ACTIVE SUMMARY BAR */}
-          <div className="flex items-center justify-between text-xs text-neutral-400 flex-wrap gap-2">
+          <div className={`flex items-center justify-between text-xs ${isDark ? 'text-neutral-400' : 'text-neutral-600'} flex-wrap gap-2`}>
             <div className="flex items-center gap-2">
-              <span>Menampilkan: <b className="text-neutral-200">{filteredPayments.length}</b> transaksi</span>
-              <span className="text-neutral-600">•</span>
+              <span>Menampilkan: <b className={isDark ? 'text-neutral-200' : 'text-neutral-800'}>{filteredPayments.length}</b> transaksi</span>
+              <span className="text-neutral-500">•</span>
               <span>Total Nilai Terfilter: <b className="text-amber-500 font-mono">Rp {filteredPayments.reduce((s, b) => s + (b.totalAmountIDR || 0), 0).toLocaleString('id-ID')}</b></span>
             </div>
 
             <button
               onClick={handleExportPaymentsCSV}
-              className="px-3 py-1 rounded-lg border border-neutral-700/60 hover:bg-neutral-800 text-neutral-300 font-bold text-[11px] flex items-center gap-1.5 cursor-pointer"
+              className={`px-3 py-1 rounded-lg border ${
+                isDark 
+                  ? 'border-neutral-700/60 hover:bg-neutral-800 text-neutral-300 hover:text-white' 
+                  : 'border-slate-300 hover:bg-slate-100 text-slate-700 hover:text-slate-900 bg-white'
+              } font-bold text-[11px] flex items-center gap-1.5 cursor-pointer transition-all`}
             >
               <Download className="h-3.5 w-3.5" />
               <span>Ekspor Transaksi CSV</span>
@@ -685,7 +691,7 @@ export default function FinanceView({
           <div className={`${theme.card} border rounded-2xl overflow-hidden shadow-sm`}>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className={`${theme.innerCard} border-b text-[10px] font-mono uppercase text-neutral-400 font-bold`}>
+                <thead className={`${theme.innerCard} border-b text-[10px] font-mono uppercase ${isDark ? 'text-neutral-400' : 'text-neutral-600'} font-bold`}>
                   <tr>
                     <th className="p-3.5">Kode Transaksi</th>
                     <th className="p-3.5">Layanan</th>
@@ -789,7 +795,11 @@ export default function FinanceView({
                           <td className="p-3.5 text-right">
                             <button
                               onClick={() => onOpenDetail(item)}
-                              className="px-2.5 py-1 rounded-lg border border-neutral-700/60 hover:bg-neutral-800 text-neutral-300 font-bold text-[11px] cursor-pointer"
+                              className={`px-2.5 py-1 rounded-lg border ${
+                                isDark 
+                                  ? 'border-neutral-700/60 hover:bg-neutral-800 text-neutral-300 hover:text-white' 
+                                  : 'border-slate-300 hover:bg-slate-100 text-slate-700 hover:text-slate-900 bg-white'
+                              } font-bold text-[11px] cursor-pointer transition-all`}
                             >
                               Detail
                             </button>
@@ -848,7 +858,7 @@ export default function FinanceView({
               </select>
             </div>
 
-            <div className="text-xs font-mono text-neutral-400">
+            <div className={`text-xs font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
               *Dokumen mengikuti status pemesanan resmi (Confirmed / Completed)
             </div>
           </div>
@@ -856,7 +866,7 @@ export default function FinanceView({
           <div className={`${theme.card} border rounded-2xl overflow-hidden shadow-sm`}>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className={`${theme.innerCard} border-b text-[10px] font-mono uppercase text-neutral-400 font-bold`}>
+                <thead className={`${theme.innerCard} border-b text-[10px] font-mono uppercase ${isDark ? 'text-neutral-400' : 'text-neutral-600'} font-bold`}>
                   <tr>
                     <th className="p-3.5">Nomor Faktur (Invoice)</th>
                     <th className="p-3.5">Kode Booking</th>
@@ -931,7 +941,11 @@ export default function FinanceView({
                             <div className="flex items-center justify-end gap-1.5">
                               <button
                                 onClick={() => onOpenDetail(item)}
-                                className="px-2.5 py-1 rounded-lg border border-neutral-700/60 hover:bg-neutral-800 text-neutral-300 text-[11px] font-bold cursor-pointer"
+                                className={`px-2.5 py-1 rounded-lg border ${
+                                  isDark 
+                                    ? 'border-neutral-700/60 hover:bg-neutral-800 text-neutral-300 hover:text-white' 
+                                    : 'border-slate-300 hover:bg-slate-100 text-slate-700 hover:text-slate-900 bg-white'
+                                } text-[11px] font-bold cursor-pointer transition-all`}
                                 title="Buka Detail Invoice / E-Voucher"
                               >
                                 Lihat Slip
@@ -940,7 +954,11 @@ export default function FinanceView({
                                 href={`/api/bookings/${item.bookingCode}/invoice.pdf`}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="p-1 rounded-lg border border-neutral-700/60 hover:bg-neutral-800 text-neutral-400 hover:text-white"
+                                className={`p-1 rounded-lg border ${
+                                  isDark 
+                                    ? 'border-neutral-700/60 hover:bg-neutral-800 text-neutral-400 hover:text-white' 
+                                    : 'border-slate-300 hover:bg-slate-100 text-slate-500 hover:text-slate-900 bg-white'
+                                } transition-all`}
                                 title="Unduh PDF Resmi"
                               >
                                 <Download className="h-3.5 w-3.5" />
@@ -1220,7 +1238,7 @@ export default function FinanceView({
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className={`${theme.innerCard} border-b text-[10px] font-mono uppercase text-neutral-400 font-bold`}>
+                <thead className={`${theme.innerCard} border-b text-[10px] font-mono uppercase ${isDark ? 'text-neutral-400' : 'text-neutral-600'} font-bold`}>
                   <tr>
                     <th className="p-3.5">Layanan</th>
                     <th className="p-3.5 text-center">Total Dipesan</th>

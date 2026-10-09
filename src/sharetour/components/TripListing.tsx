@@ -132,7 +132,7 @@ export default function TripListing({ trips, batches, onSelectTrip, onNavigateTo
             placeholder={t("Search and filter tours...")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full py-2 bg-transparent text-gray-800 font-sans text-sm placeholder-gray-500 focus:outline-none"
+            className="w-full py-2 bg-transparent text-gray-800 font-sans text-sm placeholder-gray-600 focus:outline-none"
           />
           {searchQuery && (
             <button
@@ -218,7 +218,7 @@ export default function TripListing({ trips, batches, onSelectTrip, onNavigateTo
                       {openBatchesCount > 0 ? (
                         <span className="text-emerald-700">{openBatchesCount} {t("Batches Open")}</span>
                       ) : (
-                        <span className="text-gray-600 font-bold">{t("Sold Out")}</span>
+                        <span className="text-rose-700 font-bold">{t("Sold Out")}</span>
                       )}
                     </div>
                   </div>
@@ -226,8 +226,8 @@ export default function TripListing({ trips, batches, onSelectTrip, onNavigateTo
                   {/* Card Content Description */}
                   <div className="p-6 flex flex-col flex-1 space-y-4">
                     {/* Duration with icon */}
-                    <div className="flex items-center space-x-2 text-xs text-gray-500 font-sans font-medium">
-                      <span className="flex items-center space-x-1 bg-gray-50 px-2 py-0.5 rounded-md text-gray-600 border border-gray-100">
+                    <div className="flex items-center space-x-2 text-xs text-gray-700 font-sans font-medium">
+                      <span className="flex items-center space-x-1 bg-gray-50 px-2 py-0.5 rounded-md text-gray-700 border border-gray-100">
                         <Clock className="w-3.5 h-3.5 text-[#D6B16D]" />
                         <span className="uppercase text-[10px] font-semibold font-mono">{t(trip.duration)}</span>
                       </span>
@@ -237,7 +237,7 @@ export default function TripListing({ trips, batches, onSelectTrip, onNavigateTo
                       <h3 className="text-base sm:text-lg font-display font-bold text-gray-905 group-hover:text-[#315B4F] transition-colors leading-tight">
                         {t(trip.title)}
                       </h3>
-                      <p className="text-xs sm:text-xs text-gray-500 font-sans font-normal leading-relaxed line-clamp-2">
+                      <p className="text-xs sm:text-xs text-gray-700 font-sans font-normal leading-relaxed line-clamp-2">
                         {t(trip.description)}
                       </p>
                     </div>

@@ -128,7 +128,7 @@ export default function Footer() {
 
             {/* Official Social Media - Icon-Only Buttons */}
             <div className="pt-1">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 font-mono block mb-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-600 font-mono block mb-2">
                 {language === 'zh' ? '官方社交媒体' : language === 'id' ? 'Media Sosial Resmi' : 'Official Social Media'}
               </span>
               <SocialMediaButtons size="md" />
@@ -334,22 +334,22 @@ export default function Footer() {
         </div>
 
         {/* 3. POLICY & CONTACT NAVIGATION (Horizontal & Center Aligned) */}
-        <div className="border-t border-neutral-200/80 mt-8 pt-6 flex justify-center text-xs text-neutral-500">
-          <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-6 text-neutral-500 text-xs font-medium">
+        <div className="border-t border-neutral-200/80 mt-8 pt-6 flex justify-center text-xs text-neutral-600">
+          <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-6 text-neutral-600 text-xs font-medium">
             <button 
               onClick={() => setPrivacyOpen(true)} 
               className="hover:text-neutral-900 transition-colors cursor-pointer"
             >
               {t('footer.privacyPolicy')}
             </button>
-            <span className="text-neutral-300 select-none">•</span>
+            <span className="text-neutral-400 select-none">•</span>
             <button 
               onClick={() => setTermsOpen(true)} 
               className="hover:text-neutral-900 transition-colors cursor-pointer"
             >
               {t('footer.termsConditions')}
             </button>
-            <span className="text-neutral-300 select-none">•</span>
+            <span className="text-neutral-400 select-none">•</span>
             <button 
               onClick={() => {
                 const element = document.getElementById('footer-contact-column');
@@ -369,7 +369,7 @@ export default function Footer() {
         </div>
 
         {/* 4. COPYRIGHT & CONDITIONAL ADMIN ACCESS BUTTONS (Revealed on 8-12 clicks on PT Sawah Jaya Trans) */}
-        <div className="mt-4 pb-2 flex flex-col items-center justify-center gap-2.5 text-center text-xs text-neutral-500 font-normal select-none">
+        <div className="mt-4 pb-2 flex flex-col items-center justify-center gap-2.5 text-center text-xs text-neutral-600 font-normal select-none">
           <p>
             © {new Date().getFullYear()}{' '}
             <span 
@@ -535,7 +535,7 @@ export default function Footer() {
             </div>
 
             {/* Help / Instructions */}
-            <div className="text-xs text-neutral-500 text-center leading-relaxed px-2">
+            <div className="text-xs text-neutral-600 text-center leading-relaxed px-2">
               {t('wechat.instruction')}
             </div>
 

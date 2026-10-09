@@ -332,7 +332,7 @@ export default function GatheringView() {
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center py-20">
             <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
             <h2 className="text-xl font-bold text-neutral-800">Memuat Detail Paket Gathering...</h2>
-            <p className="text-sm text-neutral-500 mt-1">Mengambil data resmi dari database Smart Journey...</p>
+            <p className="text-sm text-neutral-600 mt-1">Mengambil data resmi dari database Smart Journey...</p>
           </div>
         </div>
       );
@@ -419,7 +419,7 @@ export default function GatheringView() {
                 <span>Kembali ke Katalog Gathering</span>
               </button>
 
-              <div className="hidden sm:flex items-center gap-2 text-xs text-neutral-400 font-medium overflow-hidden">
+              <div className="hidden sm:flex items-center gap-2 text-xs text-neutral-600 font-medium overflow-hidden">
                 <span className="shrink-0">Event & Gathering</span>
                 <ChevronRight className="w-3.5 h-3.5 shrink-0" />
                 <span className="text-neutral-700 font-bold truncate max-w-xs">{packageName}</span>
@@ -472,7 +472,7 @@ export default function GatheringView() {
               {/* Gallery Thumbnails (if multiple images) */}
               {allGalleryImages.length > 1 && (
                 <div className="p-4 bg-slate-900/5 border-t border-neutral-200/80 flex items-center gap-2.5 overflow-x-auto">
-                  <div className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider shrink-0 mr-2 flex items-center gap-1 font-mono">
+                  <div className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider shrink-0 mr-2 flex items-center gap-1 font-mono">
                     <ImageIcon className="w-3.5 h-3.5" />
                     Galeri Foto:
                   </div>
@@ -646,7 +646,7 @@ export default function GatheringView() {
                               className="w-full flex items-center justify-between text-left font-bold text-xs sm:text-sm text-neutral-800 hover:text-emerald-700 transition-colors py-4 px-5 cursor-pointer"
                             >
                               <span>{item.question}</span>
-                              {isOpen ? <ChevronUp className="h-4 w-4 text-emerald-600" /> : <ChevronDown className="h-4 w-4 text-neutral-400" />}
+                              {isOpen ? <ChevronUp className="h-4 w-4 text-emerald-600" /> : <ChevronDown className="h-4 w-4 text-neutral-500" />}
                             </button>
                             {isOpen && (
                               <div className="px-5 pb-4 text-xs sm:text-sm text-neutral-600 leading-relaxed">
@@ -748,7 +748,7 @@ export default function GatheringView() {
 
                     <button
                       onClick={handleBackToCatalog}
-                      className="w-full py-2.5 px-4 rounded-xl text-neutral-500 hover:text-neutral-800 font-medium text-xs transition-colors cursor-pointer text-center"
+                      className="w-full py-2.5 px-4 rounded-xl text-neutral-600 hover:text-neutral-900 font-medium text-xs transition-colors cursor-pointer text-center"
                     >
                       ← Lihat Paket Lainnya
                     </button>
@@ -859,7 +859,7 @@ export default function GatheringView() {
                 </div>
                 <button
                   onClick={() => setIsQuotationModalOpen(false)}
-                  className="p-1.5 rounded-full hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-full hover:bg-neutral-100 text-neutral-500 hover:text-neutral-800 transition-colors cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1056,7 +1056,7 @@ export default function GatheringView() {
         {/* Search & Filter Bar */}
         <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-lg border border-neutral-200/80 mb-8 flex flex-col md:flex-row gap-4 items-center justify-between">
           <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
-            <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider shrink-0 mr-1">Destinasi:</span>
+            <span className="text-xs font-bold text-neutral-600 uppercase tracking-wider shrink-0 mr-1">Destinasi:</span>
             {['all', 'Bromo', 'Batu', 'Banyuwangi', 'Bali'].map(dest => (
               <button
                 key={dest}

@@ -900,7 +900,7 @@ export default function AirportTransferView() {
                               {/* Price & Action Area */}
                               <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center border-t md:border-t-0 border-neutral-100 pt-4 md:pt-0 shrink-0 md:pl-6 md:border-l md:border-neutral-200/60 md:min-w-[200px]">
                                 <div className="text-left md:text-right space-y-0.5">
-                                  <span className="text-[9px] text-neutral-400 uppercase font-bold tracking-widest font-mono">TARIF ALL-IN NETT</span>
+                                  <span className="text-[9px] text-neutral-600 uppercase font-bold tracking-widest font-mono">TARIF ALL-IN NETT</span>
                                   <div className="flex items-baseline gap-1 justify-start md:justify-end">
                                     <span className="text-2xl font-black text-emerald-600 font-mono">
                                       {formatPrice(vehiclePrice.usd, vehiclePrice.idr)}
@@ -1101,48 +1101,48 @@ export default function AirportTransferView() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {/* Name Input */}
                       <div className="space-y-1.5 text-left">
-                        <label className="text-[10px] font-black text-neutral-600 uppercase tracking-widest font-mono">NAMA LENGKAP</label>
+                        <label className="text-[10px] font-black text-neutral-800 uppercase tracking-widest font-mono">NAMA LENGKAP</label>
                         <div className="relative">
-                          <Users className="absolute left-4 top-3.5 h-4 w-4 text-neutral-400" />
+                          <Users className="absolute left-4 top-3.5 h-4 w-4 text-neutral-500" />
                           <input
                             type="text"
                             required
                             placeholder="Contoh: Budi Santoso"
                             value={customerName}
                             onChange={(e) => setCustomerName(e.target.value)}
-                            className="bg-neutral-50 border border-neutral-200 rounded-2xl pl-11 pr-4 py-3.5 text-xs sm:text-sm text-neutral-800 w-full focus:outline-none focus:border-emerald-500 focus:bg-white transition-all font-semibold"
+                            className="bg-neutral-50 border border-neutral-200 rounded-2xl pl-11 pr-4 py-3.5 text-xs sm:text-sm text-neutral-900 placeholder:text-neutral-600 w-full focus:outline-none focus:border-emerald-500 focus:bg-white transition-all font-semibold"
                           />
                         </div>
                       </div>
 
                       {/* Email Input */}
                       <div className="space-y-1.5 text-left">
-                        <label className="text-[10px] font-black text-neutral-600 uppercase tracking-widest font-mono">ALAMAT EMAIL</label>
+                        <label className="text-[10px] font-black text-neutral-800 uppercase tracking-widest font-mono">ALAMAT EMAIL</label>
                         <div className="relative">
-                          <Mail className="absolute left-4 top-3.5 h-4 w-4 text-neutral-400" />
+                          <Mail className="absolute left-4 top-3.5 h-4 w-4 text-neutral-500" />
                           <input
                             type="email"
                             required
                             placeholder="Contoh: budi@gmail.com"
                             value={customerEmail}
                             onChange={(e) => setCustomerEmail(e.target.value)}
-                            className="bg-neutral-50 border border-neutral-200 rounded-2xl pl-11 pr-4 py-3.5 text-xs sm:text-sm text-neutral-800 w-full focus:outline-none focus:border-emerald-500 focus:bg-white transition-all font-semibold"
+                            className="bg-neutral-50 border border-neutral-200 rounded-2xl pl-11 pr-4 py-3.5 text-xs sm:text-sm text-neutral-900 placeholder:text-neutral-600 w-full focus:outline-none focus:border-emerald-500 focus:bg-white transition-all font-semibold"
                           />
                         </div>
                       </div>
 
                       {/* Phone Input */}
                       <div className="space-y-1.5 text-left sm:col-span-2">
-                        <label className="text-[10px] font-black text-neutral-600 uppercase tracking-widest font-mono">NOMOR WHATSAPP (AKTIF)</label>
+                        <label className="text-[10px] font-black text-neutral-800 uppercase tracking-widest font-mono">NOMOR WHATSAPP (AKTIF)</label>
                         <div className="relative">
-                          <Phone className="absolute left-4 top-3.5 h-4 w-4 text-neutral-400" />
+                          <Phone className="absolute left-4 top-3.5 h-4 w-4 text-neutral-500" />
                           <input
                             type="tel"
                             required
                             placeholder="Contoh: +62 812-3456-7890"
                             value={customerPhone}
                             onChange={(e) => setCustomerPhone(e.target.value)}
-                            className="bg-neutral-50 border border-neutral-200 rounded-2xl pl-11 pr-4 py-3.5 text-xs sm:text-sm text-neutral-800 w-full focus:outline-none focus:border-emerald-500 focus:bg-white transition-all font-semibold"
+                            className="bg-neutral-50 border border-neutral-200 rounded-2xl pl-11 pr-4 py-3.5 text-xs sm:text-sm text-neutral-900 placeholder:text-neutral-600 w-full focus:outline-none focus:border-emerald-500 focus:bg-white transition-all font-semibold"
                           />
                         </div>
                       </div>
@@ -1304,37 +1304,37 @@ export default function AirportTransferView() {
                   {/* Booking Specifics */}
                   <div className="bg-neutral-50 p-4 rounded-2xl border border-neutral-100 text-xs space-y-3.5">
                     <div className="flex items-start justify-between gap-2">
-                      <span className="text-neutral-500 font-medium shrink-0">Armada Pilihan</span>
+                      <span className="text-neutral-700 font-bold shrink-0">Armada Pilihan</span>
                       <span className="font-bold text-neutral-900 text-right">{selectedVehicle?.name} Class</span>
                     </div>
                     <div className="flex items-start justify-between gap-2 border-t border-neutral-200/50 pt-2.5">
-                      <span className="text-neutral-500 font-medium shrink-0">Rute Perjalanan</span>
+                      <span className="text-neutral-700 font-bold shrink-0">Rute Perjalanan</span>
                       <span className="font-bold text-neutral-900 text-right">
                         {direction === 'Airport to City' ? `${selectedAirport} ⇄ ${destinationCity}` : `${destinationCity} ⇄ ${selectedAirport}`}
                       </span>
                     </div>
                     {cityAddress && (
                       <div className="flex items-start justify-between gap-2 border-t border-neutral-200/50 pt-2.5">
-                        <span className="text-neutral-500 font-medium shrink-0">Detail Alamat</span>
+                        <span className="text-neutral-700 font-bold shrink-0">Detail Alamat</span>
                         <span className="font-bold text-neutral-800 text-right leading-relaxed max-w-xs">{cityAddress}</span>
                       </div>
                     )}
                     <div className="flex items-start justify-between gap-2 border-t border-neutral-200/50 pt-2.5">
-                      <span className="text-neutral-500 font-medium shrink-0">Jadwal Penjemputan</span>
+                      <span className="text-neutral-700 font-bold shrink-0">Jadwal Penjemputan</span>
                       <span className="font-bold text-neutral-900 text-right font-mono">
                         {pickupDate} @ {pickupTime}
                       </span>
                     </div>
                     {routeType === 'Round Trip' && (
                       <div className="flex items-start justify-between gap-2 border-t border-neutral-200/50 pt-2.5">
-                        <span className="text-neutral-500 font-medium shrink-0">Jadwal Kepulangan</span>
+                        <span className="text-neutral-700 font-bold shrink-0">Jadwal Kepulangan</span>
                         <span className="font-bold text-neutral-900 text-right font-mono">
                           {returnDate} @ {returnTime} ({returnFlightNumber?.toUpperCase() || '-'})
                         </span>
                       </div>
                     )}
                     <div className="flex items-start justify-between gap-2 border-t border-neutral-200/50 pt-2.5">
-                      <span className="text-neutral-500 font-medium shrink-0">Penumpang / Koper</span>
+                      <span className="text-neutral-700 font-bold shrink-0">Penumpang / Koper</span>
                       <span className="font-bold text-neutral-900 text-right">
                         {passengers} Pax · {luggage} Bags
                       </span>

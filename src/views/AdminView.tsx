@@ -7090,7 +7090,7 @@ export default function AdminView() {
                 setIsDark(!isDark);
                 triggerToast(`Mengubah ke ${!isDark ? 'Tema Gelap' : 'Tema Terang'}`);
               }}
-              className={`p-2 rounded-xl border ${theme.border} ${theme.hover} ${theme.textSecondary} hover:${theme.textPrimary} transition-all cursor-pointer`}
+              className={`p-2 rounded-xl border ${theme.border} ${theme.hover} ${theme.textSecondary} ${isDark ? 'hover:text-white' : 'hover:text-neutral-900'} transition-all cursor-pointer`}
               title="Ganti Tema Visual"
             >
               {isDark ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-neutral-600" />}
@@ -7103,7 +7103,7 @@ export default function AdminView() {
                   setShowNotifications(!showNotifications);
                   setShowProfileDropdown(false);
                 }}
-                className={`p-2 rounded-xl border ${theme.border} ${theme.hover} ${theme.textSecondary} hover:${theme.textPrimary} transition-all cursor-pointer relative`}
+                className={`p-2 rounded-xl border ${theme.border} ${theme.hover} ${theme.textSecondary} ${isDark ? 'hover:text-white' : 'hover:text-neutral-900'} transition-all cursor-pointer relative`}
                 title="Pusat Tindakan & Notifikasi"
               >
                 <Bell className="h-4 w-4" />

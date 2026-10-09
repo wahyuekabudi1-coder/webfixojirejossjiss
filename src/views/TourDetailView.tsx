@@ -702,7 +702,7 @@ export default function TourDetailView({ tourId, onBack }: TourDetailViewProps) 
                     <Clock className="h-5 w-5 text-amber-500" />
                     <span>Rencana Perjalanan Detail</span>
                   </h3>
-                  <p className="text-xs text-neutral-500 mt-1">Jadwal akurat per hari beserta aktivitas jam demi jam</p>
+                  <p className="text-xs text-neutral-600 mt-1">Jadwal akurat per hari beserta aktivitas jam demi jam</p>
                 </div>
 
                 {/* Day Selectors */}
@@ -812,15 +812,15 @@ export default function TourDetailView({ tourId, onBack }: TourDetailViewProps) 
 
             {/* What to Bring Section */}
             <div className="border border-neutral-200/80 rounded-2xl p-6 space-y-4 bg-amber-500/5">
-              <h4 className="font-extrabold text-sm uppercase tracking-wider text-amber-600 flex items-center gap-2">
+              <h4 className="font-extrabold text-sm uppercase tracking-wider text-amber-700 flex items-center gap-2">
                 <Sparkles className="h-4.5 w-4.5" />
                 <span>Perlengkapan yang Harus Dibawa (What to Bring)</span>
               </h4>
-              <p className="text-xs text-neutral-500">Persiapkan barang-barang berikut agar perjalanan Anda berjalan lancar dan nyaman:</p>
+              <p className="text-xs text-neutral-600">Persiapkan barang-barang berikut agar perjalanan Anda berjalan lancar dan nyaman:</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                 {(richData.whatToBring || []).map((item, idx) => (
-                  <div key={idx} className="flex items-start gap-2.5 text-xs font-semibold text-neutral-600 leading-relaxed">
-                    <div className="h-5 w-5 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-[10px] shrink-0">
+                  <div key={idx} className="flex items-start gap-2.5 text-xs font-semibold text-neutral-700 leading-relaxed">
+                    <div className="h-5 w-5 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-[10px] shrink-0">
                       {idx + 1}
                     </div>
                     <span>{item}</span>
@@ -845,11 +845,11 @@ export default function TourDetailView({ tourId, onBack }: TourDetailViewProps) 
                           className="w-full flex items-center justify-between text-left font-bold text-xs sm:text-sm text-neutral-800 hover:text-amber-600 transition-colors py-4 px-5 cursor-pointer"
                         >
                           <span>{item.q}</span>
-                          {isOpen ? <ChevronUp className="h-4 w-4 text-amber-500" /> : <ChevronDown className="h-4 w-4 text-neutral-400" />}
+                          {isOpen ? <ChevronUp className="h-4 w-4 text-amber-500" /> : <ChevronDown className="h-4 w-4 text-neutral-500" />}
                         </button>
                         
                         {isOpen && (
-                          <div className="px-5 pb-4 text-xs sm:text-sm text-neutral-500 leading-relaxed">
+                          <div className="px-5 pb-4 text-xs sm:text-sm text-neutral-600 leading-relaxed">
                             {item.a}
                           </div>
                         )}
@@ -880,7 +880,7 @@ export default function TourDetailView({ tourId, onBack }: TourDetailViewProps) 
 
               {/* Quick Direct Date Picker Input */}
               <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100 space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500 font-mono flex items-center gap-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-700 font-mono flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5 text-[#315B4F]" />
                   <span>Pilih Tanggal Keberangkatan Langsung:</span>
                 </label>
@@ -1155,11 +1155,11 @@ export default function TourDetailView({ tourId, onBack }: TourDetailViewProps) 
               {/* 4. Dynamic Selected Summary & Action Readout (Same display requirements as Share Tour) */}
               {selectedDate && selectedTier ? (
                 <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100/70 space-y-2.5 text-xs font-medium animate-fade-in">
-                  <div className="flex items-center justify-between text-gray-500">
+                  <div className="flex items-center justify-between text-gray-700">
                     <span>Tanggal Terpilih</span>
                     <span className="font-bold text-[#315B4F] font-mono">{selectedDate}</span>
                   </div>
-                  <div className="flex items-center justify-between text-gray-500">
+                  <div className="flex items-center justify-between text-gray-700">
                     <span>Kategori Tamu</span>
                     <span className={`font-mono font-bold rounded-md px-2 py-0.5 text-[10px] ${
                       selectedTierId === 'WNI' 
@@ -1176,11 +1176,11 @@ export default function TourDetailView({ tourId, onBack }: TourDetailViewProps) 
                       }
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-gray-500">
+                  <div className="flex items-center justify-between text-gray-700">
                     <span>Jumlah Tamu</span>
                     <span className="font-mono font-bold text-gray-800">{guestCount} Pax</span>
                   </div>
-                  <div className="flex items-center justify-between text-gray-500">
+                  <div className="flex items-center justify-between text-gray-700">
                     <span>Tarif per Orang</span>
                     <span className="font-bold text-gray-800">{formatPrice(selectedTier.priceUSD, selectedTier.priceIDR)}</span>
                   </div>
@@ -1230,7 +1230,7 @@ export default function TourDetailView({ tourId, onBack }: TourDetailViewProps) 
                           <span>E-Voucher Instan</span>
                         </span>
                       </div>
-                      <p className="text-[10px] text-gray-500 font-medium text-center pt-1 border-t border-gray-200/80">
+                      <p className="text-[10px] text-gray-600 font-medium text-center pt-1 border-t border-gray-200/80">
                         Butuh bantuan atau rute kustom? <a href="https://wa.me/6285212347289" target="_blank" rel="noopener noreferrer" className="text-[#315B4F] font-bold hover:underline">Chat WhatsApp Hotlines ↗</a>
                       </p>
                     </div>
@@ -1247,7 +1247,7 @@ export default function TourDetailView({ tourId, onBack }: TourDetailViewProps) 
             {/* Extra Auxiliary Transport Services links */}
             <div className="bg-neutral-50 border border-neutral-200 rounded-3xl p-6 space-y-4">
               <h4 className="font-extrabold text-xs uppercase tracking-wider text-neutral-800">Layanan Ekstra SmartJourney</h4>
-              <p className="text-[11px] text-neutral-500 leading-normal">
+              <p className="text-[11px] text-neutral-600 leading-normal">
                 Butuh layanan penjemputan bandara atau rental mobil di kota asal? Hubungkan rencana perjalanan Anda sekarang juga.
               </p>
               
@@ -1323,7 +1323,7 @@ export default function TourDetailView({ tourId, onBack }: TourDetailViewProps) 
                     <h4 className="font-extrabold text-sm sm:text-base text-neutral-900 group-hover:text-amber-600 transition-colors line-clamp-1">
                       {simTour.name}
                     </h4>
-                    <p className="text-xs text-neutral-500 line-clamp-2 mt-1.5 leading-relaxed">
+                    <p className="text-xs text-neutral-600 line-clamp-2 mt-1.5 leading-relaxed">
                       {simTour.description}
                     </p>
                   </div>

@@ -456,7 +456,7 @@ export default function CustomersView({
   const getServiceBadge = (type: string) => {
     switch (type) {
       case 'tour':
-        return { label: 'Private Tour', color: 'bg-amber-500/10 text-amber-500 border-amber-500/30' };
+        return { label: 'Private Tour', color: isDark ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : 'bg-amber-500/15 text-amber-800 border-amber-500/40' };
       case 'sharetour':
         return { label: 'Open Trip', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' };
       case 'airport':
@@ -481,21 +481,21 @@ export default function CustomersView({
     return {
       paymentBadge: isPaid 
         ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' 
-        : 'bg-amber-500/10 text-amber-400 border border-amber-500/30',
+        : (isDark ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'bg-amber-500/15 text-amber-800 border border-amber-500/40'),
       bookingBadge: isCancelled
         ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
         : isCompleted
           ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40'
           : isConfirmed
             ? 'bg-sky-500/10 text-sky-400 border border-sky-500/30'
-            : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+            : (isDark ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'bg-amber-500/15 text-amber-800 border border-amber-500/40')
     };
   };
 
   // Helper Loyalty Badge
   const getLoyaltyBadge = (bookingsCount: number, spentIDR: number) => {
     if (bookingsCount >= 4 || spentIDR >= 15000000) {
-      return { label: 'VIP Traveler', color: 'bg-amber-500/20 text-amber-400 border-amber-500/40' };
+      return { label: 'VIP Traveler', color: isDark ? 'bg-amber-500/20 text-amber-400 border-amber-500/40' : 'bg-amber-500/15 text-amber-800 border-amber-500/40' };
     }
     if (bookingsCount >= 2 || spentIDR >= 5000000) {
       return { label: 'Repeat Customer', color: 'bg-sky-500/20 text-sky-400 border-sky-500/40' };
@@ -602,7 +602,9 @@ export default function CustomersView({
               {customerSearch && (
                 <button
                   onClick={() => setCustomerSearch('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white"
+                  className={`absolute right-2.5 top-1/2 -translate-y-1/2 ${
+                    isDark ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-800'
+                  } transition-colors cursor-pointer`}
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -660,7 +662,7 @@ export default function CustomersView({
             <div className="flex items-center gap-1.5 flex-wrap">
               <span>Menampilkan: <b>{filteredCustomers.length}</b> dari {allCustomers.length} Pelanggan</span>
               {serviceFilter !== 'all' && (
-                <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[10px]">
+                <span className={`px-2 py-0.5 rounded bg-amber-500/10 ${isDark ? 'text-amber-400' : 'text-amber-800'} border border-amber-500/30 text-[10px]`}>
                   Layanan: {serviceFilter.toUpperCase()}
                 </span>
               )}
@@ -683,7 +685,7 @@ export default function CustomersView({
                   setDateHorizonFilter('all');
                   setCustomerSearch('');
                 }}
-                className="text-amber-500 hover:text-amber-400 font-bold cursor-pointer text-[10px]"
+                className={`${isDark ? 'text-amber-400' : 'text-amber-800'} hover:underline font-bold cursor-pointer text-[10px]`}
               >
                 Reset Semua Filter
               </button>
@@ -694,7 +696,7 @@ export default function CustomersView({
           <div className={`${theme.card} border rounded-2xl overflow-hidden shadow-sm`}>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className={`${theme.innerCard} border-b text-[10px] font-mono uppercase text-neutral-400 font-bold`}>
+                <thead className={`${theme.innerCard} border-b text-[10px] font-mono uppercase ${isDark ? 'text-neutral-400' : 'text-neutral-600'} font-bold`}>
                   <tr>
                     <th className="p-3.5">Pelanggan</th>
                     <th className="p-3.5">Kontak Resmi</th>
@@ -724,7 +726,7 @@ export default function CustomersView({
                           {/* Name & Tier */}
                           <td className="p-3.5">
                             <div className="space-y-0.5">
-                              <div className="font-bold text-neutral-100 flex items-center gap-1.5 group-hover:text-amber-400 transition-colors">
+                              <div className={`font-bold ${isDark ? 'text-neutral-100' : 'text-neutral-900'} flex items-center gap-1.5 group-hover:text-amber-500 transition-colors`}>
                                 <span>{cust.primaryName}</span>
                                 <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border ${loyalty.color}`}>
                                   {loyalty.label}
@@ -832,7 +834,9 @@ export default function CustomersView({
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   reviewFilter === st
                     ? 'bg-amber-500 text-neutral-950 font-black'
-                    : 'text-neutral-400 hover:text-white'
+                    : isDark
+                    ? 'text-neutral-400 hover:text-white'
+                    : 'text-neutral-600 hover:text-neutral-900'
                 }`}
               >
                 {st === 'all' ? 'Semua Ulasan' : st === 'pending' ? 'Perlu Moderasi' : 'Disetujui'}
@@ -964,7 +968,11 @@ export default function CustomersView({
                 )}
                 <button
                   onClick={() => setSelectedCustomer(null)}
-                  className="p-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white transition-all cursor-pointer"
+                  className={`p-2 rounded-xl ${
+                    isDark 
+                      ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white' 
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 border border-slate-300'
+                  } transition-all cursor-pointer`}
                 >
                   <X className="h-5 w-5" />
                 </button>

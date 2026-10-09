@@ -825,7 +825,7 @@ export default function TaxiView() {
               Private Taxi Services
             </span>
           </h1>
-          <p className="text-neutral-500 text-sm sm:text-base leading-relaxed">
+          <p className="text-neutral-600 text-sm sm:text-base leading-relaxed">
             Travel stress-free across East Java with locked, flat-rate fares completely immune to surge pricing, city traffic delays, or toll charges. Select your route, track driving paths interactively on our live map, and travel in executive class comfort.
           </p>
         </div>
@@ -907,7 +907,7 @@ export default function TaxiView() {
                   <div className="space-y-4">
                     {/* Pickup Address */}
                     <div className="space-y-1.5 relative text-left">
-                      <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest pl-1">
+                      <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-widest pl-1">
                         Pickup Location (Airport, Hotel, Landmark)
                       </label>
                       <div className="relative">
@@ -991,7 +991,7 @@ export default function TaxiView() {
 
                     {/* Destination Address */}
                     <div className="space-y-1.5 relative text-left">
-                      <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest pl-1">
+                      <label className="text-[10px] font-bold text-neutral-700 uppercase tracking-widest pl-1">
                         Destination Address
                       </label>
                       <div className="relative">
@@ -1100,7 +1100,7 @@ export default function TaxiView() {
                       </div>
                       <div className="col-span-2 border-t border-neutral-200/60 pt-2.5 flex items-start gap-2">
                         <Info className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                        <span className="text-[10px] text-neutral-500 leading-relaxed font-medium">
+                        <span className="text-[10px] text-neutral-600 leading-relaxed font-medium">
                           These values are purely for information purposes. Tariffs are locked based on administrative zones (fixed zones) established by SawahJaya Trans, not accumulated by meters or GPS distance.
                         </span>
                       </div>
@@ -1135,8 +1135,8 @@ export default function TaxiView() {
                 {/* Selected route snippet */}
                 <div className="bg-neutral-50 p-4 rounded-2xl border border-neutral-150 text-xs text-neutral-600 space-y-1">
                   <p className="font-semibold text-neutral-900 mb-1">Your Selected Journey:</p>
-                  <p className="truncate"><strong className="text-neutral-500">From:</strong> {pickupInput}</p>
-                  <p className="truncate"><strong className="text-neutral-500">To:</strong> {destInput}</p>
+                  <p className="truncate"><strong className="text-neutral-700">From:</strong> {pickupInput}</p>
+                  <p className="truncate"><strong className="text-neutral-700">To:</strong> {destInput}</p>
                 </div>
 
                 <div className="space-y-3.5">
@@ -1166,7 +1166,7 @@ export default function TaxiView() {
                               <span>{car.name}</span>
                               {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>}
                             </h4>
-                            <div className="flex items-center space-x-3 text-xs text-neutral-500 font-mono mt-1">
+                            <div className="flex items-center space-x-3 text-xs text-neutral-700 font-mono mt-1 font-semibold">
                               <span className="flex items-center space-x-1">
                                 <Users className="h-3.5 w-3.5 text-amber-500" />
                                 <span>{car.passengers} Max Passengers</span>
@@ -1181,7 +1181,7 @@ export default function TaxiView() {
                         </div>
 
                         <div className="text-left sm:text-right pt-2 sm:pt-0 border-t sm:border-t-0 border-neutral-200/60 flex sm:flex-col justify-between items-center sm:items-end">
-                          <span className="text-[8px] text-neutral-400 font-bold uppercase tracking-wider font-mono">ALL-IN TARIFF</span>
+                          <span className="text-[8px] text-neutral-600 font-bold uppercase tracking-wider font-mono">ALL-IN TARIFF</span>
                           <span className="text-lg font-black text-amber-600 font-mono">
                             {formatPrice(priceObj.usd, priceObj.idr)}
                           </span>
@@ -1342,7 +1342,7 @@ export default function TaxiView() {
                     <div className="flex justify-between items-center">
                       <div>
                         <span className="text-[10px] text-amber-700 font-black uppercase tracking-wider font-mono">Matched Fixed Tariff</span>
-                        <p className="text-xs text-neutral-500 font-semibold mt-0.5">{matchedRoute?.airport} ⇄ {matchedRoute?.city}</p>
+                        <p className="text-xs text-neutral-700 font-semibold mt-0.5">{matchedRoute?.airport} ⇄ {matchedRoute?.city}</p>
                       </div>
                       <div className="text-right">
                         <span className="text-[9px] text-neutral-600 block font-mono">ARMADA: {selectedVehicle.name}</span>

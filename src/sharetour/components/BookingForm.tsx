@@ -352,7 +352,7 @@ export default function BookingForm({
               <Receipt className="w-7 h-7" />
             </div>
             <h3 className="text-xl font-display font-black text-gray-900">Ringkasan Pembayaran</h3>
-            <p className="text-xs text-gray-500 font-mono">
+            <p className="text-xs text-gray-700 font-mono">
               ID RESERVASI: <strong className="text-gray-900">{summaryBooking.bookingCode || summaryBooking.id}</strong>
             </p>
           </div>
@@ -418,7 +418,7 @@ export default function BookingForm({
             </div>
           </div>
 
-          <p className="text-[11px] text-gray-500 text-center leading-relaxed">
+          <p className="text-[11px] text-gray-700 text-center leading-relaxed">
             Kode unik dan total pembayaran final berasal dari nilai booking yang sudah tersimpan di database untuk verifikasi otomatis.
           </p>
 
@@ -459,7 +459,7 @@ export default function BookingForm({
                 onClick={() => {
                   window.location.hash = `#/bookings?code=${encodeURIComponent(summaryBooking.bookingCode || summaryBooking.id || '')}`;
                 }}
-                className="text-xs text-gray-500 hover:text-emerald-700 font-medium transition-colors cursor-pointer"
+                className="text-xs text-gray-700 hover:text-emerald-700 font-medium transition-colors cursor-pointer"
               >
                 Cek Status Pemesanan Nanti →
               </button>
@@ -483,7 +483,7 @@ export default function BookingForm({
           <span>{isPrivate ? "← Kembali ke Detail Tour" : t("Cancel & Back to Trip Details")}</span>
         </button>
 
-        <span className="text-[11px] font-mono text-gray-500 hidden sm:inline-flex items-center gap-1">
+        <span className="text-[11px] font-mono text-gray-700 hidden sm:inline-flex items-center gap-1">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
           <span>Checkout Terenkripsi 256-bit</span>
         </span>
@@ -513,7 +513,7 @@ export default function BookingForm({
               <div>
                 <span className="text-[10px] text-gray-600 uppercase font-mono block">Tour</span>
                 <span className="font-bold text-gray-900 text-sm block leading-snug">{trip.title}</span>
-                <span className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
+                <span className="text-[11px] text-gray-700 flex items-center gap-1 mt-0.5">
                   <MapPin className="w-3 h-3 text-[#315B4F] shrink-0" />
                   <span>{trip.location}</span>
                 </span>
@@ -559,7 +559,7 @@ export default function BookingForm({
                   <span className="text-[10px] uppercase text-[#315B4F] font-black font-mono tracking-wider block">
                     TOTAL HARGA
                   </span>
-                  <span className="text-[10px] text-gray-500 font-medium">Sudah termasuk pajak &amp; tiket</span>
+                  <span className="text-[10px] text-gray-700 font-medium">Sudah termasuk pajak &amp; tiket</span>
                 </div>
                 <span className="font-display font-black text-xl text-[#315B4F]">
                   {totalPriceFormatted}
@@ -582,7 +582,7 @@ export default function BookingForm({
                 <ShieldCheck className="w-4 h-4 text-[#315B4F]" />
                 <span>Jaminan Transaksi &amp; Reservasi</span>
               </div>
-              <ul className="space-y-1.5 text-[11px] text-gray-500">
+              <ul className="space-y-1.5 text-[11px] text-gray-700">
                 <li className="flex items-center gap-1.5 text-emerald-700 font-medium">
                   <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                   <span>Konfirmasi instan &amp; e-voucher digital</span>
@@ -924,7 +924,7 @@ export default function BookingForm({
                 </span>
               </button>
 
-              <div className="flex items-center justify-center gap-2 text-[11px] text-gray-500 text-center">
+              <div className="flex items-center justify-center gap-2 text-[11px] text-gray-700 text-center">
                 <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span>Ringkasan rincian biaya, kode unik verifikasi, dan total pembayaran final akan ditampilkan sebelum lanjut ke ArtoPay Gateway.</span>
               </div>

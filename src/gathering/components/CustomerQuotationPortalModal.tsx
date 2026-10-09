@@ -263,25 +263,25 @@ export default function CustomerQuotationPortalModal({
                 {/* Details Grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4 text-xs">
                   <div>
-                    <span className="text-slate-400 block mb-0.5 font-medium">Perusahaan / Klien:</span>
+                    <span className="text-slate-600 block mb-0.5 font-bold">Perusahaan / Klien:</span>
                     <span className="font-bold text-slate-800 text-sm">{quotation.company || '-'}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block mb-0.5 font-medium">Nama PIC:</span>
+                    <span className="text-slate-600 block mb-0.5 font-bold">Nama PIC:</span>
                     <span className="font-bold text-slate-800 text-sm">{quotation.picName || quotation.customerName || '-'}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block mb-0.5 font-medium">Tanggal Acara:</span>
+                    <span className="text-slate-600 block mb-0.5 font-bold">Tanggal Acara:</span>
                     <span className="font-bold text-slate-800 text-sm">{quotation.eventDate || '-'}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block mb-0.5 font-medium">Peserta / Quota:</span>
+                    <span className="text-slate-600 block mb-0.5 font-bold">Peserta / Quota:</span>
                     <span className="font-bold text-slate-800 text-sm">{quotation.participants || `${quotation.participantCount} Pax`}</span>
                   </div>
                 </div>
 
                 {/* Validity Note */}
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
                   <span className="flex items-center space-x-1">
                     <Clock className="w-3.5 h-3.5 text-amber-600" />
                     <span>Masa Berlaku Penawaran Hingga: <strong>{quotation.validUntil}</strong></span>
@@ -435,14 +435,14 @@ export default function CustomerQuotationPortalModal({
                       Rp {(quotation.grandTotal || quotation.totalPriceIDR).toLocaleString('id-ID')}
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-400">Harga final mengikat sesuai syarat dan ketentuan tertera.</span>
+                  <span className="text-[10px] text-slate-600 font-medium">Harga final mengikat sesuai syarat dan ketentuan tertera.</span>
                 </div>
               </div>
 
               {/* Terms and Notes */}
-              <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 text-xs text-slate-600 space-y-2">
+              <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 text-xs text-slate-700 space-y-2">
                 <span className="font-bold text-slate-800 block">Syarat & Ketentuan Berlaku:</span>
-                <ul className="list-disc list-inside space-y-0.5 text-slate-500">
+                <ul className="list-disc list-inside space-y-0.5 text-slate-700">
                   <li>Down Payment (DP) 30% dibayarkan saat konfirmasi booking resmi.</li>
                   <li>Pelunasan sisa 70% dilakukan paling lambat H-3 sebelum pelaksanaan.</li>
                   <li>Penyesuaian peserta di atas batas toleransi akan dihitung ulang secara proporsional.</li>

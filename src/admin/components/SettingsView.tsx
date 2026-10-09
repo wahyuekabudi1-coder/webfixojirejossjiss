@@ -246,7 +246,7 @@ export default function SettingsView({
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-neutral-900 border border-neutral-800 shrink-0">
+        <div className={`flex items-center gap-1.5 p-1 rounded-xl ${isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-slate-100 border-slate-200'} border shrink-0`}>
           <button
             onClick={() => {
               if (!canManageSettings) {
@@ -261,7 +261,9 @@ export default function SettingsView({
                 ? 'opacity-40 cursor-not-allowed text-neutral-500'
                 : activeTab === 'general'
                 ? 'bg-amber-500 text-neutral-950 font-black shadow-sm cursor-pointer'
-                : 'text-neutral-400 hover:text-white cursor-pointer'
+                : isDark
+                ? 'text-neutral-400 hover:text-white cursor-pointer'
+                : 'text-neutral-600 hover:text-neutral-900 cursor-pointer'
             }`}
             title={!canManageSettings ? 'Terkunci: Memerlukan izin manageSettings' : undefined}
           >
@@ -284,7 +286,9 @@ export default function SettingsView({
                 ? 'opacity-40 cursor-not-allowed text-neutral-500'
                 : activeTab === 'rbac'
                 ? 'bg-amber-500 text-neutral-950 font-black shadow-sm cursor-pointer'
-                : 'text-neutral-400 hover:text-white cursor-pointer'
+                : isDark
+                ? 'text-neutral-400 hover:text-white cursor-pointer'
+                : 'text-neutral-600 hover:text-neutral-900 cursor-pointer'
             }`}
             title={!canManageSettings ? 'Terkunci: Memerlukan izin manageSettings' : undefined}
           >
@@ -298,7 +302,9 @@ export default function SettingsView({
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'account'
                 ? 'bg-amber-500 text-neutral-950 font-black shadow-sm'
-                : 'text-neutral-400 hover:text-white'
+                : isDark
+                ? 'text-neutral-400 hover:text-white'
+                : 'text-neutral-600 hover:text-neutral-900'
             }`}
           >
             <User className="h-3.5 w-3.5" />
@@ -716,7 +722,9 @@ export default function SettingsView({
                       className={`flex items-center gap-2 px-4 py-2 border-b-2 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                         activeAccountSubTab === tab.id 
                           ? 'border-amber-500 text-amber-500 font-extrabold' 
-                          : 'border-transparent text-neutral-400 hover:text-white'
+                          : isDark
+                          ? 'border-transparent text-neutral-400 hover:text-white'
+                          : 'border-transparent text-neutral-600 hover:text-neutral-900'
                       }`}
                     >
                       <Icon className="h-3.5 w-3.5" />
@@ -733,7 +741,7 @@ export default function SettingsView({
                     AD
                   </div>
                   <div className="space-y-0.5">
-                    <h4 className="text-base font-black text-white">Smart Journey Administrator</h4>
+                    <h4 className={`text-base font-black ${isDark ? 'text-white' : 'text-neutral-900'}`}>Smart Journey Administrator</h4>
                     <p className={`text-xs ${theme.textSecondary} font-mono`}>{adminEmail}</p>
                   </div>
                   <span className="text-[10px] font-mono font-black bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full uppercase flex items-center gap-1">

@@ -144,8 +144,8 @@ export default function CustomerReviewsSection({ serviceType, serviceId, service
           <div className="space-y-4 max-h-[350px] overflow-y-auto pr-2 scrollbar-thin">
             {approvedReviews.length === 0 ? (
               <div className="text-center py-8 text-neutral-600 space-y-2">
-                <MessageSquare className="h-8 w-8 mx-auto text-neutral-400" />
-                <p className="text-xs font-semibold text-neutral-700">Belum ada ulasan untuk layanan ini.</p>
+                <MessageSquare className="h-8 w-8 mx-auto text-neutral-500" />
+                <p className="text-xs font-semibold text-neutral-800">Belum ada ulasan untuk layanan ini.</p>
                 <p className="text-[11px] text-neutral-600">Jadilah yang pertama memberikan ulasan positif Anda!</p>
               </div>
             ) : (
@@ -163,10 +163,10 @@ export default function CustomerReviewsSection({ serviceType, serviceId, service
                         </div>
                         <div>
                           <h4 className="font-extrabold text-xs text-neutral-900">{review.name}</h4>
-                          <span className="text-[10px] text-neutral-600 font-semibold uppercase">{review.country}</span>
+                          <span className="text-[10px] text-neutral-700 font-bold uppercase">{review.country}</span>
                         </div>
                       </div>
-                      <span className="text-[10px] text-neutral-600 font-mono">{review.date}</span>
+                      <span className="text-[10px] text-neutral-700 font-mono font-semibold">{review.date}</span>
                     </div>
 
                     <div className="flex items-center gap-0.5 text-amber-500">
@@ -178,7 +178,7 @@ export default function CustomerReviewsSection({ serviceType, serviceId, service
                       ))}
                     </div>
 
-                    <p className="text-xs text-neutral-600 leading-relaxed italic">
+                    <p className="text-xs text-neutral-700 leading-relaxed italic">
                       "{review.text}"
                     </p>
                   </div>
@@ -232,7 +232,7 @@ export default function CustomerReviewsSection({ serviceType, serviceId, service
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Contoh: Alex Carter"
-                        className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs placeholder:text-neutral-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all"
+                        className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs placeholder:text-neutral-600 focus:ring-1 focus:ring-amber-500 outline-none transition-all text-neutral-900"
                       />
                     </div>
                     <div className="space-y-1">
@@ -245,7 +245,7 @@ export default function CustomerReviewsSection({ serviceType, serviceId, service
                         value={country}
                         onChange={(e) => setCountry(e.target.value)}
                         placeholder="Contoh: Australia"
-                        className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs placeholder:text-neutral-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all"
+                        className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs placeholder:text-neutral-600 focus:ring-1 focus:ring-amber-500 outline-none transition-all text-neutral-900"
                       />
                     </div>
                     <div className="space-y-1">
@@ -258,7 +258,7 @@ export default function CustomerReviewsSection({ serviceType, serviceId, service
                         value={bookingCode}
                         onChange={(e) => setBookingCode(e.target.value)}
                         placeholder="Contoh: SJ-ABC123"
-                        className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs font-mono uppercase placeholder:text-neutral-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all"
+                        className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs font-mono uppercase placeholder:text-neutral-600 focus:ring-1 focus:ring-amber-500 outline-none transition-all text-neutral-900"
                       />
                     </div>
                   </div>
@@ -286,7 +286,7 @@ export default function CustomerReviewsSection({ serviceType, serviceId, service
                       value={text}
                       onChange={(e) => setText(e.target.value)}
                       placeholder="Ceritakan pengalaman Anda menggunakan layanan kami..."
-                      className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs placeholder:text-neutral-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all resize-none"
+                      className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs placeholder:text-neutral-600 focus:ring-1 focus:ring-amber-500 outline-none transition-all resize-none text-neutral-900"
                     />
                   </div>
 
