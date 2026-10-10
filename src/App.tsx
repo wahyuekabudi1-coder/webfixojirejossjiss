@@ -16,9 +16,10 @@ import { trackPageView } from './lib/analytics';
 import { isServiceEnabled } from './config/serviceVisibility';
 import { safeLazyImport } from './utils/preloadRecovery';
 import ErrorBoundary from './components/ErrorBoundary';
-import { BlogPlaceholder, BlogDetailPlaceholder } from './components/blog/BlogPlaceholder';
 
 // Code-split lazy loaded view chunks with safe stale-chunk recovery & anti-reload loop guard
+const BlogView = safeLazyImport(() => import('./views/BlogView'), 'BlogView');
+const BlogDetailView = safeLazyImport(() => import('./views/BlogDetailView'), 'BlogDetailView');
 const ToursView = safeLazyImport(() => import('./views/ToursView'), 'ToursView');
 const AirportTransferView = safeLazyImport(() => import('./views/AirportTransferView'), 'AirportTransferView');
 const TaxiView = safeLazyImport(() => import('./views/TaxiView'), 'TaxiView');
@@ -95,12 +96,12 @@ function AppContent() {
         return <BookingsView />;
       case 'blog':
         return searchParams?.selectedArticleSlug ? (
-          <BlogDetailPlaceholder
+          <BlogDetailView
             slug={searchParams.selectedArticleSlug}
             onBack={() => setPage('blog')}
           />
         ) : (
-          <BlogPlaceholder
+          <BlogView
             onSelectArticle={(slug: string) => setPage('blog', slug)}
           />
         );

@@ -143,8 +143,87 @@ if (typeof window !== 'undefined' && localStorage.getItem(CLEAN_STATE_KEY) !== '
   try { localStorage.setItem(CLEAN_STATE_KEY, 'true'); } catch(e){}
 }
 
+/**
+ * Safe parser and normalizer for clean blog pathnames
+ * Recognizes /blog, /blog/, /blog/:slug, /blog/:slug/
+ * Normalizes trailing slash and safely decodes / sanitizes slugs
+ */
+export function parseBlogPathname(pathname: string): {
+  isBlog: boolean;
+  slug?: string;
+  canonicalPath?: string;
+} {
+  const isBlog = pathname === '/blog' || pathname.startsWith('/blog/');
+  if (!isBlog) return { isBlog: false };
+
+  const trimmedPath = pathname.replace(/^\/+|\/+$/g, '');
+  const pathSegments = trimmedPath ? trimmedPath.split('/').filter(Boolean) : [];
+  let articleSlug = '';
+
+  if (pathSegments.length > 1 && pathSegments[1]) {
+    try {
+      articleSlug = decodeURIComponent(pathSegments[1]).trim();
+    } catch {
+      articleSlug = pathSegments[1].trim();
+    }
+    // Sanitize slug: strip XSS/control characters, query/hash residuals, trailing slashes
+    articleSlug = articleSlug
+      .replace(/[<>"'`\\]/g, '')
+      .replace(/[?#].*$/, '')
+      .replace(/\/+$/, '')
+      .trim();
+  }
+
+  const slug = articleSlug || undefined;
+  const canonicalPath = slug ? `/blog/${encodeURIComponent(slug)}/` : '/blog/';
+  return { isBlog: true, slug, canonicalPath };
+}
+
+function getInitialActivePage(): ActivePage {
+  if (typeof window === 'undefined') return 'home';
+  const pathname = window.location.pathname || '';
+  const fullHash = window.location.hash || '';
+  const hash = fullHash.split('?')[0].replace(/^#\/?/, '');
+  const isAnchorOnly = hash === 'main-content' || hash === '' || fullHash === '#' || fullHash === '#main-content';
+
+  const blogInfo = parseBlogPathname(pathname);
+  if (blogInfo.isBlog && (!hash || hash === 'blog' || hash.startsWith('blog/') || isAnchorOnly)) {
+    return 'blog';
+  }
+  if (hash === 'blog' || hash.startsWith('blog/')) {
+    return 'blog';
+  }
+  if (pathname.startsWith('/event-gathering') || hash.startsWith('event-gathering')) {
+    return 'event-gathering';
+  }
+  if (hash.startsWith('trip=') || hash.includes('trip=') || hash.startsWith('share-tour') || hash.startsWith('sharetour')) {
+    return 'share-tour';
+  }
+  const validPages: ActivePage[] = ['home', 'tours', 'share-tour', 'event-gathering', 'airport', 'taxi', 'partnerships', 'contact', 'bookings', 'car-rental', 'about', 'admin', 'blog'];
+  if (validPages.includes(hash as ActivePage)) {
+    return hash as ActivePage;
+  }
+  return 'home';
+}
+
+function getInitialSearchParams(): any {
+  if (typeof window === 'undefined') return {};
+  const pathname = window.location.pathname || '';
+  const fullHash = window.location.hash || '';
+  const hash = fullHash.split('?')[0].replace(/^#\/?/, '');
+  const isAnchorOnly = hash === 'main-content' || hash === '' || fullHash === '#' || fullHash === '#main-content';
+
+  const blogInfo = parseBlogPathname(pathname);
+  if (blogInfo.isBlog && (!hash || hash === 'blog' || hash.startsWith('blog/') || isAnchorOnly)) {
+    if (blogInfo.slug) {
+      return { selectedArticleSlug: blogInfo.slug };
+    }
+  }
+  return {};
+}
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [activePage, setActivePageState] = useState<ActivePage>('home');
+  const [activePage, setActivePageState] = useState<ActivePage>(getInitialActivePage);
   const [currency, setCurrencyState] = useState<'USD' | 'IDR' | 'CNY'>(() => {
     // Tombol mata uang Dolar ($) dan Yen/Yuan (¥) sementara dimatikan (jangan dihapus)
     if (!ENABLE_FOREIGN_CURRENCIES) {
@@ -273,7 +352,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Authoritative server state for bookings - initialized empty, populated exclusively via API
   const [bookings, setBookings] = useState<Booking[]>([]);
 
-  const [searchParams, setSearchParams] = useState<any>({});
+  const [searchParams, setSearchParams] = useState<any>(getInitialSearchParams);
   const [activeArticle, setActiveArticle] = useState<BlogPost | null>(null);
   
   // Authoritative server state for Tours - initialized empty, populated exclusively via API
@@ -597,25 +676,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const isAnchorOnly = hash === 'main-content' || hash === '' || fullHash === '#' || fullHash === '#main-content';
 
       // 1. Blog route recognition via clean pathname (/blog, /blog/, /blog/:slug, /blog/:slug/)
-      const isBlogPath = pathname === '/blog' || pathname.startsWith('/blog/');
+      const blogInfo = parseBlogPathname(pathname);
       const isBlogHash = hash === 'blog' || hash.startsWith('blog/');
 
       // If user is accessing a blog pathname and not explicitly jumping to a hash route like #/tours
-      if (isBlogPath && (!hash || isBlogHash || isAnchorOnly)) {
+      if (blogInfo.isBlog && (!hash || isBlogHash || isAnchorOnly)) {
         setActivePageState('blog');
-        const trimmedPath = pathname.replace(/^\/+|\/+$/g, '');
-        const pathSegments = trimmedPath ? trimmedPath.split('/') : [];
-        let articleSlug = '';
-
-        if (pathSegments.length > 1 && pathSegments[1]) {
-          try {
-            articleSlug = decodeURIComponent(pathSegments[1]).trim();
-          } catch {
-            articleSlug = pathSegments[1].trim();
-          }
-          // Sanitize slug: strip query or hash residuals
-          articleSlug = articleSlug.replace(/[?#].*$/, '').replace(/\/+$/, '');
-        }
+        let articleSlug = blogInfo.slug || '';
 
         // Query param fallback e.g. /blog?slug=mount-bromo-travel-guide
         if (!articleSlug) {
@@ -627,6 +694,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             } catch {
               articleSlug = qSlug.trim();
             }
+            articleSlug = articleSlug
+              .replace(/[<>"'`\\]/g, '')
+              .replace(/[?#].*$/, '')
+              .replace(/\/+$/, '')
+              .trim();
           }
         }
 
@@ -642,9 +714,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const canonicalBlogPath = articleSlug
             ? `/blog/${encodeURIComponent(articleSlug)}/`
             : '/blog/';
-          if (window.location.pathname !== canonicalBlogPath && !window.location.search && !window.location.hash) {
+          if (window.location.pathname !== canonicalBlogPath) {
+            const searchPart = window.location.search || '';
+            const hashPart = window.location.hash && !isAnchorOnly && !isBlogHash ? window.location.hash : '';
             try {
-              window.history.replaceState(null, '', canonicalBlogPath);
+              window.history.replaceState(null, '', `${canonicalBlogPath}${searchPart}${hashPart}`);
             } catch {}
           }
         }
@@ -836,12 +910,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Transition cleanly from non-root pathname (e.g. /blog/ or /blog/:slug/) to hash without conflict
       if (window.location.pathname !== '/' && (window.location.pathname.startsWith('/blog') || window.location.pathname.startsWith('/event-gathering'))) {
         try {
-          window.history.pushState(null, '', `/#/${page}`);
+          window.history.pushState(null, '', page === 'home' ? '/' : `/#/${page}`);
         } catch {
-          window.location.hash = `#/${page}`;
+          window.location.hash = page === 'home' ? '' : `#/${page}`;
         }
       } else {
-        window.location.hash = `#/${page}`;
+        if (page === 'home') {
+          if (window.location.hash) {
+            window.location.hash = '';
+          }
+        } else {
+          window.location.hash = `#/${page}`;
+        }
       }
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });

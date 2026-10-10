@@ -322,14 +322,16 @@ const SEOHead: React.FC = () => {
       ? tours.find(t => t.id === searchParams.selectedTourId)
       : null;
 
-    if (activePage === 'about' && activeArticle) {
-      const suffix = language === 'zh' ? ' - 慧捷之旅' : ' - Smart Journey';
+    if ((activePage === 'blog' || activePage === 'about') && activeArticle) {
+      const suffix = language === 'zh' ? ' - 慧捷之旅' : ' | Smart Journey';
       title = `${activeArticle.seoTitle || activeArticle.title}${suffix}`;
       description = activeArticle.seoDescription || activeArticle.excerpt || '';
       keywords = Array.isArray(activeArticle.keywords) && activeArticle.keywords.length > 0 
         ? activeArticle.keywords.join(', ') 
-        : `${activeArticle.title}, smart journey`;
-      canonical = `${BASE_URL}/#/about?article=${activeArticle.slug}`;
+        : `${activeArticle.title}, paket tour bromo, panduan wisata indonesia, smart journey`;
+      canonical = activePage === 'blog'
+        ? `${BASE_URL}/blog/${encodeURIComponent(activeArticle.slug)}/`
+        : `${BASE_URL}/#/about?article=${activeArticle.slug}`;
       breadcrumbItemName = activeArticle.title;
       ogImage = activeArticle.image || `${BASE_URL}/logo.png`;
 
@@ -341,7 +343,7 @@ const SEOHead: React.FC = () => {
         'image': ogImage,
         'author': {
           '@type': 'Organization',
-          'name': activeArticle.author || 'Smart Journey Editorial Team',
+          'name': activeArticle.author || 'Tim Editorial Smart Journey',
           'url': `${BASE_URL}/`
         },
         'publisher': {
@@ -372,8 +374,10 @@ const SEOHead: React.FC = () => {
           {
             '@type': 'ListItem',
             'position': 2,
-            'name': language === 'zh' ? '关于我们' : language === 'en' ? 'About Us' : 'Tentang Kami',
-            'item': `${BASE_URL}/#/about`
+            'name': activePage === 'blog' 
+              ? (language === 'zh' ? '旅游博客' : language === 'en' ? 'Travel Blog' : 'Blog Wisata')
+              : (language === 'zh' ? '关于我们' : language === 'en' ? 'About Us' : 'Tentang Kami'),
+            'item': activePage === 'blog' ? `${BASE_URL}/blog/` : `${BASE_URL}/#/about`
           },
           {
             '@type': 'ListItem',

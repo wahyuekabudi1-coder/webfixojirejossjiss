@@ -185,9 +185,16 @@ export default function Footer() {
                   {t('nav.about')}
                 </button>
                 <span>•</span>
-                <button onClick={() => setPage('blog')} className="hover:text-amber-600 transition-colors cursor-pointer">
+                <a
+                  href="/blog/"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setPage('blog');
+                  }}
+                  className="hover:text-amber-600 transition-colors cursor-pointer"
+                >
                   Blog Wisata
-                </button>
+                </a>
                 <span>•</span>
                 <button onClick={() => setPage('partnerships')} className="hover:text-amber-600 transition-colors cursor-pointer">
                   {t('footer.partnerships')}

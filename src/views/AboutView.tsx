@@ -195,10 +195,7 @@ export default function AboutView() {
   }, [openArticleBySlug, setActiveArticle]);
 
   const handleSelectArticle = (post: BlogPost) => {
-    setActivePost(post);
-    setActiveArticle(post);
-    setDialogTab('read');
-    window.location.hash = `#/about?article=${post.slug}`;
+    setPage('blog', post.slug);
   };
 
   const handleCloseArticle = () => {
@@ -646,7 +643,14 @@ export default function AboutView() {
                 >
                   <div>
                     {/* Featured Image Panel */}
-                    <div className="relative aspect-[16/10] overflow-hidden bg-slate-950">
+                    <a
+                      href={`/blog/${post.slug}/`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleSelectArticle(post);
+                      }}
+                      className="block relative aspect-[16/10] overflow-hidden bg-slate-950 cursor-pointer"
+                    >
                       <img
                         src={post.image}
                         alt={post.title}
@@ -661,7 +665,7 @@ export default function AboutView() {
                         <MapPin className="h-3 w-3 text-amber-500 shrink-0" />
                         <span>{post.destination}</span>
                       </div>
-                    </div>
+                    </a>
 
                     {/* Meta info & Title */}
                     <div className="p-6 space-y-4">
@@ -677,7 +681,15 @@ export default function AboutView() {
                       </div>
 
                       <h3 className="text-base sm:text-lg font-black text-white leading-snug group-hover:text-amber-400 transition-colors duration-300">
-                        {post.title}
+                        <a
+                          href={`/blog/${post.slug}/`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleSelectArticle(post);
+                          }}
+                        >
+                          {post.title}
+                        </a>
                       </h3>
 
                       <p className="text-xs text-slate-400 leading-relaxed font-semibold line-clamp-3">
@@ -709,13 +721,17 @@ export default function AboutView() {
                     <span className="text-[10px] text-slate-500 font-extrabold tracking-wide uppercase font-mono">
                       By {post.author}
                     </span>
-                    <button
-                      onClick={() => handleSelectArticle(post)}
+                    <a
+                      href={`/blog/${post.slug}/`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleSelectArticle(post);
+                      }}
                       className="text-xs font-black text-amber-500 hover:text-amber-400 flex items-center gap-1 cursor-pointer transition-colors"
                     >
                       <span>Read Article</span>
                       <ArrowRight className="h-3 w-3 group-hover:translate-x-1 transition-transform" />
-                    </button>
+                    </a>
                   </div>
                 </motion.article>
               ))}

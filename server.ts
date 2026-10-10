@@ -25,6 +25,8 @@ import { credentialsRepo } from './server/db/repositories/credentials.repository
 import { sanitizeAndPersistImage, sanitizeAndPersistImages } from './server/utils/mediaStorage';
 import { CANONICAL_ROLES, type RolePermissions } from './src/utils/rbac';
 import { articlesRepo } from './server/db/repositories/articles.repository';
+import { handleSitemapRequest, invalidateSitemapCache } from './server/seo/sitemap';
+import { createBlogSeoHandlers, invalidateBlogPrerenderCache } from './server/seo/blogSeo';
 import { BLOG_POSTS } from './src/blogData';
 import { REVIEWS } from './src/data';
 import { promoCodesRepo, normalizePromoCode } from './server/db/repositories/promoCodes.repository';
@@ -732,42 +734,8 @@ Sitemap: https://smartjourney.id/sitemap.xml
 `);
 });
 
-app.get('/sitemap.xml', (req, res) => {
-  res.type('application/xml');
-
-  const baseUrl = 'https://smartjourney.id';
-  const currentDate = new Date().toISOString().split('T')[0];
-
-  const publicRoutes = [
-    { path: '/', changefreq: 'daily', priority: '1.0' },
-    { path: '/tours', changefreq: 'daily', priority: '0.9' },
-    { path: '/share-tour', changefreq: 'daily', priority: '0.9' },
-    { path: '/airport', changefreq: 'weekly', priority: '0.8' },
-    { path: '/taxi', changefreq: 'weekly', priority: '0.8' },
-    { path: '/rental', changefreq: 'weekly', priority: '0.8' },
-    { path: '/car-rental', changefreq: 'weekly', priority: '0.8' },
-    { path: '/bookings', changefreq: 'weekly', priority: '0.7' },
-    { path: '/about', changefreq: 'monthly', priority: '0.6' },
-    { path: '/partnerships', changefreq: 'monthly', priority: '0.6' }
-  ];
-
-  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-  xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n`;
-  xml += `  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\n`;
-  xml += `  xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">\n`;
-
-  for (const r of publicRoutes) {
-    xml += `  <url>\n`;
-    xml += `    <loc>${baseUrl}${r.path}</loc>\n`;
-    xml += `    <lastmod>${currentDate}</lastmod>\n`;
-    xml += `    <changefreq>${r.changefreq}</changefreq>\n`;
-    xml += `    <priority>${r.priority}</priority>\n`;
-    xml += `  </url>\n`;
-  }
-
-  xml += `</urlset>`;
-  res.send(xml);
-});
+// Dynamic XML Sitemap (combines static routes and all published articles)
+app.get('/sitemap.xml', handleSitemapRequest);
 
 // -------------------------------------------------------------
 // EVENT & GATHERING REST ENDPOINTS (ENTERPRISE PERSISTENT DATA LAYER)
@@ -1302,6 +1270,8 @@ app.post('/api/admin/articles', requireAdminAuth, requirePermission('manageCMS')
     };
 
     const created = await articlesRepo.create(articleData);
+    invalidateSitemapCache();
+    invalidateBlogPrerenderCache(created.slug);
     res.status(201).json(created);
   } catch (error: any) {
     console.error('Error creating article in database:', error);
@@ -1331,6 +1301,11 @@ app.put('/api/admin/articles/:slug', requireAdminAuth, requirePermission('manage
     if (!updated) {
       return res.status(404).json({ error: 'Artikel gagal diperbarui.' });
     }
+    invalidateSitemapCache();
+    invalidateBlogPrerenderCache(currentSlug);
+    if (updated.slug !== currentSlug) {
+      invalidateBlogPrerenderCache(updated.slug);
+    }
     res.json(updated);
   } catch (error: any) {
     console.error(`Error updating article ${req.params.slug}:`, error);
@@ -1351,6 +1326,8 @@ app.delete('/api/admin/articles/:slug', requireAdminAuth, requirePermission('man
     if (!deleted) {
       return res.status(500).json({ error: 'Gagal menghapus artikel dari database.' });
     }
+    invalidateSitemapCache();
+    invalidateBlogPrerenderCache(currentSlug);
     res.json({ success: true, message: `Artikel "${existing.title}" berhasil dihapus.` });
   } catch (error: any) {
     console.error(`Error deleting article ${req.params.slug}:`, error);
@@ -7488,6 +7465,15 @@ export default {};
 `);
       });
 
+      const blogSeoHandlers = createBlogSeoHandlers({
+        projectRoot: PROJECT_ROOT,
+        getViteServer: () => vite,
+      });
+
+      // Server-Side Blog SEO Handlers (intercept before Vite HTML fallback)
+      app.get(['/blog', '/blog/'], blogSeoHandlers.handleBlogIndex);
+      app.get(['/blog/:slug', '/blog/:slug/'], blogSeoHandlers.handleBlogDetail);
+
       app.use(vite.middlewares);
     } catch (err) {
       console.error('Failed to create Vite server middleware:', err);
@@ -7537,6 +7523,14 @@ export default {};
     app.all(/\.(js|mjs|css|map|json|png|jpg|jpeg|gif|svg|ico|webp|woff|woff2|ttf|eot)$/, (_req, res) => {
       res.status(404).type('text/plain').send('Resource not found');
     });
+
+    const blogSeoHandlers = createBlogSeoHandlers({
+      projectRoot: PROJECT_ROOT,
+    });
+
+    // Server-Side Blog SEO Handlers (intercept before catch-all SPA fallback)
+    app.get(['/blog', '/blog/'], blogSeoHandlers.handleBlogIndex);
+    app.get(['/blog/:slug', '/blog/:slug/'], blogSeoHandlers.handleBlogDetail);
 
     // 3. SPA Route Fallback: Serve index.html with NO-CACHE headers so client always gets current chunk manifests
     app.get('*', (_req, res) => {
