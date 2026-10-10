@@ -58,6 +58,31 @@ export interface Review {
   bookingCode?: string;
 }
 
+export interface GooglePlaceReview {
+  id: string;
+  authorName: string;
+  authorPhotoUrl?: string;
+  authorUri?: string;
+  rating: number;
+  relativeTime: string;
+  text: string;
+  publishTime?: string;
+}
+
+export interface GoogleReviewsData {
+  configured: boolean;
+  status: 'connected' | 'unconfigured' | 'error' | 'empty';
+  source: 'google_places' | 'google_business_profile';
+  placeId?: string;
+  placeName?: string;
+  rating: number | null;
+  userRatingsTotal: number | null;
+  reviews: GooglePlaceReview[];
+  googleMapsUrl: string;
+  message?: string;
+  lastSyncedAt?: string;
+}
+
 export interface Booking {
   id: string;
   type: 'tour' | 'airport' | 'taxi' | 'rental';

@@ -100,23 +100,33 @@ export default function CustomerReviewsSection({ serviceType, serviceId, service
           </p>
 
           <div className="bg-neutral-50 rounded-2xl p-5 border border-neutral-100 flex items-center gap-4">
-            <div className="text-center">
-              <span className="text-4xl font-black text-neutral-900 font-mono">{averageRating}</span>
-              <span className="text-neutral-600 text-xs block font-semibold mt-0.5">dari 5.0</span>
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-0.5 text-amber-500">
-                {[...Array(5)].map((_, i) => (
-                  <Star 
-                    key={i} 
-                    className={`h-4 w-4 ${i < Math.round(parseFloat(averageRating)) ? 'fill-amber-500' : 'text-neutral-200'}`} 
-                  />
-                ))}
+            {approvedReviews.length > 0 ? (
+              <>
+                <div className="text-center">
+                  <span className="text-4xl font-black text-neutral-900 font-mono">{averageRating}</span>
+                  <span className="text-neutral-600 text-xs block font-semibold mt-0.5">dari 5.0</span>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-0.5 text-amber-500">
+                    {[...Array(5)].map((_, i) => (
+                      <Star 
+                        key={i} 
+                        className={`h-4 w-4 ${i < Math.round(parseFloat(averageRating)) ? 'fill-amber-500' : 'text-neutral-200'}`} 
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs text-neutral-600 font-bold block mt-1">
+                    {approvedReviews.length} Ulasan Terverifikasi
+                  </span>
+                </div>
+              </>
+            ) : (
+              <div className="w-full text-center py-2">
+                <span className="text-xs text-neutral-500 italic block font-medium">
+                  Belum ada ulasan terverifikasi untuk layanan ini
+                </span>
               </div>
-              <span className="text-xs text-neutral-600 font-bold block mt-1">
-                {approvedReviews.length} Ulasan Terverifikasi
-              </span>
-            </div>
+            )}
           </div>
 
           {/* Form Side - write review info */}

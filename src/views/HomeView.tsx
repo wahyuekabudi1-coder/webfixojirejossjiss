@@ -5,7 +5,7 @@ import {
   Shield, Sparkles, Star, Users, Briefcase, Car, Route, Plane, 
   Navigation, Calendar, Check, MessageSquare, ArrowRight, ArrowLeft, 
   Clock, Compass, Handshake, Globe, ChevronLeft, ChevronRight, 
-  Heart, Mail, Send, CheckCircle2 
+  Heart, Mail, Send, CheckCircle2, CheckCircle 
 } from 'lucide-react';
 import CheckoutModal from '../components/CheckoutModal';
 import { motion, AnimatePresence } from 'motion/react';
@@ -26,7 +26,9 @@ const WHY_US_ICONS: Record<number, React.ReactNode> = {
 };
 
 export default function HomeView() {
-  const { setPage, searchParams, setSearchParams, tours, reviews, addReview } = useApp();
+  const { 
+    setPage, searchParams, setSearchParams, tours, reviews, addReview
+  } = useApp();
   const { 
     t, 
     language, 
@@ -157,8 +159,11 @@ export default function HomeView() {
     }, 100);
   };
 
-  // Only display reviews that are approved or have no status field (pre-seeded default reviews)
-  const localReviews = reviews.filter(r => r.status !== 'pending');
+  // Only display reviews that are approved; strictly isolate pending, rejected, and unverified reviews from public display
+  const localReviews = reviews.filter(r => r.status === 'approved');
+  const avgWebsiteRating = localReviews.length > 0
+    ? (localReviews.reduce((sum, r) => sum + r.rating, 0) / localReviews.length).toFixed(1)
+    : '';
 
   const [isHoveringReviews, setIsHoveringReviews] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -1619,15 +1624,17 @@ export default function HomeView() {
       </section>
 
       {/* 6. CUSTOMER REVIEWS SLIDER */}
-      <section className="py-8 md:py-12 lg:py-14 bg-neutral-50 relative overflow-hidden">
+      <section className="py-8 md:py-12 lg:py-14 bg-neutral-50 relative overflow-hidden" id="customer-reviews-section">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
           
           <div className="space-y-3 mb-6 sm:mb-8">
-            <span className="inline-flex items-center gap-1.5 bg-amber-500/10 text-amber-600 font-extrabold uppercase tracking-widest font-mono text-[10px] sm:text-xs px-3.5 py-1.5 rounded-full border border-amber-500/20">
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>{language === 'zh' ? '谷歌地图官方认证好评' : language === 'id' ? 'Ulasan Google Terverifikasi' : 'Verified Google Reviews'}</span>
+            <span className="inline-flex items-center gap-1.5 bg-amber-500/10 text-amber-700 font-extrabold uppercase tracking-widest font-mono text-[10px] sm:text-xs px-3.5 py-1.5 rounded-full border border-amber-500/20">
+              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+              <span>
+                {language === 'zh' ? '真实客户评价与反馈' : language === 'id' ? 'Ulasan & Testimoni Pelanggan' : 'Customer Reviews & Feedback'}
+              </span>
             </span>
             <h2 className="text-2xl sm:text-4.5xl font-black text-neutral-900 tracking-tight leading-none mt-2">
               {t('home.reviewsTitle')}
@@ -1638,59 +1645,85 @@ export default function HomeView() {
             <div className="h-1.5 w-20 bg-gradient-to-r from-amber-500 to-amber-600 mx-auto rounded-full mt-3" />
           </div>
 
-          {/* Real Google Rating Summary Header */}
-          <div className="bg-white border border-neutral-200/60 rounded-3xl p-6 sm:p-8 max-w-4xl mx-auto mb-6 sm:mb-8 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
-            <a 
-              href="https://www.google.com/maps/place/Smart+Journey/@-8.0045371,112.7482296,15z/data=!4m8!3m7!1s0x2dd625bdc0ad5b79:0x3446d2c5e7fdfe18!8m2!3d-8.0045585!4d112.7585294!9m1!1b1!16s%2Fg%2F11xfx6lnnw?entry=ttu&g_ep=EgoyMDI2MDYyOS4wIKXMDSoASAFQAw%3D%3D" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left hover:opacity-90 transition-opacity group cursor-pointer"
-              title="Google Maps"
-            >
-              <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-neutral-150 shrink-0 group-hover:border-blue-500/30 transition-colors">
+          {/* Google Maps Profile & Rating Banner */}
+          <div className="bg-white border border-neutral-200/60 rounded-3xl p-6 sm:p-8 max-w-4xl mx-auto mb-8 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 text-left">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left w-full md:w-auto">
+              <a
+                href="https://www.google.com/maps/place/Smart+Journey/@-8.0045371,112.7482296,15z/data=!4m8!3m7!1s0x2dd625bdc0ad5b79:0x3446d2c5e7fdfe18!8m2!3d-8.0045585!4d112.7585294!9m1!1b1!16s%2Fg%2F11xfx6lnnw?entry=ttu&g_ep=EgoyMDI2MDYyOS4wIKXMDSoASAFQAw%3D%3D"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-neutral-150 shrink-0 hover:border-blue-500/40 transition-colors group"
+                title="Google Maps Profile"
+              >
                 <svg className="h-8 w-8" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                   <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
                   <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22c-.81-.63-1.37-1.5-1.37-2.63z" />
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                 </svg>
-              </div>
+              </a>
+
               <div>
-                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                  <span className="font-extrabold text-3xl text-neutral-900 tracking-tight group-hover:text-blue-600 transition-colors">4.9</span>
-                  <div className="flex items-center justify-center sm:justify-start">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="h-5 w-5 fill-amber-400 text-amber-400 stroke-amber-400" />
-                    ))}
-                    <span className="text-xs text-neutral-600 ml-2 font-mono">(4.93 / 5)</span>
+                {localReviews.length > 0 ? (
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <span className="font-extrabold text-3xl text-neutral-900 tracking-tight">
+                      {avgWebsiteRating}
+                    </span>
+                    <div className="flex items-center justify-center sm:justify-start">
+                      {[...Array(Math.round(Number(avgWebsiteRating) || 5))].map((_, i) => (
+                        <Star key={i} className="h-5 w-5 fill-amber-400 text-amber-400 stroke-amber-400" />
+                      ))}
+                      {[...Array(5 - Math.round(Number(avgWebsiteRating) || 5))].map((_, i) => (
+                        <Star key={i} className="h-5 w-5 text-neutral-200" />
+                      ))}
+                      <span className="text-xs text-neutral-600 ml-2 font-mono">
+                        ({localReviews.length} {language === 'zh' ? '条真实评价' : language === 'id' ? 'ulasan terverifikasi' : 'verified reviews'})
+                      </span>
+                    </div>
                   </div>
-                </div>
-                <p className="text-xs sm:text-sm text-neutral-500 mt-1 font-medium flex items-center justify-center sm:justify-start gap-1">
-                  <span>{language === 'zh' ? '谷歌地图真实验证评价' : language === 'id' ? 'Ulasan Terpercaya Google Maps' : 'Authentic Google Reviews'}</span>
-                  <span className="text-neutral-300">|</span>
-                  <span className="text-blue-600 font-bold group-hover:underline flex items-center gap-0.5">
-                    {language === 'zh' ? '查看商家主页 ↗' : language === 'id' ? 'Lihat Profil Bisnis ↗' : 'View Business Profile ↗'}
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs sm:text-sm text-neutral-500 font-medium italic">
+                      {language === 'zh' ? '暂无已审核评价' : language === 'id' ? 'Belum ada ulasan terverifikasi yang dipublikasikan' : 'No verified reviews published yet'}
+                    </span>
+                  </div>
+                )}
+
+                <p className="text-xs sm:text-sm text-neutral-500 mt-1 font-medium flex flex-wrap items-center justify-center sm:justify-start gap-1.5">
+                  <span className="font-semibold text-neutral-800">Smart Journey Indonesia</span>
+                  <span className="text-neutral-300">·</span>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 border border-neutral-200">
+                    <span>Google Business Profile</span>
                   </span>
+                  <span className="text-neutral-300">·</span>
+                  <a
+                    href="https://www.google.com/maps/place/Smart+Journey/@-8.0045371,112.7482296,15z/data=!4m8!3m7!1s0x2dd625bdc0ad5b79:0x3446d2c5e7fdfe18!8m2!3d-8.0045585!4d112.7585294!9m1!1b1!16s%2Fg%2F11xfx6lnnw?entry=ttu&g_ep=EgoyMDI2MDYyOS4wIKXMDSoASAFQAw%3D%3D"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-700 font-bold hover:underline inline-flex items-center gap-0.5"
+                  >
+                    {language === 'zh' ? '查看 Google Maps 主页 ↗' : language === 'id' ? 'Lihat Profil Google Maps ↗' : 'View on Google Maps ↗'}
+                  </a>
                 </p>
               </div>
-            </a>
+            </div>
             
-            <div className="w-full md:w-auto">
+            <div className="w-full md:w-auto flex flex-col sm:flex-row items-center gap-2.5">
               <a
                 href="https://www.google.com/maps/place/Smart+Journey/@-8.0045371,112.7482296,15z/data=!4m8!3m7!1s0x2dd625bdc0ad5b79:0x3446d2c5e7fdfe18!8m2!3d-8.0045585!4d112.7585294!9m1!1b1!16s%2Fg%2F11xfx6lnnw?entry=ttu&g_ep=EgoyMDI2MDYyOS4wIKXMDSoASAFQAw%3D%3D"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-neutral-950 font-extrabold text-xs uppercase tracking-widest px-6 py-4 rounded-xl shadow-md shadow-amber-500/10 transition-all duration-300 active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-neutral-950 font-extrabold text-xs uppercase tracking-widest px-6 py-3.5 rounded-xl shadow-md shadow-amber-500/10 transition-all duration-300 active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24">
                   <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
                 </svg>
-                <span>{language === 'zh' ? '在 Google Maps 上撰写评价 ↗' : language === 'id' ? 'Tulis Ulasan di Google Maps ↗' : 'Write Review on Google Maps ↗'}</span>
+                <span>{language === 'zh' ? '在 Google Maps 撰写评价 ↗' : language === 'id' ? 'Buka Profil & Tulis Ulasan ↗' : 'Review on Google Maps ↗'}</span>
               </a>
             </div>
           </div>
 
-          {/* Slider Frame */}
+          {/* CUSTOMER REVIEWS SLIDER */}
           <div 
             className="relative mt-4"
             onMouseEnter={() => setIsHoveringReviews(true)}
@@ -1724,22 +1757,21 @@ export default function HomeView() {
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
               {localReviews.length === 0 ? (
-                <div className="w-full text-center py-12 text-neutral-600 font-medium">
-                  {language === 'zh' ? '暂无评价' : language === 'id' ? 'Belum ada ulasan saat ini.' : 'No reviews available yet.'}
+                <div className="w-full text-center py-12 text-neutral-600 font-medium bg-white rounded-2xl border border-neutral-200">
+                  {language === 'zh' ? '暂无评价' : language === 'id' ? 'Belum ada ulasan yang dipublikasikan saat ini.' : 'No published reviews available yet.'}
                 </div>
               ) : (
                 localReviews.map((review, idx) => {
                   const bgColors = [
-                    'bg-blue-600', 'bg-emerald-600', 'bg-purple-600', 'bg-rose-600',
+                    'bg-emerald-600', 'bg-blue-600', 'bg-purple-600', 'bg-rose-600',
                     'bg-amber-600', 'bg-indigo-600', 'bg-teal-600', 'bg-cyan-600',
                   ];
                   const colorClass = bgColors[idx % bgColors.length];
-                  const isLocalGuide = Boolean(review.isLocalGuide);
                   
                   return (
                     <div 
                       key={review.id} 
-                      className="w-full sm:w-[calc(50%-12px)] lg:w-[calc(25%-18px)] shrink-0 snap-start bg-white border border-neutral-200/60 hover:border-amber-500/30 hover:bg-white rounded-2xl p-5 flex flex-col justify-between shadow-sm hover:shadow-md transition-all duration-300 text-left relative min-h-[220px]"
+                      className="w-full sm:w-[calc(50%-12px)] lg:w-[calc(25%-18px)] shrink-0 snap-start bg-white border border-neutral-200/60 hover:border-emerald-500/30 rounded-2xl p-5 flex flex-col justify-between shadow-sm hover:shadow-md transition-all duration-300 text-left relative min-h-[220px]"
                     >
                       <div>
                         {/* Header Row */}
@@ -1749,20 +1781,11 @@ export default function HomeView() {
                               {review.name.charAt(0)}
                             </div>
                             <div className="min-w-0">
-                              <h4 className="font-extrabold text-sm text-neutral-900 truncate flex items-center gap-1">
+                              <h4 className="font-extrabold text-sm text-neutral-900 truncate">
                                 {review.name}
-                                {isLocalGuide && (
-                                  <span className="w-3.5 h-3.5 bg-blue-500 text-white rounded-full flex items-center justify-center text-[8px] font-bold shrink-0" title="Google Local Guide Verified">✓</span>
-                                )}
                               </h4>
-                              <p className="text-[10px] text-neutral-500 font-semibold tracking-wide uppercase mt-0.5 flex items-center gap-1">
-                                <span>{review.country}</span>
-                                {isLocalGuide && (
-                                  <>
-                                    <span>·</span>
-                                    <span className="text-amber-600">Local Guide</span>
-                                  </>
-                                )}
+                              <p className="text-[10px] text-neutral-500 font-semibold tracking-wide uppercase mt-0.5">
+                                {review.country}
                               </p>
                             </div>
                           </div>
@@ -1797,18 +1820,13 @@ export default function HomeView() {
                         </p>
                       </div>
                       
-                      {/* Review footer without map link */}
+                      {/* Review footer: Verified Booking */}
                       <div className="mt-4 pt-2 border-t border-neutral-100 flex items-center justify-between text-[9px] text-neutral-600 font-mono">
-                        <span className="flex items-center gap-1">
-                          <svg className="h-3 w-3 shrink-0" viewBox="0 0 24 24">
-                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22c-.81-.63-1.37-1.5-1.37-2.63z" />
-                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                          </svg>
-                          <span>Google Review</span>
+                        <span className="flex items-center gap-1 text-emerald-700 font-bold">
+                          <CheckCircle className="h-3 w-3 text-emerald-600" />
+                          <span>Verified Booking</span>
                         </span>
-                        <span className="text-neutral-600 font-medium">
+                        <span className="text-neutral-500 font-medium">
                           {review.date}
                         </span>
                       </div>
@@ -1833,7 +1851,6 @@ export default function HomeView() {
                 </button>
               ))}
             </div>
-
           </div>
 
         </div>

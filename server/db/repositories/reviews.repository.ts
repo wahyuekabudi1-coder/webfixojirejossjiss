@@ -169,6 +169,59 @@ export class ReviewsRepository {
     };
   }
 
+  async getById(id: string): Promise<ReviewEntity | null> {
+    const client = await this.db();
+    const rows = await client.query<any>('SELECT * FROM reviews WHERE id = ? LIMIT 1', [id]);
+    if (!rows || rows.length === 0) return null;
+    const r = rows[0];
+    return {
+      id: r.id,
+      name: r.name,
+      rating: Number(r.rating) || 5,
+      comment: r.comment || '',
+      text: r.comment || '',
+      date: r.date || '',
+      service: r.service || 'tour',
+      serviceType: r.service || 'tour',
+      serviceId: r.service_id || undefined,
+      serviceName: r.service_name || undefined,
+      bookingCode: r.booking_code || undefined,
+      country: r.country || 'Indonesia',
+      status: (r.status || 'pending') as any,
+      createdAt: r.created_at || new Date().toISOString()
+    };
+  }
+
+  async seedInitialReviews(initialReviews: any[]): Promise<{ seeded: number; skipped: number; total: number }> {
+    let seeded = 0;
+    let skipped = 0;
+    for (const r of initialReviews) {
+      if (!r.id) continue;
+      const existing = await this.getById(r.id);
+      if (!existing) {
+        await this.create({
+          id: r.id,
+          name: r.name,
+          rating: Number(r.rating) || 5,
+          comment: r.text || r.comment || '',
+          text: r.text || r.comment || '',
+          date: r.date || new Date().toISOString().split('T')[0],
+          service: r.serviceType || r.service || 'tour',
+          serviceType: r.serviceType || r.service || 'tour',
+          serviceId: r.serviceId,
+          serviceName: r.serviceName,
+          bookingCode: r.bookingCode,
+          country: r.country || 'Indonesia',
+          status: (r.status || 'approved') as any
+        });
+        seeded++;
+      } else {
+        skipped++;
+      }
+    }
+    return { seeded, skipped, total: initialReviews.length };
+  }
+
   async updateStatus(id: string, status: 'approved' | 'rejected'): Promise<boolean> {
     const client = await this.db();
     const res = await client.execute(

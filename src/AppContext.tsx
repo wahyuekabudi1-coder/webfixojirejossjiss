@@ -3,7 +3,8 @@ import {
   ActivePage, Booking, Tour, AirportRoute, Airport, 
   TaxiMasterArea, TaxiMasterDestination, TaxiPricingRule, TaxiAreaRule, TaxiImportHistory,
   OperationalCity, RentalLocation, RentalVehicle, RentalCategory, RentalAddon, ZonePricing,
-  Review
+  Review,
+  GoogleReviewsData
 } from './types';
 import { TOURS, REVIEWS } from './data';
 import { EXCHANGE_RATE_USD_TO_IDR, EXCHANGE_RATE_USD_TO_CNY, ENABLE_FOREIGN_CURRENCIES } from './utils/pricingUtils';
@@ -98,6 +99,9 @@ interface AppContextProps {
   addReview: (reviewData: Omit<Review, 'id' | 'date'>) => void;
   approveReview: (id: string) => void;
   rejectReview: (id: string) => void;
+  googleReviews: GoogleReviewsData | null;
+  isLoadingGoogleReviews: boolean;
+  refreshGoogleReviews: () => Promise<void>;
 }
 
 
@@ -205,7 +209,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviews, setReviews] = useState<Review[]>(REVIEWS);
 
   const addReview = async (reviewData: Omit<Review, 'id' | 'date'>) => {
     const today = new Date();
@@ -260,6 +264,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.error('Failed to update review status on server:', err);
     }
   };
+
+  // Google Places Reviews authoritative server state
+  const [googleReviews, setGoogleReviews] = useState<GoogleReviewsData | null>(null);
+  const [isLoadingGoogleReviews, setIsLoadingGoogleReviews] = useState<boolean>(true);
   
   // Authoritative server state for bookings - initialized empty, populated exclusively via API
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -344,12 +352,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data)) {
+        if (Array.isArray(data) && data.length > 0) {
           setReviews(data);
+        } else if (Array.isArray(data) && data.length === 0) {
+          setReviews(prev => prev.length > 0 ? prev : REVIEWS);
         }
       }
     } catch (err) {
       console.warn('Could not fetch reviews from server:', err);
+    }
+  }, []);
+
+  // Server fetch for Google Places Reviews
+  const refreshGoogleReviews = useCallback(async (force = false) => {
+    setIsLoadingGoogleReviews(true);
+    try {
+      const res = await fetch(`/api/reviews/google${force ? '?refresh=true' : ''}`);
+      if (res.ok) {
+        const data: GoogleReviewsData = await res.json();
+        setGoogleReviews(data);
+      }
+    } catch (err) {
+      console.warn('Could not fetch google reviews from server:', err);
+    } finally {
+      setIsLoadingGoogleReviews(false);
     }
   }, []);
 
@@ -503,8 +529,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     refreshTaxi();
     refreshSchedules();
     refreshReviews();
+    refreshGoogleReviews();
     refreshServiceLimits();
-  }, [refreshTours, refreshBookings, refreshRentals, refreshAirports, refreshTaxi, refreshSchedules, refreshReviews, refreshServiceLimits]);
+  }, [refreshTours, refreshBookings, refreshRentals, refreshAirports, refreshTaxi, refreshSchedules, refreshReviews, refreshGoogleReviews, refreshServiceLimits]);
 
   // Automated persistence sync effects to backend server
   useEffect(() => {
@@ -1084,7 +1111,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setReviews,
         addReview,
         approveReview,
-        rejectReview
+        rejectReview,
+        googleReviews,
+        isLoadingGoogleReviews,
+        refreshGoogleReviews
       }}
     >
       {children}

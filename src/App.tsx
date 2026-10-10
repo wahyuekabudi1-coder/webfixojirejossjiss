@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { Suspense, lazy, useEffect } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { AppProvider, useApp } from './AppContext';
 import { LanguageCurrencyProvider } from './sharetour/LanguageCurrencyContext';
 import SEOHead from './components/SEOHead';
@@ -14,21 +14,23 @@ import HomeView from './views/HomeView';
 import { motion, AnimatePresence } from 'motion/react';
 import { trackPageView } from './lib/analytics';
 import { isServiceEnabled } from './config/serviceVisibility';
+import { safeLazyImport } from './utils/preloadRecovery';
+import ErrorBoundary from './components/ErrorBoundary';
 
-// Code-split lazy loaded view chunks to keep initial bundle ultra-light
-const ToursView = lazy(() => import('./views/ToursView'));
-const AirportTransferView = lazy(() => import('./views/AirportTransferView'));
-const TaxiView = lazy(() => import('./views/TaxiView'));
-const PartnershipsView = lazy(() => import('./views/PartnershipsView'));
-const BookingsView = lazy(() => import('./views/BookingsView'));
-const CarRentalView = lazy(() => import('./views/CarRentalView'));
-const AboutView = lazy(() => import('./views/AboutView'));
-const AdminView = lazy(() => import('./views/AdminView'));
-const ShareTourView = lazy(() => import('./views/ShareTourView'));
-const GatheringView = lazy(() => import('./views/GatheringView'));
-const ServiceUnavailablePage = lazy(() => import('./components/ServiceUnavailablePage'));
-const PrivacyModal = lazy(() => import('./components/PrivacyModal'));
-const TermsModal = lazy(() => import('./components/TermsModal'));
+// Code-split lazy loaded view chunks with safe stale-chunk recovery & anti-reload loop guard
+const ToursView = safeLazyImport(() => import('./views/ToursView'), 'ToursView');
+const AirportTransferView = safeLazyImport(() => import('./views/AirportTransferView'), 'AirportTransferView');
+const TaxiView = safeLazyImport(() => import('./views/TaxiView'), 'TaxiView');
+const PartnershipsView = safeLazyImport(() => import('./views/PartnershipsView'), 'PartnershipsView');
+const BookingsView = safeLazyImport(() => import('./views/BookingsView'), 'BookingsView');
+const CarRentalView = safeLazyImport(() => import('./views/CarRentalView'), 'CarRentalView');
+const AboutView = safeLazyImport(() => import('./views/AboutView'), 'AboutView');
+const AdminView = safeLazyImport(() => import('./views/AdminView'), 'AdminView');
+const ShareTourView = safeLazyImport(() => import('./views/ShareTourView'), 'ShareTourView');
+const GatheringView = safeLazyImport(() => import('./views/GatheringView'), 'GatheringView');
+const ServiceUnavailablePage = safeLazyImport(() => import('./components/ServiceUnavailablePage'), 'ServiceUnavailablePage');
+const PrivacyModal = safeLazyImport(() => import('./components/PrivacyModal'), 'PrivacyModal');
+const TermsModal = safeLazyImport(() => import('./components/TermsModal'), 'TermsModal');
 
 const PageFallback = () => (
   <div className="min-h-[50vh] flex flex-col items-center justify-center p-8 text-center">
@@ -103,9 +105,14 @@ function AppContent() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <Suspense fallback={<PageFallback />}>
-                {renderView()}
-              </Suspense>
+              <ErrorBoundary
+                title="Gagal Memuat Dasbor Admin"
+                subtitle="Komponen dasbor administrasi tidak dapat dimuat atau koneksi terputus. Silakan muat ulang halaman."
+              >
+                <Suspense fallback={<PageFallback />}>
+                  {renderView()}
+                </Suspense>
+              </ErrorBoundary>
             </motion.div>
           </AnimatePresence>
         </main>
@@ -139,9 +146,19 @@ function AppContent() {
             exit={{ opacity: 0, y: -15 }}
             transition={{ duration: 0.35, ease: 'easeInOut' }}
           >
-            <Suspense fallback={<PageFallback />}>
-              {renderView()}
-            </Suspense>
+            <ErrorBoundary
+              title="Gagal Memuat Halaman Layanan"
+              subtitle="Komponen halaman ini tidak dapat dimuat atau koneksi terputus. Silakan muat ulang halaman."
+              onReset={() => {
+                if (typeof window !== 'undefined') {
+                  window.location.hash = '';
+                }
+              }}
+            >
+              <Suspense fallback={<PageFallback />}>
+                {renderView()}
+              </Suspense>
+            </ErrorBoundary>
           </motion.div>
         </AnimatePresence>
       </main>
@@ -164,10 +181,12 @@ function AppContent() {
 
 export default function App() {
   return (
-    <LanguageCurrencyProvider>
-      <AppProvider>
-        <AppContent />
-      </AppProvider>
-    </LanguageCurrencyProvider>
+    <ErrorBoundary isRoot={true}>
+      <LanguageCurrencyProvider>
+        <AppProvider>
+          <AppContent />
+        </AppProvider>
+      </LanguageCurrencyProvider>
+    </ErrorBoundary>
   );
 }
