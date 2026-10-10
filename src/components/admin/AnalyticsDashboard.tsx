@@ -668,7 +668,9 @@ export default function AnalyticsDashboard({
               className={`px-4 py-3 border-b-2 font-bold transition-all flex items-center gap-2 cursor-pointer ${
                 isActive
                   ? 'border-amber-500 text-amber-400 bg-amber-500/5'
-                  : 'border-transparent text-neutral-400 hover:text-neutral-200'
+                  : isDark 
+                  ? 'border-transparent text-neutral-400 hover:text-neutral-200' 
+                  : 'border-transparent text-neutral-600 hover:text-neutral-900'
               }`}
             >
               <Icon className={`h-4 w-4 ${isActive ? 'text-amber-400' : 'text-neutral-500'}`} />
@@ -714,7 +716,9 @@ export default function AnalyticsDashboard({
                     className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
                       bizPeriod === p.id
                         ? 'bg-amber-500 text-neutral-950 font-black'
-                        : 'text-neutral-400 hover:text-white bg-neutral-800/40'
+                        : isDark 
+                        ? 'text-neutral-400 hover:text-white bg-neutral-800/40' 
+                        : 'text-neutral-600 hover:text-neutral-900 bg-slate-100 hover:bg-slate-200'
                     }`}
                   >
                     {p.label}

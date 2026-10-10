@@ -723,7 +723,7 @@ export default function AdminDashboard({
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 isActive
                   ? 'bg-amber-500 text-neutral-950 font-black shadow-sm'
-                  : `${t.textSecondary} hover:${t.textPrimary} hover:bg-neutral-800/40 border border-transparent`
+                  : `${isDark ? 'text-neutral-400 hover:text-white hover:bg-neutral-800/40' : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'} border border-transparent`
               }`}
             >
               <IconComp className={`h-3.5 w-3.5 ${isActive ? 'text-neutral-950' : 'text-neutral-400'}`} />
@@ -919,7 +919,7 @@ export default function AdminDashboard({
                               <button
                                 type="button"
                                 onClick={() => setPreviewTrip(trip)}
-                                className={`p-1.5 rounded-lg border ${t.border} ${t.hover} text-neutral-400 hover:text-white transition cursor-pointer`}
+                                className={`p-1.5 rounded-lg border ${t.border} ${t.hover} ${isDark ? 'text-neutral-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'} transition cursor-pointer`}
                                 title="Lihat Pratinjau Pelanggan"
                               >
                                 <Eye className="h-3.5 w-3.5" />
@@ -1575,7 +1575,7 @@ export default function AdminDashboard({
               <button
                 type="button"
                 onClick={() => setImportText('')}
-                className={`px-4 py-2 rounded-xl border ${t.border} text-xs font-bold text-neutral-400 hover:text-white cursor-pointer`}
+                className={`px-4 py-2 rounded-xl border ${t.border} text-xs font-bold ${isDark ? 'text-neutral-400 hover:text-white' : 'text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100'} cursor-pointer`}
               >
                 Kosongkan
               </button>
@@ -1606,7 +1606,7 @@ export default function AdminDashboard({
               <h4 className="font-mono font-black text-sm uppercase text-amber-500">
                 {editingBatchId ? 'Edit Jadwal Batch' : 'Jadwalkan Batch Keberangkatan'}
               </h4>
-              <button onClick={() => setShowBatchModal(false)} className="text-neutral-400 hover:text-white p-1 cursor-pointer">
+              <button onClick={() => setShowBatchModal(false)} className={`${isDark ? 'text-neutral-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'} p-1 cursor-pointer`}>
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -1690,7 +1690,7 @@ export default function AdminDashboard({
               <button
                 type="button"
                 onClick={() => setShowBatchModal(false)}
-                className={`px-4 py-2 rounded-xl border ${t.border} text-xs font-bold text-neutral-400 hover:text-white cursor-pointer`}
+                className={`px-4 py-2 rounded-xl border ${t.border} text-xs font-bold ${isDark ? 'text-neutral-400 hover:text-white' : 'text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100'} cursor-pointer`}
               >
                 Batal
               </button>
@@ -1712,7 +1712,7 @@ export default function AdminDashboard({
           <div className={`${t.card} border rounded-3xl max-w-md w-full overflow-hidden shadow-2xl flex flex-col`}>
             <div className={`p-5 border-b ${t.border} flex justify-between items-center`}>
               <h4 className="font-mono font-black text-sm uppercase text-amber-500">Edit Profil Peserta</h4>
-              <button onClick={() => setSelectedParticipantForEdit(null)} className="text-neutral-400 hover:text-white p-1 cursor-pointer">
+              <button onClick={() => setSelectedParticipantForEdit(null)} className={`${isDark ? 'text-neutral-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'} p-1 cursor-pointer`}>
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -1765,7 +1765,7 @@ export default function AdminDashboard({
               <button
                 type="button"
                 onClick={() => setSelectedParticipantForEdit(null)}
-                className={`px-4 py-2 rounded-xl border ${t.border} text-xs font-bold text-neutral-400 hover:text-white cursor-pointer`}
+                className={`px-4 py-2 rounded-xl border ${t.border} text-xs font-bold ${isDark ? 'text-neutral-400 hover:text-white' : 'text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100'} cursor-pointer`}
               >
                 Batal
               </button>
@@ -1803,7 +1803,7 @@ export default function AdminDashboard({
               <button
                 type="button"
                 onClick={() => setShowRejectDialog(null)}
-                className={`px-4 py-2 rounded-xl border ${t.border} text-xs font-bold text-neutral-400 hover:text-white cursor-pointer`}
+                className={`px-4 py-2 rounded-xl border ${t.border} text-xs font-bold ${isDark ? 'text-neutral-400 hover:text-white' : 'text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100'} cursor-pointer`}
               >
                 Batal
               </button>
@@ -1827,7 +1827,7 @@ export default function AdminDashboard({
               <span className="text-xs font-mono font-bold text-amber-500">
                 Bukti Transfer: {selectedBooking.bookingCode || selectedBooking.id}
               </span>
-              <button onClick={() => setSelectedBooking(null)} className="text-neutral-400 hover:text-white p-1 cursor-pointer">
+              <button onClick={() => setSelectedBooking(null)} className={`${isDark ? 'text-neutral-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'} p-1 cursor-pointer`}>
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -1869,7 +1869,7 @@ export default function AdminDashboard({
           <div className={`${t.card} border rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[85vh]`}>
             <div className={`p-4 border-b ${t.border} flex justify-between items-center`}>
               <span className="text-xs font-mono font-bold text-amber-500">Pratinjau Halaman Pelanggan</span>
-              <button onClick={() => setPreviewTrip(null)} className="text-neutral-400 hover:text-white p-1 cursor-pointer">
+              <button onClick={() => setPreviewTrip(null)} className={`${isDark ? 'text-neutral-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'} p-1 cursor-pointer`}>
                 <X className="h-4 w-4" />
               </button>
             </div>

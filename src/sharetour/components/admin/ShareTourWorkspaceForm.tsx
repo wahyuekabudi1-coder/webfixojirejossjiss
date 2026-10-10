@@ -547,10 +547,12 @@ export default function ShareTourWorkspaceForm({
               className={`px-4 py-3 border-b-2 font-mono text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
                 isActive
                   ? 'border-amber-500 text-amber-500 bg-amber-500/5 font-extrabold'
-                  : `border-transparent ${t.textSecondary} hover:${t.textPrimary}`
+                  : isDark
+                  ? 'border-transparent text-neutral-400 hover:text-white hover:bg-neutral-800/40'
+                  : 'border-transparent text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
               }`}
             >
-              <IconComp className={`h-4 w-4 ${isActive ? 'text-amber-500' : 'text-neutral-500'}`} />
+              <IconComp className={`h-4 w-4 ${isActive ? 'text-amber-500' : isDark ? 'text-neutral-400' : 'text-neutral-500'}`} />
               <span>{tab.name}</span>
             </button>
           );
@@ -1868,7 +1870,11 @@ export default function ShareTourWorkspaceForm({
                 type="button"
                 disabled={isSaving}
                 onClick={onClose}
-                className={`px-3 py-3 rounded-xl border ${t.border} bg-neutral-900/60 hover:bg-neutral-900 text-xs font-bold text-neutral-300 hover:text-white transition-all cursor-pointer text-center disabled:opacity-50 disabled:cursor-not-allowed`}
+                className={`px-3 py-3 rounded-xl border text-xs font-bold transition-all cursor-pointer text-center disabled:opacity-50 disabled:cursor-not-allowed ${
+                  isDark
+                    ? 'border-neutral-800 bg-neutral-900/60 hover:bg-neutral-900 text-neutral-300 hover:text-white'
+                    : 'border-slate-300 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900'
+                }`}
               >
                 Batal
               </button>

@@ -650,7 +650,11 @@ export default function ArticleCmsWorkspace({
                             <button
                               onClick={() => handleQuickStatusChange(article, 'archived')}
                               title="Arsipkan / Tarik dari Publik"
-                              className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-neutral-400 hover:text-white transition cursor-pointer"
+                              className={`p-1.5 rounded-lg border transition cursor-pointer ${
+                                isDark 
+                                  ? 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-neutral-400 hover:text-white' 
+                                  : 'bg-white hover:bg-slate-100 border-slate-300 text-slate-600 hover:text-slate-900'
+                              }`}
                             >
                               <Archive className="h-3.5 w-3.5" />
                             </button>
@@ -660,7 +664,11 @@ export default function ArticleCmsWorkspace({
                           <button
                             onClick={() => handleOpenEdit(article)}
                             title="Edit Artikel Lengkap"
-                            className="p-1.5 rounded-lg bg-neutral-800 hover:bg-amber-500/20 hover:border-amber-500/40 border border-neutral-700 text-neutral-300 hover:text-amber-400 transition cursor-pointer"
+                            className={`p-1.5 rounded-lg border transition cursor-pointer ${
+                              isDark 
+                                ? 'bg-neutral-800 hover:bg-amber-500/20 hover:border-amber-500/40 border-neutral-700 text-neutral-300 hover:text-amber-400' 
+                                : 'bg-white hover:bg-amber-50 hover:border-amber-400 border-slate-300 text-slate-700 hover:text-amber-700'
+                            }`}
                           >
                             <Edit3 className="h-3.5 w-3.5" />
                           </button>
@@ -669,7 +677,11 @@ export default function ArticleCmsWorkspace({
                           <button
                             onClick={() => setDeleteTarget(article)}
                             title="Hapus Artikel"
-                            className="p-1.5 rounded-lg bg-neutral-800 hover:bg-red-950/60 hover:border-red-500/40 border border-neutral-700 text-neutral-400 hover:text-red-400 transition cursor-pointer"
+                            className={`p-1.5 rounded-lg border transition cursor-pointer ${
+                              isDark 
+                                ? 'bg-neutral-800 hover:bg-red-950/60 hover:border-red-500/40 border-neutral-700 text-neutral-400 hover:text-red-400' 
+                                : 'bg-white hover:bg-rose-50 hover:border-rose-300 border-slate-300 text-rose-600 hover:text-rose-700'
+                            }`}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>

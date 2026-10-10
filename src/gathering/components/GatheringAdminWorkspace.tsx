@@ -934,7 +934,7 @@ export default function GatheringAdminWorkspace({
               </h3>
               <button
                 onClick={() => setIsPkgModalOpen(false)}
-                className="p-1 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-400 hover:text-neutral-700 cursor-pointer"
+                className="p-1 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-400 hover:text-neutral-700 dark:hover:text-white cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1294,7 +1294,7 @@ export default function GatheringAdminWorkspace({
               </div>
               <button
                 onClick={() => setIsCreateQuoteModalOpen(false)}
-                className="p-1 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-400 hover:text-neutral-700 cursor-pointer"
+                className="p-1 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-700 text-neutral-400 hover:text-neutral-700 dark:hover:text-white cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>

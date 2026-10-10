@@ -700,7 +700,11 @@ export default function MarketingView({
                           
                           <button
                             onClick={() => handleOpenEditPromo(p)}
-                            className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-all cursor-pointer"
+                            className={`p-1.5 rounded-lg border ${
+                              isDark 
+                                ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white border-neutral-700' 
+                                : 'bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border-slate-300'
+                            } transition-all cursor-pointer`}
                             title="Edit Voucher"
                           >
                             <Edit className="h-3.5 w-3.5" />
@@ -1087,7 +1091,11 @@ export default function MarketingView({
                               rejectReview(r.id);
                               triggerToast('Ulasan berhasil dihapus.');
                             }}
-                            className="bg-neutral-800 hover:bg-red-900 text-neutral-300 hover:text-white border border-neutral-700 hover:border-red-800 font-extrabold text-xs px-3 py-2 rounded-xl transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                            className={`font-extrabold text-xs px-3 py-2 rounded-xl transition-all flex items-center gap-1 cursor-pointer active:scale-95 border ${
+                              isDark 
+                                ? 'bg-neutral-800 hover:bg-red-900 text-neutral-300 hover:text-white border-neutral-700 hover:border-red-800' 
+                                : 'bg-white hover:bg-rose-50 text-rose-700 hover:text-rose-900 border-slate-300 hover:border-rose-300'
+                            }`}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                             <span>{r.status === 'pending' ? 'Tolak' : 'Hapus'}</span>
@@ -1348,14 +1356,22 @@ export default function MarketingView({
                               });
                               setIsEditingPartner(true);
                             }}
-                            className="p-2 rounded-lg bg-neutral-800 hover:bg-amber-500 hover:text-neutral-950 text-neutral-300 transition-all cursor-pointer"
+                            className={`p-2 rounded-lg border ${
+                              isDark 
+                                ? 'bg-neutral-800 border-neutral-700/60 text-neutral-300 hover:bg-amber-500 hover:text-neutral-950 hover:border-amber-500' 
+                                : 'bg-white border-slate-300 text-slate-700 hover:bg-amber-50 hover:text-amber-900 hover:border-amber-400'
+                            } transition-all cursor-pointer`}
                             title="Edit Partner"
                           >
                             <Edit className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => handleDeletePartner(p.id, p.name)}
-                            className="p-2 rounded-lg bg-neutral-800 hover:bg-red-600 text-neutral-300 hover:text-white transition-all cursor-pointer"
+                            className={`p-2 rounded-lg border ${
+                              isDark 
+                                ? 'bg-neutral-800 border-neutral-700/60 text-neutral-300 hover:bg-rose-600 hover:text-white hover:border-rose-600' 
+                                : 'bg-white border-slate-300 text-rose-700 hover:bg-rose-50 hover:text-rose-900 hover:border-rose-400'
+                            } transition-all cursor-pointer`}
                             title="Hapus Partner"
                           >
                             <Trash2 className="h-3.5 w-3.5" />

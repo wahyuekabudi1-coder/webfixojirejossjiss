@@ -32,6 +32,7 @@ interface RentalAdminWorkspaceProps {
   triggerToast: (msg: string) => void;
   activeSubTab: string;
   setActiveSubTab: (tab: any) => void;
+  isDark?: boolean;
 }
 
 export default function RentalAdminWorkspace({
@@ -43,8 +44,10 @@ export default function RentalAdminWorkspace({
   rentalZonePricing, setRentalZonePricing,
   bookings, updateBookingStatus,
   theme, currency, formatPrice, triggerToast,
-  activeSubTab, setActiveSubTab
+  activeSubTab, setActiveSubTab,
+  isDark = false
 }: RentalAdminWorkspaceProps) {
+  const isDarkMode = isDark ?? theme?.isDark ?? false;
   const { serviceLimits, setServiceLimit } = useApp();
   
   // Local Form and Filter states
@@ -193,7 +196,7 @@ export default function RentalAdminWorkspace({
           <div className={`${theme.card} border rounded-2xl p-5 flex items-start justify-between`}>
             <div className="space-y-1">
               <span className={`text-[10px] uppercase font-bold tracking-wider font-mono ${theme.textSecondary}`}>Active Fleet</span>
-              <h2 className="text-2xl font-black text-white">{activeFleet} / {rentalVehicles.length} Units</h2>
+              <h2 className={`text-2xl font-black ${isDarkMode ? 'text-white' : 'text-neutral-900'}`}>{activeFleet} / {rentalVehicles.length} Units</h2>
               <span className="text-[10px] text-emerald-400 font-bold block pt-1">● 100% Operational</span>
             </div>
             <div className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center">
@@ -204,7 +207,7 @@ export default function RentalAdminWorkspace({
           <div className={`${theme.card} border rounded-2xl p-5 flex items-start justify-between`}>
             <div className="space-y-1">
               <span className={`text-[10px] uppercase font-bold tracking-wider font-mono ${theme.textSecondary}`}>Locations & Areas</span>
-              <h2 className="text-2xl font-black text-white">{rentalLocations.length} Areas / 3 Zones</h2>
+              <h2 className={`text-2xl font-black ${isDarkMode ? 'text-white' : 'text-neutral-900'}`}>{rentalLocations.length} Areas / 3 Zones</h2>
               <span className="text-[10px] text-amber-400 font-bold block pt-1">In {rentalCities.length} Operational Cities</span>
             </div>
             <div className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center">
@@ -215,7 +218,7 @@ export default function RentalAdminWorkspace({
           <div className={`${theme.card} border rounded-2xl p-5 flex items-start justify-between`}>
             <div className="space-y-1">
               <span className={`text-[10px] uppercase font-bold tracking-wider font-mono ${theme.textSecondary}`}>Car Rental Bookings</span>
-              <h2 className="text-2xl font-black text-white">{rentalBookings.length} Bookings</h2>
+              <h2 className={`text-2xl font-black ${isDarkMode ? 'text-white' : 'text-neutral-900'}`}>{rentalBookings.length} Bookings</h2>
               <span className="text-[10px] text-amber-400 font-bold block pt-1">{confirmedCount} Confirmed Rides</span>
             </div>
             <div className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center">
@@ -382,7 +385,7 @@ export default function RentalAdminWorkspace({
               <h4 className="text-xs font-black uppercase tracking-widest font-mono text-amber-500">
                 {editingId ? 'Edit Operational City' : 'Add New Operational City'}
               </h4>
-              <button onClick={resetForm} className="text-neutral-400 hover:text-white">
+              <button onClick={resetForm} className={`${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'} p-1 cursor-pointer`}>
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -419,7 +422,7 @@ export default function RentalAdminWorkspace({
                 />
               </div>
               <div className="md:col-span-3 flex justify-end gap-2 pt-2">
-                <button type="button" onClick={resetForm} className="px-4 py-2 text-xs text-neutral-400 hover:text-white">Cancel</button>
+                <button type="button" onClick={resetForm} className={`px-4 py-2 text-xs font-bold ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl'} cursor-pointer`}>Cancel</button>
                 <button type="submit" className="bg-amber-500 hover:bg-amber-600 text-neutral-950 font-bold text-xs px-5 py-2 rounded-xl">Save City</button>
               </div>
             </form>
@@ -442,7 +445,7 @@ export default function RentalAdminWorkspace({
                 {rentalCities.sort((a,b) => a.displayOrder - b.displayOrder).map(c => (
                   <tr key={c.id} className="hover:bg-neutral-950/10">
                     <td className="p-4 font-mono text-neutral-400">{c.id}</td>
-                    <td className="p-4 font-bold text-white">{c.name}</td>
+                    <td className={`p-4 font-bold ${isDarkMode ? 'text-white' : 'text-neutral-900'}`}>{c.name}</td>
                     <td className="p-4">
                       <span className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase ${c.status === 'Active' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
                         {c.status}
@@ -456,11 +459,11 @@ export default function RentalAdminWorkspace({
                           setEditingId(c.id);
                           setIsFormOpen(true);
                         }}
-                        className="p-1 text-neutral-400 hover:text-amber-500"
+                        className={`p-1 rounded-lg transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-amber-400 hover:bg-neutral-800' : 'text-slate-600 hover:text-amber-600 hover:bg-slate-100'}`}
                       >
                         <Edit className="h-4 w-4" />
                       </button>
-                      <button onClick={() => handleDeleteCity(c.id, c.name)} className="p-1 text-neutral-400 hover:text-rose-500">
+                      <button onClick={() => handleDeleteCity(c.id, c.name)} className={`p-1.5 rounded-lg transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-rose-400 hover:bg-rose-500/10' : 'text-rose-600 hover:text-rose-700 hover:bg-rose-50'}`} title="Delete City">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </td>
@@ -713,7 +716,7 @@ export default function RentalAdminWorkspace({
                             <button
                               type="button"
                               onClick={() => setEditingRatesZone(null)}
-                              className="px-3 py-1.5 text-xs text-neutral-400 hover:text-white"
+                              className={`px-3 py-1.5 text-xs font-bold ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-slate-700 hover:text-slate-900'} cursor-pointer`}
                             >
                               Cancel
                             </button>
@@ -963,14 +966,14 @@ export default function RentalAdminWorkspace({
                                     });
                                     setEditingId(l.id);
                                   }}
-                                  className="p-1.5 text-neutral-400 hover:text-amber-500 hover:bg-neutral-800 rounded-lg transition-colors"
+                                  className={`p-1.5 rounded-lg transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-amber-400 hover:bg-neutral-800' : 'text-slate-600 hover:text-amber-600 hover:bg-slate-100'}`}
                                   title="Edit Area"
                                 >
                                   <Edit className="h-4 w-4" />
                                 </button>
                                 <button 
                                   onClick={() => handleDeleteArea(l.id, l.name)} 
-                                  className="p-1.5 text-neutral-400 hover:text-rose-500 hover:bg-neutral-800 rounded-lg transition-colors"
+                                  className={`p-1.5 rounded-lg transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-rose-400 hover:bg-neutral-800' : 'text-rose-600 hover:text-rose-700 hover:bg-rose-50'}`}
                                   title="Hapus Area"
                                 >
                                   <Trash2 className="h-4 w-4" />
@@ -1141,7 +1144,7 @@ export default function RentalAdminWorkspace({
               <h4 className="text-xs font-black uppercase tracking-widest font-mono text-amber-500">
                 {editingId ? 'Edit Vehicle Unit' : 'Add New Vehicle Unit'}
               </h4>
-              <button onClick={resetForm} className="text-neutral-400 hover:text-white">
+              <button onClick={resetForm} className={`${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'} p-1 cursor-pointer`}>
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -1307,7 +1310,7 @@ export default function RentalAdminWorkspace({
                   {currentCityZoneCodes.map(zCode => {
                     const isChecked = (form.supportedZones || []).includes(zCode);
                     return (
-                      <label key={zCode} className="flex items-center gap-2 cursor-pointer text-xs text-neutral-300 hover:text-white select-none">
+                      <label key={zCode} className={`flex items-center gap-2 cursor-pointer text-xs ${isDarkMode ? 'text-neutral-300 hover:text-white' : 'text-slate-700 hover:text-slate-900'} select-none`}>
                         <input
                           type="checkbox"
                           checked={isChecked}
@@ -1322,7 +1325,7 @@ export default function RentalAdminWorkspace({
               </div>
 
               <div className="md:col-span-4 flex justify-end gap-2 pt-2">
-                <button type="button" onClick={resetForm} className="px-4 py-2 text-xs text-neutral-400 hover:text-white">Cancel</button>
+                <button type="button" onClick={resetForm} className={`px-4 py-2 text-xs font-bold ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl'} cursor-pointer`}>Cancel</button>
                 <button type="submit" className="bg-amber-500 hover:bg-amber-600 text-neutral-950 font-bold text-xs px-5 py-2 rounded-xl">Save Unit</button>
               </div>
             </form>
@@ -1396,11 +1399,11 @@ export default function RentalAdminWorkspace({
                           setEditingId(v.id);
                           setIsFormOpen(true);
                         }}
-                        className="p-1 text-neutral-400 hover:text-amber-500"
+                        className={`p-1 rounded-lg transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-amber-400 hover:bg-neutral-800' : 'text-slate-600 hover:text-amber-600 hover:bg-slate-100'}`}
                       >
                         <Edit className="h-4 w-4" />
                       </button>
-                      <button onClick={() => handleDeleteVehicle(v.id, v.name)} className="p-1 text-neutral-400 hover:text-rose-500">
+                      <button onClick={() => handleDeleteVehicle(v.id, v.name)} className={`p-1.5 rounded-lg transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-rose-400 hover:bg-rose-500/10' : 'text-rose-600 hover:text-rose-700 hover:bg-rose-50'}`} title="Delete Unit">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
@@ -1506,7 +1509,7 @@ export default function RentalAdminWorkspace({
               <h4 className="text-xs font-black uppercase tracking-widest font-mono text-amber-500">
                 {editingId ? 'Edit Category & Pricing' : 'Add New Category & Pricing'}
               </h4>
-              <button onClick={resetForm} className="text-neutral-400 hover:text-white">
+              <button onClick={resetForm} className={`${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'} p-1 cursor-pointer`}>
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -1671,7 +1674,7 @@ export default function RentalAdminWorkspace({
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={resetForm} className="px-4 py-2 text-xs text-neutral-400 hover:text-white">Cancel</button>
+                <button type="button" onClick={resetForm} className={`px-4 py-2 text-xs font-bold ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl'} cursor-pointer`}>Cancel</button>
                 <button type="submit" className="bg-amber-500 hover:bg-amber-600 text-neutral-950 font-bold text-xs px-5 py-2.5 rounded-xl">Save Class & Pricing</button>
               </div>
             </form>
@@ -1734,11 +1737,11 @@ export default function RentalAdminWorkspace({
                           setEditingId(cat.id);
                           setIsFormOpen(true);
                         }}
-                        className="p-1.5 text-neutral-400 hover:text-amber-500 hover:bg-neutral-800 rounded-lg transition-all"
+                        className={`p-1.5 rounded-lg transition-all cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-amber-400 hover:bg-neutral-800' : 'text-slate-600 hover:text-amber-600 hover:bg-slate-100'}`}
                       >
                         <Edit className="h-4 w-4" />
                       </button>
-                      <button onClick={() => handleDeleteCategory(cat.id, cat.name)} className="p-1.5 text-neutral-400 hover:text-rose-500 hover:bg-neutral-800 rounded-lg transition-all">
+                      <button onClick={() => handleDeleteCategory(cat.id, cat.name)} className={`p-1.5 rounded-lg transition-all cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-rose-400 hover:bg-neutral-800' : 'text-rose-600 hover:text-rose-700 hover:bg-rose-50'}`} title="Delete Class">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </td>
@@ -1832,7 +1835,7 @@ export default function RentalAdminWorkspace({
               <h4 className="text-xs font-black uppercase tracking-widest font-mono text-amber-500">
                 {editingId ? 'Edit Add-on Service' : 'Add New Add-on Service'}
               </h4>
-              <button onClick={resetForm} className="text-neutral-400 hover:text-white">
+              <button onClick={resetForm} className={`${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'} p-1 cursor-pointer`}>
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -1940,7 +1943,7 @@ export default function RentalAdminWorkspace({
                 <label htmlFor="isRequired" className="text-xs text-neutral-300 font-bold select-none cursor-pointer">Required addon (Wajib)</label>
               </div>
               <div className="md:col-span-4 flex justify-end gap-2 pt-2">
-                <button type="button" onClick={resetForm} className="px-4 py-2 text-xs text-neutral-400 hover:text-white">Cancel</button>
+                <button type="button" onClick={resetForm} className={`px-4 py-2 text-xs font-bold ${isDarkMode ? 'text-neutral-400 hover:text-white' : 'text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl'} cursor-pointer`}>Cancel</button>
                 <button type="submit" className="bg-amber-500 hover:bg-amber-600 text-neutral-950 font-bold text-xs px-5 py-2 rounded-xl">Save Add-on</button>
               </div>
             </form>
@@ -1995,11 +1998,11 @@ export default function RentalAdminWorkspace({
                           setEditingId(addon.id);
                           setIsFormOpen(true);
                         }}
-                        className="p-1 text-neutral-400 hover:text-amber-500"
+                        className={`p-1 rounded-lg transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-amber-400 hover:bg-neutral-800' : 'text-slate-600 hover:text-amber-600 hover:bg-slate-100'}`}
                       >
                         <Edit className="h-4 w-4" />
                       </button>
-                      <button onClick={() => handleDeleteAddon(addon.id, addon.name)} className="p-1 text-neutral-400 hover:text-rose-500">
+                      <button onClick={() => handleDeleteAddon(addon.id, addon.name)} className={`p-1.5 rounded-lg transition-colors cursor-pointer ${isDarkMode ? 'text-neutral-400 hover:text-rose-400 hover:bg-rose-500/10' : 'text-rose-600 hover:text-rose-700 hover:bg-rose-50'}`} title="Delete Addon">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </td>

@@ -635,7 +635,11 @@ export default function TaxiExcelManager({
           <div className="flex flex-wrap gap-2 shrink-0">
             <button 
               onClick={handleDownloadTemplate}
-              className="px-4 py-2 bg-neutral-900 hover:bg-neutral-850 border border-neutral-800 text-neutral-200 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow"
+              className={`px-4 py-2 border rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm ${
+                isDark 
+                  ? 'bg-neutral-900 hover:bg-neutral-850 border-neutral-800 text-neutral-200 hover:text-white' 
+                  : 'bg-white hover:bg-slate-100 border-slate-300 text-slate-700 hover:text-slate-900'
+              }`}
             >
               <Download className="h-4 w-4 text-amber-500" />
               <span>Unduh Template Excel</span>
@@ -878,12 +882,14 @@ export default function TaxiExcelManager({
           <div className="space-y-6 animate-fade-in text-left">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               {/* Master sub tabs */}
-              <div className="flex bg-neutral-950 p-1 border border-neutral-850 rounded-xl gap-1">
+              <div className={`flex ${isDark ? 'bg-neutral-950 border-neutral-850' : 'bg-slate-100 border-slate-200'} p-1 border rounded-xl gap-1`}>
                 <button
                   type="button"
                   onClick={() => setMasterSubTab('areas')}
                   className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    masterSubTab === 'areas' ? 'bg-amber-500 text-neutral-950 font-black' : 'text-neutral-400 hover:text-white'
+                    masterSubTab === 'areas' 
+                      ? 'bg-amber-500 text-neutral-950 font-black' 
+                      : isDark ? 'text-neutral-400 hover:text-white' : 'text-neutral-600 hover:text-neutral-900'
                   }`}
                 >
                   📍 Master Area (Zones)
@@ -892,7 +898,9 @@ export default function TaxiExcelManager({
                   type="button"
                   onClick={() => setMasterSubTab('destinations')}
                   className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    masterSubTab === 'destinations' ? 'bg-amber-500 text-neutral-950 font-black' : 'text-neutral-400 hover:text-white'
+                    masterSubTab === 'destinations' 
+                      ? 'bg-amber-500 text-neutral-950 font-black' 
+                      : isDark ? 'text-neutral-400 hover:text-white' : 'text-neutral-600 hover:text-neutral-900'
                   }`}
                 >
                   🗺️ Master Destinasi (Places)
@@ -901,7 +909,9 @@ export default function TaxiExcelManager({
                   type="button"
                   onClick={() => setMasterSubTab('vehicles')}
                   className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    masterSubTab === 'vehicles' ? 'bg-amber-500 text-neutral-950 font-black' : 'text-neutral-400 hover:text-white'
+                    masterSubTab === 'vehicles' 
+                      ? 'bg-amber-500 text-neutral-950 font-black' 
+                      : isDark ? 'text-neutral-400 hover:text-white' : 'text-neutral-600 hover:text-neutral-900'
                   }`}
                 >
                   🚕 Klasifikasi Armada
@@ -1005,7 +1015,9 @@ export default function TaxiExcelManager({
                                   <button onClick={() => handleOpenAreaModal(area)} className="p-1.5 border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-amber-500 rounded-lg cursor-pointer transition-all" title="Ubah">
                                     <Edit className="h-3.5 w-3.5" />
                                   </button>
-                                  <button onClick={() => handleDeleteArea(area.id)} className="p-1.5 border border-rose-500/10 bg-rose-500/5 hover:bg-rose-500/15 text-rose-400 rounded-lg cursor-pointer transition-all" title="Hapus">
+                                  <button onClick={() => handleDeleteArea(area.id)} className={`p-1.5 border rounded-lg cursor-pointer transition-all ${
+                                    isDark ? 'border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400' : 'border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700'
+                                  }`} title="Hapus">
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </button>
                                 </div>
@@ -1082,7 +1094,9 @@ export default function TaxiExcelManager({
                                   <button onClick={() => handleOpenDestModal(dest)} className="p-1.5 border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-amber-500 rounded-lg cursor-pointer transition-all" title="Ubah">
                                     <Edit className="h-3.5 w-3.5" />
                                   </button>
-                                  <button onClick={() => handleDeleteDest(dest.id)} className="p-1.5 border border-rose-500/10 bg-rose-500/5 hover:bg-rose-500/15 text-rose-400 rounded-lg cursor-pointer transition-all" title="Hapus">
+                                  <button onClick={() => handleDeleteDest(dest.id)} className={`p-1.5 border rounded-lg cursor-pointer transition-all ${
+                                    isDark ? 'border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400' : 'border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700'
+                                  }`} title="Hapus">
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </button>
                                 </div>
@@ -1297,7 +1311,9 @@ export default function TaxiExcelManager({
                               <button onClick={() => handleOpenPriceRuleModal(rule)} className="p-1.5 border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-amber-500 rounded-lg cursor-pointer transition-all" title="Ubah">
                                 <Edit className="h-3.5 w-3.5" />
                               </button>
-                              <button onClick={() => handleDeletePriceRule(rule.id)} className="p-1.5 border border-rose-500/10 bg-rose-500/5 hover:bg-rose-500/15 text-rose-400 rounded-lg cursor-pointer transition-all" title="Hapus">
+                              <button onClick={() => handleDeletePriceRule(rule.id)} className={`p-1.5 border rounded-lg cursor-pointer transition-all ${
+                                isDark ? 'border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400' : 'border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700'
+                              }`} title="Hapus">
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
                             </div>
@@ -1419,7 +1435,11 @@ export default function TaxiExcelManager({
                   <div className="p-4 bg-neutral-900 border-t border-neutral-850 flex justify-end gap-2.5">
                     <button 
                       onClick={() => { setSelectedFile(null); setValidationReport(null); }}
-                      className="px-5 py-2.5 rounded-xl border border-neutral-800 bg-neutral-950 text-xs font-bold hover:text-white transition-all cursor-pointer"
+                      className={`px-5 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                        isDark 
+                          ? 'border-neutral-800 bg-neutral-950 text-neutral-300 hover:text-white' 
+                          : 'border-slate-300 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900'
+                      }`}
                     >
                       Batal Unggah
                     </button>
@@ -1463,7 +1483,11 @@ export default function TaxiExcelManager({
                 </div>
                 <button 
                   onClick={handleDownloadTemplate}
-                  className="w-full py-3 rounded-xl bg-neutral-950 hover:bg-neutral-850 border border-neutral-800 text-neutral-200 hover:text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer mt-4 shadow"
+                  className={`w-full py-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer mt-4 shadow-sm ${
+                    isDark 
+                      ? 'bg-neutral-950 hover:bg-neutral-850 border-neutral-800 text-neutral-200 hover:text-white' 
+                      : 'bg-white hover:bg-slate-100 border-slate-300 text-slate-700 hover:text-slate-900'
+                  }`}
                 >
                   <Download className="h-4 w-4 text-amber-500" />
                   <span>Unduh XLS Template Rute</span>
@@ -1600,7 +1624,9 @@ export default function TaxiExcelManager({
                                     triggerToast('Aturan area dihapus!');
                                   }
                                 }}
-                                className="p-1.5 border border-rose-500/10 bg-rose-500/5 hover:bg-rose-500/15 text-rose-400 rounded-lg cursor-pointer transition-all" 
+                                className={`p-1.5 border rounded-lg cursor-pointer transition-all ${
+                                  isDark ? 'border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400' : 'border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700'
+                                }`} 
                                 title="Hapus"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />

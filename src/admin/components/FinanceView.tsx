@@ -548,10 +548,10 @@ export default function FinanceView({
                 <span className="text-[10px] font-mono bg-amber-500/15 text-amber-500 font-black px-2 py-0.5 rounded border border-amber-500/30">
                   DEVELOPER / SANDBOX TOOL
                 </span>
-                <h3 className="text-sm font-black font-sans text-neutral-100">
+                <h3 className={`text-sm font-black font-sans ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
                   Simulasi Webhook Pembayaran Sukses (ArtoPay Sandbox Only)
                 </h3>
-                <p className="text-xs text-neutral-400">
+                <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
                   Simulasikan panggilan callback webhook ArtoPay untuk memverifikasi flow: Pending Payment → ArtoPay Webhook → Paid → Pending Confirmation.
                 </p>
               </div>
@@ -740,15 +740,15 @@ export default function FinanceView({
                             <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${badge.color}`}>
                               {badge.label}
                             </span>
-                            <div className="text-[11px] text-neutral-400 truncate max-w-[150px] mt-0.5" title={item.serviceTitle}>
+                            <div className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-neutral-600'} truncate max-w-[150px] mt-0.5`} title={item.serviceTitle}>
                               {item.serviceTitle}
                             </div>
                           </td>
-                          <td className="p-3.5 font-bold text-neutral-100">
+                          <td className={`p-3.5 font-bold ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
                             <div>{item.customerName}</div>
-                            <div className="text-[10px] font-mono text-neutral-500">{item.customerPhone || item.customerEmail || '-'}</div>
+                            <div className={`text-[10px] font-mono ${isDark ? 'text-neutral-500' : 'text-neutral-600'}`}>{item.customerPhone || item.customerEmail || '-'}</div>
                           </td>
-                          <td className="p-3.5 font-mono font-black text-right text-neutral-100">
+                          <td className={`p-3.5 font-mono font-black text-right ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
                             {item.totalAmountIDR 
                               ? `Rp ${Number(item.totalAmountIDR).toLocaleString('id-ID')}`
                               : (item.totalAmountUSD ? formatPrice(item.totalAmountUSD, item.totalAmountIDR || 0) : '-')}
@@ -784,12 +784,12 @@ export default function FinanceView({
                                 ? 'bg-sky-500/10 text-sky-400 border border-sky-500/30'
                                 : item.bookingStatus === 'Cancelled'
                                   ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
-                                  : 'bg-neutral-800 text-neutral-400 border border-neutral-700'
+                                  : (isDark ? 'bg-neutral-800 text-neutral-400 border border-neutral-700' : 'bg-neutral-100 text-neutral-700 border border-neutral-300')
                             }`}>
                               {item.bookingStatus || 'Pending Payment'}
                             </span>
                           </td>
-                          <td className="p-3.5 font-mono text-neutral-400 text-[11px]">
+                          <td className={`p-3.5 font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-600'} text-[11px]`}>
                             {item.paidAt ? new Date(item.paidAt).toLocaleString('id-ID') : '-'}
                           </td>
                           <td className="p-3.5 text-right">
@@ -823,7 +823,7 @@ export default function FinanceView({
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-3 w-full sm:w-auto flex-grow max-w-xl">
               <div className="relative flex-grow">
-                <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                <Search className={`h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`} />
                 <input
                   type="text"
                   value={invoicesSearch}
@@ -894,25 +894,25 @@ export default function FinanceView({
 
                       return (
                         <tr key={item.id} className={`${theme.hover} transition-colors`}>
-                          <td className="p-3.5 font-mono font-bold text-neutral-200">
+                          <td className={`p-3.5 font-mono font-bold ${isDark ? 'text-neutral-200' : 'text-neutral-800'}`}>
                             {(item as any).invoiceNumber || `INV-${item.bookingCode}`}
                           </td>
                           <td className="p-3.5 font-mono text-amber-500 font-bold">
                             #{item.bookingCode}
                           </td>
-                          <td className="p-3.5 font-bold text-neutral-100">
+                          <td className={`p-3.5 font-bold ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
                             <div>{item.customerName}</div>
-                            <div className="text-[10px] font-mono text-neutral-500">{item.customerPhone || item.customerEmail || '-'}</div>
+                            <div className={`text-[10px] font-mono ${isDark ? 'text-neutral-500' : 'text-neutral-600'}`}>{item.customerPhone || item.customerEmail || '-'}</div>
                           </td>
                           <td className="p-3.5">
                             <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${badge.color}`}>
                               {badge.label}
                             </span>
-                            <div className="text-[11px] text-neutral-400 truncate max-w-[160px] mt-0.5">
+                            <div className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-neutral-600'} truncate max-w-[160px] mt-0.5`}>
                               {item.serviceTitle}
                             </div>
                           </td>
-                          <td className="p-3.5 font-mono font-black text-right text-neutral-100">
+                          <td className={`p-3.5 font-mono font-black text-right ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
                             Rp {Number(item.totalAmountIDR || 0).toLocaleString('id-ID')}
                           </td>
                           {/* Payment Status */}
@@ -956,8 +956,8 @@ export default function FinanceView({
                                 rel="noreferrer"
                                 className={`p-1 rounded-lg border ${
                                   isDark 
-                                    ? 'border-neutral-700/60 hover:bg-neutral-800 text-neutral-400 hover:text-white' 
-                                    : 'border-slate-300 hover:bg-slate-100 text-slate-500 hover:text-slate-900 bg-white'
+                                    ? 'border-neutral-700/60 hover:bg-neutral-800 text-neutral-300 hover:text-white' 
+                                    : 'border-slate-300 hover:bg-slate-100 text-slate-700 hover:text-slate-900 bg-white'
                                 } transition-all`}
                                 title="Unduh PDF Resmi"
                               >
@@ -997,31 +997,31 @@ export default function FinanceView({
           {/* Metric Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className={`${theme.card} border rounded-2xl p-5 space-y-2 shadow-sm`}>
-              <span className="text-[10px] font-mono font-bold text-neutral-400 uppercase tracking-wider block">
+              <span className={`text-[10px] font-mono font-bold ${isDark ? 'text-neutral-400' : 'text-neutral-700'} uppercase tracking-wider block`}>
                 Total Omset Terverifikasi (IDR)
               </span>
               <div className="text-2xl font-black font-mono text-amber-500">
                 Rp {globalTotalRevenueIDR.toLocaleString('id-ID')}
               </div>
-              <p className="text-[11px] text-neutral-400">
+              <p className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
                 Dari {allPaidBookings.length} transaksi yang telah lunas via ArtoPay.
               </p>
             </div>
 
             <div className={`${theme.card} border rounded-2xl p-5 space-y-2 shadow-sm`}>
-              <span className="text-[10px] font-mono font-bold text-neutral-400 uppercase tracking-wider block">
+              <span className={`text-[10px] font-mono font-bold ${isDark ? 'text-neutral-400' : 'text-neutral-700'} uppercase tracking-wider block`}>
                 Total Omset Internasional (USD)
               </span>
               <div className="text-2xl font-black font-mono text-emerald-400">
                 ${globalTotalRevenueUSD.toLocaleString('en-US')} USD
               </div>
-              <p className="text-[11px] text-neutral-400">
+              <p className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
                 Wisatawan mancanegara (WNA Tariff).
               </p>
             </div>
 
             <div className={`${theme.card} border rounded-2xl p-5 space-y-2 shadow-sm`}>
-              <span className="text-[10px] font-mono font-bold text-neutral-400 uppercase tracking-wider block">
+              <span className={`text-[10px] font-mono font-bold ${isDark ? 'text-neutral-400' : 'text-neutral-700'} uppercase tracking-wider block`}>
                 Rata-rata Nilai Pesanan (AOV)
               </span>
               <div className="text-2xl font-black font-mono text-purple-400">
@@ -1029,19 +1029,19 @@ export default function FinanceView({
                   ? `Rp ${Math.round(globalTotalRevenueIDR / allPaidBookings.length).toLocaleString('id-ID')}`
                   : 'Rp 0'}
               </div>
-              <p className="text-[11px] text-neutral-400">
+              <p className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
                 Average order value per transaksi lunas.
               </p>
             </div>
 
             <div className={`${theme.card} border rounded-2xl p-5 space-y-2 shadow-sm`}>
-              <span className="text-[10px] font-mono font-bold text-neutral-400 uppercase tracking-wider block">
+              <span className={`text-[10px] font-mono font-bold ${isDark ? 'text-neutral-400' : 'text-neutral-700'} uppercase tracking-wider block`}>
                 Potensi Piutang / Pending (IDR)
               </span>
-              <div className="text-2xl font-black font-mono text-neutral-300">
+              <div className={`text-2xl font-black font-mono ${isDark ? 'text-neutral-300' : 'text-neutral-800'}`}>
                 Rp {globalPendingPotentialIDR.toLocaleString('id-ID')}
               </div>
-              <p className="text-[11px] text-neutral-400">
+              <p className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
                 {allPendingBookings.length} pesanan menunggu pembayaran.
               </p>
             </div>
@@ -1054,38 +1054,36 @@ export default function FinanceView({
                 <h4 className="text-xs font-black uppercase tracking-wider font-mono text-amber-500">
                   DISTRIBUSI PENDAPATAN BERDASARKAN 5 LAYANAN
                 </h4>
-                <p className="text-[11px] text-neutral-400">
+                <p className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
                   Rincian kontribusi omset per divisi layanan yang telah berhasil diverifikasi lunas.
                 </p>
               </div>
-              <span className="text-xs font-mono font-bold text-neutral-400">
+              <span className={`text-xs font-mono font-bold ${isDark ? 'text-neutral-400' : 'text-neutral-700'}`}>
                 Total: Rp {globalTotalRevenueIDR.toLocaleString('id-ID')}
               </span>
             </div>
 
             <div className="space-y-4">
               {revenueByService.map((item) => (
-                <div key={item.id} className="space-y-1.5 p-3 rounded-xl bg-neutral-900/40 border border-neutral-800">
+                <div key={item.id} className={`space-y-1.5 p-3 rounded-xl ${theme.innerCard} border ${isDark ? 'border-neutral-800' : 'border-slate-200'}`}>
                   <div className="flex items-center justify-between text-xs font-bold">
                     <div className="flex items-center gap-2">
                       <span className={`h-2.5 w-2.5 rounded-full ${item.color}`} />
-                      <span className="text-neutral-100">{item.label}</span>
-                      <span className="text-[10px] font-mono text-neutral-400">
+                      <span className={isDark ? 'text-neutral-100' : 'text-neutral-900'}>{item.label}</span>
+                      <span className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
                         ({item.count} Transaksi • {item.totalPax} Pax)
                       </span>
                     </div>
-
                     <div className="flex items-center gap-3">
-                      <span className="text-[11px] text-neutral-400 font-mono">
+                      <span className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-neutral-600'} font-mono`}>
                         AOV: Rp {item.aov.toLocaleString('id-ID')}
                       </span>
-                      <span className="font-mono text-amber-400 font-black">
+                      <span className="font-mono text-amber-500 font-black">
                         Rp {item.totalIDR.toLocaleString('id-ID')} ({item.percentage}%)
                       </span>
                     </div>
                   </div>
-
-                  <div className="h-2.5 w-full bg-neutral-800 rounded-full overflow-hidden">
+                  <div className={`h-2.5 w-full ${isDark ? 'bg-neutral-800' : 'bg-slate-200'} rounded-full overflow-hidden`}>
                     <div 
                       className={`h-full ${item.color} rounded-full transition-all`} 
                       style={{ width: `${item.percentage}%` }} 
@@ -1096,12 +1094,12 @@ export default function FinanceView({
             </div>
 
             {/* Unique Code Reconciliation */}
-            <div className="pt-2 border-t border-neutral-800 flex items-center justify-between text-xs text-neutral-400 font-mono">
+            <div className={`pt-2 border-t ${isDark ? 'border-neutral-800' : 'border-slate-200'} flex items-center justify-between text-xs ${isDark ? 'text-neutral-400' : 'text-neutral-600'} font-mono`}>
               <div className="flex items-center gap-1.5">
                 <HelpCircle className="h-3.5 w-3.5 text-amber-500" />
                 <span>Akumulasi Kode Unik Verifikasi Otomatis (3 Digit Terakhir):</span>
               </div>
-              <span className="font-bold text-amber-400">
+              <span className="font-bold text-amber-500">
                 +Rp {totalUniqueCodesIDR.toLocaleString('id-ID')}
               </span>
             </div>
@@ -1118,10 +1116,10 @@ export default function FinanceView({
           <div className={`${theme.card} border rounded-2xl p-5 space-y-4 shadow-sm`}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h4 className="text-sm font-black font-sans text-neutral-100">
+                <h4 className={`text-sm font-black font-sans ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
                   REKONSILIASI PEMBUKUAN &amp; LAPORAN KEUANGAN
                 </h4>
-                <p className="text-xs text-neutral-400">
+                <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
                   Pilih periode dan layanan untuk menghasilkan rekapitulasi data keuangan resmi.
                 </p>
               </div>
@@ -1180,19 +1178,19 @@ export default function FinanceView({
           {/* Report Summary Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className={`p-4 rounded-2xl ${theme.innerCard} border border-neutral-700/60 space-y-1`}>
-              <span className="text-[10px] font-mono text-neutral-400 uppercase font-bold block">
+              <span className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-600'} uppercase font-bold block`}>
                 Total Pemesanan Dibuat
               </span>
-              <div className="text-xl font-black font-mono text-neutral-100">
+              <div className={`text-xl font-black font-mono ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
                 {reportData.totalBookingsCount} Booking
               </div>
-              <div className="text-[10px] font-mono text-neutral-400">
+              <div className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
                 Semua status masuk
               </div>
             </div>
 
             <div className={`p-4 rounded-2xl ${theme.innerCard} border border-neutral-700/60 space-y-1`}>
-              <span className="text-[10px] font-mono text-neutral-400 uppercase font-bold block">
+              <span className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-600'} uppercase font-bold block`}>
                 Transaksi Lunas (Paid)
               </span>
               <div className="text-xl font-black font-mono text-emerald-400">
@@ -1204,25 +1202,25 @@ export default function FinanceView({
             </div>
 
             <div className={`p-4 rounded-2xl ${theme.innerCard} border border-neutral-700/60 space-y-1`}>
-              <span className="text-[10px] font-mono text-neutral-400 uppercase font-bold block">
+              <span className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-600'} uppercase font-bold block`}>
                 Pesanan Terkonfirmasi Resmi
               </span>
               <div className="text-xl font-black font-mono text-sky-400">
                 {reportData.confirmedCount} Terkonfirmasi
               </div>
-              <div className="text-[10px] font-mono text-neutral-400">
+              <div className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
                 Confirmed / Completed
               </div>
             </div>
 
             <div className={`p-4 rounded-2xl ${theme.innerCard} border border-neutral-700/60 space-y-1`}>
-              <span className="text-[10px] font-mono text-neutral-400 uppercase font-bold block">
+              <span className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-600'} uppercase font-bold block`}>
                 Omset Lunas Periode Ini
               </span>
               <div className="text-lg font-black font-mono text-amber-500">
                 Rp {reportData.realizedRevenueIDR.toLocaleString('id-ID')}
               </div>
-              <div className="text-[10px] font-mono text-neutral-400">
+              <div className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
                 Piutang: Rp {reportData.pendingPotentialIDR.toLocaleString('id-ID')}
               </div>
             </div>
@@ -1231,7 +1229,7 @@ export default function FinanceView({
           {/* Reconciliation Table per 5 Services */}
           <div className={`${theme.card} border rounded-2xl overflow-hidden shadow-sm`}>
             <div className="p-4 border-b border-neutral-700/40">
-              <h4 className="text-xs font-black uppercase tracking-wider font-mono text-neutral-300">
+              <h4 className={`text-xs font-black uppercase tracking-wider font-mono ${isDark ? 'text-neutral-300' : 'text-neutral-800'}`}>
                 TABEL REKONSILIASI 5 LAYANAN (PERIODE: {reportPeriod.toUpperCase()})
               </h4>
             </div>
@@ -1252,10 +1250,10 @@ export default function FinanceView({
                 <tbody className="divide-y divide-neutral-800/40">
                   {reportData.serviceBreakdown.map((row) => (
                     <tr key={row.id} className={`${theme.hover} transition-colors`}>
-                      <td className="p-3.5 font-bold text-neutral-100">
+                      <td className={`p-3.5 font-bold ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
                         {row.name}
                       </td>
-                      <td className="p-3.5 font-mono text-center text-neutral-300">
+                      <td className={`p-3.5 font-mono text-center ${isDark ? 'text-neutral-300' : 'text-neutral-800'}`}>
                         {row.totalBookings}
                       </td>
                       <td className="p-3.5 font-mono text-center text-emerald-400 font-bold">
@@ -1264,10 +1262,10 @@ export default function FinanceView({
                       <td className="p-3.5 font-mono text-center text-sky-400">
                         {row.confirmedCount}
                       </td>
-                      <td className="p-3.5 font-mono text-center text-neutral-200">
+                      <td className={`p-3.5 font-mono text-center ${isDark ? 'text-neutral-200' : 'text-neutral-800'}`}>
                         {row.convRate}%
                       </td>
-                      <td className="p-3.5 font-mono text-center text-neutral-300">
+                      <td className={`p-3.5 font-mono text-center ${isDark ? 'text-neutral-300' : 'text-neutral-800'}`}>
                         {row.pax} Pax
                       </td>
                       <td className="p-3.5 font-mono font-black text-right text-amber-500">
@@ -1278,10 +1276,10 @@ export default function FinanceView({
                 </tbody>
                 <tfoot className={`${theme.innerCard} border-t font-mono font-bold text-xs`}>
                   <tr>
-                    <td className="p-3.5 text-neutral-100 uppercase">
+                    <td className={`p-3.5 ${isDark ? 'text-neutral-100' : 'text-neutral-900'} uppercase`}>
                       Total Periode Ini
                     </td>
-                    <td className="p-3.5 text-center text-neutral-100">
+                    <td className={`p-3.5 text-center ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
                       {reportData.totalBookingsCount}
                     </td>
                     <td className="p-3.5 text-center text-emerald-400">
@@ -1290,10 +1288,10 @@ export default function FinanceView({
                     <td className="p-3.5 text-center text-sky-400">
                       {reportData.confirmedCount}
                     </td>
-                    <td className="p-3.5 text-center text-neutral-100">
+                    <td className={`p-3.5 text-center ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
                       {reportData.conversionRate}%
                     </td>
-                    <td className="p-3.5 text-center text-neutral-100">
+                    <td className={`p-3.5 text-center ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
                       {reportData.serviceBreakdown.reduce((sum, s) => sum + s.pax, 0)} Pax
                     </td>
                     <td className="p-3.5 text-right text-amber-500 font-black text-sm">

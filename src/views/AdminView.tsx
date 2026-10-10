@@ -1122,7 +1122,8 @@ export default function AdminView() {
     input: isDark ? 'bg-neutral-950/80 border-neutral-800 text-white placeholder:text-neutral-500' : 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-500 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20',
     hover: isDark ? 'hover:bg-neutral-800/60' : 'hover:bg-slate-100',
     activeTab: isDark ? 'bg-amber-500/10 text-amber-400 font-extrabold border-amber-500/30' : 'bg-amber-500/10 text-amber-700 font-extrabold border-amber-500/30',
-    label: isDark ? 'text-neutral-300 font-bold' : 'text-slate-800 font-bold'
+    label: isDark ? 'text-neutral-300 font-bold' : 'text-slate-800 font-bold',
+    isDark
   };
 
   // Session Verification Splash
@@ -1940,7 +1941,7 @@ export default function AdminView() {
                                 setItineraryTitleInput('');
                                 setItineraryDescInput('');
                               }}
-                              className="px-3 py-2 rounded-xl border border-neutral-700 bg-transparent text-neutral-300 hover:text-white hover:bg-neutral-800 text-xs font-bold transition-all cursor-pointer"
+                              className={`px-3 py-2 rounded-xl border ${isDark ? 'border-neutral-700 bg-transparent text-neutral-300 hover:text-white hover:bg-neutral-800' : 'border-slate-300 bg-white text-slate-700 hover:text-slate-900 hover:bg-slate-100'} text-xs font-bold transition-all cursor-pointer`}
                             >
                               Batal Edit
                             </button>
@@ -2028,7 +2029,7 @@ export default function AdminView() {
                                               type="button"
                                               disabled={globalIndex === 0}
                                               onClick={() => moveItem(globalIndex, 'up')}
-                                              className={`p-1.5 rounded-lg border border-neutral-800 hover:border-neutral-700 bg-neutral-900 text-neutral-400 hover:text-white transition-all cursor-pointer ${globalIndex === 0 ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                              className={`p-1.5 rounded-lg border ${isDark ? 'border-neutral-800 hover:border-neutral-700 bg-neutral-900 text-neutral-400 hover:text-white' : 'border-slate-300 hover:border-slate-400 bg-white text-slate-600 hover:text-slate-900'} transition-all cursor-pointer ${globalIndex === 0 ? 'opacity-30 cursor-not-allowed' : ''}`}
                                               title="Geser ke Atas"
                                             >
                                               <ChevronUp className="h-3 w-3" />
@@ -2039,7 +2040,7 @@ export default function AdminView() {
                                               type="button"
                                               disabled={globalIndex === itineraryItems.length - 1}
                                               onClick={() => moveItem(globalIndex, 'down')}
-                                              className={`p-1.5 rounded-lg border border-neutral-800 hover:border-neutral-700 bg-neutral-900 text-neutral-400 hover:text-white transition-all cursor-pointer ${globalIndex === itineraryItems.length - 1 ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                              className={`p-1.5 rounded-lg border ${isDark ? 'border-neutral-800 hover:border-neutral-700 bg-neutral-900 text-neutral-400 hover:text-white' : 'border-slate-300 hover:border-slate-400 bg-white text-slate-600 hover:text-slate-900'} transition-all cursor-pointer ${globalIndex === itineraryItems.length - 1 ? 'opacity-30 cursor-not-allowed' : ''}`}
                                               title="Geser ke Bawah"
                                             >
                                               <ChevronDown className="h-3 w-3" />
@@ -2059,7 +2060,7 @@ export default function AdminView() {
                                             <button
                                               type="button"
                                               onClick={() => handleDeleteItineraryItem(item.id)}
-                                              className="p-1.5 rounded-lg border border-neutral-850 hover:border-red-500/20 bg-neutral-950 text-red-400 hover:bg-red-500 hover:text-white transition-all cursor-pointer"
+                                              className={`p-1.5 rounded-lg border ${isDark ? 'border-neutral-850 hover:border-red-500/20 bg-neutral-950 text-red-400 hover:bg-red-500 hover:text-white' : 'border-rose-200 hover:border-rose-300 bg-rose-50 text-rose-600 hover:bg-rose-500 hover:text-white'} transition-all cursor-pointer`}
                                               title="Hapus"
                                             >
                                               <Trash2 className="h-3.5 w-3.5" />
@@ -2184,7 +2185,7 @@ export default function AdminView() {
                                               });
                                               triggerToast('Posisi gambar digeser ke kiri');
                                             }}
-                                            className={`p-1 rounded bg-neutral-800 text-neutral-300 hover:text-white hover:bg-neutral-700 transition-colors cursor-pointer ${
+                                            className={`p-1 rounded ${isDark ? 'bg-neutral-800 text-neutral-300 hover:text-white hover:bg-neutral-700' : 'bg-white/90 text-slate-700 hover:text-slate-900 hover:bg-white shadow-xs'} transition-colors cursor-pointer ${
                                               idx === 0 ? 'opacity-30 cursor-not-allowed' : ''
                                             }`}
                                             title="Geser Kiri (Jadikan Thumbnail)"
@@ -2209,7 +2210,7 @@ export default function AdminView() {
                                               });
                                               triggerToast('Posisi gambar digeser ke kanan');
                                             }}
-                                            className={`p-1 rounded bg-neutral-800 text-neutral-300 hover:text-white hover:bg-neutral-700 transition-colors cursor-pointer ${
+                                            className={`p-1 rounded ${isDark ? 'bg-neutral-800 text-neutral-300 hover:text-white hover:bg-neutral-700' : 'bg-white/90 text-slate-700 hover:text-slate-900 hover:bg-white shadow-xs'} transition-colors cursor-pointer ${
                                               idx === tourForm.gallery.length - 1 ? 'opacity-30 cursor-not-allowed' : ''
                                             }`}
                                             title="Geser Kanan"
@@ -2400,7 +2401,7 @@ export default function AdminView() {
                                         setNewTourFaqA(item.answer);
                                         setEditingTourFaqIdx(fIdx);
                                       }}
-                                      className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                                      className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-slate-200 text-slate-600 hover:text-slate-900'} transition-colors cursor-pointer`}
                                       title="Edit FAQ"
                                     >
                                       <Edit className="h-3.5 w-3.5" />
@@ -2417,14 +2418,14 @@ export default function AdminView() {
                                         }
                                         triggerToast('FAQ berhasil dihapus');
                                       }}
-                                      className="p-1.5 rounded-lg hover:bg-rose-950/30 text-neutral-400 hover:text-rose-400 transition-colors cursor-pointer"
+                                      className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-rose-950/30 text-neutral-400 hover:text-rose-400' : 'hover:bg-rose-100 text-rose-600 hover:text-rose-700'} transition-colors cursor-pointer`}
                                       title="Hapus FAQ"
                                     >
                                       <Trash2 className="h-3.5 w-3.5" />
                                     </button>
                                   </div>
                                 </div>
-                                <p className="text-xs text-neutral-300 leading-relaxed pl-6">
+                                <p className={`text-xs ${isDark ? 'text-neutral-300' : 'text-neutral-700'} leading-relaxed pl-6`}>
                                   {item.answer}
                                 </p>
                               </div>
@@ -2433,7 +2434,7 @@ export default function AdminView() {
                         </div>
 
                         {/* Interactive Add / Edit Form */}
-                        <div className="bg-neutral-950/50 border border-neutral-800/80 rounded-xl p-4 space-y-3 pt-3">
+                        <div className={`${isDark ? 'bg-neutral-950/50 border-neutral-800/80' : 'bg-slate-100/80 border-slate-200'} border rounded-xl p-4 space-y-3 pt-3`}>
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-black uppercase tracking-wider text-amber-500 font-mono">
                               {editingTourFaqIdx !== null ? `Edit FAQ #${editingTourFaqIdx + 1}` : '+ Tambah FAQ Baru'}
@@ -2446,7 +2447,7 @@ export default function AdminView() {
                                   setNewTourFaqQ('');
                                   setNewTourFaqA('');
                                 }}
-                                className="text-[10px] text-neutral-400 hover:text-white underline cursor-pointer"
+                                className={`text-[10px] ${isDark ? 'text-neutral-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'} underline cursor-pointer`}
                               >
                                 Batal Edit
                               </button>
@@ -2686,7 +2687,7 @@ export default function AdminView() {
                           setIsTourFormOpen(false);
                           setEditingTour(null);
                         }}
-                        className={`px-4 py-3 rounded-xl border ${theme.border} bg-neutral-900/60 hover:bg-neutral-900 text-xs font-bold text-neutral-300 hover:text-white transition-all cursor-pointer text-center disabled:opacity-50 disabled:cursor-not-allowed`}
+                        className={`px-4 py-3 rounded-xl border ${theme.border} ${isDark ? 'bg-neutral-900/60 hover:bg-neutral-900 text-neutral-300 hover:text-white' : 'bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border-slate-300'} text-xs font-bold transition-all cursor-pointer text-center disabled:opacity-50 disabled:cursor-not-allowed`}
                       >
                         Batal
                       </button>
@@ -3279,7 +3280,7 @@ export default function AdminView() {
                   <div className="flex items-center gap-1.5">
                     <button 
                       onClick={handlePrevMonth}
-                      className={`p-2 rounded-xl border ${theme.border} hover:bg-neutral-800/30 text-neutral-400 hover:text-white transition-all cursor-pointer`}
+                      className={`p-2 rounded-xl border ${isDark ? `${theme.border} hover:bg-neutral-800/30 text-neutral-300 hover:text-white` : 'border-slate-300 hover:bg-slate-100 text-slate-700 hover:text-slate-900 bg-white'} transition-all cursor-pointer`}
                       title="Bulan Sebelumnya"
                     >
                       <ChevronLeft className="h-4 w-4" />
@@ -3291,13 +3292,13 @@ export default function AdminView() {
                         setCalendarYear(now.getFullYear());
                         setSelectedCalendarDate(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`);
                       }}
-                      className={`px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider rounded-xl border ${theme.border} hover:bg-neutral-800/30 text-neutral-300 hover:text-white transition-all cursor-pointer`}
+                      className={`px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider rounded-xl border ${isDark ? `${theme.border} hover:bg-neutral-800/30 text-neutral-300 hover:text-white` : 'border-slate-300 hover:bg-slate-100 text-slate-700 hover:text-slate-900 bg-white'} transition-all cursor-pointer`}
                     >
                       Hari Ini
                     </button>
                     <button 
                       onClick={handleNextMonth}
-                      className={`p-2 rounded-xl border ${theme.border} hover:bg-neutral-800/30 text-neutral-400 hover:text-white transition-all cursor-pointer`}
+                      className={`p-2 rounded-xl border ${isDark ? `${theme.border} hover:bg-neutral-800/30 text-neutral-300 hover:text-white` : 'border-slate-300 hover:bg-slate-100 text-slate-700 hover:text-slate-900 bg-white'} transition-all cursor-pointer`}
                       title="Bulan Berikutnya"
                     >
                       <ChevronRight className="h-4 w-4" />
@@ -3722,7 +3723,9 @@ export default function AdminView() {
                       className={`px-3 py-1.5 rounded-lg text-[10px] font-mono font-black transition-all cursor-pointer uppercase ${
                         paymentStatusFilter === tab.id
                           ? 'bg-amber-500 text-neutral-950'
-                          : 'text-neutral-400 hover:text-white hover:bg-neutral-800/40'
+                          : isDark
+                          ? 'text-neutral-400 hover:text-white hover:bg-neutral-800/40'
+                          : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
                       }`}
                     >
                       {tab.label}
@@ -4056,7 +4059,9 @@ export default function AdminView() {
                     className={`flex-1 py-2 rounded-lg text-xs font-mono font-black transition-all cursor-pointer uppercase ${
                       financeSubView === 'per-booking'
                         ? 'bg-amber-500 text-neutral-950'
-                        : 'text-neutral-400 hover:text-white'
+                        : isDark
+                        ? 'text-neutral-400 hover:text-white'
+                        : 'text-neutral-600 hover:text-neutral-900'
                     }`}
                   >
                     📊 Laba Rugi per Booking
@@ -4066,7 +4071,9 @@ export default function AdminView() {
                     className={`flex-1 py-2 rounded-lg text-xs font-mono font-black transition-all cursor-pointer uppercase ${
                       financeSubView === 'jurnal'
                         ? 'bg-amber-500 text-neutral-950'
-                        : 'text-neutral-400 hover:text-white'
+                        : isDark
+                        ? 'text-neutral-400 hover:text-white'
+                        : 'text-neutral-600 hover:text-neutral-900'
                     }`}
                   >
                     📓 Jurnal Umum Kas
@@ -4485,7 +4492,7 @@ export default function AdminView() {
                 {/* Print manifest */}
                 <button
                   onClick={handlePrintManifest}
-                  className="px-5 py-3 rounded-xl border border-neutral-700 bg-neutral-900 text-xs font-bold text-neutral-200 hover:text-white hover:bg-neutral-850 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md"
+                  className={`px-5 py-3 rounded-xl border ${isDark ? 'border-neutral-700 bg-neutral-900 text-neutral-200 hover:text-white hover:bg-neutral-850' : 'border-slate-300 bg-white text-slate-700 hover:text-slate-900 hover:bg-slate-100'} text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md`}
                 >
                   <FileCheck className="h-4 w-4 text-amber-500" />
                   <span>Cetak Manifest Perjalanan (Print)</span>
@@ -5422,7 +5429,9 @@ export default function AdminView() {
                       className={`px-3 py-1.5 rounded-lg text-[10px] font-mono font-black transition-all cursor-pointer uppercase ${
                         airportPaymentStatusFilter === tab.id
                           ? 'bg-amber-500 text-neutral-950'
-                          : 'text-neutral-400 hover:text-white hover:bg-neutral-800/40'
+                          : isDark
+                          ? 'text-neutral-400 hover:text-white hover:bg-neutral-800/40'
+                          : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
                       }`}
                     >
                       {tab.label}
@@ -5723,7 +5732,7 @@ export default function AdminView() {
               <div className="flex flex-col sm:flex-row gap-3 pt-3 border-t border-neutral-850 justify-end">
                 <button
                   onClick={handlePrintAirportManifest}
-                  className="px-5 py-3 rounded-xl border border-neutral-700 bg-neutral-900 text-xs font-bold text-neutral-200 hover:text-white hover:bg-neutral-850 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md"
+                  className={`px-5 py-3 rounded-xl border ${isDark ? 'border-neutral-700 bg-neutral-900 text-neutral-200 hover:text-white hover:bg-neutral-850' : 'border-slate-300 bg-white text-slate-700 hover:text-slate-900 hover:bg-slate-100'} text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md`}
                 >
                   <FileCheck className="h-4 w-4 text-amber-500" />
                   <span>Cetak Manifest Airport (Print)</span>
@@ -5873,7 +5882,7 @@ export default function AdminView() {
                     <div className="flex items-center gap-1.5">
                       <button 
                         onClick={handlePrevMonth}
-                        className={`p-1.5 rounded-lg border ${theme.border} ${theme.hover} text-neutral-400 hover:text-white transition-all cursor-pointer`}
+                        className={`p-1.5 rounded-lg border ${theme.border} ${theme.hover} ${isDark ? 'text-neutral-300 hover:text-white' : 'text-slate-700 hover:text-slate-900'} transition-all cursor-pointer`}
                       >
                         <ChevronLeft className="h-4 w-4" />
                       </button>
@@ -5884,13 +5893,13 @@ export default function AdminView() {
                           setCalendarMonth(today.getMonth());
                           setSelectedCalendarDate(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`);
                         }}
-                        className={`px-3 py-1.5 border ${theme.border} ${theme.hover} rounded-lg text-[10px] font-bold text-neutral-300`}
+                        className={`px-3 py-1.5 border ${theme.border} ${theme.hover} rounded-lg text-[10px] font-bold ${isDark ? 'text-neutral-300 hover:text-white' : 'text-slate-700 hover:text-slate-900'}`}
                       >
                         Hari Ini
                       </button>
                       <button 
                         onClick={handleNextMonth}
-                        className={`p-1.5 rounded-lg border ${theme.border} ${theme.hover} text-neutral-400 hover:text-white transition-all cursor-pointer`}
+                        className={`p-1.5 rounded-lg border ${theme.border} ${theme.hover} ${isDark ? 'text-neutral-300 hover:text-white' : 'text-slate-700 hover:text-slate-900'} transition-all cursor-pointer`}
                       >
                         <ChevronRight className="h-4 w-4" />
                       </button>
@@ -6465,6 +6474,7 @@ export default function AdminView() {
           bookings={bookings}
           updateBookingStatus={updateBookingStatus}
           theme={theme}
+          isDark={isDark}
           currency={currency}
           formatPrice={formatPrice}
           triggerToast={triggerToast}
@@ -6634,7 +6644,7 @@ export default function AdminView() {
                 <p className={`text-xs ${theme.textSecondary}`}>Pantau, koordinasikan, dan jadwalkan keberangkatan pesanan {moduleName}.</p>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => triggerToast('Sinkronisasi Jadwal Terpicu')} className={`p-2.5 rounded-xl border ${theme.border} ${theme.hover} text-neutral-400 hover:text-white transition-all cursor-pointer`}>
+                <button onClick={() => triggerToast('Sinkronisasi Jadwal Terpicu')} className={`p-2.5 rounded-xl border ${theme.border} ${theme.hover} ${isDark ? 'text-neutral-300 hover:text-white' : 'text-slate-700 hover:text-slate-900'} transition-all cursor-pointer`}>
                   <RefreshCw className="h-4 w-4" />
                 </button>
                 <button onClick={() => triggerToast('Ekspor manifest terpicu')} className="bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 font-black text-xs px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5">
@@ -7877,7 +7887,7 @@ export default function AdminView() {
                           className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                             bookingStatusFilter === st
                               ? 'bg-amber-500 text-neutral-950 font-black'
-                              : `${theme.innerCard} border text-neutral-400 hover:text-white`
+                              : `${theme.innerCard} border ${isDark ? 'text-neutral-400 hover:text-white' : 'text-neutral-600 hover:text-neutral-900'}`
                           }`}
                         >
                           {st === 'all' ? 'Semua' : st}

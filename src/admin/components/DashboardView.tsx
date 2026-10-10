@@ -287,7 +287,7 @@ export default function DashboardView({
             <AlertTriangle className="h-4 w-4" />
             <span>NEEDS ATTENTION · TINDAKAN SEGERA ADMIN (ACTIONABLE)</span>
           </span>
-          <span className="text-[11px] font-mono text-neutral-400">
+          <span className={`text-[11px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
             Klik kartu untuk langsung menuju antrean data terkait
           </span>
         </div>
@@ -299,11 +299,11 @@ export default function DashboardView({
             className={`p-4 rounded-2xl border transition-all cursor-pointer ${
               paidUnconfirmed.length > 0
                 ? 'bg-amber-500/15 border-amber-500/50 hover:border-amber-400 shadow-md ring-1 ring-amber-500/20'
-                : `${theme.innerCard} border-neutral-800 opacity-60`
+                : `${theme.innerCard} ${isDark ? 'border-neutral-800' : 'border-slate-200'} opacity-60`
             }`}
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-mono uppercase font-bold text-amber-500 flex items-center gap-1">
+              <span className={`text-[10px] font-mono uppercase font-bold ${isDark ? 'text-amber-500' : 'text-amber-700'} flex items-center gap-1`}>
                 <ShieldAlert className="h-3.5 w-3.5" />
                 Lunas Menunggu Konfirmasi
               </span>
@@ -318,7 +318,7 @@ export default function DashboardView({
                 ? `${paidUnconfirmed.length} pesanan telah lunas via ArtoPay tapi belum diverifikasi admin.`
                 : 'Semua pembayaran lunas telah dikonfirmasi.'}
             </p>
-            <span className="text-[10px] text-amber-500 font-bold block mt-2 hover:underline flex items-center gap-1">
+            <span className={`text-[10px] ${isDark ? 'text-amber-400' : 'text-amber-700'} font-bold block mt-2 hover:underline flex items-center gap-1`}>
               <span>Buka Antrean Konfirmasi</span>
               <ArrowRight className="h-3 w-3" />
             </span>
@@ -330,11 +330,11 @@ export default function DashboardView({
             className={`p-4 rounded-2xl border transition-all cursor-pointer ${
               metrics.pendingPaymentCount > 0
                 ? (isDark ? 'bg-neutral-800/40 border-neutral-700 hover:border-neutral-500' : 'bg-slate-100/90 border-slate-300 hover:border-slate-400')
-                : `${theme.innerCard} border-neutral-800 opacity-60`
+                : `${theme.innerCard} ${isDark ? 'border-neutral-800' : 'border-slate-200'} opacity-60`
             }`}
           >
             <div className="flex items-center justify-between mb-2">
-              <span className={`text-[10px] font-mono uppercase font-bold ${isDark ? 'text-neutral-400' : 'text-neutral-600'} flex items-center gap-1`}>
+              <span className={`text-[10px] font-mono uppercase font-bold ${isDark ? 'text-neutral-400' : 'text-neutral-700'} flex items-center gap-1`}>
                 <CreditCard className="h-3.5 w-3.5 text-amber-500" />
                 Menunggu Pembayaran
               </span>
@@ -359,7 +359,7 @@ export default function DashboardView({
             className={`p-4 rounded-2xl border transition-all cursor-pointer ${
               immediateDepartures.length > 0
                 ? (isDark ? 'bg-sky-500/10 border-sky-500/40 hover:border-sky-400' : 'bg-sky-50 border-sky-300 hover:border-sky-400')
-                : `${theme.innerCard} border-neutral-800 opacity-60`
+                : `${theme.innerCard} ${isDark ? 'border-neutral-800' : 'border-slate-200'} opacity-60`
             }`}
           >
             <div className="flex items-center justify-between mb-2">
@@ -388,7 +388,7 @@ export default function DashboardView({
             className={`p-4 rounded-2xl border transition-all cursor-pointer ${
               unassignedUpcoming.length > 0
                 ? (isDark ? 'bg-rose-500/10 border-rose-500/40 hover:border-rose-400 shadow-xs' : 'bg-rose-50 border-rose-300 hover:border-rose-400 shadow-xs')
-                : `${theme.innerCard} border-neutral-800 opacity-60`
+                : `${theme.innerCard} ${isDark ? 'border-neutral-800' : 'border-slate-200'} opacity-60`
             }`}
           >
             <div className="flex items-center justify-between mb-2">
@@ -432,12 +432,11 @@ export default function DashboardView({
                 <ChevronRight className="h-3.5 w-3.5" />
               </button>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {paidUnconfirmed.slice(0, 3).map((item) => (
                 <div 
                   key={item.id} 
-                  className={`p-3 rounded-xl ${theme.innerCard} border border-neutral-700/60 hover:border-amber-500 transition-all flex flex-col justify-between`}
+                  className={`p-3 rounded-xl ${theme.innerCard} border ${isDark ? 'border-neutral-700/60' : 'border-slate-200'} hover:border-amber-500 transition-all flex flex-col justify-between`}
                 >
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
@@ -448,19 +447,18 @@ export default function DashboardView({
                         Paid ArtoPay
                       </span>
                     </div>
-                    <div className="text-xs font-bold text-neutral-100 truncate" title={item.serviceTitle}>
+                    <div className={`text-xs font-bold ${isDark ? 'text-neutral-100' : 'text-neutral-900'} truncate`} title={item.serviceTitle}>
                       {item.serviceTitle}
                     </div>
-                    <div className="text-[11px] text-neutral-400 flex items-center justify-between">
-                      <span>Tamu: <b className="text-neutral-200">{item.customerName}</b></span>
+                    <div className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-neutral-600'} flex items-center justify-between`}>
+                      <span>Tamu: <b className={isDark ? 'text-neutral-200' : 'text-neutral-800'}>{item.customerName}</b></span>
                       <span className="font-mono text-amber-400 font-bold">
                         Rp {Number(item.totalAmountIDR || 0).toLocaleString('id-ID')}
                       </span>
                     </div>
                   </div>
-
-                  <div className="pt-2 mt-2 border-t border-neutral-800 flex items-center justify-between">
-                    <span className="text-[10px] font-mono text-neutral-400">
+                  <div className={`pt-2 mt-2 border-t ${isDark ? 'border-neutral-800' : 'border-slate-200'} flex items-center justify-between`}>
+                    <span className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
                       Jadwal: {getDepartureDate(item) || '-'}
                     </span>
                     <button
@@ -480,11 +478,10 @@ export default function DashboardView({
 
       {/* SECTION 3: KEY PERFORMANCE INDICATORS (8 REAL METRICS) */}
       <div className="space-y-3">
-        <span className="text-xs font-mono font-extrabold uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
+        <span className={`text-xs font-mono font-extrabold uppercase tracking-wider ${isDark ? 'text-neutral-400' : 'text-neutral-700'} flex items-center gap-1.5`}>
           <Activity className="h-4 w-4 text-amber-500" />
           <span>RINGKASAN METRIK OPERASIONAL REAL-TIME</span>
         </span>
-
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-4">
           {/* 1. Total Orders */}
           <div 
@@ -492,7 +489,7 @@ export default function DashboardView({
             className={`p-5 rounded-2xl ${theme.card} border ${isDark ? 'border-neutral-800/80 hover:border-amber-500/40' : 'border-slate-200 hover:border-amber-500/50'} transition-all cursor-pointer space-y-2 shadow-xs`}
           >
             <div className="flex items-center justify-between">
-              <span className={`text-[10px] font-mono font-bold ${isDark ? 'text-neutral-400' : 'text-neutral-600'} uppercase tracking-wider`}>
+              <span className={`text-[10px] font-mono font-bold ${isDark ? 'text-neutral-400' : 'text-neutral-700'} uppercase tracking-wider`}>
                 Total Orders Aktif
               </span>
               <ClipboardList className="h-4 w-4 text-neutral-500" />
@@ -500,7 +497,7 @@ export default function DashboardView({
             <div className={`text-2xl font-black font-mono ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
               {metrics.totalOrders} <span className={`text-xs font-normal ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>Pesanan</span>
             </div>
-            <div className="text-[10px] font-mono text-neutral-500 flex items-center justify-between">
+            <div className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-700'} flex items-center justify-between`}>
               <span>Semua 5 Layanan</span>
               <span className="text-amber-500 font-bold">Buka Orders →</span>
             </div>
@@ -509,10 +506,10 @@ export default function DashboardView({
           {/* 2. Revenue Paid */}
           <div 
             onClick={() => onNavigate('finance', 'revenue')}
-            className={`p-5 rounded-2xl ${theme.card} border border-neutral-800/80 hover:border-amber-500/40 transition-all cursor-pointer space-y-2 shadow-xs`}
+            className={`p-5 rounded-2xl ${theme.card} border ${isDark ? 'border-neutral-800/80 hover:border-amber-500/40' : 'border-slate-200 hover:border-amber-500/50'} transition-all cursor-pointer space-y-2 shadow-xs`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold text-neutral-400 uppercase tracking-wider">
+              <span className={`text-[10px] font-mono font-bold ${isDark ? 'text-neutral-400' : 'text-neutral-700'} uppercase tracking-wider`}>
                 Total Revenue Paid
               </span>
               <DollarSign className="h-4 w-4 text-amber-500" />
@@ -520,7 +517,7 @@ export default function DashboardView({
             <div className="text-2xl font-black font-mono text-amber-500">
               Rp {metrics.totalRevenuePaidIDR.toLocaleString('id-ID')}
             </div>
-            <div className="text-[10px] font-mono text-neutral-500 flex items-center justify-between">
+            <div className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-700'} flex items-center justify-between`}>
               <span>{metrics.paidBookingsCount} Transaksi Lunas</span>
               <span className="text-amber-500 font-bold">Finance →</span>
             </div>
@@ -529,120 +526,120 @@ export default function DashboardView({
           {/* 3. Paid Today */}
           <div 
             onClick={() => onNavigate('finance', 'payments')}
-            className={`p-5 rounded-2xl ${theme.card} border border-neutral-800/80 hover:border-emerald-500/40 transition-all cursor-pointer space-y-2 shadow-xs`}
+            className={`p-5 rounded-2xl ${theme.card} border ${isDark ? 'border-neutral-800/80 hover:border-emerald-500/40' : 'border-slate-200 hover:border-emerald-500/50'} transition-all cursor-pointer space-y-2 shadow-xs`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold text-neutral-400 uppercase tracking-wider">
+              <span className={`text-[10px] font-mono font-bold ${isDark ? 'text-neutral-400' : 'text-neutral-700'} uppercase tracking-wider`}>
                 Paid Hari Ini
               </span>
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+              <CheckCircle2 className={`h-4 w-4 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
             </div>
-            <div className="text-2xl font-black font-mono text-emerald-400">
-              {metrics.paidTodayCount} <span className="text-xs font-normal text-neutral-400">Transaksi</span>
+            <div className={`text-2xl font-black font-mono ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+              {metrics.paidTodayCount} <span className={`text-xs font-normal ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>Transaksi</span>
             </div>
-            <div className="text-[10px] font-mono text-neutral-500 flex items-center justify-between">
+            <div className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-700'} flex items-center justify-between`}>
               <span>Rp {metrics.paidTodayRevenueIDR.toLocaleString('id-ID')}</span>
-              <span className="text-emerald-400 font-bold">Audit →</span>
+              <span className={`${isDark ? 'text-emerald-400' : 'text-emerald-700'} font-bold`}>Audit →</span>
             </div>
           </div>
 
           {/* 4. Confirmed Today */}
           <div 
             onClick={() => onNavigate('orders', 'all')}
-            className={`p-5 rounded-2xl ${theme.card} border border-neutral-800/80 hover:border-sky-500/40 transition-all cursor-pointer space-y-2 shadow-xs`}
+            className={`p-5 rounded-2xl ${theme.card} border ${isDark ? 'border-neutral-800/80 hover:border-sky-500/40' : 'border-slate-200 hover:border-sky-500/50'} transition-all cursor-pointer space-y-2 shadow-xs`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold text-neutral-400 uppercase tracking-wider">
+              <span className={`text-[10px] font-mono font-bold ${isDark ? 'text-neutral-400' : 'text-neutral-700'} uppercase tracking-wider`}>
                 Confirmed / Dibuat Hari Ini
               </span>
-              <ShieldCheck className="h-4 w-4 text-sky-400" />
+              <ShieldCheck className={`h-4 w-4 ${isDark ? 'text-sky-400' : 'text-sky-600'}`} />
             </div>
-            <div className="text-2xl font-black font-mono text-sky-400">
-              {metrics.confirmedTodayCount} <span className="text-xs font-normal text-neutral-400">Pemesanan</span>
+            <div className={`text-2xl font-black font-mono ${isDark ? 'text-sky-400' : 'text-sky-600'}`}>
+              {metrics.confirmedTodayCount} <span className={`text-xs font-normal ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>Pemesanan</span>
             </div>
-            <div className="text-[10px] font-mono text-neutral-500 flex items-center justify-between">
+            <div className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-700'} flex items-center justify-between`}>
               <span>Tanggal {todayStr}</span>
-              <span className="text-sky-400 font-bold">Detail →</span>
+              <span className={`${isDark ? 'text-sky-400' : 'text-sky-700'} font-bold`}>Detail →</span>
             </div>
           </div>
 
           {/* 5. Pending Payment */}
           <div 
             onClick={() => onNavigate('orders', 'pending_payment')}
-            className={`p-5 rounded-2xl ${theme.card} border border-neutral-800/80 hover:border-amber-500/40 transition-all cursor-pointer space-y-2 shadow-xs`}
+            className={`p-5 rounded-2xl ${theme.card} border ${isDark ? 'border-neutral-800/80 hover:border-amber-500/40' : 'border-slate-200 hover:border-amber-500/50'} transition-all cursor-pointer space-y-2 shadow-xs`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold text-neutral-400 uppercase tracking-wider">
+              <span className={`text-[10px] font-mono font-bold ${isDark ? 'text-neutral-400' : 'text-neutral-700'} uppercase tracking-wider`}>
                 Pending Payment
               </span>
               <CreditCard className="h-4 w-4 text-amber-500" />
             </div>
-            <div className="text-2xl font-black font-mono text-amber-400">
-              {metrics.pendingPaymentCount} <span className="text-xs font-normal text-neutral-400">Tagihan</span>
+            <div className="text-2xl font-black font-mono text-amber-500">
+              {metrics.pendingPaymentCount} <span className={`text-xs font-normal ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>Tagihan</span>
             </div>
-            <div className="text-[10px] font-mono text-neutral-500 flex items-center justify-between">
+            <div className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-700'} flex items-center justify-between`}>
               <span>Rp {metrics.pendingPaymentAmountIDR.toLocaleString('id-ID')}</span>
-              <span className="text-amber-400 font-bold">Tagihan →</span>
+              <span className="text-amber-500 font-bold">Tagihan →</span>
             </div>
           </div>
 
           {/* 6. Pending Confirmation */}
           <div 
             onClick={() => onNavigate('orders', 'pending_confirmation')}
-            className={`p-5 rounded-2xl ${theme.card} border border-neutral-800/80 hover:border-rose-500/40 transition-all cursor-pointer space-y-2 shadow-xs`}
+            className={`p-5 rounded-2xl ${theme.card} border ${isDark ? 'border-neutral-800/80 hover:border-rose-500/40' : 'border-slate-200 hover:border-rose-500/50'} transition-all cursor-pointer space-y-2 shadow-xs`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold text-neutral-400 uppercase tracking-wider">
+              <span className={`text-[10px] font-mono font-bold ${isDark ? 'text-neutral-400' : 'text-neutral-700'} uppercase tracking-wider`}>
                 Pending Confirmation
               </span>
-              <AlertTriangle className="h-4 w-4 text-rose-400" />
+              <AlertTriangle className={`h-4 w-4 ${isDark ? 'text-rose-400' : 'text-rose-600'}`} />
             </div>
-            <div className="text-2xl font-black font-mono text-rose-400">
-              {metrics.pendingConfirmationCount} <span className="text-xs font-normal text-neutral-400">Pesanan</span>
+            <div className={`text-2xl font-black font-mono ${isDark ? 'text-rose-400' : 'text-rose-600'}`}>
+              {metrics.pendingConfirmationCount} <span className={`text-xs font-normal ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>Pesanan</span>
             </div>
-            <div className="text-[10px] font-mono text-neutral-500 flex items-center justify-between">
+            <div className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-700'} flex items-center justify-between`}>
               <span>Paid ≠ Confirmed</span>
-              <span className="text-rose-400 font-bold">Proses →</span>
+              <span className={`${isDark ? 'text-rose-400' : 'text-rose-700'} font-bold`}>Proses →</span>
             </div>
           </div>
 
           {/* 7. Upcoming Departures */}
           <div 
             onClick={() => onNavigate('operations', 'departures')}
-            className={`p-5 rounded-2xl ${theme.card} border border-neutral-800/80 hover:border-sky-500/40 transition-all cursor-pointer space-y-2 shadow-xs`}
+            className={`p-5 rounded-2xl ${theme.card} border ${isDark ? 'border-neutral-800/80 hover:border-sky-500/40' : 'border-slate-200 hover:border-sky-500/50'} transition-all cursor-pointer space-y-2 shadow-xs`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold text-neutral-400 uppercase tracking-wider">
+              <span className={`text-[10px] font-mono font-bold ${isDark ? 'text-neutral-400' : 'text-neutral-700'} uppercase tracking-wider`}>
                 Upcoming Departures
               </span>
-              <Calendar className="h-4 w-4 text-sky-400" />
+              <Calendar className={`h-4 w-4 ${isDark ? 'text-sky-400' : 'text-sky-600'}`} />
             </div>
-            <div className="text-2xl font-black font-mono text-sky-400">
-              {metrics.upcomingDeparturesCount} <span className="text-xs font-normal text-neutral-400">Trip</span>
+            <div className={`text-2xl font-black font-mono ${isDark ? 'text-sky-400' : 'text-sky-600'}`}>
+              {metrics.upcomingDeparturesCount} <span className={`text-xs font-normal ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>Trip</span>
             </div>
-            <div className="text-[10px] font-mono text-neutral-500 flex items-center justify-between">
+            <div className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-700'} flex items-center justify-between`}>
               <span>Mulai {todayStr}</span>
-              <span className="text-sky-400 font-bold">Operasional →</span>
+              <span className={`${isDark ? 'text-sky-400' : 'text-sky-700'} font-bold`}>Operasional →</span>
             </div>
           </div>
 
           {/* 8. Booking Volume (7 Hari Terakhir) */}
           <div 
             onClick={() => onNavigate('analytics')}
-            className={`p-5 rounded-2xl ${theme.card} border border-neutral-800/80 hover:border-purple-500/40 transition-all cursor-pointer space-y-2 shadow-xs`}
+            className={`p-5 rounded-2xl ${theme.card} border ${isDark ? 'border-neutral-800/80 hover:border-purple-500/40' : 'border-slate-200 hover:border-purple-500/50'} transition-all cursor-pointer space-y-2 shadow-xs`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono font-bold text-neutral-400 uppercase tracking-wider">
+              <span className={`text-[10px] font-mono font-bold ${isDark ? 'text-neutral-400' : 'text-neutral-700'} uppercase tracking-wider`}>
                 Booking Volume (7H)
               </span>
-              <TrendingUp className="h-4 w-4 text-purple-400" />
+              <TrendingUp className={`h-4 w-4 ${isDark ? 'text-purple-400' : 'text-purple-600'}`} />
             </div>
-            <div className="text-2xl font-black font-mono text-purple-400">
-              {metrics.recent7DaysCount} <span className="text-xs font-normal text-neutral-400">Masuk</span>
+            <div className={`text-2xl font-black font-mono ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>
+              {metrics.recent7DaysCount} <span className={`text-xs font-normal ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>Masuk</span>
             </div>
-            <div className="text-[10px] font-mono text-neutral-500 flex items-center justify-between">
+            <div className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-700'} flex items-center justify-between`}>
               <span>Tren Mingguan</span>
-              <span className="text-purple-400 font-bold">Analytics →</span>
+              <span className={`${isDark ? 'text-purple-400' : 'text-purple-700'} font-bold`}>Analytics →</span>
             </div>
           </div>
         </div>
@@ -656,7 +653,7 @@ export default function DashboardView({
               <Users className="h-4 w-4" />
               <span>PORTOFOLIO &amp; KONTRIBUSI 5 DIVISI LAYANAN</span>
             </h3>
-            <p className="text-[11px] text-neutral-400">
+            <p className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
               Peta volume pemesanan, pendapatan lunas, dan jadwal keberangkatan untuk setiap layanan resmi.
             </p>
           </div>
@@ -676,18 +673,17 @@ export default function DashboardView({
               <div
                 key={srv.id}
                 onClick={() => onNavigate('orders', 'all', srv.id)}
-                className={`p-4 rounded-2xl ${theme.card} border border-neutral-800/80 hover:border-amber-500/40 transition-all cursor-pointer space-y-3 flex flex-col justify-between shadow-xs`}
+                className={`p-4 rounded-2xl ${theme.card} border ${isDark ? 'border-neutral-800/80 hover:border-amber-500/40' : 'border-slate-200 hover:border-amber-500/50'} transition-all cursor-pointer space-y-3 flex flex-col justify-between shadow-xs`}
               >
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className={`p-2 rounded-xl ${srv.bg} ${srv.color} border ${srv.border}`}>
                       <Icon className="h-4 w-4" />
                     </span>
-                    <span className="text-[10px] font-mono font-bold text-neutral-400">
+                    <span className={`text-[10px] font-mono font-bold ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
                       {srv.totalBookings} Booking
                     </span>
                   </div>
-
                   <div>
                     <h4 className={`text-xs font-bold ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>{srv.name}</h4>
                     <div className="text-sm font-black font-mono text-amber-500 mt-1">
@@ -698,7 +694,6 @@ export default function DashboardView({
                     </span>
                   </div>
                 </div>
-
                 <div className={`pt-2 border-t ${isDark ? 'border-neutral-800/80' : 'border-neutral-200'} flex items-center justify-between text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
                   <span>{srv.upcomingCount} Trip Aktif</span>
                   <span className="text-amber-500 font-bold flex items-center gap-0.5">
@@ -734,7 +729,7 @@ export default function DashboardView({
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className={`${theme.innerCard} border-b text-[10px] font-mono uppercase ${isDark ? 'text-neutral-400' : 'text-neutral-600'} font-bold`}>
+            <thead className={`${theme.innerCard} border-b text-[10px] font-mono uppercase ${isDark ? 'text-neutral-400' : 'text-neutral-700'} font-bold`}>
               <tr>
                 <th className="p-3.5">Kode Transaksi</th>
                 <th className="p-3.5">Layanan</th>
@@ -760,15 +755,15 @@ export default function DashboardView({
                       <span className={`font-semibold ${isDark ? 'text-neutral-200' : 'text-neutral-900'} block truncate max-w-[170px]`} title={b.serviceTitle}>
                         {b.serviceTitle}
                       </span>
-                      <span className="text-[10px] font-mono text-neutral-500 uppercase">
+                      <span className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-700'} uppercase`}>
                         {b.serviceType}
                       </span>
                     </td>
                     <td className={`p-3.5 font-bold ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
                       <div>{b.customerName}</div>
-                      <div className="text-[10px] font-mono text-neutral-500">{b.customerPhone || '-'}</div>
+                      <div className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-700'}`}>{b.customerPhone || '-'}</div>
                     </td>
-                    <td className={`p-3.5 font-mono ${isDark ? 'text-neutral-300' : 'text-neutral-700'} text-[11px]`}>
+                    <td className={`p-3.5 font-mono ${isDark ? 'text-neutral-300' : 'text-neutral-800'} text-[11px]`}>
                       {getDepartureDate(b) || '-'} {b.time ? `• ${b.time}` : ''}
                     </td>
                     <td className={`p-3.5 font-mono font-black text-right ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>

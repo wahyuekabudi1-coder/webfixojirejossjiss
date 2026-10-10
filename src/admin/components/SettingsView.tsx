@@ -583,7 +583,11 @@ export default function SettingsView({
 
                   <button
                     onClick={handleResetRBACDefaults}
-                    className="text-[11px] font-bold text-neutral-400 hover:text-white px-3 py-1.5 rounded-lg border border-neutral-800 hover:bg-neutral-800 transition-all cursor-pointer flex items-center gap-1.5"
+                    className={`text-[11px] font-bold ${
+                      isDark 
+                        ? 'text-neutral-300 hover:text-white border-neutral-700/60 hover:bg-neutral-800' 
+                        : 'text-slate-700 hover:text-slate-900 border-slate-300 hover:bg-slate-100 bg-white'
+                    } px-3 py-1.5 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5`}
                   >
                     <RefreshCw className="h-3 w-3" />
                     <span>Reset Default</span>
@@ -860,7 +864,7 @@ export default function SettingsView({
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="text-xs text-neutral-400 hover:text-white flex items-center gap-1.5 cursor-pointer"
+                          className={`text-xs ${isDark ? 'text-neutral-400 hover:text-white' : 'text-neutral-600 hover:text-neutral-900'} flex items-center gap-1.5 cursor-pointer`}
                         >
                           {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                           <span>{showPassword ? 'Sembunyikan Karakter' : 'Tampilkan Karakter'}</span>

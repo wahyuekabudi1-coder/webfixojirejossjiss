@@ -461,7 +461,9 @@ export default function OrdersView({
             {searchQuery && (
               <button 
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-200"
+                className={`absolute right-3 top-1/2 -translate-y-1/2 ${
+                  isDark ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-800'
+                } transition-colors cursor-pointer`}
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -488,7 +490,7 @@ export default function OrdersView({
                 className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
                   serviceFilter === ch.id
                     ? 'bg-amber-500/15 border border-amber-500/30 text-amber-500 font-bold'
-                    : 'text-neutral-400 hover:text-neutral-200'
+                    : isDark ? 'text-neutral-400 hover:text-neutral-200' : 'text-neutral-600 hover:text-neutral-900'
                 }`}
               >
                 {ch.label}
@@ -599,7 +601,7 @@ export default function OrdersView({
             {(customStartDate || customEndDate) && (
               <button
                 onClick={() => { setCustomStartDate(''); setCustomEndDate(''); }}
-                className="text-neutral-400 hover:text-amber-400 text-[11px] underline cursor-pointer"
+                className={`${isDark ? 'text-neutral-400 hover:text-amber-400' : 'text-neutral-600 hover:text-amber-700'} text-[11px] underline cursor-pointer`}
               >
                 Hapus Rentang
               </button>
@@ -661,7 +663,7 @@ export default function OrdersView({
       <div className={`${theme.card} border rounded-2xl overflow-hidden shadow-sm`}>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className={`${theme.innerCard} border-b text-[10px] font-mono uppercase ${isDark ? 'text-neutral-400' : 'text-neutral-600'} font-bold`}>
+            <thead className={`${theme.innerCard} border-b text-[10px] font-mono uppercase ${isDark ? 'text-neutral-400' : 'text-neutral-700'} font-bold`}>
               <tr>
                 <th className="p-3.5">Kode Booking</th>
                 <th className="p-3.5">Layanan</th>
@@ -675,7 +677,7 @@ export default function OrdersView({
                 <th className="p-3.5 text-right">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-800/40">
+            <tbody className={`divide-y ${isDark ? 'divide-neutral-800/40' : 'divide-neutral-200'}`}>
               {filteredBookings.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="p-10 text-center text-neutral-500 font-mono space-y-2">
@@ -683,7 +685,11 @@ export default function OrdersView({
                     {isFilterActive && (
                       <button
                         onClick={resetAllFilters}
-                        className="px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 text-xs font-bold transition-all cursor-pointer"
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          isDark
+                            ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
+                            : 'bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-300'
+                        }`}
                       >
                         Reset Filter
                       </button>
@@ -756,37 +762,37 @@ export default function OrdersView({
                       </td>
 
                       {/* Product Title / Route */}
-                      <td className="p-3.5 font-semibold text-neutral-200 max-w-[200px] truncate" title={item.serviceTitle}>
+                      <td className={`p-3.5 font-semibold ${isDark ? 'text-neutral-200' : 'text-neutral-900'} max-w-[200px] truncate`} title={item.serviceTitle}>
                         <div className="truncate font-bold">{item.serviceTitle}</div>
                         {item.flightNumber && (
                           <div className={`text-[10px] ${isDark ? 'text-amber-400' : 'text-amber-800'} font-mono`}>Flight: {item.flightNumber}</div>
                         )}
                         {item.vehicleName && item.serviceType !== 'tour' && (
-                          <div className="text-[10px] text-neutral-500 font-mono">{item.vehicleName}</div>
+                          <div className={`text-[10px] ${isDark ? 'text-neutral-500' : 'text-neutral-600'} font-mono`}>{item.vehicleName}</div>
                         )}
                       </td>
 
                       {/* Customer Info */}
                       <td className="p-3.5">
-                        <div className="font-bold text-neutral-200">{item.customerName}</div>
-                        <div className="text-[10px] text-neutral-500 font-mono">{item.customerPhone}</div>
+                        <div className={`font-bold ${isDark ? 'text-neutral-200' : 'text-neutral-900'}`}>{item.customerName}</div>
+                        <div className={`text-[10px] ${isDark ? 'text-neutral-500' : 'text-neutral-600'} font-mono`}>{item.customerPhone}</div>
                       </td>
 
                       {/* Official Date (departureDate prioritized for Open Trip) */}
-                      <td className="p-3.5 font-mono text-neutral-300 whitespace-nowrap">
-                        <span className={item.serviceType === 'sharetour' ? 'font-bold text-emerald-400' : ''}>
+                      <td className={`p-3.5 font-mono ${isDark ? 'text-neutral-300' : 'text-neutral-800'} whitespace-nowrap`}>
+                        <span className={item.serviceType === 'sharetour' ? (isDark ? 'font-bold text-emerald-400' : 'font-bold text-emerald-700') : ''}>
                           {officialDate}
                         </span>
                         {item.time ? ` · ${item.time}` : ''}
                       </td>
 
                       {/* Passengers */}
-                      <td className="p-3.5 font-mono text-neutral-300 text-center whitespace-nowrap">
+                      <td className={`p-3.5 font-mono ${isDark ? 'text-neutral-300' : 'text-neutral-800'} text-center whitespace-nowrap`}>
                         {item.passengers}
                       </td>
 
                       {/* Total Transaksi */}
-                      <td className="p-3.5 font-mono font-black text-right text-neutral-100 whitespace-nowrap">
+                      <td className={`p-3.5 font-mono font-black text-right ${isDark ? 'text-neutral-100' : 'text-neutral-900'} whitespace-nowrap`}>
                         {item.totalAmountIDR 
                           ? `Rp ${Number(item.totalAmountIDR).toLocaleString('id-ID')}`
                           : (item.totalAmountUSD ? formatPrice(item.totalAmountUSD, item.totalAmountIDR || 0) : '-')}
@@ -864,7 +870,7 @@ export default function OrdersView({
                                 isPaymentVerified
                                   ? (isDark 
                                       ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30 cursor-pointer shadow-xs' 
-                                      : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-300 cursor-pointer shadow-xs')
+                                      : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300 cursor-pointer shadow-xs')
                                   : (isDark 
                                       ? 'bg-neutral-850 text-neutral-600 border-neutral-800 cursor-not-allowed opacity-50' 
                                       : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-50')
@@ -888,7 +894,7 @@ export default function OrdersView({
                               className={`p-1.5 rounded-lg border transition-all ${
                                 isDark
                                   ? 'bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border-blue-500/30'
-                                  : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-300'
+                                  : 'bg-blue-50 hover:bg-blue-100 text-blue-800 border-blue-300'
                               } cursor-pointer`}
                               title="Tandai Selesai (Completed)"
                             >
@@ -906,8 +912,8 @@ export default function OrdersView({
                               }}
                               className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
                                 isDark
-                                  ? 'border-neutral-800 hover:border-rose-500/40 hover:bg-rose-500/10 text-neutral-500 hover:text-rose-400'
-                                  : 'border-slate-300 hover:border-rose-300 hover:bg-rose-50 text-slate-500 hover:text-rose-600 bg-white'
+                                  ? 'border-neutral-800 hover:border-rose-500/40 hover:bg-rose-500/10 text-neutral-400 hover:text-rose-400'
+                                  : 'border-slate-300 hover:border-rose-300 hover:bg-rose-50 text-rose-600 hover:text-rose-700 bg-white'
                               }`}
                               title="Batalkan Booking"
                             >

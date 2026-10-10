@@ -591,7 +591,7 @@ export default function CustomersView({
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
             {/* Search Input (Name, Email, Phone, Booking Code) */}
             <div className="md:col-span-5 relative">
-              <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+              <Search className={`h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`} />
               <input
                 type="text"
                 value={customerSearch}
@@ -658,7 +658,7 @@ export default function CustomersView({
           </div>
 
           {/* Quick Active Filter Badges */}
-          <div className="flex items-center justify-between text-[11px] font-mono text-neutral-400 pt-1">
+          <div className={`flex items-center justify-between text-[11px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-600'} pt-1`}>
             <div className="flex items-center gap-1.5 flex-wrap">
               <span>Menampilkan: <b>{filteredCustomers.length}</b> dari {allCustomers.length} Pelanggan</span>
               {serviceFilter !== 'all' && (
@@ -769,7 +769,7 @@ export default function CustomersView({
 
                           {/* Bookings Count */}
                           <td className="p-3.5 font-mono text-center">
-                            <div className="font-black text-neutral-100 text-xs">
+                            <div className={`font-black ${isDark ? 'text-neutral-100' : 'text-neutral-900'} text-xs`}>
                               {cust.totalBookings} Trip
                             </div>
                             <div className="text-[10px] text-emerald-400 font-bold">
@@ -790,9 +790,9 @@ export default function CustomersView({
                           </td>
 
                           {/* Last Trip */}
-                          <td className="p-3.5 font-mono text-neutral-400 text-[11px]">
+                          <td className={`p-3.5 font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-600'} text-[11px]`}>
                             <div>{cust.latestDate ? cust.latestDate.slice(0, 10) : '-'}</div>
-                            <div className="text-[10px] text-neutral-500 truncate max-w-[160px]" title={cust.latestBooking?.serviceTitle}>
+                            <div className={`text-[10px] ${isDark ? 'text-neutral-500' : 'text-neutral-600'} truncate max-w-[160px]`} title={cust.latestBooking?.serviceTitle}>
                               #{cust.latestBooking?.bookingCode}
                             </div>
                           </td>
@@ -854,8 +854,8 @@ export default function CustomersView({
                 <div key={rev.id} className={`${theme.card} border rounded-2xl p-4 space-y-3 shadow-sm`}>
                   <div className="flex items-start justify-between">
                     <div>
-                      <h4 className="text-xs font-bold text-neutral-100">{rev.name}</h4>
-                      <span className="text-[10px] text-neutral-500 font-mono">{rev.country} · {rev.date}</span>
+                      <h4 className={`text-xs font-bold ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>{rev.name}</h4>
+                      <span className={`text-[10px] ${isDark ? 'text-neutral-500' : 'text-neutral-600'} font-mono`}>{rev.country} · {rev.date}</span>
                     </div>
 
                     <div className="flex items-center gap-0.5 text-amber-500">
@@ -928,7 +928,7 @@ export default function CustomersView({
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-black font-sans text-neutral-100">
+                    <h3 className={`text-lg font-black font-sans ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
                       {selectedCustomer.primaryName}
                     </h3>
                     <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
@@ -937,7 +937,7 @@ export default function CustomersView({
                       {getLoyaltyBadge(selectedCustomer.totalBookings, selectedCustomer.totalSpentIDR).label}
                     </span>
                   </div>
-                  <p className="text-xs text-neutral-400 font-mono">
+                  <p className={`text-xs ${isDark ? 'text-neutral-400' : 'text-neutral-600'} font-mono`}>
                     ID: {selectedCustomer.id} • Terdaftar sejak {selectedCustomer.earliestDate ? selectedCustomer.earliestDate.slice(0, 10) : '-'}
                   </p>
                 </div>
@@ -981,11 +981,11 @@ export default function CustomersView({
 
             {/* Top Stat Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className={`p-3.5 rounded-2xl ${theme.innerCard} border border-neutral-700/60 space-y-1`}>
-                <span className="text-[10px] font-mono text-neutral-400 uppercase font-bold block">
+              <div className={`p-3.5 rounded-2xl ${theme.innerCard} border ${isDark ? 'border-neutral-700/60' : 'border-slate-200'} space-y-1`}>
+                <span className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-600'} uppercase font-bold block`}>
                   Total Pemesanan
                 </span>
-                <div className="text-lg font-black font-mono text-neutral-100">
+                <div className={`text-lg font-black font-mono ${isDark ? 'text-neutral-100' : 'text-neutral-900'}`}>
                   {selectedCustomer.totalBookings} Trip
                 </div>
                 <div className="text-[10px] font-mono text-emerald-400 font-bold">
@@ -993,38 +993,38 @@ export default function CustomersView({
                 </div>
               </div>
 
-              <div className={`p-3.5 rounded-2xl ${theme.innerCard} border border-neutral-700/60 space-y-1`}>
-                <span className="text-[10px] font-mono text-neutral-400 uppercase font-bold block">
+              <div className={`p-3.5 rounded-2xl ${theme.innerCard} border ${isDark ? 'border-neutral-700/60' : 'border-slate-200'} space-y-1`}>
+                <span className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-600'} uppercase font-bold block`}>
                   Akumulasi Belanja Lunas
                 </span>
                 <div className="text-lg font-black font-mono text-amber-500">
                   Rp {selectedCustomer.totalSpentIDR.toLocaleString('id-ID')}
                 </div>
-                <div className="text-[10px] font-mono text-neutral-400">
+                <div className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
                   Total Nilai: Rp {selectedCustomer.totalPotentialIDR.toLocaleString('id-ID')}
                 </div>
               </div>
 
-              <div className={`p-3.5 rounded-2xl ${theme.innerCard} border border-neutral-700/60 space-y-1`}>
-                <span className="text-[10px] font-mono text-neutral-400 uppercase font-bold block">
+              <div className={`p-3.5 rounded-2xl ${theme.innerCard} border ${isDark ? 'border-neutral-700/60' : 'border-slate-200'} space-y-1`}>
+                <span className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-600'} uppercase font-bold block`}>
                   Layanan Digunakan
                 </span>
                 <div className="text-lg font-black font-mono text-sky-400">
                   {selectedCustomer.services.size} Layanan
                 </div>
-                <div className="text-[10px] font-mono text-neutral-400 truncate">
+                <div className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-600'} truncate`}>
                   {Array.from(selectedCustomer.services).join(', ').toUpperCase()}
                 </div>
               </div>
 
-              <div className={`p-3.5 rounded-2xl ${theme.innerCard} border border-neutral-700/60 space-y-1`}>
-                <span className="text-[10px] font-mono text-neutral-400 uppercase font-bold block">
+              <div className={`p-3.5 rounded-2xl ${theme.innerCard} border ${isDark ? 'border-neutral-700/60' : 'border-slate-200'} space-y-1`}>
+                <span className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-600'} uppercase font-bold block`}>
                   Aktivitas Terakhir
                 </span>
-                <div className="text-sm font-black font-mono text-neutral-200 mt-1">
+                <div className={`text-sm font-black font-mono ${isDark ? 'text-neutral-200' : 'text-neutral-800'} mt-1`}>
                   {selectedCustomer.latestDate ? selectedCustomer.latestDate.slice(0, 10) : '-'}
                 </div>
-                <div className="text-[10px] font-mono text-amber-400 truncate">
+                <div className="text-[10px] font-mono text-amber-500 truncate">
                   #{selectedCustomer.latestBooking?.bookingCode}
                 </div>
               </div>
@@ -1211,14 +1211,18 @@ export default function CustomersView({
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-between pt-4 border-t border-neutral-700/60">
-              <span className="text-[11px] font-mono text-neutral-400">
+            <div className={`flex items-center justify-between pt-4 border-t ${isDark ? 'border-neutral-700/60' : 'border-neutral-200'}`}>
+              <span className={`text-[11px] font-mono ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
                 Single Source of Truth • Smart Journey Operations &amp; Customer Ledger
               </span>
 
               <button
                 onClick={() => setSelectedCustomer(null)}
-                className="px-4 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-bold transition-all cursor-pointer"
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  isDark
+                    ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-200'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-300'
+                }`}
               >
                 Tutup Profil
               </button>

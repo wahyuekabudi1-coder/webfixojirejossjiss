@@ -281,7 +281,7 @@ export default function Sidebar({
                           }
                         }}
                         disabled={!isPermitted}
-                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold transition-all relative ${
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold transition-all relative group ${
                           !isPermitted
                             ? 'opacity-40 cursor-not-allowed text-neutral-500'
                             : isActive 
@@ -294,7 +294,7 @@ export default function Sidebar({
                         }`}
                         title={collapsed ? (isPermitted ? item.label : `${item.label} (Terkunci oleh RBAC)`) : undefined}
                       >
-                        <Icon className={`h-4.5 w-4.5 shrink-0 ${!isPermitted ? 'text-neutral-600' : isActive ? 'text-amber-500' : isDark ? 'text-neutral-400' : 'text-neutral-600'}`} />
+                        <Icon className={`h-4.5 w-4.5 shrink-0 transition-colors ${!isPermitted ? 'text-neutral-600' : isActive ? 'text-amber-500' : isDark ? 'text-neutral-400 group-hover:text-neutral-100' : 'text-neutral-500 group-hover:text-neutral-900'}`} />
                         
                         {!collapsed && (
                           <div className="flex items-center justify-between flex-grow min-w-0">
@@ -343,7 +343,7 @@ export default function Sidebar({
                                     }
                                   }}
                                   title={!isSubPermitted ? `${sub.label} (Terkunci oleh RBAC)` : undefined}
-                                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all text-left ${
+                                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all text-left group ${
                                     sub.group ? 'pl-3 ' : ''
                                   }${
                                     !isSubPermitted
@@ -358,7 +358,7 @@ export default function Sidebar({
                                   }`}
                                 >
                                   <div className="flex items-center gap-2 truncate">
-                                    {SubIcon && <SubIcon className="h-3 w-3 shrink-0" />}
+                                    {SubIcon && <SubIcon className={`h-3 w-3 shrink-0 transition-colors ${!isSubPermitted ? 'text-neutral-600' : isSubActive ? 'text-amber-500' : isDark ? 'text-neutral-400 group-hover:text-neutral-200' : 'text-neutral-500 group-hover:text-neutral-900'}`} />}
                                     <span className="truncate">{sub.label}</span>
                                   </div>
                                   {!isSubPermitted ? (

@@ -781,7 +781,7 @@ export default function OperationsView({
               </div>
 
               {/* Weekdays Row */}
-              <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-mono uppercase text-neutral-400 font-bold border-b border-neutral-700/40 pb-2">
+              <div className={`grid grid-cols-7 gap-1 text-center text-[10px] font-mono uppercase ${isDark ? 'text-neutral-400' : 'text-neutral-600'} font-bold border-b ${isDark ? 'border-neutral-700/40' : 'border-slate-200'} pb-2`}>
                 {['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map((d, i) => (
                   <div key={i}>{d}</div>
                 ))}
@@ -930,7 +930,11 @@ export default function OperationsView({
                             </button>
                             <button
                               onClick={() => onOpenDetail(item)}
-                              className="p-1 rounded bg-neutral-800 text-neutral-300 hover:text-white cursor-pointer"
+                              className={`p-1 rounded border cursor-pointer transition-all ${
+                                isDark
+                                  ? 'bg-neutral-800 border-neutral-700 text-neutral-300 hover:text-white'
+                                  : 'bg-white border-slate-300 text-slate-700 hover:text-slate-900 hover:bg-slate-100'
+                              }`}
                               title="Lihat Detail Pesanan"
                             >
                               <Eye className="h-3 w-3" />
@@ -1589,13 +1593,13 @@ export default function OperationsView({
       {isAssignModalOpen && selectedBookingForAssign && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-fade-in">
           <div className={`w-full max-w-lg ${theme.card} border rounded-2xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto`}>
-            <div className="flex items-center justify-between border-b border-neutral-700 pb-3">
+            <div className={`flex items-center justify-between border-b ${isDark ? 'border-neutral-700' : 'border-neutral-200'} pb-3`}>
               <div>
-                <h3 className="text-sm font-black font-sans text-neutral-100 flex items-center gap-2">
+                <h3 className={`text-sm font-black font-sans ${isDark ? 'text-neutral-100' : 'text-neutral-900'} flex items-center gap-2`}>
                   <UserCheck className="h-4 w-4 text-amber-500" />
                   <span>ALOKASI OPERASIONAL TRIP</span>
                 </h3>
-                <p className="text-[11px] text-neutral-400 mt-0.5">
+                <p className={`text-[11px] ${isDark ? 'text-neutral-400' : 'text-neutral-600'} mt-0.5`}>
                   Booking #{selectedBookingForAssign.bookingCode} • {selectedBookingForAssign.customerName}
                 </p>
               </div>
@@ -1612,25 +1616,25 @@ export default function OperationsView({
             </div>
 
             {/* Trip Info Snapshot */}
-            <div className="p-3 rounded-xl bg-neutral-900/60 border border-neutral-800 space-y-1 text-xs font-mono">
+            <div className={`p-3 rounded-xl ${isDark ? 'bg-neutral-900/60 border-neutral-800' : 'bg-slate-100 border-slate-200'} border space-y-1 text-xs font-mono`}>
               <div className="flex justify-between">
-                <span className="text-neutral-500">Tanggal Resmi:</span>
-                <span className="text-amber-400 font-bold">{getOfficialDepartureDate(selectedBookingForAssign)}</span>
+                <span className={isDark ? "text-neutral-500" : "text-neutral-600"}>Tanggal Resmi:</span>
+                <span className="text-amber-500 font-bold">{getOfficialDepartureDate(selectedBookingForAssign)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-neutral-500">Layanan:</span>
-                <span className="text-neutral-300">{selectedBookingForAssign.serviceTitle} ({selectedBookingForAssign.passengers} Pax)</span>
+                <span className={isDark ? "text-neutral-500" : "text-neutral-600"}>Layanan:</span>
+                <span className={isDark ? "text-neutral-300" : "text-neutral-800"}>{selectedBookingForAssign.serviceTitle} ({selectedBookingForAssign.passengers} Pax)</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-neutral-500">Titik Jemput:</span>
-                <span className="text-neutral-300 truncate max-w-[220px]">{selectedBookingForAssign.pickupLocation || selectedBookingForAssign.meetingPoint || 'Sesuai Konfirmasi'}</span>
+                <span className={isDark ? "text-neutral-500" : "text-neutral-600"}>Titik Jemput:</span>
+                <span className={`${isDark ? "text-neutral-300" : "text-neutral-800"} truncate max-w-[220px]`}>{selectedBookingForAssign.pickupLocation || selectedBookingForAssign.meetingPoint || 'Sesuai Konfirmasi'}</span>
               </div>
             </div>
 
             <form onSubmit={handleSaveAssignment} className="space-y-3.5 text-xs">
               {/* Armada Kendaraan */}
               <div className="space-y-1">
-                <label className="text-[10px] font-mono font-bold text-neutral-400 uppercase">
+                <label className={`text-[10px] font-mono font-bold ${isDark ? 'text-neutral-400' : 'text-neutral-700'} uppercase`}>
                   Pilih Armada Kendaraan Resmi
                 </label>
                 <select
