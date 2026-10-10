@@ -13,7 +13,8 @@ import type { BlogPost } from './blogData';
 
 interface AppContextProps {
   activePage: ActivePage;
-  setPage: (page: ActivePage) => void;
+  setPage: (page: ActivePage, articleSlug?: string) => void;
+  navigateToBlog: (slug?: string) => void;
   currency: 'USD' | 'IDR' | 'CNY';
   setCurrency: (currency: 'USD' | 'IDR' | 'CNY') => void;
   isPrivacyOpen: boolean;
@@ -589,9 +590,111 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Sync with URL hash and browser history (popstate / deep-linking)
   useEffect(() => {
     const handleLocationChange = () => {
-      const fullHash = window.location.hash || '';
-      const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+      const fullHash = typeof window !== 'undefined' ? (window.location.hash || '') : '';
+      const pathname = typeof window !== 'undefined' ? (window.location.pathname || '') : '';
       let hash = fullHash.split('?')[0].replace(/^#\/?/, '');
+
+      const isAnchorOnly = hash === 'main-content' || hash === '' || fullHash === '#' || fullHash === '#main-content';
+
+      // 1. Blog route recognition via clean pathname (/blog, /blog/, /blog/:slug, /blog/:slug/)
+      const isBlogPath = pathname === '/blog' || pathname.startsWith('/blog/');
+      const isBlogHash = hash === 'blog' || hash.startsWith('blog/');
+
+      // If user is accessing a blog pathname and not explicitly jumping to a hash route like #/tours
+      if (isBlogPath && (!hash || isBlogHash || isAnchorOnly)) {
+        setActivePageState('blog');
+        const trimmedPath = pathname.replace(/^\/+|\/+$/g, '');
+        const pathSegments = trimmedPath ? trimmedPath.split('/') : [];
+        let articleSlug = '';
+
+        if (pathSegments.length > 1 && pathSegments[1]) {
+          try {
+            articleSlug = decodeURIComponent(pathSegments[1]).trim();
+          } catch {
+            articleSlug = pathSegments[1].trim();
+          }
+          // Sanitize slug: strip query or hash residuals
+          articleSlug = articleSlug.replace(/[?#].*$/, '').replace(/\/+$/, '');
+        }
+
+        // Query param fallback e.g. /blog?slug=mount-bromo-travel-guide
+        if (!articleSlug) {
+          const searchParamsObj = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+          const qSlug = searchParamsObj.get('slug') || searchParamsObj.get('article');
+          if (qSlug) {
+            try {
+              articleSlug = decodeURIComponent(qSlug).trim();
+            } catch {
+              articleSlug = qSlug.trim();
+            }
+          }
+        }
+
+        if (articleSlug) {
+          setSearchParams((prev: any) => ({ ...prev, selectedArticleSlug: articleSlug }));
+        } else {
+          setSearchParams((prev: any) => ({ ...prev, selectedArticleSlug: undefined }));
+          setActiveArticle(null);
+        }
+
+        // Consistent trailing slash normalization in browser address bar without reload
+        if (typeof window !== 'undefined') {
+          const canonicalBlogPath = articleSlug
+            ? `/blog/${encodeURIComponent(articleSlug)}/`
+            : '/blog/';
+          if (window.location.pathname !== canonicalBlogPath && !window.location.search && !window.location.hash) {
+            try {
+              window.history.replaceState(null, '', canonicalBlogPath);
+            } catch {}
+          }
+        }
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      // Hash fallback for blog (e.g. #/blog or #/blog/mount-bromo-travel-guide)
+      if (isBlogHash) {
+        setActivePageState('blog');
+        let articleSlug = '';
+        if (hash.startsWith('blog/')) {
+          const hashSegments = hash.split('/');
+          if (hashSegments.length > 1 && hashSegments[1]) {
+            try {
+              articleSlug = decodeURIComponent(hashSegments[1]).trim();
+            } catch {
+              articleSlug = hashSegments[1].trim();
+            }
+          }
+        } else {
+          const articleMatch = fullHash.match(/[?&#](?:article|articleSlug|slug)=([^&]+)/i);
+          if (articleMatch) {
+            try {
+              articleSlug = decodeURIComponent(articleMatch[1]).trim();
+            } catch {
+              articleSlug = articleMatch[1].trim();
+            }
+          }
+        }
+
+        if (articleSlug) {
+          setSearchParams((prev: any) => ({ ...prev, selectedArticleSlug: articleSlug }));
+        } else {
+          setSearchParams((prev: any) => ({ ...prev, selectedArticleSlug: undefined }));
+          setActiveArticle(null);
+        }
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      // If user came from a blog pathname but clicked a distinct hash route (e.g. #/tours while on /blog/)
+      if (typeof window !== 'undefined' && pathname.startsWith('/blog') && hash && !isAnchorOnly) {
+        try {
+          window.history.replaceState(null, '', `/#/${hash}`);
+        } catch {}
+      }
+
       if (!hash && typeof window !== 'undefined' && pathname && pathname !== '/') {
         hash = pathname.replace(/^\/+|\/+$/g, '');
       }
@@ -669,7 +772,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return;
       }
 
-      const validPages: ActivePage[] = ['home', 'tours', 'share-tour', 'event-gathering', 'airport', 'taxi', 'partnerships', 'contact', 'bookings', 'car-rental', 'about', 'admin'];
+      const validPages: ActivePage[] = ['home', 'tours', 'share-tour', 'event-gathering', 'airport', 'taxi', 'partnerships', 'contact', 'bookings', 'car-rental', 'about', 'admin', 'blog'];
       if (validPages.includes(hash as ActivePage)) {
         setActivePageState(hash as ActivePage);
         setActiveArticle(null);
@@ -692,8 +795,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
-  const setPage = (page: ActivePage) => {
+  const setPage = (page: ActivePage, articleSlug?: string) => {
     setActivePageState(page);
+
+    if (page === 'blog') {
+      const cleanSlug = articleSlug ? articleSlug.trim() : undefined;
+      setSearchParams((prev: any) => ({ ...prev, selectedArticleSlug: cleanSlug }));
+      if (!cleanSlug) {
+        setActiveArticle(null);
+      }
+      const targetUrl = cleanSlug ? `/blog/${encodeURIComponent(cleanSlug)}/` : '/blog/';
+      if (typeof window !== 'undefined') {
+        try {
+          window.history.pushState(null, '', targetUrl);
+        } catch {
+          window.location.hash = cleanSlug ? `#/blog/${cleanSlug}` : '#/blog';
+        }
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     if (page === 'tours') {
       setSearchParams((prev: any) => ({ ...prev, selectedTourId: undefined }));
     }
@@ -709,8 +831,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setActiveArticle(null);
       setSearchParams((prev: any) => ({ ...prev, selectedArticleSlug: undefined }));
     }
-    window.location.hash = `#/${page}`;
+
+    if (typeof window !== 'undefined') {
+      // Transition cleanly from non-root pathname (e.g. /blog/ or /blog/:slug/) to hash without conflict
+      if (window.location.pathname !== '/' && (window.location.pathname.startsWith('/blog') || window.location.pathname.startsWith('/event-gathering'))) {
+        try {
+          window.history.pushState(null, '', `/#/${page}`);
+        } catch {
+          window.location.hash = `#/${page}`;
+        }
+      } else {
+        window.location.hash = `#/${page}`;
+      }
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const navigateToBlog = (slug?: string) => {
+    setPage('blog', slug);
   };
 
   const addBooking = async (bookingData: Omit<Booking, 'id' | 'bookingDate' | 'status'>): Promise<Booking> => {
@@ -1046,6 +1184,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         activePage,
         setPage,
+        navigateToBlog,
         currency,
         setCurrency,
         isPrivacyOpen,

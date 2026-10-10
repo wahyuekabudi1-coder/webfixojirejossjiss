@@ -16,6 +16,7 @@ import { trackPageView } from './lib/analytics';
 import { isServiceEnabled } from './config/serviceVisibility';
 import { safeLazyImport } from './utils/preloadRecovery';
 import ErrorBoundary from './components/ErrorBoundary';
+import { BlogPlaceholder, BlogDetailPlaceholder } from './components/blog/BlogPlaceholder';
 
 // Code-split lazy loaded view chunks with safe stale-chunk recovery & anti-reload loop guard
 const ToursView = safeLazyImport(() => import('./views/ToursView'), 'ToursView');
@@ -40,7 +41,7 @@ const PageFallback = () => (
 );
 
 function AppContent() {
-  const { activePage } = useApp();
+  const { activePage, searchParams, setPage } = useApp();
 
   // Automatic privacy-conscious analytics page view tracking
   useEffect(() => {
@@ -56,12 +57,18 @@ function AppContent() {
       'car-rental': { path: '/car-rental', title: 'Rental Mobil Lepas Kunci & dengan Supir Terpercaya' },
       about: { path: '/about', title: 'Tentang Smart Journey Indonesia' },
       partnerships: { path: '/partnerships', title: 'Kemitraan & Partner Ekosistem Smart Journey' },
-      bookings: { path: '/bookings', title: 'Cek Status Booking & Tiket Wisata' }
+      bookings: { path: '/bookings', title: 'Cek Status Booking & Tiket Wisata' },
+      blog: {
+        path: searchParams?.selectedArticleSlug ? `/blog/${searchParams.selectedArticleSlug}/` : '/blog/',
+        title: searchParams?.selectedArticleSlug
+          ? `Panduan Wisata - ${searchParams.selectedArticleSlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} - Smart Journey`
+          : 'Blog & Panduan Wisata Bromo Bali - Smart Journey'
+      }
     };
 
     const target = pagePathMap[activePage] || { path: `/${activePage}`, title: 'Smart Journey' };
     trackPageView(target.path, target.title);
-  }, [activePage]);
+  }, [activePage, searchParams?.selectedArticleSlug]);
 
   // Render the appropriate view based on active page
   const renderView = () => {
@@ -86,6 +93,17 @@ function AppContent() {
         return <PartnershipsView />;
       case 'bookings':
         return <BookingsView />;
+      case 'blog':
+        return searchParams?.selectedArticleSlug ? (
+          <BlogDetailPlaceholder
+            slug={searchParams.selectedArticleSlug}
+            onBack={() => setPage('blog')}
+          />
+        ) : (
+          <BlogPlaceholder
+            onSelectArticle={(slug: string) => setPage('blog', slug)}
+          />
+        );
       case 'admin':
         return <AdminView />;
       default:

@@ -180,9 +180,13 @@ export default function Footer() {
                   </button>
                 </li>
               )}
-              <li className="pt-2 border-t border-neutral-200/60 flex items-center gap-4 text-xs font-semibold text-neutral-500">
+              <li className="pt-2 border-t border-neutral-200/60 flex flex-wrap items-center gap-3 text-xs font-semibold text-neutral-500">
                 <button onClick={() => setPage('about')} className="hover:text-amber-600 transition-colors cursor-pointer">
                   {t('nav.about')}
+                </button>
+                <span>•</span>
+                <button onClick={() => setPage('blog')} className="hover:text-amber-600 transition-colors cursor-pointer">
+                  Blog Wisata
                 </button>
                 <span>•</span>
                 <button onClick={() => setPage('partnerships')} className="hover:text-amber-600 transition-colors cursor-pointer">

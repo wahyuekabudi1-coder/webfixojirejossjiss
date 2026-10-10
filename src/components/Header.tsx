@@ -313,6 +313,17 @@ export default function Header() {
             >
               {t('nav.about')}
             </button>
+
+            <button
+              onClick={() => handleNavigate('blog')}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer ${
+                activePage === 'blog'
+                  ? 'text-amber-600 bg-amber-500/10 font-semibold'
+                  : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
+              }`}
+            >
+              Blog
+            </button>
           </nav>
 
           {/* Desktop Language & Currency Switchers (Original Exact Initial Layout) */}
@@ -743,6 +754,15 @@ export default function Header() {
                   }`}
                 >
                   {t('nav.about')}
+                </button>
+
+                <button
+                  onClick={() => handleNavigate('blog')}
+                  className={`flex items-center w-full text-left px-4 py-3 rounded-2xl text-sm font-semibold transition-colors min-h-[44px] cursor-pointer ${
+                    activePage === 'blog' ? 'bg-amber-500/10 text-amber-700 font-bold' : 'text-neutral-800 hover:bg-neutral-50'
+                  }`}
+                >
+                  Blog & Panduan Wisata
                 </button>
 
                 {/* Mobile Drawer Separate Dropdowns Card */}

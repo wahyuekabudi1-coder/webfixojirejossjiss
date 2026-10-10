@@ -277,6 +277,31 @@ const pageSEOData: Record<string, PageMetadata> = {
     },
     schemaType: 'ItemPage',
     schemaData: defaultCompanySchema
+  },
+  blog: {
+    title: {
+      id: 'Blog & Panduan Wisata Bromo Bali | Smart Journey',
+      en: 'Travel Blog & Guides Bromo Bali | Smart Journey',
+      zh: '印尼旅游攻略博客与火山指南 | Smart Journey'
+    },
+    description: {
+      id: 'Kumpulan artikel, tips perjalanan, panduan wisata Gunung Bromo, Kawah Ijen, Malang, dan layanan transportasi Smart Journey Indonesia.',
+      en: 'Curated travel articles, vacation tips, Mount Bromo and Ijen Crater guides, and smart transportation insights.',
+      zh: '精选印尼旅游攻略、布罗莫火山及宜珍火山实用指南与专车服务推荐。'
+    },
+    keywords: {
+      id: 'blog wisata bromo, panduan tour ijen, tips liburan malang, sewa mobil bromo, travel guide bromo',
+      en: 'bromo travel guide, ijen tour blog, east java travel tips, bromo travel agency',
+      zh: '布罗莫火山旅游攻略, 宜珍火山游记, 印尼包车推荐, 爪哇旅游博客'
+    },
+    canonical: `${BASE_URL}/blog/`,
+    breadcrumbsName: {
+      id: 'Blog Wisata',
+      en: 'Travel Blog',
+      zh: '旅游博客'
+    },
+    schemaType: 'Blog',
+    schemaData: defaultCompanySchema
   }
 };
 
@@ -437,6 +462,13 @@ const SEOHead: React.FC = () => {
       canonical = config.canonical;
       breadcrumbItemName = config.breadcrumbsName[language] || config.breadcrumbsName.en || config.breadcrumbsName.id;
 
+      if (activePage === 'blog' && searchParams?.selectedArticleSlug) {
+        const slugFormatted = searchParams.selectedArticleSlug.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+        title = `${slugFormatted} | Smart Journey`;
+        canonical = `${BASE_URL}/blog/${encodeURIComponent(searchParams.selectedArticleSlug)}/`;
+        breadcrumbItemName = slugFormatted;
+      }
+
       const mainSchema = config.schemaData;
       const breadcrumbSchema = {
         '@context': 'https://schema.org',
@@ -552,7 +584,7 @@ const SEOHead: React.FC = () => {
     }
     schemaScript.textContent = JSON.stringify(schemaList);
 
-  }, [activePage, searchParams?.selectedTourId, tours, activeArticle, language]);
+  }, [activePage, searchParams?.selectedTourId, searchParams?.selectedArticleSlug, tours, activeArticle, language]);
 
   return null;
 };
