@@ -936,13 +936,13 @@ export default function GatheringView() {
                     <label className="block text-xs font-bold text-neutral-700 mb-1">
                       Estimasi Jumlah Peserta *
                     </label>
-                    <div className="grid grid-cols-5 gap-1">
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 sm:gap-1">
                       {(['60', '70', '80', '90', '90+'] as GatheringPaxOption[]).map(pax => (
                         <button
                           type="button"
                           key={pax}
                           onClick={() => setParticipants(pax)}
-                          className={`py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                          className={`py-2.5 sm:py-2 px-1 text-xs font-bold rounded-xl border transition-all cursor-pointer min-h-[40px] flex items-center justify-center ${
                             participants === pax
                               ? 'bg-emerald-800 text-white border-emerald-800 shadow-sm'
                               : 'bg-neutral-50 text-neutral-700 border-neutral-200 hover:bg-neutral-100'

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronUp } from 'lucide-react';
 import { trackWhatsAppClick } from '../lib/analytics';
+import { useApp } from '../AppContext';
 
 export default function FloatingWhatsApp() {
   const phoneNumber = '6285212347289';
@@ -8,7 +9,9 @@ export default function FloatingWhatsApp() {
   const encodedMessage = encodeURIComponent(defaultMessage);
   const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
 
+  const { activePage, searchParams } = useApp();
   const [showScrollTop, setShowScrollTop] = React.useState(false);
+  const [hasStickyBar, setHasStickyBar] = React.useState(false);
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -22,12 +25,30 @@ export default function FloatingWhatsApp() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  React.useEffect(() => {
+    const checkSticky = () => {
+      const el = document.getElementById('tour-sticky-checkout-bar');
+      setHasStickyBar(!!el);
+    };
+    checkSticky();
+
+    const observer = new MutationObserver(checkSticky);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [activePage, searchParams]);
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
-    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex flex-col gap-3 items-end pb-[env(safe-area-inset-bottom,0px)]">
+    <div
+      className={`fixed right-4 sm:right-6 z-50 flex flex-col gap-3 items-end pb-[env(safe-area-inset-bottom,0px)] transition-all duration-300 ${
+        hasStickyBar
+          ? 'bottom-20 sm:bottom-24'
+          : 'bottom-4 sm:bottom-6'
+      }`}
+    >
       {/* Scroll to Top Button (directly above the WhatsApp button) */}
       {showScrollTop && (
         <button

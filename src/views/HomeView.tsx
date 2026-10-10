@@ -381,7 +381,7 @@ export default function HomeView() {
 
           {/* Tour Search Widget */}
           <div className="mt-4 sm:mt-6 w-full max-w-4xl mx-auto bg-white/95 border border-neutral-200/80 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-xl backdrop-blur-md text-neutral-800">
-            <form onSubmit={handleSearch} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-3">
+            <form id="tour-search-form" onSubmit={handleSearch} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-3">
               
               {/* Destination */}
               <div className="text-left space-y-0.5">
@@ -459,7 +459,7 @@ export default function HomeView() {
               </div>
 
               {/* Search Button */}
-              <div className="flex items-end">
+              <div className="flex items-end sm:col-span-2 lg:col-span-1">
                 <button
                   type="submit"
                   className="bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm w-full transition-all shadow-md shadow-amber-500/15 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
@@ -1729,7 +1729,7 @@ export default function HomeView() {
             onMouseEnter={() => setIsHoveringReviews(true)}
             onMouseLeave={() => setIsHoveringReviews(false)}
           >
-            <div className="absolute top-1/2 -translate-y-1/2 -left-4 sm:-left-12 z-20">
+            <div className="hidden sm:block absolute top-1/2 -translate-y-1/2 sm:-left-12 z-20">
               <button
                 onClick={() => scrollReviews('left')}
                 className="bg-white hover:bg-neutral-50 hover:border-neutral-300 text-neutral-700 p-3 rounded-full border border-neutral-200 transition-all shadow-md cursor-pointer active:scale-95"
@@ -1739,7 +1739,7 @@ export default function HomeView() {
               </button>
             </div>
             
-            <div className="absolute top-1/2 -translate-y-1/2 -right-4 sm:-right-12 z-20">
+            <div className="hidden sm:block absolute top-1/2 -translate-y-1/2 sm:-right-12 z-20">
               <button
                 onClick={() => scrollReviews('right')}
                 className="bg-white hover:bg-neutral-50 hover:border-neutral-300 text-neutral-700 p-3 rounded-full border border-neutral-200 transition-all shadow-md cursor-pointer active:scale-95"

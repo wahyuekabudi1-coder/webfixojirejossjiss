@@ -455,8 +455,8 @@ export default function Header() {
           {/* Mobile Separate Dropdowns & Menu Controls (Compact & Sleek for Smartphone) */}
           <div className="flex md:hidden items-center space-x-1 sm:space-x-1.5">
             
-            {/* 1. Mobile Separate Language Dropdown */}
-            <div className="relative" id="mobile-lang-container">
+            {/* 1. Mobile Separate Language Dropdown (Available in drawer below 380px) */}
+            <div className="relative hidden min-[380px]:block" id="mobile-lang-container">
               <button
                 onClick={() => {
                   setIsMobileLangOpen(!isMobileLangOpen);
@@ -514,8 +514,8 @@ export default function Header() {
               </AnimatePresence>
             </div>
 
-            {/* 2. Mobile Separate Currency Dropdown */}
-            <div className="relative" id="mobile-curr-container">
+            {/* 2. Mobile Separate Currency Dropdown (Available in drawer below 380px) */}
+            <div className="relative hidden min-[380px]:block" id="mobile-curr-container">
               <button
                 onClick={() => {
                   setIsMobileCurrOpen(!isMobileCurrOpen);
@@ -586,7 +586,7 @@ export default function Header() {
             {/* Mobile My Bookings Button (Directly next to Currency / Rupiah) */}
             <button
               onClick={() => handleNavigate('bookings')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all duration-200 flex items-center gap-1 cursor-pointer h-7 ${
+              className={`px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all duration-200 flex items-center gap-1 cursor-pointer h-7 ${
                 activePage === 'bookings'
                   ? 'text-amber-700 bg-amber-500/15 border border-amber-500/30'
                   : 'text-neutral-700 hover:text-neutral-900 bg-neutral-100/90 border border-neutral-200 active:bg-neutral-200'
@@ -594,8 +594,8 @@ export default function Header() {
               title="My Bookings (Cek Booking Open Trip & Private Trip)"
               aria-label="My Bookings"
             >
-              <Calendar className="h-3.5 w-3.5 text-amber-500" />
-              <span className="font-bold text-[11px] whitespace-nowrap">My Bookings</span>
+              <Calendar className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+              <span className="hidden sm:inline font-bold text-[11px] whitespace-nowrap">My Bookings</span>
               {bookings && bookings.length > 0 && (
                 <span className="bg-amber-500 text-neutral-950 text-[9px] font-black px-1.5 py-0.2 rounded-full">
                   {bookings.length}

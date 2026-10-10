@@ -1708,7 +1708,7 @@ export default function CarRentalView() {
                   </div>
 
                   {/* Main specs table */}
-                  <div className="grid grid-cols-2 gap-y-4 gap-x-6 border-b border-neutral-850 pb-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 border-b border-neutral-850 pb-5">
                     <div>
                       <span className="text-[10px] text-neutral-500 font-bold uppercase block">Kategori Mobil</span>
                       <span className="text-neutral-200 font-extrabold">{selectedVehicle.categoryName} Class</span>
@@ -1725,7 +1725,7 @@ export default function CarRentalView() {
                       <span className="text-[10px] text-neutral-500 font-bold uppercase block">Lokasi Tujuan Paling Jauh</span>
                       <span className="text-neutral-200 font-extrabold">{dropoffLocation}</span>
                     </div>
-                    <div className="col-span-2 bg-neutral-950/50 p-3.5 rounded-xl border border-neutral-850/50">
+                    <div className="sm:col-span-2 bg-neutral-950/50 p-3.5 rounded-xl border border-neutral-850/50">
                       <span className="text-[10px] text-neutral-500 font-bold uppercase block mb-1">Detail Alamat Penjemputan</span>
                       <span className="text-neutral-200 font-semibold block break-words whitespace-pre-wrap">{pickupDetail}</span>
                     </div>
@@ -1739,7 +1739,7 @@ export default function CarRentalView() {
                         {isDriverSameAsContact ? `${customerName} (Sama)` : `${driverName}`}
                       </span>
                     </div>
-                    <div className="col-span-2">
+                    <div className="sm:col-span-2">
                       <span className="text-[10px] text-neutral-500 font-bold uppercase block">Status Verifikasi</span>
                       <span className="text-emerald-400 font-bold flex items-center gap-1.5 mt-0.5">
                         <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />

@@ -1354,7 +1354,7 @@ export default function TourDetailView({ tourId, onBack }: TourDetailViewProps) 
 
       {/* Sticky Floating Bottom Action Bar - Linear Booking Progression */}
       {!isBookingOpen && (
-        <div className="fixed bottom-0 left-0 right-0 bg-[#1f3a32]/95 backdrop-blur-md border-t border-[#315B4F] z-40 shadow-2xl px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 flex items-center justify-between transition-all animate-fade-in">
+        <div id="tour-sticky-checkout-bar" className="fixed bottom-0 left-0 right-0 bg-[#1f3a32]/95 backdrop-blur-md border-t border-[#315B4F] z-40 shadow-2xl px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 flex items-center justify-between transition-all animate-fade-in">
           <div className="flex flex-col items-start text-left min-w-0 pr-2">
             {selectedDate && selectedTier ? (
               <>

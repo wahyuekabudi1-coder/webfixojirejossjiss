@@ -19,7 +19,7 @@ export default function ServiceNavTabs() {
   const services = allServices.filter(srv => isServiceEnabled(srv.id as any));
 
   return (
-    <div className="w-full bg-neutral-900/95 backdrop-blur-md border-b border-neutral-800 py-2 sticky top-[56px] sm:top-[72px] z-40 shadow-md">
+    <div className="w-full bg-neutral-900/95 backdrop-blur-md border-b border-neutral-800 py-2 sticky top-[64px] sm:top-[76px] z-40 shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-start md:justify-center overflow-x-auto scrollbar-none gap-2 snap-x snap-mandatory active:cursor-grabbing py-0.5">
         {services.map((srv) => {
           const Icon = srv.icon;
