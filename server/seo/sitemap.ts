@@ -25,7 +25,6 @@ const STATIC_ROUTES: StaticSitemapEntry[] = [
   { path: '/share-tour', priority: '0.9', changefreq: 'daily' },
   { path: '/airport', priority: '0.8', changefreq: 'weekly' },
   { path: '/taxi', priority: '0.8', changefreq: 'weekly' },
-  { path: '/rental', priority: '0.8', changefreq: 'weekly' },
   { path: '/car-rental', priority: '0.8', changefreq: 'weekly' },
   { path: '/bookings', priority: '0.7', changefreq: 'weekly' },
   { path: '/about', priority: '0.6', changefreq: 'monthly' },

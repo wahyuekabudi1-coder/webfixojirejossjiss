@@ -36,7 +36,7 @@ export const STATIC_PAGES_SEO: Record<string, PageSeoConfig> = {
     ogType: 'website',
   },
   '/rental': {
-    canonicalUrl: `${BASE_URL}/rental`,
+    canonicalUrl: `${BASE_URL}/car-rental`,
     title: 'Sewa Mobil Surabaya, Malang & Bali (Lepas Kunci & Driver) | Smart Journey',
     description: 'Rental mobil harian Innova Zenix, Avanza, HiAce Commuter, dan Premio dengan kondisi prima, AC dingin, dan harga bersahabat.',
     keywords: 'sewa mobil surabaya, rental hiace malang, rental innova reborn surabaya, sewa hiace premio bali, car rental east java',
@@ -196,6 +196,14 @@ export function createStaticPagesSeoHandlers(options: {
 
   const handleStaticPage = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
+      const normalizedPath = req.path.replace(/\/+$/, '') || '/';
+      if (normalizedPath === '/rental') {
+        const queryIdx = (req.originalUrl || req.url).indexOf('?');
+        const queryString = queryIdx !== -1 ? (req.originalUrl || req.url).slice(queryIdx) : '';
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        return res.redirect(301, `/car-rental${queryString}`);
+      }
+
       const pageSeo = getPageSeoForPath(req.path);
       const rawHtml = await loadBaseHtml(req.originalUrl || req.url);
       const modifiedHtml = injectStaticPageSeo(rawHtml, pageSeo);

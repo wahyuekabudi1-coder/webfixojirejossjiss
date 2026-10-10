@@ -248,7 +248,7 @@ const pageSEOData: Record<string, PageMetadata> = {
       en: 'car rental surabaya, hiace rental malang, innova rental bromo, van rental bali, self drive indonesia car',
       zh: '泗水租车, 玛琅HiAce包车, 印尼自驾租车, 巴厘岛包车, 布罗莫租车'
     },
-    canonical: `${BASE_URL}/rental`,
+    canonical: `${BASE_URL}/car-rental`,
     breadcrumbsName: {
       id: 'Sewa Mobil',
       en: 'Car Rental',
@@ -518,12 +518,6 @@ const SEOHead: React.FC = () => {
       description = config.description[language] || config.description.en || config.description.id;
       keywords = config.keywords[language] || config.keywords.en || config.keywords.id;
       canonical = config.canonical;
-      if (activePage === 'car-rental' && typeof window !== 'undefined') {
-        const path = window.location.pathname || '';
-        if (path.startsWith('/rental') && !path.startsWith('/car-rental')) {
-          canonical = `${BASE_URL}/rental`;
-        }
-      }
       breadcrumbItemName = config.breadcrumbsName[language] || config.breadcrumbsName.en || config.breadcrumbsName.id;
 
       if (activePage === 'blog' && searchParams?.selectedArticleSlug) {
