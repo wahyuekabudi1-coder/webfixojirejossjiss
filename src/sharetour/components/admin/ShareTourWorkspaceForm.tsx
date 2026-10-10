@@ -1051,7 +1051,11 @@ export default function ShareTourWorkspaceForm({
                         setItineraryTitleInput('');
                         setItineraryDescInput('');
                       }}
-                      className="px-3.5 py-2 rounded-xl border border-neutral-700 bg-transparent text-neutral-300 hover:text-white hover:bg-neutral-800 text-xs font-bold transition-all cursor-pointer"
+                      className={`px-3.5 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                        isDark
+                          ? 'border-neutral-700 bg-transparent text-neutral-300 hover:text-white hover:bg-neutral-800'
+                          : 'border-slate-300 bg-white text-slate-700 hover:text-slate-900 hover:bg-slate-100 shadow-xs'
+                      }`}
                     >
                       Batal Edit
                     </button>
@@ -1862,7 +1866,7 @@ export default function ShareTourWorkspaceForm({
 
           {/* Form Submission Actions Card matching Private Tours lines 2167-2210 */}
           <div className={`${t.card} border border-amber-500/20 bg-amber-500/5 rounded-2xl p-5 flex flex-col gap-3 shadow-sm`}>
-            <div className="text-[11px] text-neutral-400 font-semibold leading-relaxed">
+            <div className={`text-[11px] font-semibold leading-relaxed ${isDark ? 'text-neutral-400' : 'text-slate-700'}`}>
               Pilih status penyimpanan paket open trip: Simpan sebagai <strong>Draft</strong> untuk persiapan internal, atau <strong>Publikasikan</strong> agar langsung tampil di katalog website pelanggan.
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-1">
@@ -1870,10 +1874,10 @@ export default function ShareTourWorkspaceForm({
                 type="button"
                 disabled={isSaving}
                 onClick={onClose}
-                className={`px-3 py-3 rounded-xl border text-xs font-bold transition-all cursor-pointer text-center disabled:opacity-50 disabled:cursor-not-allowed ${
+                className={`px-3 py-3 rounded-xl border text-xs font-bold transition-all cursor-pointer text-center disabled:opacity-50 disabled:cursor-not-allowed shadow-xs ${
                   isDark
                     ? 'border-neutral-800 bg-neutral-900/60 hover:bg-neutral-900 text-neutral-300 hover:text-white'
-                    : 'border-slate-300 bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900'
+                    : 'border-slate-300 bg-white hover:bg-slate-100 text-slate-800 hover:text-slate-950'
                 }`}
               >
                 Batal
@@ -1882,7 +1886,11 @@ export default function ShareTourWorkspaceForm({
                 type="button"
                 disabled={isSaving}
                 onClick={() => onSave('draft')}
-                className="px-3 py-3 rounded-xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`px-3 py-3 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed shadow-xs ${
+                  isDark
+                    ? 'border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300'
+                    : 'border-amber-500/50 bg-amber-50 hover:bg-amber-100 text-amber-900'
+                }`}
               >
                 <Clock className="h-4 w-4 shrink-0" />
                 <span>{isSaving ? 'Menyimpan...' : 'Simpan Draft'}</span>

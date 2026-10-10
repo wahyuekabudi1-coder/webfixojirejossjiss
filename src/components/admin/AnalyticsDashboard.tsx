@@ -417,7 +417,7 @@ export default function AnalyticsDashboard({
               <BarChart3 className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-black tracking-tight font-mono text-neutral-100 flex items-center gap-2">
+              <h2 className={`text-lg font-black tracking-tight font-mono ${theme.textPrimary} flex items-center gap-2`}>
                 <span>SMART JOURNEY ANALYTICS</span>
                 <span className="text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
@@ -548,7 +548,7 @@ export default function AnalyticsDashboard({
             <Users className="h-4 w-4 text-amber-500" />
           </div>
           <div className="mt-3">
-            <h3 className="text-2xl font-black font-mono text-neutral-100">
+            <h3 className={`text-2xl font-black font-mono ${theme.textPrimary}`}>
               {isLoading ? '...' : (summaryData?.totalVisitors || 0).toLocaleString()}
             </h3>
             <span className={`text-[10px] ${theme.textMuted} font-semibold block mt-0.5`}>
@@ -564,7 +564,7 @@ export default function AnalyticsDashboard({
             <Eye className="h-4 w-4 text-blue-400" />
           </div>
           <div className="mt-3">
-            <h3 className="text-2xl font-black font-mono text-neutral-100">
+            <h3 className={`text-2xl font-black font-mono ${theme.textPrimary}`}>
               {isLoading ? '...' : (summaryData?.pageViews || 0).toLocaleString()}
             </h3>
             <span className={`text-[10px] ${theme.textMuted} font-semibold block mt-0.5`}>
@@ -581,11 +581,11 @@ export default function AnalyticsDashboard({
           </div>
           <div className="mt-3">
             <div className="flex items-baseline gap-1.5">
-              <h3 className="text-xl font-black font-mono text-neutral-100">
+              <h3 className={`text-xl font-black font-mono ${theme.textPrimary}`}>
                 {isLoading ? '...' : summaryData?.newVisitors || 0}
               </h3>
               <span className="text-xs text-neutral-500 font-bold">/</span>
-              <span className="text-sm font-bold font-mono text-neutral-300">
+              <span className={`text-sm font-bold font-mono ${theme.textSecondary}`}>
                 {isLoading ? '...' : summaryData?.returningVisitors || 0}
               </span>
             </div>
@@ -602,7 +602,7 @@ export default function AnalyticsDashboard({
             <Clock className="h-4 w-4 text-emerald-400" />
           </div>
           <div className="mt-3">
-            <h3 className="text-xl font-black font-mono text-neutral-100">
+            <h3 className={`text-xl font-black font-mono ${theme.textPrimary}`}>
               {isLoading ? '...' : formatDuration(summaryData?.avgDurationSeconds || 0)}
             </h3>
             <span className={`text-[10px] ${theme.textMuted} font-semibold block mt-0.5`}>
@@ -689,7 +689,7 @@ export default function AnalyticsDashboard({
             {/* Filter Period Toolbar */}
             <div className={`${theme.card} border rounded-2xl p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm`}>
               <div>
-                <h3 className="text-sm font-black uppercase tracking-wider font-mono text-neutral-100 flex items-center gap-2">
+                <h3 className={`text-sm font-black uppercase tracking-wider font-mono ${theme.textPrimary} flex items-center gap-2`}>
                   <BarChart3 className="h-4 w-4 text-amber-500" />
                   <span>ANALISIS TREN BISNIS &amp; OMSET (5 LAYANAN TERPADU)</span>
                 </h3>
@@ -730,10 +730,10 @@ export default function AnalyticsDashboard({
             {/* Top Period Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className={`${theme.card} border rounded-2xl p-5 space-y-1 shadow-sm`}>
-                <span className="text-[10px] font-mono text-neutral-400 uppercase font-bold block">
+                <span className={`text-[10px] font-mono ${theme.textMuted} uppercase font-bold block`}>
                   Total Booking Periode Ini
                 </span>
-                <div className="text-2xl font-black font-mono text-neutral-100">
+                <div className={`text-2xl font-black font-mono ${theme.textPrimary}`}>
                   {bizBookings.filter(b => b.bookingStatus !== 'Cancelled').length}
                 </div>
                 <div className="text-[10px] font-mono text-neutral-500">
@@ -742,7 +742,7 @@ export default function AnalyticsDashboard({
               </div>
 
               <div className={`${theme.card} border rounded-2xl p-5 space-y-1 shadow-sm`}>
-                <span className="text-[10px] font-mono text-neutral-400 uppercase font-bold block">
+                <span className={`text-[10px] font-mono ${theme.textMuted} uppercase font-bold block`}>
                   Transaksi Lunas (Paid)
                 </span>
                 <div className="text-2xl font-black font-mono text-emerald-400">
@@ -754,7 +754,7 @@ export default function AnalyticsDashboard({
               </div>
 
               <div className={`${theme.card} border rounded-2xl p-5 space-y-1 shadow-sm`}>
-                <span className="text-[10px] font-mono text-neutral-400 uppercase font-bold block">
+                <span className={`text-[10px] font-mono ${theme.textMuted} uppercase font-bold block`}>
                   Realized Revenue Periode Ini
                 </span>
                 <div className="text-2xl font-black font-mono text-amber-500">
@@ -766,7 +766,7 @@ export default function AnalyticsDashboard({
               </div>
 
               <div className={`${theme.card} border rounded-2xl p-5 space-y-1 shadow-sm`}>
-                <span className="text-[10px] font-mono text-neutral-400 uppercase font-bold block">
+                <span className={`text-[10px] font-mono ${theme.textMuted} uppercase font-bold block`}>
                   Total Wisatawan / Pax
                 </span>
                 <div className="text-2xl font-black font-mono text-sky-400">
@@ -782,7 +782,7 @@ export default function AnalyticsDashboard({
             <div className={`${theme.card} border rounded-2xl p-6 space-y-4 shadow-sm`}>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                 <div>
-                  <h3 className="text-sm font-black uppercase tracking-wider font-mono text-neutral-100 flex items-center gap-2">
+                  <h3 className={`text-sm font-black uppercase tracking-wider font-mono ${theme.textPrimary} flex items-center gap-2`}>
                     <TrendingUp className="h-4 w-4 text-amber-500" />
                     <span>TREN HARIAN: JUMLAH BOOKING &amp; REALISASI OMSET</span>
                   </h3>
@@ -873,8 +873,8 @@ export default function AnalyticsDashboard({
                   {bizServiceBreakdown.map((s) => (
                     <div key={s.id} className="space-y-1">
                       <div className="flex justify-between text-xs font-bold">
-                        <span className="text-neutral-200">{s.name}</span>
-                        <span className="font-mono text-neutral-400">
+                        <span className={theme.textPrimary}>{s.name}</span>
+                        <span className={`font-mono ${theme.textSecondary}`}>
                           {s.count} Booking ({s.bookingsPct}%)
                         </span>
                       </div>
@@ -893,7 +893,7 @@ export default function AnalyticsDashboard({
                     <DollarSign className="h-4 w-4" />
                     <span>DISTRIBUSI OMSET LUNAS PER LAYANAN</span>
                   </h4>
-                  <span className="text-[10px] font-mono text-neutral-400">
+                  <span className={`text-[10px] font-mono ${theme.textMuted}`}>
                     Realized Revenue
                   </span>
                 </div>
@@ -902,8 +902,8 @@ export default function AnalyticsDashboard({
                   {bizServiceBreakdown.map((s) => (
                     <div key={s.id} className="space-y-1">
                       <div className="flex justify-between text-xs font-bold">
-                        <span className="text-neutral-200">{s.name}</span>
-                        <span className="font-mono text-neutral-400">
+                        <span className={theme.textPrimary}>{s.name}</span>
+                        <span className={`font-mono ${theme.textSecondary}`}>
                           Rp {s.revenueIDR.toLocaleString('id-ID')} ({s.revenuePct}%)
                         </span>
                       </div>
@@ -945,7 +945,7 @@ export default function AnalyticsDashboard({
                       className={`p-4 rounded-xl ${theme.innerCard} border border-neutral-700/60 space-y-3 shadow-xs`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-mono font-bold text-neutral-300">
+                        <span className={`text-xs font-mono font-bold ${theme.textSecondary}`}>
                           Jadwal: <b className="text-amber-400">{batch.departureDate}</b>
                         </span>
                         <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
@@ -955,14 +955,14 @@ export default function AnalyticsDashboard({
                         </span>
                       </div>
 
-                      <div className="text-xs font-bold text-neutral-100 line-clamp-1" title={batch.title}>
+                      <div className={`text-xs font-bold ${theme.textPrimary} line-clamp-1`} title={batch.title}>
                         {batch.title}
                       </div>
 
                       {/* Progress bar */}
-                      <div className="space-y-1.5 bg-neutral-900/50 p-2.5 rounded-lg border border-neutral-800">
+                      <div className={`space-y-1.5 ${isDark ? 'bg-neutral-900/50 border-neutral-800' : 'bg-white border-slate-200'} p-2.5 rounded-lg border`}>
                         <div className="flex items-center justify-between text-[11px] font-mono">
-                          <span className="text-neutral-400">Kapasitas: <b className="text-neutral-200">{batch.quota} Kursi</b></span>
+                          <span className={theme.textMuted}>Kapasitas: <b className={theme.textPrimary}>{batch.quota} Kursi</b></span>
                           <span className="font-bold text-amber-400">{batch.bookedPax} Terisi ({batch.occupancyPct}%)</span>
                         </div>
                         <div className="w-full h-2 rounded-full bg-neutral-800 overflow-hidden">
@@ -973,7 +973,7 @@ export default function AnalyticsDashboard({
                             style={{ width: `${batch.occupancyPct}%` }}
                           />
                         </div>
-                        <div className="flex items-center justify-between text-[10px] font-mono text-neutral-400">
+                        <div className={`flex items-center justify-between text-[10px] font-mono ${theme.textMuted}`}>
                           <span>Sisa Kursi: <b className="text-emerald-400">{batch.availableSeats} Slot</b></span>
                           <span>{batch.bookingsCount} Booking</span>
                         </div>
@@ -994,7 +994,7 @@ export default function AnalyticsDashboard({
             <div className={`${theme.card} border rounded-2xl p-6 space-y-4`}>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                 <div>
-                  <h3 className="text-sm font-black uppercase tracking-wider font-mono text-neutral-100 flex items-center gap-2">
+                  <h3 className={`text-sm font-black uppercase tracking-wider font-mono ${theme.textPrimary} flex items-center gap-2`}>
                     <TrendingUp className="h-4 w-4 text-amber-500" />
                     Tren Pengunjung & Tampilan Halaman
                   </h3>
@@ -1083,7 +1083,7 @@ export default function AnalyticsDashboard({
                   </h4>
                   <button 
                     onClick={() => setActiveTab('traffic')}
-                    className="text-[11px] font-bold text-neutral-400 hover:text-amber-400 flex items-center gap-1 font-mono cursor-pointer"
+                    className={`text-[11px] font-bold ${isDark ? 'text-neutral-400 hover:text-amber-400' : 'text-slate-700 hover:text-amber-600'} flex items-center gap-1 font-mono cursor-pointer`}
                   >
                     <span>Detail</span>
                     <ChevronRight className="h-3 w-3" />
@@ -1095,8 +1095,8 @@ export default function AnalyticsDashboard({
                     summaryData.trafficSources.slice(0, 5).map((src, i) => (
                       <div key={i} className="space-y-1.5">
                         <div className="flex justify-between items-center text-xs">
-                          <span className="font-bold text-neutral-200">{src.source}</span>
-                          <span className="font-mono text-neutral-400 text-[11px]">
+                          <span className={`font-bold ${theme.textPrimary}`}>{src.source}</span>
+                          <span className={`font-mono ${theme.textSecondary} text-[11px]`}>
                             {src.visitors} Pengunjung ({src.percentage}%) • {src.conversions} Leads
                           </span>
                         </div>
@@ -1109,7 +1109,7 @@ export default function AnalyticsDashboard({
                       </div>
                     ))
                   ) : (
-                    <p className="text-xs text-neutral-500 py-4 text-center">Belum ada data sumber referral tercatat.</p>
+                    <p className={`text-xs ${theme.textMuted} py-4 text-center`}>Belum ada data sumber referral tercatat.</p>
                   )}
                 </div>
               </div>
@@ -1123,7 +1123,7 @@ export default function AnalyticsDashboard({
                   </h4>
                   <button 
                     onClick={() => setActiveTab('pages')}
-                    className="text-[11px] font-bold text-neutral-400 hover:text-amber-400 flex items-center gap-1 font-mono cursor-pointer"
+                    className={`text-[11px] font-bold ${isDark ? 'text-neutral-400 hover:text-amber-400' : 'text-slate-700 hover:text-amber-600'} flex items-center gap-1 font-mono cursor-pointer`}
                   >
                     <span>Detail</span>
                     <ChevronRight className="h-3 w-3" />
@@ -1135,12 +1135,12 @@ export default function AnalyticsDashboard({
                     summaryData.popularPages.slice(0, 5).map((p, i) => (
                       <div key={i} className={`flex items-center justify-between p-2.5 rounded-xl ${theme.innerCard} border text-xs`}>
                         <div className="min-w-0 pr-3">
-                          <h5 className="font-bold text-neutral-200 truncate">{p.title || p.path}</h5>
-                          <span className="text-[10px] text-neutral-500 font-mono block truncate">{p.path}</span>
+                          <h5 className={`font-bold ${theme.textPrimary} truncate`}>{p.title || p.path}</h5>
+                          <span className={`text-[10px] ${theme.textMuted} font-mono block truncate`}>{p.path}</span>
                         </div>
                         <div className="text-right shrink-0">
                           <span className="font-mono font-black text-amber-400 text-xs block">{p.views} views</span>
-                          <span className="text-[10px] text-neutral-400 font-mono">{p.avgTimeSpent} avg</span>
+                          <span className={`text-[10px] ${theme.textSecondary} font-mono`}>{p.avgTimeSpent} avg</span>
                         </div>
                       </div>
                     ))
@@ -1163,7 +1163,7 @@ export default function AnalyticsDashboard({
             <div className={`${theme.card} border rounded-2xl p-6 space-y-4`}>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-neutral-850 pb-4">
                 <div>
-                  <h3 className="text-sm font-black uppercase tracking-wider font-mono text-neutral-100">
+                  <h3 className={`text-sm font-black uppercase tracking-wider font-mono ${theme.textPrimary}`}>
                     Channel & Sumber Trafik Lengkap
                   </h3>
                   <p className={`text-xs ${theme.textSecondary}`}>
@@ -1188,27 +1188,27 @@ export default function AnalyticsDashboard({
                     {summaryData?.trafficSources && summaryData.trafficSources.length > 0 ? (
                       summaryData.trafficSources.map((s, idx) => (
                         <tr key={idx} className={theme.tableRowHover}>
-                          <td className="py-3 px-4 font-bold text-neutral-200 flex items-center gap-2">
+                          <td className={`py-3 px-4 font-bold ${theme.textPrimary} flex items-center gap-2`}>
                             <span className="h-2 w-2 rounded-full bg-amber-500" />
                             {s.source}
                           </td>
-                          <td className="py-3 px-4 text-neutral-300 font-bold">{s.visitors.toLocaleString()}</td>
+                          <td className={`py-3 px-4 ${theme.textSecondary} font-bold`}>{s.visitors.toLocaleString()}</td>
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
-                              <span className="text-neutral-400 w-10">{s.percentage}%</span>
+                              <span className={`${theme.textMuted} w-10`}>{s.percentage}%</span>
                               <div className="h-1.5 w-24 bg-neutral-800 rounded-full overflow-hidden">
                                 <div className="h-full bg-amber-500" style={{ width: `${s.percentage}%` }} />
                               </div>
                             </div>
                           </td>
-                          <td className="py-3 px-4 text-neutral-300">{s.pageViews.toLocaleString()}</td>
+                          <td className={`py-3 px-4 ${theme.textSecondary}`}>{s.pageViews.toLocaleString()}</td>
                           <td className="py-3 px-4 text-emerald-400 font-bold">{s.conversions}</td>
                           <td className="py-3 px-4 text-right font-black text-amber-400">{s.conversionRate}%</td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={6} className="py-8 text-center text-neutral-500">
+                        <td colSpan={6} className={`py-8 text-center ${theme.textMuted}`}>
                           Tidak ada rekaman sumber trafik.
                         </td>
                       </tr>
@@ -1222,7 +1222,7 @@ export default function AnalyticsDashboard({
             <div className={`${theme.card} border rounded-2xl p-6 space-y-4`}>
               <div className="flex items-center justify-between border-b border-neutral-850 pb-4">
                 <div>
-                  <h3 className="text-sm font-black uppercase tracking-wider font-mono text-neutral-100">
+                  <h3 className={`text-sm font-black uppercase tracking-wider font-mono ${theme.textPrimary}`}>
                     Pelacakan Kampanye UTM (UTM Source, Medium & Campaign)
                   </h3>
                   <p className={`text-xs ${theme.textSecondary}`}>
@@ -1273,7 +1273,7 @@ export default function AnalyticsDashboard({
           <div className={`${theme.card} border rounded-2xl p-6 space-y-4`}>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-neutral-850 pb-4">
               <div>
-                <h3 className="text-sm font-black uppercase tracking-wider font-mono text-neutral-100">
+                <h3 className={`text-sm font-black uppercase tracking-wider font-mono ${theme.textPrimary}`}>
                   Peringkat Popularitas Halaman & Layanan
                 </h3>
                 <p className={`text-xs ${theme.textSecondary}`}>
@@ -1310,22 +1310,22 @@ export default function AnalyticsDashboard({
                     filteredPages.map((p, idx) => (
                       <tr key={idx} className={theme.tableRowHover}>
                         <td className="py-3.5 px-4 font-sans">
-                          <div className="font-bold text-neutral-100">{p.title || p.path}</div>
-                          <span className="text-[10px] text-neutral-500 font-mono">{p.path}</span>
+                          <div className={`font-bold ${theme.textPrimary}`}>{p.title || p.path}</div>
+                          <span className={`text-[10px] ${theme.textMuted} font-mono`}>{p.path}</span>
                         </td>
                         <td className="py-3.5 px-4">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-neutral-800 text-neutral-300 border border-neutral-700">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${isDark ? 'bg-neutral-800 text-neutral-300 border border-neutral-700' : 'bg-slate-100 text-slate-800 border border-slate-300 shadow-2xs'}`}>
                             {p.category || 'Website'}
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 font-bold text-neutral-200">{p.views.toLocaleString()}</td>
-                        <td className="py-3.5 px-4 text-neutral-400">{p.uniqueVisitors.toLocaleString()}</td>
+                        <td className={`py-3.5 px-4 font-bold ${theme.textPrimary}`}>{p.views.toLocaleString()}</td>
+                        <td className={`py-3.5 px-4 ${theme.textSecondary}`}>{p.uniqueVisitors.toLocaleString()}</td>
                         <td className="py-3.5 px-4 text-right text-emerald-400 font-bold">{p.avgTimeSpent}</td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-neutral-500">
+                      <td colSpan={5} className={`py-8 text-center ${theme.textMuted}`}>
                         Tidak ada halaman yang cocok dengan pencarian.
                       </td>
                     </tr>
@@ -1347,10 +1347,10 @@ export default function AnalyticsDashboard({
                   <span className="text-[10px] font-black uppercase font-mono">WhatsApp Clicks</span>
                   <MessageSquare className="h-4 w-4" />
                 </div>
-                <h4 className="text-2xl font-black font-mono text-neutral-100">
+                <h4 className={`text-2xl font-black font-mono ${theme.textPrimary}`}>
                   {summaryData?.whatsappClicks || 0}
                 </h4>
-                <p className="text-[10px] text-neutral-400">Tombol floating & konsultasi tur</p>
+                <p className={`text-[10px] ${theme.textSecondary}`}>Tombol floating & konsultasi tur</p>
               </div>
 
               <div className={`${theme.card} border rounded-2xl p-4 space-y-2`}>
@@ -1358,10 +1358,10 @@ export default function AnalyticsDashboard({
                   <span className="text-[10px] font-black uppercase font-mono">Book Now Clicks</span>
                   <Target className="h-4 w-4" />
                 </div>
-                <h4 className="text-2xl font-black font-mono text-neutral-100">
+                <h4 className={`text-2xl font-black font-mono ${theme.textPrimary}`}>
                   {summaryData?.bookNowClicks || 0}
                 </h4>
-                <p className="text-[10px] text-neutral-400">Inisiasi checkout pemesanan</p>
+                <p className={`text-[10px] ${theme.textSecondary}`}>Inisiasi checkout pemesanan</p>
               </div>
 
               <div className={`${theme.card} border rounded-2xl p-4 space-y-2`}>
@@ -1369,10 +1369,10 @@ export default function AnalyticsDashboard({
                   <span className="text-[10px] font-black uppercase font-mono">Tour Details Click</span>
                   <Compass className="h-4 w-4" />
                 </div>
-                <h4 className="text-2xl font-black font-mono text-neutral-100">
+                <h4 className={`text-2xl font-black font-mono ${theme.textPrimary}`}>
                   {summaryData?.tourDetailClicks || 0}
                 </h4>
-                <p className="text-[10px] text-neutral-400">Eksplorasi rincian itinerary</p>
+                <p className={`text-[10px] ${theme.textSecondary}`}>Eksplorasi rincian itinerary</p>
               </div>
 
               <div className={`${theme.card} border rounded-2xl p-4 space-y-2`}>
@@ -1380,17 +1380,17 @@ export default function AnalyticsDashboard({
                   <span className="text-[10px] font-black uppercase font-mono">Phone / Email / Ext</span>
                   <ExternalLink className="h-4 w-4" />
                 </div>
-                <h4 className="text-2xl font-black font-mono text-neutral-100">
+                <h4 className={`text-2xl font-black font-mono ${theme.textPrimary}`}>
                   {(summaryData?.phoneClicks || 0) + (summaryData?.emailClicks || 0) + (summaryData?.externalClicks || 0)}
                 </h4>
-                <p className="text-[10px] text-neutral-400">Telepon, email & link partner</p>
+                <p className={`text-[10px] ${theme.textSecondary}`}>Telepon, email & link partner</p>
               </div>
             </div>
 
             {/* Interaction Event History Log */}
             <div className={`${theme.card} border rounded-2xl p-6 space-y-4`}>
               <div className="border-b border-neutral-850 pb-3">
-                <h3 className="text-sm font-black uppercase tracking-wider font-mono text-neutral-100">
+                <h3 className={`text-sm font-black uppercase tracking-wider font-mono ${theme.textPrimary}`}>
                   Log Riwayat Interaksi Pengguna Terkini
                 </h3>
                 <p className={`text-xs ${theme.textSecondary}`}>
@@ -1407,12 +1407,12 @@ export default function AnalyticsDashboard({
                           evt.type.includes('whatsapp') ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
                           evt.type.includes('book') ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
                           evt.type.includes('inquiry') ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
-                          'bg-neutral-800 text-neutral-300'
+                          isDark ? 'bg-neutral-800 text-neutral-300' : 'bg-slate-200 text-slate-800'
                         }`}>
                           {evt.type.toUpperCase()}
                         </div>
                         <div>
-                          <p className="font-bold text-neutral-200">{evt.title || evt.page || 'Aktivitas Pengguna'}</p>
+                          <p className={`font-bold ${theme.textPrimary}`}>{evt.title || evt.page || 'Aktivitas Pengguna'}</p>
                           <span className="text-[10px] text-neutral-500 font-mono">
                             Sumber: {evt.source || 'Direct'} • Perangkat: {evt.device || 'Mobile'}
                           </span>
@@ -1436,7 +1436,7 @@ export default function AnalyticsDashboard({
         {activeTab === 'funnel' && (
           <div className={`${theme.card} border rounded-2xl p-6 space-y-6`}>
             <div className="border-b border-neutral-850 pb-4">
-              <h3 className="text-sm font-black uppercase tracking-wider font-mono text-neutral-100">
+              <h3 className={`text-sm font-black uppercase tracking-wider font-mono ${theme.textPrimary}`}>
                 Corong Konversi Pelanggan (Visitor Journey Funnel)
               </h3>
               <p className={`text-xs ${theme.textSecondary}`}>
@@ -1450,7 +1450,7 @@ export default function AnalyticsDashboard({
               {/* Step 1: All Visitors */}
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center text-xs font-mono">
-                  <span className="font-bold text-neutral-200">1. Total Pengunjung Unik</span>
+                  <span className={`font-bold ${theme.textPrimary}`}>1. Total Pengunjung Unik</span>
                   <span className="font-black text-amber-400">
                     {(summaryData?.uniqueVisitors || 0).toLocaleString()} (100%)
                   </span>
@@ -1465,7 +1465,7 @@ export default function AnalyticsDashboard({
               {/* Step 2: Tour / Product Views */}
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center text-xs font-mono">
-                  <span className="font-bold text-neutral-200">2. Eksplorasi Paket & Halaman Tur</span>
+                  <span className={`font-bold ${theme.textPrimary}`}>2. Eksplorasi Paket & Halaman Tur</span>
                   <span className="font-black text-blue-400">
                     {summaryData?.popularPages?.reduce((acc, p) => acc + p.views, 0) || 0} views
                   </span>
@@ -1480,7 +1480,7 @@ export default function AnalyticsDashboard({
               {/* Step 3: CTA Click (WhatsApp / Book Now) */}
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center text-xs font-mono">
-                  <span className="font-bold text-neutral-200">3. Inisiasi Kontak & CTA Booking</span>
+                  <span className={`font-bold ${theme.textPrimary}`}>3. Inisiasi Kontak & CTA Booking</span>
                   <span className="font-black text-emerald-400">
                     {(summaryData?.whatsappClicks || 0) + (summaryData?.bookNowClicks || 0)} aksi
                   </span>
@@ -1495,7 +1495,7 @@ export default function AnalyticsDashboard({
               {/* Step 4: Real Database Bookings */}
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center text-xs font-mono">
-                  <span className="font-bold text-neutral-200">4. Booking Sah / Terkonfirmasi</span>
+                  <span className={`font-bold ${theme.textPrimary}`}>4. Booking Sah / Terkonfirmasi</span>
                   <span className="font-black text-amber-300">
                     {summaryData?.totalBookings || 0} Pemesanan
                   </span>
@@ -1518,7 +1518,7 @@ export default function AnalyticsDashboard({
             {/* Device Categories */}
             <div className={`${theme.card} border rounded-2xl p-6 space-y-5`}>
               <div className="border-b border-neutral-850 pb-3">
-                <h3 className="text-sm font-black uppercase tracking-wider font-mono text-neutral-100 flex items-center gap-2">
+                <h3 className={`text-sm font-black uppercase tracking-wider font-mono ${theme.textPrimary} flex items-center gap-2`}>
                   <Smartphone className="h-4 w-4 text-amber-500" />
                   Kategori Perangkat Pengguna
                 </h3>
@@ -1528,45 +1528,45 @@ export default function AnalyticsDashboard({
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 rounded-xl bg-neutral-950 border border-neutral-850">
+                <div className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-neutral-950 border border-neutral-850' : 'bg-slate-50 border border-slate-200 shadow-2xs'}`}>
                   <div className="flex items-center gap-3">
                     <Smartphone className="h-5 w-5 text-amber-400" />
                     <div>
-                      <h5 className="font-bold text-xs text-neutral-200">Mobile (Smartphone)</h5>
+                      <h5 className={`font-bold text-xs ${theme.textPrimary}`}>Mobile (Smartphone)</h5>
                       <span className="text-[10px] text-neutral-500 font-mono">Android & iOS</span>
                     </div>
                   </div>
                   <div className="text-right font-mono">
-                    <span className="font-black text-neutral-100 text-sm">{summaryData?.devices?.mobilePct || 0}%</span>
-                    <span className="text-[10px] text-neutral-400 block">{summaryData?.devices?.mobile || 0} Pengunjung</span>
+                    <span className={`font-black ${theme.textPrimary} text-sm`}>{summaryData?.devices?.mobilePct || 0}%</span>
+                    <span className={`text-[10px] ${theme.textMuted} block`}>{summaryData?.devices?.mobile || 0} Pengunjung</span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-3 rounded-xl bg-neutral-950 border border-neutral-850">
+                <div className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-neutral-950 border border-neutral-850' : 'bg-slate-50 border border-slate-200 shadow-2xs'}`}>
                   <div className="flex items-center gap-3">
                     <Laptop className="h-5 w-5 text-blue-400" />
                     <div>
-                      <h5 className="font-bold text-xs text-neutral-200">Desktop / Laptop</h5>
+                      <h5 className={`font-bold text-xs ${theme.textPrimary}`}>Desktop / Laptop</h5>
                       <span className="text-[10px] text-neutral-500 font-mono">Windows & macOS</span>
                     </div>
                   </div>
                   <div className="text-right font-mono">
-                    <span className="font-black text-neutral-100 text-sm">{summaryData?.devices?.desktopPct || 0}%</span>
-                    <span className="text-[10px] text-neutral-400 block">{summaryData?.devices?.desktop || 0} Pengunjung</span>
+                    <span className={`font-black ${theme.textPrimary} text-sm`}>{summaryData?.devices?.desktopPct || 0}%</span>
+                    <span className={`text-[10px] ${theme.textMuted} block`}>{summaryData?.devices?.desktop || 0} Pengunjung</span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-3 rounded-xl bg-neutral-950 border border-neutral-850">
+                <div className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-neutral-950 border border-neutral-850' : 'bg-slate-50 border border-slate-200 shadow-2xs'}`}>
                   <div className="flex items-center gap-3">
                     <Tablet className="h-5 w-5 text-purple-400" />
                     <div>
-                      <h5 className="font-bold text-xs text-neutral-200">Tablet (iPad / Android Tab)</h5>
+                      <h5 className={`font-bold text-xs ${theme.textPrimary}`}>Tablet (iPad / Android Tab)</h5>
                       <span className="text-[10px] text-neutral-500 font-mono">Tablet Screen</span>
                     </div>
                   </div>
                   <div className="text-right font-mono">
-                    <span className="font-black text-neutral-100 text-sm">{summaryData?.devices?.tabletPct || 0}%</span>
-                    <span className="text-[10px] text-neutral-400 block">{summaryData?.devices?.tablet || 0} Pengunjung</span>
+                    <span className={`font-black ${theme.textPrimary} text-sm`}>{summaryData?.devices?.tabletPct || 0}%</span>
+                    <span className={`text-[10px] ${theme.textMuted} block`}>{summaryData?.devices?.tablet || 0} Pengunjung</span>
                   </div>
                 </div>
               </div>
@@ -1575,7 +1575,7 @@ export default function AnalyticsDashboard({
             {/* Geographic Distribution */}
             <div className={`${theme.card} border rounded-2xl p-6 space-y-5`}>
               <div className="border-b border-neutral-850 pb-3">
-                <h3 className="text-sm font-black uppercase tracking-wider font-mono text-neutral-100 flex items-center gap-2">
+                <h3 className={`text-sm font-black uppercase tracking-wider font-mono ${theme.textPrimary} flex items-center gap-2`}>
                   <MapPin className="h-4 w-4 text-emerald-400" />
                   Asal Negara & Lokasi Teratas
                 </h3>
@@ -1589,8 +1589,8 @@ export default function AnalyticsDashboard({
                   summaryData.locations.map((loc, idx) => (
                     <div key={idx} className="space-y-1">
                       <div className="flex justify-between items-center text-xs">
-                        <span className="font-bold text-neutral-200">{loc.country}</span>
-                        <span className="text-neutral-400 font-mono text-[11px]">
+                        <span className={`font-bold ${theme.textPrimary}`}>{loc.country}</span>
+                        <span className={`${theme.textSecondary} font-mono text-[11px]`}>
                           {loc.visitors} ({loc.percentage}%)
                         </span>
                       </div>
@@ -1600,7 +1600,7 @@ export default function AnalyticsDashboard({
                     </div>
                   ))
                 ) : (
-                  <p className="text-xs text-neutral-500 py-6 text-center">Belum ada data geografi teragregasi.</p>
+                  <p className={`text-xs ${theme.textMuted} py-6 text-center`}>Belum ada data geografi teragregasi.</p>
                 )}
               </div>
             </div>
@@ -1613,7 +1613,7 @@ export default function AnalyticsDashboard({
           <div className={`${theme.card} border rounded-2xl p-6 space-y-6`}>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-neutral-850 pb-4">
               <div>
-                <h3 className="text-sm font-black uppercase tracking-wider font-mono text-neutral-100 flex items-center gap-2">
+                <h3 className={`text-sm font-black uppercase tracking-wider font-mono ${theme.textPrimary} flex items-center gap-2`}>
                   <span className="relative flex h-2.5 w-2.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>

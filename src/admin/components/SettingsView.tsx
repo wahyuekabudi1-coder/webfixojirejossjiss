@@ -369,11 +369,11 @@ export default function SettingsView({
                   {/* 1. Private Tour */}
                   <div className={`p-4 rounded-xl border ${theme.innerCard} space-y-3`}>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-extrabold text-neutral-200 flex items-center gap-1.5">
+                      <span className={`text-xs font-extrabold flex items-center gap-1.5 ${isDark ? 'text-neutral-200' : 'text-slate-900'}`}>
                         <Compass className="h-3.5 w-3.5 text-amber-500" />
                         <span>Private Tour</span>
                       </span>
-                      <span className="text-[10px] font-mono text-neutral-400">Slots / Hari</span>
+                      <span className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>Slots / Hari</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <input 
@@ -388,12 +388,12 @@ export default function SettingsView({
                         onClick={() => handleSaveSingleLimit('tour')}
                         disabled={savingService === 'tour'}
                         title="Simpan Batas Tour"
-                        className="p-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-amber-400 cursor-pointer transition-all shrink-0 disabled:opacity-50"
+                        className={`p-2 rounded-xl ${isDark ? 'bg-neutral-800 hover:bg-neutral-700' : 'bg-slate-200 hover:bg-slate-300 shadow-2xs'} text-amber-500 cursor-pointer transition-all shrink-0 disabled:opacity-50`}
                       >
                         {savingService === 'tour' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                       </button>
                     </div>
-                    <p className="text-[10px] text-neutral-500 leading-tight">
+                    <p className={`text-[10px] ${isDark ? 'text-neutral-500' : 'text-slate-500'} leading-tight`}>
                       Konsumen: Form reservasi Private Tour, TourDetailView, dan batasan jadwal harian.
                     </p>
                   </div>
@@ -401,11 +401,11 @@ export default function SettingsView({
                   {/* 2. Airport Transfer */}
                   <div className={`p-4 rounded-xl border ${theme.innerCard} space-y-3`}>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-extrabold text-neutral-200 flex items-center gap-1.5">
+                      <span className={`text-xs font-extrabold flex items-center gap-1.5 ${isDark ? 'text-neutral-200' : 'text-slate-900'}`}>
                         <Plane className="h-3.5 w-3.5 text-sky-400" />
                         <span>Airport Transfer</span>
                       </span>
-                      <span className="text-[10px] font-mono text-neutral-400">Armada / Hari</span>
+                      <span className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>Armada / Hari</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <input 
@@ -420,12 +420,12 @@ export default function SettingsView({
                         onClick={() => handleSaveSingleLimit('airport')}
                         disabled={savingService === 'airport'}
                         title="Simpan Batas Airport"
-                        className="p-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-sky-400 cursor-pointer transition-all shrink-0 disabled:opacity-50"
+                        className={`p-2 rounded-xl ${isDark ? 'bg-neutral-800 hover:bg-neutral-700' : 'bg-slate-200 hover:bg-slate-300 shadow-2xs'} text-sky-500 cursor-pointer transition-all shrink-0 disabled:opacity-50`}
                       >
                         {savingService === 'airport' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                       </button>
                     </div>
-                    <p className="text-[10px] text-neutral-500 leading-tight">
+                    <p className={`text-[10px] ${isDark ? 'text-neutral-500' : 'text-slate-500'} leading-tight`}>
                       Konsumen: AirportBookingCalendar &amp; kuota armada jemput/antar bandara.
                     </p>
                   </div>
@@ -433,11 +433,11 @@ export default function SettingsView({
                   {/* 3. Taxi Service */}
                   <div className={`p-4 rounded-xl border ${theme.innerCard} space-y-3`}>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-extrabold text-neutral-200 flex items-center gap-1.5">
+                      <span className={`text-xs font-extrabold flex items-center gap-1.5 ${isDark ? 'text-neutral-200' : 'text-slate-900'}`}>
                         <Truck className="h-3.5 w-3.5 text-emerald-400" />
                         <span>Taxi Service</span>
                       </span>
-                      <span className="text-[10px] font-mono text-neutral-400">Antar-Jemput / Hari</span>
+                      <span className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>Antar-Jemput / Hari</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <input 
@@ -452,12 +452,12 @@ export default function SettingsView({
                         onClick={() => handleSaveSingleLimit('taxi')}
                         disabled={savingService === 'taxi'}
                         title="Simpan Batas Taxi"
-                        className="p-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-emerald-400 cursor-pointer transition-all shrink-0 disabled:opacity-50"
+                        className={`p-2 rounded-xl ${isDark ? 'bg-neutral-800 hover:bg-neutral-700' : 'bg-slate-200 hover:bg-slate-300 shadow-2xs'} text-emerald-500 cursor-pointer transition-all shrink-0 disabled:opacity-50`}
                       >
                         {savingService === 'taxi' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                       </button>
                     </div>
-                    <p className="text-[10px] text-neutral-500 leading-tight">
+                    <p className={`text-[10px] ${isDark ? 'text-neutral-500' : 'text-slate-500'} leading-tight`}>
                       Konsumen: TaxiBookingCalendar &amp; alokasi keberangkatan taksi kota harian.
                     </p>
                   </div>
@@ -465,11 +465,11 @@ export default function SettingsView({
                   {/* 4. Car Rental */}
                   <div className={`p-4 rounded-xl border ${theme.innerCard} space-y-3`}>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-extrabold text-neutral-200 flex items-center gap-1.5">
+                      <span className={`text-xs font-extrabold flex items-center gap-1.5 ${isDark ? 'text-neutral-200' : 'text-slate-900'}`}>
                         <Layers className="h-3.5 w-3.5 text-purple-400" />
                         <span>Car Rental</span>
                       </span>
-                      <span className="text-[10px] font-mono text-neutral-400">Unit Sewa / Hari</span>
+                      <span className={`text-[10px] font-mono ${isDark ? 'text-neutral-400' : 'text-slate-500'}`}>Unit Sewa / Hari</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <input 
@@ -484,7 +484,7 @@ export default function SettingsView({
                         onClick={() => handleSaveSingleLimit('rental')}
                         disabled={savingService === 'rental'}
                         title="Simpan Batas Rental"
-                        className="p-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-purple-400 cursor-pointer transition-all shrink-0 disabled:opacity-50"
+                        className={`p-2 rounded-xl ${isDark ? 'bg-neutral-800 hover:bg-neutral-700' : 'bg-slate-200 hover:bg-slate-300 shadow-2xs'} text-purple-500 cursor-pointer transition-all shrink-0 disabled:opacity-50`}
                       >
                         {savingService === 'rental' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                       </button>
@@ -554,11 +554,15 @@ export default function SettingsView({
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <label className="text-xs font-bold text-neutral-400">Ganti Peran Uji:</label>
+                    <label className={`text-xs font-bold ${isDark ? 'text-neutral-400' : 'text-slate-700'}`}>Ganti Peran Uji:</label>
                     <select
                       value={currentRole}
                       onChange={(e) => handleSelectActiveRole(e.target.value)}
-                      className={`bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-1.5 text-xs font-bold text-amber-400 cursor-pointer focus:outline-none focus:border-amber-500`}
+                      className={`border rounded-xl px-3 py-1.5 text-xs font-bold cursor-pointer focus:outline-none focus:border-amber-500 ${
+                        isDark 
+                          ? 'bg-neutral-900 border-neutral-700 text-amber-400' 
+                          : 'bg-white border-slate-300 text-slate-800 shadow-xs'
+                      }`}
                     >
                       {roles.map(r => (
                         <option key={r.role} value={r.role}>
@@ -595,27 +599,27 @@ export default function SettingsView({
                 </div>
 
                 {/* RBAC Table Matrix */}
-                <div className="overflow-x-auto no-scrollbar border rounded-2xl border-neutral-800">
+                <div className={`overflow-x-auto no-scrollbar border rounded-2xl ${isDark ? 'border-neutral-800' : 'border-neutral-200 shadow-xs'}`}>
                   <table className="w-full text-left text-xs">
-                    <thead className={`${theme.innerCard} border-b text-[10px] font-mono uppercase text-neutral-400 font-black`}>
+                    <thead className={`${theme.innerCard} border-b text-[10px] font-mono uppercase ${isDark ? 'text-neutral-400' : 'text-slate-700'} font-black`}>
                       <tr>
                         <th className="p-3.5">Peran &amp; Divisi</th>
-                        <th className="p-3.5 text-center">Pesanan &amp; Ops<br/><span className="text-[9px] font-normal text-neutral-500">manageBookings</span></th>
-                        <th className="p-3.5 text-center">Paket Tur<br/><span className="text-[9px] font-normal text-neutral-500">manageTours</span></th>
-                        <th className="p-3.5 text-center">Armada Fleet<br/><span className="text-[9px] font-normal text-neutral-500">manageFleet</span></th>
-                        <th className="p-3.5 text-center">Finansial<br/><span className="text-[9px] font-normal text-neutral-500">manageFinance</span></th>
-                        <th className="p-3.5 text-center">Marketing CMS<br/><span className="text-[9px] font-normal text-neutral-500">manageCMS</span></th>
-                        <th className="p-3.5 text-center">Pengaturan<br/><span className="text-[9px] font-normal text-neutral-500">manageSettings</span></th>
+                        <th className="p-3.5 text-center">Pesanan &amp; Ops<br/><span className={`text-[9px] font-normal ${isDark ? 'text-neutral-500' : 'text-slate-500'}`}>manageBookings</span></th>
+                        <th className="p-3.5 text-center">Paket Tur<br/><span className={`text-[9px] font-normal ${isDark ? 'text-neutral-500' : 'text-slate-500'}`}>manageTours</span></th>
+                        <th className="p-3.5 text-center">Armada Fleet<br/><span className={`text-[9px] font-normal ${isDark ? 'text-neutral-500' : 'text-slate-500'}`}>manageFleet</span></th>
+                        <th className="p-3.5 text-center">Finansial<br/><span className={`text-[9px] font-normal ${isDark ? 'text-neutral-500' : 'text-slate-500'}`}>manageFinance</span></th>
+                        <th className="p-3.5 text-center">Marketing CMS<br/><span className={`text-[9px] font-normal ${isDark ? 'text-neutral-500' : 'text-slate-500'}`}>manageCMS</span></th>
+                        <th className="p-3.5 text-center">Pengaturan<br/><span className={`text-[9px] font-normal ${isDark ? 'text-neutral-500' : 'text-slate-500'}`}>manageSettings</span></th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-neutral-850">
+                    <tbody className={`divide-y ${isDark ? 'divide-neutral-850' : 'divide-neutral-200'}`}>
                       {roles.map((r, roleIdx) => {
                         const isCurrent = r.role === currentRole;
                         return (
                           <tr key={r.role} className={`${isCurrent ? 'bg-amber-500/5' : theme.hover} transition-colors`}>
                             <td className="p-3.5">
                               <div className="flex items-center gap-2">
-                                <span className="font-bold text-neutral-200 text-xs">
+                                <span className={`font-bold text-xs ${isDark ? 'text-neutral-200' : 'text-slate-900'}`}>
                                   {r.role}
                                 </span>
                                 {isCurrent && (
@@ -624,7 +628,7 @@ export default function SettingsView({
                                   </span>
                                 )}
                               </div>
-                              <span className="text-[10px] text-neutral-400 font-mono block mt-0.5">
+                              <span className={`text-[10px] font-mono block mt-0.5 ${isDark ? 'text-neutral-400' : 'text-slate-600'}`}>
                                 {r.department}
                               </span>
                             </td>
@@ -642,15 +646,17 @@ export default function SettingsView({
                                       isLockedSuperAdminSettings
                                         ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 cursor-not-allowed opacity-90'
                                         : isAllowed 
-                                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 cursor-pointer' 
-                                        : 'bg-neutral-800/80 text-neutral-500 border border-neutral-700/50 hover:bg-neutral-800 cursor-pointer'
+                                        ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 hover:bg-emerald-500/20 cursor-pointer' 
+                                        : isDark
+                                        ? 'bg-neutral-800/80 text-neutral-400 border border-neutral-700/50 hover:bg-neutral-800 cursor-pointer'
+                                        : 'bg-slate-100 text-slate-400 border border-slate-300 hover:bg-slate-200 hover:text-slate-600 cursor-pointer'
                                     }`}
                                     title={isLockedSuperAdminSettings ? 'Super Administrator harus selalu memiliki izin manageSettings' : `Ubah izin ${permKey}`}
                                   >
                                     {isAllowed ? (
                                       <Check className="h-4 w-4 stroke-[3]" />
                                     ) : (
-                                      <X className="h-4 w-4" />
+                                      <X className={`h-4 w-4 ${isDark ? 'text-neutral-400' : 'text-slate-500'}`} />
                                     )}
                                   </button>
                                 </td>
@@ -778,7 +784,7 @@ export default function SettingsView({
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1">
-                          <label className="text-[10px] font-black text-neutral-400 uppercase">Nama Lengkap Staff</label>
+                          <label className={`text-[10px] font-black uppercase ${isDark ? 'text-neutral-400' : 'text-slate-700'}`}>Nama Lengkap Staff</label>
                           <input 
                             type="text" 
                             readOnly 
@@ -787,7 +793,7 @@ export default function SettingsView({
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[10px] font-black text-neutral-400 uppercase">Alamat Email Resmi</label>
+                          <label className={`text-[10px] font-black uppercase ${isDark ? 'text-neutral-400' : 'text-slate-700'}`}>Alamat Email Resmi</label>
                           <input 
                             type="email" 
                             readOnly 
@@ -796,7 +802,7 @@ export default function SettingsView({
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[10px] font-black text-neutral-400 uppercase">Nomor WhatsApp Operasional</label>
+                          <label className={`text-[10px] font-black uppercase ${isDark ? 'text-neutral-400' : 'text-slate-700'}`}>Nomor WhatsApp Operasional</label>
                           <input 
                             type="text" 
                             readOnly 
@@ -805,7 +811,7 @@ export default function SettingsView({
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[10px] font-black text-neutral-400 uppercase">Divisi Penugasan</label>
+                          <label className={`text-[10px] font-black uppercase ${isDark ? 'text-neutral-400' : 'text-slate-700'}`}>Divisi Penugasan</label>
                           <input 
                             type="text" 
                             readOnly 
@@ -825,7 +831,7 @@ export default function SettingsView({
                       </h4>
                       <div className="space-y-3">
                         <div className="space-y-1">
-                          <label className="text-[10px] font-black text-neutral-400 uppercase">Sandi Saat Ini *</label>
+                          <label className={`text-[10px] font-black uppercase ${isDark ? 'text-neutral-400' : 'text-slate-700'}`}>Sandi Saat Ini *</label>
                           <input 
                             type={showPassword ? 'text' : 'password'}
                             required
@@ -836,7 +842,7 @@ export default function SettingsView({
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[10px] font-black text-neutral-400 uppercase">Sandi Baru (Min. 6 Karakter) *</label>
+                          <label className={`text-[10px] font-black uppercase ${isDark ? 'text-neutral-400' : 'text-slate-700'}`}>Sandi Baru (Min. 6 Karakter) *</label>
                           <input 
                             type={showPassword ? 'text' : 'password'}
                             required
@@ -848,7 +854,7 @@ export default function SettingsView({
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[10px] font-black text-neutral-400 uppercase">Konfirmasi Sandi Baru *</label>
+                          <label className={`text-[10px] font-black uppercase ${isDark ? 'text-neutral-400' : 'text-slate-700'}`}>Konfirmasi Sandi Baru *</label>
                           <input 
                             type={showPassword ? 'text' : 'password'}
                             required

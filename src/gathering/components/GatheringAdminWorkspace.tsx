@@ -591,7 +591,7 @@ export default function GatheringAdminWorkspace({
 
                     <button
                       onClick={() => handleArchivePkg(pkg)}
-                      className="p-2 rounded-xl text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-700 text-xs font-bold transition-colors cursor-pointer"
+                      className="p-2 rounded-xl text-neutral-700 dark:text-neutral-200 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-700 text-xs font-bold transition-colors cursor-pointer"
                       title={pkg.status === 'archived' ? 'Pulihkan dari Arsip' : 'Arsipkan Paket'}
                     >
                       <Archive className="w-4 h-4" />
@@ -823,7 +823,7 @@ export default function GatheringAdminWorkspace({
                           <div className="flex items-center justify-end gap-2">
                             <button
                               onClick={() => handleCopyQuoteWhatsApp(quo)}
-                              className="p-2 rounded-xl text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors cursor-pointer"
+                              className="p-2 rounded-xl text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-neutral-700 transition-colors cursor-pointer"
                               title="Salin Teks WhatsApp"
                             >
                               <Copy className="w-4 h-4" />
