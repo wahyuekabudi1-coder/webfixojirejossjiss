@@ -196,8 +196,30 @@ function getInitialActivePage(): ActivePage {
   if (pathname.startsWith('/event-gathering') || hash.startsWith('event-gathering')) {
     return 'event-gathering';
   }
-  if (hash.startsWith('trip=') || hash.includes('trip=') || hash.startsWith('share-tour') || hash.startsWith('sharetour')) {
+  if (hash.startsWith('trip=') || hash.includes('trip=') || hash.startsWith('share-tour') || hash.startsWith('sharetour') || pathname.startsWith('/share-tour') || pathname.startsWith('/sharetour')) {
     return 'share-tour';
+  }
+  const cleanPath = pathname.replace(/^\/+|\/+$/g, '').toLowerCase();
+  if (cleanPath === 'rental' || cleanPath === 'car-rental') {
+    return 'car-rental';
+  }
+  if (cleanPath === 'tours') {
+    return 'tours';
+  }
+  if (cleanPath === 'airport') {
+    return 'airport';
+  }
+  if (cleanPath === 'taxi') {
+    return 'taxi';
+  }
+  if (cleanPath === 'about') {
+    return 'about';
+  }
+  if (cleanPath === 'partnerships') {
+    return 'partnerships';
+  }
+  if (cleanPath === 'bookings') {
+    return 'bookings';
   }
   const validPages: ActivePage[] = ['home', 'tours', 'share-tour', 'event-gathering', 'airport', 'taxi', 'partnerships', 'contact', 'bookings', 'car-rental', 'about', 'admin', 'blog'];
   if (validPages.includes(hash as ActivePage)) {

@@ -115,7 +115,7 @@ const pageSEOData: Record<string, PageMetadata> = {
       en: 'bromo sunrise tour, ijen crater blue fire, tumpak sewu waterfall tour, malang batu tour, east java private tours',
       zh: '布罗莫日出行程, 宜珍蓝火徒步, 赛武瀑布一日游, 玛琅包车, 东爪哇火山之旅'
     },
-    canonical: `${BASE_URL}/#/tours`,
+    canonical: `${BASE_URL}/tours`,
     breadcrumbsName: {
       id: 'Paket Tour Wisata',
       en: 'Tour Packages',
@@ -126,6 +126,35 @@ const pageSEOData: Record<string, PageMetadata> = {
       '@context': 'https://schema.org',
       '@type': 'OfferCatalog',
       'name': 'Smart Journey Volcano Tour Catalog',
+    }
+  },
+  'share-tour': {
+    title: {
+      id: 'Open Trip & Share Tour Bromo Kawah Ijen | Smart Journey',
+      en: 'Open Trip & Join Share Tour Bromo Ijen | Smart Journey',
+      zh: '布罗莫与宜珍火山拼团一日游 (Open Trip) | Smart Journey'
+    },
+    description: {
+      id: 'Gabung open trip hemat dan share tour Bromo sunrise, Kawah Ijen blue fire, dan Malang. Berangkat setiap hari dengan fasilitas lengkap dan tour guide profesional.',
+      en: 'Join affordable open trips and shared tours for Mount Bromo sunrise, Ijen Crater blue fire, and Malang. Daily guaranteed departures with professional guides.',
+      zh: '加入高性价比布罗莫火山日出、宜珍蓝火及玛琅拼团游，每日发团，配备专业向导与全套装备。'
+    },
+    keywords: {
+      id: 'open trip bromo, share tour ijen, open trip kawah ijen, gabung tour bromo murah, open trip malang',
+      en: 'open trip bromo, join tour ijen, share tour east java, bromo group tour, budget bromo tour',
+      zh: '布罗莫拼团, 宜珍拼团, 东爪哇火山散拼, 布罗莫一日游拼团, 印尼拼车游'
+    },
+    canonical: `${BASE_URL}/share-tour`,
+    breadcrumbsName: {
+      id: 'Open Trip / Share Tour',
+      en: 'Open Trip / Share Tour',
+      zh: '拼团游'
+    },
+    schemaType: 'OfferCatalog',
+    schemaData: {
+      '@context': 'https://schema.org',
+      '@type': 'OfferCatalog',
+      'name': 'Smart Journey Open Trip & Share Tour Catalog',
     }
   },
   airport: {
@@ -144,7 +173,7 @@ const pageSEOData: Record<string, PageMetadata> = {
       en: 'juanda airport transfer, surabaya airport taxi, bali ngurah rai airport transfer, yogyakarta airport pickup, jakarta airport car',
       zh: '泗水机场接送, 巴厘岛机场接机, 日惹机场包车, 雅加达机场送机, 印尼机场专车'
     },
-    canonical: `${BASE_URL}/#/airport`,
+    canonical: `${BASE_URL}/airport`,
     breadcrumbsName: {
       id: 'Transfer Bandara',
       en: 'Airport Transfer',
@@ -169,7 +198,7 @@ const pageSEOData: Record<string, PageMetadata> = {
       en: 'surabaya to malang taxi, bromo to surabaya private driver, banyuwangi intercity taxi, east java private transfer',
       zh: '泗水到玛琅专车, 泗水到布罗莫包车, 外南梦到泗水接送, 东爪哇城际专车'
     },
-    canonical: `${BASE_URL}/#/taxi`,
+    canonical: `${BASE_URL}/taxi`,
     breadcrumbsName: {
       id: 'Taksi Privat',
       en: 'Private Taxi',
@@ -194,7 +223,32 @@ const pageSEOData: Record<string, PageMetadata> = {
       en: 'car rental surabaya, hiace rental malang, innova rental bromo, van rental bali, self drive indonesia car',
       zh: '泗水租车, 玛琅HiAce包车, 印尼自驾租车, 巴厘岛包车, 布罗莫租车'
     },
-    canonical: `${BASE_URL}/#/car-rental`,
+    canonical: `${BASE_URL}/car-rental`,
+    breadcrumbsName: {
+      id: 'Sewa Mobil',
+      en: 'Car Rental',
+      zh: '租车包车'
+    },
+    schemaType: 'AutoRental',
+    schemaData: defaultCompanySchema
+  },
+  rental: {
+    title: {
+      id: 'Sewa Mobil Surabaya, Malang & Bali (Lepas Kunci & Driver) | Smart Journey',
+      en: 'Car Rental Surabaya, Malang & Bali (Self-Drive & With Driver) | Smart Journey',
+      zh: '印尼租车包车：泗水、玛琅与巴厘岛（自驾/带司机）| Smart Journey'
+    },
+    description: {
+      id: 'Rental mobil harian Innova Zenix, Avanza, HiAce Commuter, dan Premio dengan kondisi prima, AC dingin, dan harga bersahabat.',
+      en: 'Daily and weekly car rentals for Innova Zenix, Avanza, HiAce Commuter, and Premio Luxury in East Java & Bali.',
+      zh: '提供 Innova Zenix、Avanza、HiAce 15座及头等舱商务车日租与周租，车况如新，服务周到。'
+    },
+    keywords: {
+      id: 'sewa mobil surabaya, rental hiace malang, rental innova reborn surabaya, sewa hiace premio bali, car rental east java',
+      en: 'car rental surabaya, hiace rental malang, innova rental bromo, van rental bali, self drive indonesia car',
+      zh: '泗水租车, 玛琅HiAce包车, 印尼自驾租车, 巴厘岛包车, 布罗莫租车'
+    },
+    canonical: `${BASE_URL}/rental`,
     breadcrumbsName: {
       id: 'Sewa Mobil',
       en: 'Car Rental',
@@ -219,7 +273,7 @@ const pageSEOData: Record<string, PageMetadata> = {
       en: 'about smart journey, pt sawah jaya trans, official tour operator east java, licensed transport company',
       zh: '关于慧捷之旅, PT Sawah Jaya Trans, 正规印尼地接社, 官方牌照车队'
     },
-    canonical: `${BASE_URL}/#/about`,
+    canonical: `${BASE_URL}/about`,
     breadcrumbsName: {
       id: 'Tentang Kami',
       en: 'About Us',
@@ -244,7 +298,7 @@ const pageSEOData: Record<string, PageMetadata> = {
       en: 'b2b travel agent indonesia, dmc east java, tour operator partnership, bromo jeep b2b contract',
       zh: '印尼地接社合作, 旅行社同业底价, 布罗莫吉普车批发, B2B商务合作'
     },
-    canonical: `${BASE_URL}/#/partnerships`,
+    canonical: `${BASE_URL}/partnerships`,
     breadcrumbsName: {
       id: 'Kemitraan B2B',
       en: 'B2B Partnerships',
@@ -269,7 +323,7 @@ const pageSEOData: Record<string, PageMetadata> = {
       en: 'check booking status, smart journey voucher download, manage reservation',
       zh: '订单查询, 下载行程单, 预订管理'
     },
-    canonical: `${BASE_URL}/#/bookings`,
+    canonical: `${BASE_URL}/bookings`,
     breadcrumbsName: {
       id: 'Pesanan Saya',
       en: 'My Bookings',
@@ -331,7 +385,7 @@ const SEOHead: React.FC = () => {
         : `${activeArticle.title}, paket tour bromo, panduan wisata indonesia, smart journey`;
       canonical = activePage === 'blog'
         ? `${BASE_URL}/blog/${encodeURIComponent(activeArticle.slug)}/`
-        : `${BASE_URL}/#/about?article=${activeArticle.slug}`;
+        : `${BASE_URL}/about?article=${activeArticle.slug}`;
       breadcrumbItemName = activeArticle.title;
       ogImage = activeArticle.image || `${BASE_URL}/logo.png`;
 
@@ -377,7 +431,7 @@ const SEOHead: React.FC = () => {
             'name': activePage === 'blog' 
               ? (language === 'zh' ? '旅游博客' : language === 'en' ? 'Travel Blog' : 'Blog Wisata')
               : (language === 'zh' ? '关于我们' : language === 'en' ? 'About Us' : 'Tentang Kami'),
-            'item': activePage === 'blog' ? `${BASE_URL}/blog/` : `${BASE_URL}/#/about`
+            'item': activePage === 'blog' ? `${BASE_URL}/blog/` : `${BASE_URL}/about`
           },
           {
             '@type': 'ListItem',
@@ -412,7 +466,7 @@ const SEOHead: React.FC = () => {
       title = `${locTour.name}${suffix}`;
       description = locTour.description;
       keywords = `${locTour.name}, tour ${locTour.id}, bromo ijen tour, smart journey`;
-      canonical = `${BASE_URL}/#/tours?id=${activeTour.id}`;
+      canonical = `${BASE_URL}/tours?id=${activeTour.id}`;
       breadcrumbItemName = locTour.name;
       ogImage = activeTour.image;
 
@@ -445,7 +499,7 @@ const SEOHead: React.FC = () => {
             '@type': 'ListItem',
             'position': 2,
             'name': language === 'zh' ? '旅游套餐' : language === 'en' ? 'Tour Packages' : 'Paket Tour',
-            'item': `${BASE_URL}/#/tours`
+            'item': `${BASE_URL}/tours`
           },
           {
             '@type': 'ListItem',
@@ -464,6 +518,12 @@ const SEOHead: React.FC = () => {
       description = config.description[language] || config.description.en || config.description.id;
       keywords = config.keywords[language] || config.keywords.en || config.keywords.id;
       canonical = config.canonical;
+      if (activePage === 'car-rental' && typeof window !== 'undefined') {
+        const path = window.location.pathname || '';
+        if (path.startsWith('/rental') && !path.startsWith('/car-rental')) {
+          canonical = `${BASE_URL}/rental`;
+        }
+      }
       breadcrumbItemName = config.breadcrumbsName[language] || config.breadcrumbsName.en || config.breadcrumbsName.id;
 
       if (activePage === 'blog' && searchParams?.selectedArticleSlug) {

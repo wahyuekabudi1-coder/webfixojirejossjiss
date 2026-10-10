@@ -27,6 +27,7 @@ import { CANONICAL_ROLES, type RolePermissions } from './src/utils/rbac';
 import { articlesRepo } from './server/db/repositories/articles.repository';
 import { handleSitemapRequest, invalidateSitemapCache } from './server/seo/sitemap';
 import { createBlogSeoHandlers, invalidateBlogPrerenderCache } from './server/seo/blogSeo';
+import { createStaticPagesSeoHandlers, SUPPORTED_STATIC_PAGE_PATHS } from './server/seo/staticPagesSeo';
 import { BLOG_POSTS } from './src/blogData';
 import { REVIEWS } from './src/data';
 import { promoCodesRepo, normalizePromoCode } from './server/db/repositories/promoCodes.repository';
@@ -7470,9 +7471,17 @@ export default {};
         getViteServer: () => vite,
       });
 
+      const staticSeoHandlers = createStaticPagesSeoHandlers({
+        projectRoot: PROJECT_ROOT,
+        getViteServer: () => vite,
+      });
+
       // Server-Side Blog SEO Handlers (intercept before Vite HTML fallback)
       app.get(['/blog', '/blog/'], blogSeoHandlers.handleBlogIndex);
       app.get(['/blog/:slug', '/blog/:slug/'], blogSeoHandlers.handleBlogDetail);
+
+      // Server-Side Static Pages SEO Handlers (intercept before Vite HTML fallback)
+      app.get(SUPPORTED_STATIC_PAGE_PATHS, staticSeoHandlers.handleStaticPage);
 
       app.use(vite.middlewares);
     } catch (err) {
@@ -7528,17 +7537,19 @@ export default {};
       projectRoot: PROJECT_ROOT,
     });
 
+    const staticSeoHandlers = createStaticPagesSeoHandlers({
+      projectRoot: PROJECT_ROOT,
+    });
+
     // Server-Side Blog SEO Handlers (intercept before catch-all SPA fallback)
     app.get(['/blog', '/blog/'], blogSeoHandlers.handleBlogIndex);
     app.get(['/blog/:slug', '/blog/:slug/'], blogSeoHandlers.handleBlogDetail);
 
+    // Server-Side Static Pages SEO Handlers
+    app.get(SUPPORTED_STATIC_PAGE_PATHS, staticSeoHandlers.handleStaticPage);
+
     // 3. SPA Route Fallback: Serve index.html with NO-CACHE headers so client always gets current chunk manifests
-    app.get('*', (_req, res) => {
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
+    app.get('*', staticSeoHandlers.handleCatchAll);
   }
 
   app.listen(PORT, '0.0.0.0', () => {
