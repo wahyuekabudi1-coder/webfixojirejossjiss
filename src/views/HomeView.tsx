@@ -226,7 +226,7 @@ export default function HomeView() {
   };
 
   // Interactive Services Directory State
-  const [activeService, setActiveService] = useState<'tours' | 'share-tour' | 'airport' | 'taxi' | 'car-rental'>('tours');
+  const [activeService, setActiveService] = useState<'tours' | 'share-tour' | 'gathering' | 'airport' | 'taxi' | 'car-rental'>('tours');
 
   // Bento Grid Mouse Drag Scroll State
   const bentoRef = useRef<HTMLDivElement>(null);
@@ -784,278 +784,555 @@ export default function HomeView() {
         </div>
       </section>
 
-      {/* 3. OUR SERVICES */}
-      <section className="py-16 sm:py-20 lg:py-24 bg-neutral-900 text-slate-100 relative overflow-hidden">
-        {/* Subtle background glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-amber-500/5 rounded-full blur-[140px] pointer-events-none" />
+      {/* 3. OUR SERVICES - SPLIT IMMERSIVE BANNER */}
+      <section id="services-section" className="py-20 sm:py-24 lg:py-28 bg-[#0B1311] text-slate-100 relative overflow-hidden">
+        {/* Subtle cinematic atmospheric lighting */}
+        <div className="absolute top-0 left-1/4 -translate-x-1/2 w-[600px] h-[350px] bg-[#315B4F]/20 rounded-full blur-[140px] pointer-events-none" />
+        <div className="absolute bottom-0 right-1/4 translate-x-1/2 w-[600px] h-[350px] bg-[#FFEC8C]/10 rounded-full blur-[160px] pointer-events-none" />
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           
-          <div className="text-center space-y-3 mb-10 sm:mb-14 max-w-2xl mx-auto">
-            <span className="inline-flex items-center gap-1.5 bg-amber-500/10 text-amber-400 font-semibold uppercase tracking-widest text-xs px-3.5 py-1.5 rounded-full border border-amber-500/20">
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>{language === 'zh' ? '全方位出行服务指南' : language === 'id' ? 'Katalog Layanan Unggulan' : 'Service Directory'}</span>
-            </span>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
-              {language === 'zh' ? '高品质专属旅游与接送服务' : language === 'id' ? 'Layanan Wisata & Transportasi VIP' : 'Premium Transport & Travel Services'}
+          {/* Editorial Section Header */}
+          <div className="text-center space-y-3 mb-12 sm:mb-16 max-w-3xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#315B4F]/40 border border-[#FFEC8C]/30 text-[#FFEC8C] text-[11px] font-bold uppercase tracking-[0.22em] font-mono shadow-sm">
+              <Sparkles className="h-3 w-3 text-[#FFEC8C]" />
+              <span>OUR SERVICES</span>
+            </div>
+            
+            <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-tight">
+              More Ways to Explore
             </h2>
-            <p className="text-sm sm:text-base text-neutral-400 font-medium leading-relaxed">
-              {language === 'zh' ? '覆盖东爪哇与巴厘岛的全程定制生态行程、接送机与跨城专车。' : language === 'id' ? 'Pengalaman perjalanan terkurasi dan transportasi privat profesional di Jawa Timur & Bali.' : 'Tailored travel experiences and professional private transportation across East Java and Indonesia.'}
+            
+            <p className="text-sm sm:text-base text-neutral-300 font-normal leading-relaxed max-w-2xl mx-auto">
+              {language === 'zh'
+                ? '从布罗莫与宜珍专属探险、超值拼团，到VIP机场接送与跨城包车，为您提供全方位的旅途出行方案。'
+                : language === 'id'
+                ? 'Pilihan ekspedisi alam bebas, open trip hemat per kursi, hingga transportasi bandara eksekutif dan rental mobil terpercaya di Jawa Timur & Bali.'
+                : 'Bespoke volcanic expeditions, per-seat group departures, and executive private transport across East Java and Bali.'}
             </p>
           </div>
 
-          {/* Quick Services Grid: Dynamically displays active services */}
-          {(() => {
-            const allQuickServices = [
-              {
-                id: 'tours',
-                enabled: isServiceEnabled('tours'),
-                icon: <Compass className="h-6 w-6" />,
-                title: language === 'zh' ? '火山探险私家包车游' : language === 'id' ? 'Tur Wisata & Ekspedisi Privat' : 'Private Tours & Expeditions',
-                desc: language === 'zh' ? '布罗莫火山、宜珍电光蓝火与赛武瀑布定制行程，含吉普车与首道门票。' : language === 'id' ? 'Paket Bromo, Kawah Ijen, dan Tumpak Sewu lengkap dengan Jeep 4x4 & izin masuk.' : 'Curated Mount Bromo, Ijen Blue Fire, and Tumpak Sewu packages with 4x4 Jeeps & permits included.',
-                cta: t('home.heroCtaTour')
-              },
-              {
-                id: 'share-tour',
-                enabled: isServiceEnabled('share-tour'),
-                icon: <Users className="h-6 w-6" />,
-                title: language === 'zh' ? '拼团出游 (Open Trip / Share Tour)' : language === 'id' ? 'Open Trip / Share Tour Bromo Ijen' : 'Open Trip & Join Share Tour',
-                desc: language === 'zh' ? '超值按位计费，保发班期，专为背包客、情侣和小型旅行团体设计的精彩拼团。' : language === 'id' ? 'Trip gabungan hemat per kursi dengan jadwal pasti ke Bromo & Ijen, Jeep 4x4, driver & guide.' : 'Affordable per-seat group departures with guaranteed batches, 4x4 Jeeps, and licensed local guides.',
-                cta: t('home.heroCtaShare')
-              },
-              {
-                id: 'airport',
-                enabled: isServiceEnabled('airport'),
-                icon: <Plane className="h-6 w-6" />,
-                title: t('nav.airport'),
-                desc: language === 'zh' ? '泗水朱安达 (SUB)、日惹 (YIA) 及巴厘岛 (DPS) 机场航班实时跟踪专车接送。' : language === 'id' ? 'Penjemputan langsung di Juanda (SUB), YIA, dan Bali (DPS) dengan pemantauan penerbangan langsung.' : 'Direct terminal pickups at Juanda Surabaya (SUB), YIA, and Bali (DPS) with live flight monitoring.',
-                cta: t('common.bookNow')
-              },
-              {
-                id: 'taxi',
-                enabled: isServiceEnabled('taxi'),
-                icon: <Route className="h-6 w-6" />,
-                title: t('nav.taxi'),
-                desc: language === 'zh' ? '泗水、玛琅、外南梦、日惹至巴厘岛点对点一口价跨城专属包车出租车。' : language === 'id' ? 'Antar jemput antarkota flat-rate Surabaya, Malang, Banyuwangi, dan Bali.' : 'Fixed, flat-rate intercity private transfers across Surabaya, Malang, Banyuwangi, and Bali.',
-                cta: t('common.bookNow')
-              },
-              {
-                id: 'car-rental',
-                enabled: isServiceEnabled('car-rental'),
-                icon: <Car className="h-6 w-6" />,
-                title: t('nav.carRental'),
-                desc: language === 'zh' ? '全系准新车况（Avanza、Innova、海狮 Hiace），配经验丰富本地司机与全程燃油。' : language === 'id' ? 'Armada bersih (Avanza, Innova, Hiace) dengan driver berpengalaman dan BBM lengkap.' : 'Immaculate fleet (Avanza, Innova, Hiace) with professional local drivers and full fuel coverage.',
-                cta: t('common.bookNow')
-              }
-            ];
-            const visibleServices = allQuickServices.filter(s => s.enabled);
-            const gridColsClass = visibleServices.length === 2 
-              ? 'grid-cols-1 sm:grid-cols-2 max-w-4xl mx-auto' 
-              : visibleServices.length === 3 
-              ? 'grid-cols-1 sm:grid-cols-3 max-w-5xl mx-auto'
-              : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4';
+          {/* SPLIT IMMERSIVE BANNER (TOURS vs TRANSPORTATION) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 mb-16">
+            
+            {/* 1. TOURS IMMERSIVE BANNER */}
+            <div className="relative rounded-3xl overflow-hidden border border-emerald-900/40 bg-neutral-950/80 shadow-2xl flex flex-col justify-between group transition-all duration-500 hover:border-[#FFEC8C]/40">
+              {/* Background Panorama with Curved/Diagonal Visual Slice */}
+              <div className="absolute inset-0 z-0 overflow-hidden">
+                <img
+                  src="/bromo.png"
+                  alt="East Java Volcano Expeditions"
+                  className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 opacity-40 lg:opacity-50"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    if (target.src.indexOf('tumpak-sewu.jpg') === -1) {
+                      target.src = '/tumpak-sewu.jpg';
+                    }
+                  }}
+                />
+                {/* Organic Diagonal / Curved Mask Gradient */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0B1311] via-[#0B1311]/85 to-[#0B1311]/40" />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#0B1311] via-transparent to-[#315B4F]/30 mix-blend-overlay" />
+                {/* Visual curved decorative SVG slice */}
+                <svg className="absolute -bottom-1 -right-1 w-48 h-48 text-[#315B4F]/10 pointer-events-none transform rotate-12" viewBox="0 0 200 200" fill="currentColor">
+                  <path d="M42.7,-62.9C54.9,-54.6,64.1,-42.4,70.3,-28.6C76.5,-14.8,79.7,0.6,76.5,15.2C73.3,29.8,63.7,43.6,51.4,53.4C39.1,63.2,24.1,69,8.5,70.9C-7.1,72.8,-23.3,70.8,-37.6,63.1C-51.9,55.4,-64.3,42.1,-71.4,26.2C-78.5,10.3,-80.3,-8.2,-74.6,-24C-68.9,-39.8,-55.7,-52.9,-41.2,-60.5C-26.7,-68.1,-11,-70.2,3.1,-74.5C17.2,-78.8,30.5,-71.2,42.7,-62.9Z" transform="translate(100 100)" />
+                </svg>
+              </div>
 
-            return (
-              <div className={`grid ${gridColsClass} gap-4 sm:gap-6 mb-12`}>
-                {visibleServices.map(srv => (
+              {/* Banner Content Container */}
+              <div className="relative z-10 p-6 sm:p-8 lg:p-10 flex flex-col justify-between h-full">
+                {/* Banner Header */}
+                <div className="mb-6">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#315B4F] border border-[#FFEC8C]/30 text-[#FFEC8C] text-[11px] font-bold tracking-wider uppercase font-mono shadow-sm">
+                    <Compass className="h-3.5 w-3.5 text-[#FFEC8C]" />
+                    <span>TOURS</span>
+                  </div>
+                  <h3 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-3 mb-2">
+                    {language === 'zh' ? '火山胜境与生态定制探险' : language === 'id' ? 'Ekspedisi & Wisata Petualangan' : 'Volcano Expeditions & Tours'}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed font-normal max-w-md">
+                    {language === 'zh'
+                      ? '亲历布罗莫金色日出、宜珍神秘蓝火与千重瀑布，提供私家包车、高性价比拼团与团建定制。'
+                      : language === 'id'
+                      ? 'Jelajahi matahari terbit Bromo, api biru Ijen, dan air terjun spektakuler dengan pendampingan profesional.'
+                      : 'Witness golden Bromo sunrises, Ijen blue fire, and majestic waterfalls with certified local guides.'}
+                  </p>
+                </div>
+
+                {/* 3 Circular Organic Service Items */}
+                <div className="space-y-3 sm:space-y-3.5">
+                  
+                  {/* 1. Private Tour */}
                   <div 
-                    key={srv.id}
-                    onClick={() => { setActiveService(srv.id as any); setPage(srv.id as any); }}
-                    className="bg-neutral-800/80 border border-neutral-700/80 hover:border-amber-500/50 p-6 rounded-2xl transition-all duration-300 hover:-translate-y-1.5 cursor-pointer group flex flex-col justify-between"
+                    onClick={() => { setActiveService('tours'); setPage('tours'); }}
+                    className="group/item flex items-center justify-between gap-3 sm:gap-4 p-3 sm:p-3.5 rounded-2xl bg-[#0F1E1A]/85 hover:bg-[#315B4F]/40 backdrop-blur-md border border-emerald-900/50 hover:border-[#FFEC8C]/60 transition-all duration-300 cursor-pointer shadow-lg hover:-translate-y-0.5"
                   >
-                    <div className="space-y-4">
-                      <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-neutral-950 transition-all">
-                        {srv.icon}
+                    <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                      {/* Organic Circular Photo */}
+                      <div className="w-13 h-13 sm:w-15 sm:h-15 shrink-0 rounded-full overflow-hidden p-0.5 bg-gradient-to-tr from-[#315B4F] to-[#FFEC8C] shadow-md">
+                        <img
+                          src="/kawah-ijen.jpeg"
+                          alt="Private Tour"
+                          className="w-full h-full object-cover rounded-full group-hover/item:scale-110 transition-transform duration-500"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/bromo.png'; }}
+                        />
                       </div>
-                      <div>
-                        <h3 className="text-lg font-bold text-white group-hover:text-amber-400 transition-colors">
-                          {srv.title}
-                        </h3>
-                        <p className="text-xs text-neutral-400 mt-2 leading-relaxed">
-                          {srv.desc}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm sm:text-base font-extrabold text-white group-hover/item:text-[#FFEC8C] transition-colors truncate">
+                            {language === 'zh' ? 'Private Tour (私家定制游)' : language === 'id' ? 'Private Tour' : 'Private Tour'}
+                          </h4>
+                          <span className="text-[10px] px-1.5 py-0.2 text-[#FFEC8C] font-semibold bg-[#315B4F]/60 rounded hidden sm:inline-block">VIP</span>
+                        </div>
+                        <p className="text-[11px] sm:text-xs text-neutral-300 line-clamp-1 mt-0.5">
+                          {language === 'zh' ? '布罗莫、宜珍、赛武瀑布全包定制行程，含4x4吉普与首道门票。' : language === 'id' ? 'Paket kustom Bromo & Ijen fleksibel dengan Jeep 4x4 privat.' : 'Customizable Mount Bromo & Ijen with private 4x4 Jeep.'}
                         </p>
                       </div>
                     </div>
-                    <div className="mt-6 pt-4 border-t border-neutral-700/60 flex items-center justify-between text-xs font-bold text-amber-400">
-                      <span>{srv.cta}</span>
-                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                    </div>
+                    <button 
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setActiveService('tours'); setPage('tours'); }}
+                      className="shrink-0 px-3 py-1.5 rounded-xl bg-[#315B4F]/60 hover:bg-[#FFEC8C] hover:text-neutral-950 text-[#FFEC8C] border border-[#FFEC8C]/30 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      <span className="hidden sm:inline">{language === 'zh' ? '查看' : language === 'id' ? 'Lihat' : 'Explore'}</span>
+                      <ArrowRight className="h-3.5 w-3.5 group-hover/item:translate-x-0.5 transition-transform" />
+                    </button>
                   </div>
-                ))}
-              </div>
-            );
-          })()}
 
-          {/* Sleek Minimalist Service Navigation Tabs */}
-          <div className="flex items-center justify-start md:justify-center overflow-x-auto scrollbar-none gap-2 sm:gap-3 mb-10 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
-            {[
-              { id: 'tours', label: t('nav.tours'), icon: <Compass className="h-4 w-4" />, hint: 'Bromo & Ijen', isNew: false, enabled: isServiceEnabled('tours') },
-              { id: 'share-tour', label: t('nav.shareTour'), icon: <Users className="h-4 w-4" />, hint: 'Open Trip', isNew: true, enabled: isServiceEnabled('share-tour') },
-              { id: 'airport', label: t('nav.airport'), icon: <Plane className="h-4 w-4" />, hint: '24/7 Pickup', isNew: false, enabled: isServiceEnabled('airport') },
-              { id: 'taxi', label: t('nav.taxi'), icon: <Route className="h-4 w-4" />, hint: 'Flat Rate', isNew: false, enabled: isServiceEnabled('taxi') },
-              { id: 'car-rental', label: t('nav.carRental'), icon: <Car className="h-4 w-4" />, hint: 'With Driver', isNew: false, enabled: isServiceEnabled('car-rental') },
-            ].filter(s => s.enabled).map((srv) => {
-              const currentEffectiveService = isServiceEnabled(activeService as any) ? activeService : 'tours';
-              const isActive = currentEffectiveService === srv.id;
-              return (
-                <button
-                  key={srv.id}
-                  onClick={() => setActiveService(srv.id as any)}
-                  className={`flex items-center gap-2.5 px-5 py-3 rounded-2xl text-xs sm:text-sm font-semibold transition-all duration-300 shrink-0 cursor-pointer border ${
-                    isActive
-                      ? 'bg-amber-500 text-neutral-950 border-amber-400 shadow-lg shadow-amber-500/20 font-bold scale-[1.02]'
-                      : 'bg-neutral-800/80 text-neutral-300 border-neutral-700/80 hover:bg-neutral-800 hover:text-white hover:border-neutral-600'
-                  }`}
-                >
-                  {srv.icon}
-                  <span>{srv.label}</span>
-                  {srv.isNew && (
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold uppercase tracking-wider ${
-                      isActive ? 'bg-neutral-950 text-amber-400' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                    }`}>
-                      NEW
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+                  {/* 2. Open Trip / Share Tour */}
+                  <div 
+                    onClick={() => { setActiveService('share-tour'); setPage('share-tour'); }}
+                    className="group/item flex items-center justify-between gap-3 sm:gap-4 p-3 sm:p-3.5 rounded-2xl bg-[#0F1E1A]/85 hover:bg-[#315B4F]/40 backdrop-blur-md border border-emerald-900/50 hover:border-[#FFEC8C]/60 transition-all duration-300 cursor-pointer shadow-lg hover:-translate-y-0.5"
+                  >
+                    <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                      {/* Organic Circular Photo */}
+                      <div className="w-13 h-13 sm:w-15 sm:h-15 shrink-0 rounded-full overflow-hidden p-0.5 bg-gradient-to-tr from-[#315B4F] to-[#FFEC8C] shadow-md">
+                        <img
+                          src="/uploads/sharetour-1790595795195-efd6393e1024195b.jpg"
+                          alt="Open Trip / Share Tour"
+                          className="w-full h-full object-cover rounded-full group-hover/item:scale-110 transition-transform duration-500"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/bromo.png'; }}
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm sm:text-base font-extrabold text-white group-hover/item:text-[#FFEC8C] transition-colors truncate">
+                            {language === 'zh' ? 'Open Trip / Share Tour (拼团)' : language === 'id' ? 'Open Trip / Share Tour' : 'Open Trip / Share Tour'}
+                          </h4>
+                          <span className="text-[10px] px-1.5 py-0.2 text-emerald-300 font-semibold bg-emerald-950/80 rounded hidden sm:inline-block">Hemat</span>
+                        </div>
+                        <p className="text-[11px] sm:text-xs text-neutral-300 line-clamp-1 mt-0.5">
+                          {language === 'zh' ? '按位计费，保发排班，背包客与情侣出游超值首选。' : language === 'id' ? 'Trip gabungan hemat per kursi dengan jadwal pasti & konfirmasi instan.' : 'Affordable per-seat departures with guaranteed batch departures.'}
+                        </p>
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setActiveService('share-tour'); setPage('share-tour'); }}
+                      className="shrink-0 px-3 py-1.5 rounded-xl bg-[#315B4F]/60 hover:bg-[#FFEC8C] hover:text-neutral-950 text-[#FFEC8C] border border-[#FFEC8C]/30 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      <span className="hidden sm:inline">{language === 'zh' ? '拼团' : language === 'id' ? 'Jadwal' : 'Join'}</span>
+                      <ArrowRight className="h-3.5 w-3.5 group-hover/item:translate-x-0.5 transition-transform" />
+                    </button>
+                  </div>
+
+                  {/* 3. Event & Gathering */}
+                  <div 
+                    onClick={() => { setActiveService('gathering'); setPage('event-gathering'); }}
+                    className="group/item flex items-center justify-between gap-3 sm:gap-4 p-3 sm:p-3.5 rounded-2xl bg-[#0F1E1A]/85 hover:bg-[#315B4F]/40 backdrop-blur-md border border-emerald-900/50 hover:border-[#FFEC8C]/60 transition-all duration-300 cursor-pointer shadow-lg hover:-translate-y-0.5"
+                  >
+                    <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                      {/* Organic Circular Photo */}
+                      <div className="w-13 h-13 sm:w-15 sm:h-15 shrink-0 rounded-full overflow-hidden p-0.5 bg-gradient-to-tr from-[#315B4F] to-[#FFEC8C] shadow-md">
+                        <img
+                          src="/about-bg.jpg"
+                          alt="Event & Gathering"
+                          className="w-full h-full object-cover rounded-full group-hover/item:scale-110 transition-transform duration-500"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/service-area.jpg'; }}
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm sm:text-base font-extrabold text-white group-hover/item:text-[#FFEC8C] transition-colors truncate">
+                            {language === 'zh' ? 'Event & Gathering (企业团建)' : language === 'id' ? 'Event & Gathering' : 'Event & Gathering'}
+                          </h4>
+                          <span className="text-[10px] px-1.5 py-0.2 text-[#FFEC8C] font-semibold bg-[#315B4F]/80 rounded hidden sm:inline-block">Corporate</span>
+                        </div>
+                        <p className="text-[11px] sm:text-xs text-neutral-300 line-clamp-1 mt-0.5">
+                          {language === 'zh' ? '企业团建、拓展训练与公司年度年会，支持定制方案与正式报价单。' : language === 'id' ? 'Outbound teambuilding, gala dinner & gathering perusahaan berskala besar.' : 'Corporate teambuilding, gala dinner & community outings.'}
+                        </p>
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setActiveService('gathering'); setPage('event-gathering'); }}
+                      className="shrink-0 px-3 py-1.5 rounded-xl bg-[#315B4F]/60 hover:bg-[#FFEC8C] hover:text-neutral-950 text-[#FFEC8C] border border-[#FFEC8C]/30 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      <span className="hidden sm:inline">{language === 'zh' ? '报价' : language === 'id' ? 'Quotation' : 'Quote'}</span>
+                      <ArrowRight className="h-3.5 w-3.5 group-hover/item:translate-x-0.5 transition-transform" />
+                    </button>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+            {/* 2. TRANSPORTATION IMMERSIVE BANNER */}
+            <div className="relative rounded-3xl overflow-hidden border border-emerald-900/40 bg-neutral-950/80 shadow-2xl flex flex-col justify-between group transition-all duration-500 hover:border-[#FFEC8C]/40">
+              {/* Background Panorama with Curved/Diagonal Visual Slice */}
+              <div className="absolute inset-0 z-0 overflow-hidden">
+                <img
+                  src="/service-area.jpg"
+                  alt="East Java Executive Transport Fleet"
+                  className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 opacity-35 lg:opacity-45"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    if (target.src.indexOf('office.png') === -1) {
+                      target.src = '/office.png';
+                    }
+                  }}
+                />
+                {/* Organic Diagonal / Curved Mask Gradient */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0B1311] via-[#0B1311]/85 to-[#0B1311]/40" />
+                <div className="absolute inset-0 bg-gradient-to-l from-[#0B1311] via-transparent to-[#315B4F]/30 mix-blend-overlay" />
+                {/* Visual curved decorative SVG slice */}
+                <svg className="absolute -bottom-1 -left-1 w-48 h-48 text-[#315B4F]/10 pointer-events-none transform -rotate-12" viewBox="0 0 200 200" fill="currentColor">
+                  <path d="M47.7,-59.8C61.4,-51.7,71.7,-38.2,76.5,-23.1C81.2,-7.9,80.4,8.8,74.7,23.5C69,38.2,58.3,50.8,45.2,59.3C32.1,67.8,16.6,72.2,0.6,71.4C-15.4,70.6,-30.9,64.6,-44.6,55.5C-58.4,46.4,-70.5,34.2,-76.4,19.2C-82.3,4.2,-82.1,-13.6,-74.8,-27.8C-67.6,-41.9,-53.4,-52.3,-39,-60.1C-24.6,-67.9,-10.1,-73,3.3,-77.4C16.6,-81.9,34,-67.9,47.7,-59.8Z" transform="translate(100 100)" />
+                </svg>
+              </div>
+
+              {/* Banner Content Container */}
+              <div className="relative z-10 p-6 sm:p-8 lg:p-10 flex flex-col justify-between h-full">
+                {/* Banner Header */}
+                <div className="mb-6">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#315B4F] border border-[#FFEC8C]/30 text-[#FFEC8C] text-[11px] font-bold tracking-wider uppercase font-mono shadow-sm">
+                    <Car className="h-3.5 w-3.5 text-[#FFEC8C]" />
+                    <span>TRANSPORTATION</span>
+                  </div>
+                  <h3 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-3 mb-2">
+                    {language === 'zh' ? '商务专车与全系优质车队' : language === 'id' ? 'Armada VIP & Transportasi Privat' : 'Executive Fleets & Private Transport'}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed font-normal max-w-md">
+                    {language === 'zh'
+                      ? '准点覆盖机场接送、点对点跨城尊享出租车与准新车包车自驾，全程一口价无隐形加价。'
+                      : language === 'id'
+                      ? 'Layanan mobilitas andal dengan driver profesional, armada higienis, dan tarif pasti transparan.'
+                      : 'Reliable private transit with experienced drivers, clean air-conditioned fleet, and fixed flat rates.'}
+                  </p>
+                </div>
+
+                {/* 3 Circular Organic Service Items */}
+                <div className="space-y-3 sm:space-y-3.5">
+                  
+                  {/* 4. Airport Transfer */}
+                  <div 
+                    onClick={() => { setActiveService('airport'); setPage('airport'); }}
+                    className="group/item flex items-center justify-between gap-3 sm:gap-4 p-3 sm:p-3.5 rounded-2xl bg-[#0F1E1A]/85 hover:bg-[#315B4F]/40 backdrop-blur-md border border-emerald-900/50 hover:border-[#FFEC8C]/60 transition-all duration-300 cursor-pointer shadow-lg hover:-translate-y-0.5"
+                  >
+                    <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                      {/* Organic Circular Photo */}
+                      <div className="w-13 h-13 sm:w-15 sm:h-15 shrink-0 rounded-full overflow-hidden p-0.5 bg-gradient-to-tr from-[#315B4F] to-[#FFEC8C] shadow-md">
+                        <img
+                          src="https://images.unsplash.com/photo-1542282088-fe8426682b8f?auto=format&fit=crop&w=300&q=80"
+                          alt="Airport Transfer"
+                          className="w-full h-full object-cover rounded-full group-hover/item:scale-110 transition-transform duration-500"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/service-area.jpg'; }}
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm sm:text-base font-extrabold text-white group-hover/item:text-[#FFEC8C] transition-colors truncate">
+                            {language === 'zh' ? 'Airport Transfer (机场接送)' : language === 'id' ? 'Airport Transfer' : 'Airport Transfer'}
+                          </h4>
+                          <span className="text-[10px] px-1.5 py-0.2 text-[#FFEC8C] font-semibold bg-[#315B4F]/60 rounded hidden sm:inline-block">24/7</span>
+                        </div>
+                        <p className="text-[11px] sm:text-xs text-neutral-300 line-clamp-1 mt-0.5">
+                          {language === 'zh' ? '泗水Juanda (SUB)、日惹 (YIA) 及巴厘岛 (DPS) 实时航班接送。' : language === 'id' ? 'Penjemputan tepat waktu Juanda (SUB), YIA & Bali dengan live tracking.' : 'Punctual terminal pickups at Surabaya (SUB), YIA & Bali (DPS).'}
+                        </p>
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setActiveService('airport'); setPage('airport'); }}
+                      className="shrink-0 px-3 py-1.5 rounded-xl bg-[#315B4F]/60 hover:bg-[#FFEC8C] hover:text-neutral-950 text-[#FFEC8C] border border-[#FFEC8C]/30 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      <span className="hidden sm:inline">{language === 'zh' ? '预订' : language === 'id' ? 'Pesan' : 'Book'}</span>
+                      <ArrowRight className="h-3.5 w-3.5 group-hover/item:translate-x-0.5 transition-transform" />
+                    </button>
+                  </div>
+
+                  {/* 5. Taxi Service */}
+                  <div 
+                    onClick={() => { setActiveService('taxi'); setPage('taxi'); }}
+                    className="group/item flex items-center justify-between gap-3 sm:gap-4 p-3 sm:p-3.5 rounded-2xl bg-[#0F1E1A]/85 hover:bg-[#315B4F]/40 backdrop-blur-md border border-emerald-900/50 hover:border-[#FFEC8C]/60 transition-all duration-300 cursor-pointer shadow-lg hover:-translate-y-0.5"
+                  >
+                    <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                      {/* Organic Circular Photo */}
+                      <div className="w-13 h-13 sm:w-15 sm:h-15 shrink-0 rounded-full overflow-hidden p-0.5 bg-gradient-to-tr from-[#315B4F] to-[#FFEC8C] shadow-md">
+                        <img
+                          src="https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=300&q=80"
+                          alt="Taxi Service"
+                          className="w-full h-full object-cover rounded-full group-hover/item:scale-110 transition-transform duration-500"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/office.png'; }}
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm sm:text-base font-extrabold text-white group-hover/item:text-[#FFEC8C] transition-colors truncate">
+                            {language === 'zh' ? 'Taxi Service (跨城专车)' : language === 'id' ? 'Taxi Service' : 'Taxi Service'}
+                          </h4>
+                          <span className="text-[10px] px-1.5 py-0.2 text-[#FFEC8C] font-semibold bg-[#315B4F]/60 rounded hidden sm:inline-block">Flat Rate</span>
+                        </div>
+                        <p className="text-[11px] sm:text-xs text-neutral-300 line-clamp-1 mt-0.5">
+                          {language === 'zh' ? '点对点一口价跨城专属私密行程，无高峰溢价与计价表困扰。' : language === 'id' ? 'Antar jemput antarkota flat-rate Surabaya, Malang, Banyuwangi & Bali.' : 'Fixed flat-rate intercity private taxi without meter surges.'}
+                        </p>
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setActiveService('taxi'); setPage('taxi'); }}
+                      className="shrink-0 px-3 py-1.5 rounded-xl bg-[#315B4F]/60 hover:bg-[#FFEC8C] hover:text-neutral-950 text-[#FFEC8C] border border-[#FFEC8C]/30 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      <span className="hidden sm:inline">{language === 'zh' ? '预订' : language === 'id' ? 'Pesan' : 'Book'}</span>
+                      <ArrowRight className="h-3.5 w-3.5 group-hover/item:translate-x-0.5 transition-transform" />
+                    </button>
+                  </div>
+
+                  {/* 6. Car Rental */}
+                  <div 
+                    onClick={() => { setActiveService('car-rental'); setPage('car-rental'); }}
+                    className="group/item flex items-center justify-between gap-3 sm:gap-4 p-3 sm:p-3.5 rounded-2xl bg-[#0F1E1A]/85 hover:bg-[#315B4F]/40 backdrop-blur-md border border-emerald-900/50 hover:border-[#FFEC8C]/60 transition-all duration-300 cursor-pointer shadow-lg hover:-translate-y-0.5"
+                  >
+                    <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                      {/* Organic Circular Photo */}
+                      <div className="w-13 h-13 sm:w-15 sm:h-15 shrink-0 rounded-full overflow-hidden p-0.5 bg-gradient-to-tr from-[#315B4F] to-[#FFEC8C] shadow-md">
+                        <img
+                          src="https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=300&q=80"
+                          alt="Car Rental"
+                          className="w-full h-full object-cover rounded-full group-hover/item:scale-110 transition-transform duration-500"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/service-area.jpg'; }}
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm sm:text-base font-extrabold text-white group-hover/item:text-[#FFEC8C] transition-colors truncate">
+                            {language === 'zh' ? 'Car Rental (包车服务)' : language === 'id' ? 'Car Rental' : 'Car Rental'}
+                          </h4>
+                          <span className="text-[10px] px-1.5 py-0.2 text-[#FFEC8C] font-semibold bg-[#315B4F]/60 rounded hidden sm:inline-block">+ Driver</span>
+                        </div>
+                        <p className="text-[11px] sm:text-xs text-neutral-300 line-clamp-1 mt-0.5">
+                          {language === 'zh' ? 'Avanza、Innova Reborn、Hiace，配资深司机与全程燃油。' : language === 'id' ? 'Armada prima Avanza, Innova, Hiace dengan driver ramah dan BBM lengkap.' : 'Immaculate Avanza, Innova, Hiace with driver and fuel included.'}
+                        </p>
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setActiveService('car-rental'); setPage('car-rental'); }}
+                      className="shrink-0 px-3 py-1.5 rounded-xl bg-[#315B4F]/60 hover:bg-[#FFEC8C] hover:text-neutral-950 text-[#FFEC8C] border border-[#FFEC8C]/30 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      <span className="hidden sm:inline">{language === 'zh' ? '预订' : language === 'id' ? 'Sewa' : 'Rent'}</span>
+                      <ArrowRight className="h-3.5 w-3.5 group-hover/item:translate-x-0.5 transition-transform" />
+                    </button>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
           </div>
 
-          {/* Service Detailed Showcase Card */}
-          {(() => {
-            const currentEffectiveService = isServiceEnabled(activeService as any) ? activeService : 'tours';
-            return (
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={`${currentEffectiveService}-${language}`}
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -15 }}
-                  transition={{ duration: 0.25 }}
-                  className="bg-neutral-800/60 border border-neutral-700/60 rounded-3xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 backdrop-blur-sm shadow-2xl"
-                >
-                  {/* Image side */}
-                  <div className="lg:col-span-5 relative min-h-[260px] lg:min-h-full overflow-hidden bg-neutral-950 group">
-                    <img
-                      src={
-                        currentEffectiveService === 'tours'
-                          ? 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1000&q=80'
-                          : currentEffectiveService === 'share-tour'
-                          ? 'https://images.unsplash.com/photo-1539635273304-0e8723e0f016?auto=format&fit=crop&w=1000&q=80'
-                          : currentEffectiveService === 'airport'
-                          ? 'https://images.unsplash.com/photo-1542282088-fe8426682b8f?auto=format&fit=crop&w=1000&q=80'
-                          : currentEffectiveService === 'taxi'
-                          ? 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=1000&q=80'
-                          : 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=1000&q=80'
-                      }
-                      alt={currentEffectiveService}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-all duration-700 opacity-85"
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/20 to-transparent lg:bg-gradient-to-r lg:from-transparent lg:to-neutral-950/20" />
-                    
-                    {/* Visual badge */}
-                    <div className="absolute bottom-6 left-6 right-6">
-                      <span className="text-[11px] text-amber-400 font-bold uppercase tracking-wider font-mono bg-neutral-950/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-neutral-700/80 shadow-md">
-                        {currentEffectiveService === 'tours' && (language === 'zh' ? '东爪哇精选私人定制' : language === 'id' ? 'Tur Terkurasi Jawa Timur' : 'East Java Curated Tours')}
-                        {currentEffectiveService === 'share-tour' && (language === 'zh' ? '高性价比拼团 (Open Trip / Join Share Tour)' : language === 'id' ? 'Open Trip / Join Share Tour' : 'Open Trip / Join Share Tour')}
-                        {currentEffectiveService === 'airport' && (language === 'zh' ? '24小时专业机场接送' : language === 'id' ? 'Transfer Bandara 24/7' : '24/7 Airport Transfer')}
-                        {currentEffectiveService === 'taxi' && (language === 'zh' ? '跨城透明一口价专车' : language === 'id' ? 'Taksi Eksekutif Flat-Rate' : 'Flat-Rate Executive Taxi')}
-                        {currentEffectiveService === 'car-rental' && (language === 'zh' ? '包车带司机自由行' : language === 'id' ? 'Sewa Mobil + Driver Privat' : 'Private Car & Driver')}
-                      </span>
-                    </div>
-                  </div>
+          {/* SERVICE DETAILED SHOWCASE TABS & PANEL */}
+          <div className="mt-8 pt-8 border-t border-emerald-950/80">
+            {/* Minimalist Segmented Tabs for All 6 Services */}
+            <div className="flex items-center justify-start md:justify-center overflow-x-auto scrollbar-none gap-2 sm:gap-3 mb-8 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+              {[
+                { id: 'tours', label: language === 'zh' ? '私家定制游' : language === 'id' ? 'Private Tour' : 'Private Tour', icon: <Compass className="h-4 w-4" /> },
+                { id: 'share-tour', label: language === 'zh' ? '拼团出游' : language === 'id' ? 'Open Trip' : 'Open Trip', icon: <Users className="h-4 w-4" /> },
+                { id: 'gathering', label: language === 'zh' ? '企业团建' : language === 'id' ? 'Event & Gathering' : 'Event & Gathering', icon: <Briefcase className="h-4 w-4" /> },
+                { id: 'airport', label: language === 'zh' ? '机场接送' : language === 'id' ? 'Airport Transfer' : 'Airport Transfer', icon: <Plane className="h-4 w-4" /> },
+                { id: 'taxi', label: language === 'zh' ? '跨城出租车' : language === 'id' ? 'Taxi Service' : 'Taxi Service', icon: <Route className="h-4 w-4" /> },
+                { id: 'car-rental', label: language === 'zh' ? '租车包车' : language === 'id' ? 'Car Rental' : 'Car Rental', icon: <Car className="h-4 w-4" /> },
+              ].map((srv) => {
+                const isActive = activeService === srv.id;
+                return (
+                  <button
+                    key={srv.id}
+                    onClick={() => setActiveService(srv.id as any)}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 shrink-0 cursor-pointer border ${
+                      isActive
+                        ? 'bg-[#315B4F] text-[#FFEC8C] border-[#FFEC8C]/60 shadow-lg shadow-[#315B4F]/30 font-bold scale-[1.02]'
+                        : 'bg-[#0E1B17]/80 text-neutral-300 border-emerald-950/80 hover:bg-[#1A2E28] hover:text-white hover:border-[#315B4F]/50'
+                    }`}
+                  >
+                    {srv.icon}
+                    <span>{srv.label}</span>
+                  </button>
+                );
+              })}
+            </div>
 
-                  {/* Content side */}
-                  <div className="lg:col-span-7 p-6 sm:p-10 lg:p-12 flex flex-col justify-between space-y-6">
-                    <div className="space-y-4">
-                      <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-snug">
-                        {currentEffectiveService === 'tours' && (language === 'zh' ? '布罗莫火山与宜珍神秘蓝火私人探险' : language === 'id' ? 'Petualangan Privat Gunung Bromo & Kawah Ijen' : 'Private Mount Bromo & Ijen Crater Adventures')}
-                        {currentEffectiveService === 'share-tour' && (language === 'zh' ? '单人及情侣出游精明之选：Open Trip / Join Share Tour 拼团' : language === 'id' ? 'Open Trip / Join Share Tour untuk Solo & Small Group' : 'Open Trip / Join Share Tour for Smart Solo & Small Group Travelers')}
-                        {currentEffectiveService === 'airport' && (language === 'zh' ? '无缝省心机场接机与航站楼送机' : language === 'id' ? 'Antar Jemput Bandara Nyaman & Bebas Ribet' : 'Seamless Airport Pickups & Transfers')}
-                        {currentEffectiveService === 'taxi' && (language === 'zh' ? '点对点跨城尊贵行政出租车' : language === 'id' ? 'Taksi Antarkota Point-to-Point Eksekutif' : 'Point-to-Point Executive Intercity Taxi')}
-                        {currentEffectiveService === 'car-rental' && (language === 'zh' ? '配备资深双语司机的全天候包车' : language === 'id' ? 'Rental Mobil Premium Bersama Driver Berpengalaman' : 'Premium Car Rental with Professional Local Driver')}
-                      </h3>
-
-                      <p className="text-sm text-neutral-300 leading-relaxed font-normal">
-                        {currentEffectiveService === 'tours' && (language === 'zh' ? '亲历布罗莫金色日出、宜珍电光蓝火与千重瀑布。套餐包含全程冷气专车、4x4越野吉普、持证双语向导与景区门票。' : language === 'id' ? 'Rasakan ekspedisi tak terlupakan ke sunrise Bromo, api biru Ijen, dan air terjun Tumpak Sewu dengan Jeep 4x4, driver ramah, dan tiket masuk lengkap.' : 'Experience unforgettable expeditions to Mount Bromo sunrise, Ijen Crater blue fire, and Tumpak Sewu Waterfall. Complete packages include climate-controlled transport, 4x4 off-road Jeeps, licensed English-speaking guides, and pre-arranged park permits.')}
-                        {currentEffectiveService === 'share-tour' && (language === 'zh' ? '按位计价，固定保发班期，专属微信/WhatsApp电子凭证，畅享高品质拼团体验。' : language === 'id' ? 'Keberangkatan grup hemat untuk solo traveler dan pasangan. Ikuti batch terkonfirmasi ke Bromo & Ijen dengan harga per-kursi dan voucher instan.' : 'Cost-effective group departures for solo travelers and couples. Join confirmed departure batches for Mount Bromo and Ijen Crater with per-seat pricing, comfortable fleet, professional guide, and instant voucher validation.')}
-                        {currentEffectiveService === 'airport' && (language === 'zh' ? '准时覆盖泗水朱安达 (SUB)、日惹 (YIA)、雅加达 (CGK) 与巴厘岛 (DPS)。司机实时监控航班动态并举牌在到达厅迎接。' : language === 'id' ? 'Layanan tepat waktu untuk Bandara Juanda (SUB), Yogyakarta (YIA), Jakarta (CGK), dan Bali (DPS) dengan live flight tracking.' : 'Stress-free transfers connecting Juanda International Airport Surabaya (SUB), Yogyakarta (YIA), CGK, and Bali (DPS). Drivers monitor live flight status and provide personalized terminal arrival meet & greet.')}
-                        {currentEffectiveService === 'taxi' && (language === 'zh' ? '一口价全包，无出租车计价表溢价，畅享门到门专属私密行程。' : language === 'id' ? 'Transportasi privat andal dengan tarif pasti. Nikmati kenyamanan antar jemput door-to-door tanpa lonjakan harga argo.' : 'Reliable private transfers with fixed transparent pricing. Enjoy door-to-door comfort for business or leisure with zero hidden toll, parking, or surge fees.')}
-                        {currentEffectiveService === 'car-rental' && (language === 'zh' ? '根据您的个性化日程自由畅游东爪哇，准新车况，安心出行。' : language === 'id' ? 'Jelajahi Jawa Timur sesuai rencana perjalanan bebas Anda dengan armada bersih (Avanza, Innova, Hiace) dan driver berpengalaman.' : 'Explore East Java on your own customized itinerary with our immaculate fleet (Avanza, Innova Reborn, Zenix, Hiace) and experienced local drivers.')}
-                      </p>
-
-                      {/* High quality bullets checklist */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
-                        {(currentEffectiveService === 'tours'
-                          ? (language === 'zh'
-                            ? ['已含全部景区门票与森林许可证', '已含布罗莫 4x4 专属越野吉普', '持证双语老牌地接向导', '支持泗水、玛琅、外南梦灵活接送']
-                            : language === 'id'
-                            ? ['Semua tiket & izin konservasi termasuk', 'Jeep 4x4 Bromo privat termasuk', 'Pemandu lokal bersertifikat', 'Penjemputan fleksibel Surabaya/Malang/Banyuwangi']
-                            : ['All entrance tickets & permits included', 'Private 4x4 Bromo Jeep included', 'Certified English-speaking guide', 'Flexible pickup in Surabaya, Malang, or Banyuwangi'])
-                          : currentEffectiveService === 'share-tour'
-                          ? (language === 'zh'
-                            ? ['超值按位计价，经济透明', '固定批次保发排班', '含 4x4 吉普、司机与向导', '即时生成电子凭证']
-                            : language === 'id'
-                            ? ['Harga per-kursi terjangkau & transparan', 'Jadwal batch keberangkatan pasti', 'Termasuk Jeep 4x4, driver & guide', 'Konfirmasi digital voucher instan']
-                            : ['Budget-friendly per-seat pricing', 'Guaranteed batch departure schedules', 'Includes Jeep 4x4, driver & guide', 'Instant digital voucher confirmation'])
-                          : currentEffectiveService === 'airport'
-                          ? (language === 'zh'
-                            ? ['航班时刻实时智能跟踪', '接机大厅持专属姓名牌迎接', '已含高速过路费与机场停车费', '免费协助搬运行李直达目的地']
-                            : language === 'id'
-                            ? ['Pelacakan status penerbangan live', 'Meet & greet dengan papan nama di terminal', 'Sudah termasuk tol & parkir bandara', 'Bantuan bagasi & rute langsung']
-                            : ['Real-time flight status tracking', 'Paging nameboard meet & greet at terminal', 'Tolls & airport parking fees included', 'Luggage assistance & direct routing'])
-                          : currentEffectiveService === 'taxi'
-                          ? (language === 'zh'
-                            ? ['一口价透明锁定，绝无高峰加价', '门到门尊贵私密乘车体验', '专业无烟老牌司机', '免费瓶装矿泉水与车载充电']
-                            : language === 'id'
-                            ? ['Tarif flat transparan tanpa lonjakan', 'Layanan privat door-to-door', 'Driver profesional non-smoking', 'Air mineral gratis & port charger']
-                            : ['Fixed transparent rates without surge', 'Door-to-door executive private service', 'Professional non-smoking drivers', 'Complimentary bottled water & phone charging'])
-                          : (language === 'zh'
-                            ? ['已全包司机服务费与全程燃油', '完全自主规划每日路线与停留点', '提供5座至15座多元车型', '全车每日深度消毒，空调强劲']
-                            : language === 'id'
-                            ? ['BBM & uang makan driver sudah termasuk', 'Bebas kustomisasi rute harian', 'Pilihan armada 5 hingga 15 kursi', 'Kendaraan bersih dengan AC dingin']
-                            : ['Fuel & driver allowance fully included', 'Customizable daily routing & stops', 'Clean fleet option for 5 to 15 passengers', 'Sanitized vehicles with cold air conditioning'])
-                        ).map((feat, idx) => (
-                          <div key={idx} className="flex items-center gap-2.5 text-neutral-200">
-                            <Check className="h-4 w-4 text-amber-400 shrink-0" />
-                            <span className="text-xs sm:text-sm font-medium leading-tight">{feat}</span>
-                          </div>
-                        ))}
+            {/* Service Detailed Showcase Card */}
+            {(() => {
+              const currentEffectiveService = activeService;
+              return (
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={`${currentEffectiveService}-${language}`}
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -15 }}
+                    transition={{ duration: 0.25 }}
+                    className="bg-[#0F1E1A]/80 border border-emerald-900/60 rounded-3xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 backdrop-blur-md shadow-2xl"
+                  >
+                    {/* Image side */}
+                    <div className="lg:col-span-5 relative min-h-[260px] lg:min-h-full overflow-hidden bg-neutral-950 group">
+                      <img
+                        src={
+                          currentEffectiveService === 'tours'
+                            ? '/kawah-ijen.jpeg'
+                            : currentEffectiveService === 'share-tour'
+                            ? '/uploads/sharetour-1790595795195-efd6393e1024195b.jpg'
+                            : currentEffectiveService === 'gathering'
+                            ? '/about-bg.jpg'
+                            : currentEffectiveService === 'airport'
+                            ? 'https://images.unsplash.com/photo-1542282088-fe8426682b8f?auto=format&fit=crop&w=1000&q=80'
+                            : currentEffectiveService === 'taxi'
+                            ? 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=1000&q=80'
+                            : 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=1000&q=80'
+                        }
+                        alt={currentEffectiveService}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-all duration-700 opacity-85"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          target.src = '/bromo.png';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/20 to-transparent lg:bg-gradient-to-r lg:from-transparent lg:to-neutral-950/30" />
+                      
+                      {/* Visual badge */}
+                      <div className="absolute bottom-6 left-6 right-6">
+                        <span className="text-[11px] text-[#FFEC8C] font-bold uppercase tracking-wider font-mono bg-[#0B1311]/90 backdrop-blur-md px-3.5 py-1.5 rounded-lg border border-[#FFEC8C]/30 shadow-md">
+                          {currentEffectiveService === 'tours' && (language === 'zh' ? '东爪哇精选私人定制' : language === 'id' ? 'Tur Terkurasi Jawa Timur' : 'East Java Curated Tours')}
+                          {currentEffectiveService === 'share-tour' && (language === 'zh' ? '高性价比拼团 (Open Trip)' : language === 'id' ? 'Open Trip / Share Tour' : 'Guaranteed Open Trip')}
+                          {currentEffectiveService === 'gathering' && (language === 'zh' ? '企业专属团建与年会定制' : language === 'id' ? 'Outbound & Corporate Gathering' : 'Corporate Outings & Teambuilding')}
+                          {currentEffectiveService === 'airport' && (language === 'zh' ? '24小时专业机场接送' : language === 'id' ? 'Transfer Bandara 24/7' : '24/7 Airport Transfer')}
+                          {currentEffectiveService === 'taxi' && (language === 'zh' ? '跨城透明一口价专车' : language === 'id' ? 'Taksi Eksekutif Flat-Rate' : 'Flat-Rate Executive Taxi')}
+                          {currentEffectiveService === 'car-rental' && (language === 'zh' ? '包车带司机自由行' : language === 'id' ? 'Sewa Mobil + Driver Privat' : 'Private Car & Driver')}
+                        </span>
                       </div>
                     </div>
 
-                    <div className="pt-6 border-t border-neutral-700/60 flex flex-col sm:flex-row items-center gap-4">
-                      <button
-                        onClick={() => {
-                          if (currentEffectiveService === 'tours') {
-                            setPage('tours');
-                          } else if (currentEffectiveService === 'share-tour') {
-                            setPage('share-tour');
-                          } else {
-                            setPage(currentEffectiveService as any);
-                          }
-                        }}
-                        className="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold px-7 py-3.5 rounded-xl text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-md shadow-amber-500/10 cursor-pointer"
-                      >
-                        <span>
-                          {currentEffectiveService === 'tours' && t('home.heroCtaTour')}
-                          {currentEffectiveService === 'share-tour' && t('home.heroCtaShare')}
-                          {currentEffectiveService === 'airport' && (language === 'zh' ? '预订机场接送专车' : language === 'id' ? 'Pesan Transfer Bandara' : 'Book Airport Transfer')}
-                          {currentEffectiveService === 'taxi' && (language === 'zh' ? '预订跨城出租车' : language === 'id' ? 'Pesan Taksi Antarkota' : 'Book Executive Taxi')}
-                          {currentEffectiveService === 'car-rental' && (language === 'zh' ? '预订包车自驾' : language === 'id' ? 'Pesan Sewa Mobil' : 'Book Car Rental')}
+                    {/* Content side */}
+                    <div className="lg:col-span-7 p-6 sm:p-10 lg:p-12 flex flex-col justify-between space-y-6">
+                      <div className="space-y-4">
+                        <h3 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-snug">
+                          {currentEffectiveService === 'tours' && (language === 'zh' ? '布罗莫火山与宜珍神秘蓝火私人探险' : language === 'id' ? 'Petualangan Privat Gunung Bromo & Kawah Ijen' : 'Private Mount Bromo & Ijen Crater Adventures')}
+                          {currentEffectiveService === 'share-tour' && (language === 'zh' ? '单人及情侣出游精明之选：Open Trip / Share Tour 拼团' : language === 'id' ? 'Open Trip / Share Tour untuk Solo & Small Group' : 'Open Trip / Share Tour for Smart Solo & Small Group Travelers')}
+                          {currentEffectiveService === 'gathering' && (language === 'zh' ? '企业团建、拓展训练与商务年会全包定制方案' : language === 'id' ? 'Corporate Event & Gathering Outbound Perusahaan' : 'Corporate Event & Outbound Gathering Packages')}
+                          {currentEffectiveService === 'airport' && (language === 'zh' ? '无缝省心机场接机与航站楼送机' : language === 'id' ? 'Antar Jemput Bandara Nyaman & Bebas Ribet' : 'Seamless Airport Pickups & Transfers')}
+                          {currentEffectiveService === 'taxi' && (language === 'zh' ? '点对点跨城尊贵行政出租车' : language === 'id' ? 'Taksi Antarkota Point-to-Point Eksekutif' : 'Point-to-Point Executive Intercity Taxi')}
+                          {currentEffectiveService === 'car-rental' && (language === 'zh' ? '配备资深双语司机的全天候包车' : language === 'id' ? 'Rental Mobil Premium Bersama Driver Berpengalaman' : 'Premium Car Rental with Professional Local Driver')}
+                        </h3>
+
+                        <p className="text-sm text-neutral-300 leading-relaxed font-normal">
+                          {currentEffectiveService === 'tours' && (language === 'zh' ? '亲历布罗莫金色日出、宜珍电光蓝火与千重瀑布。套餐包含全程冷气专车、4x4越野吉普、持证双语向导与景区门票。' : language === 'id' ? 'Rasakan ekspedisi tak terlupakan ke sunrise Bromo, api biru Ijen, dan air terjun Tumpak Sewu dengan Jeep 4x4, driver ramah, dan tiket masuk lengkap.' : 'Experience unforgettable expeditions to Mount Bromo sunrise, Ijen Crater blue fire, and Tumpak Sewu Waterfall. Complete packages include climate-controlled transport, 4x4 off-road Jeeps, licensed guides, and pre-arranged park permits.')}
+                          {currentEffectiveService === 'share-tour' && (language === 'zh' ? '按位计价，固定保发班期，专属电子凭证，畅享高品质拼团体验。' : language === 'id' ? 'Keberangkatan grup hemat untuk solo traveler dan pasangan. Ikuti batch terkonfirmasi ke Bromo & Ijen dengan harga per-kursi dan voucher digital instan.' : 'Cost-effective group departures for solo travelers and couples. Join confirmed departure batches for Mount Bromo and Ijen Crater with per-seat pricing, comfortable fleet, professional guide, and instant voucher validation.')}
+                          {currentEffectiveService === 'gathering' && (language === 'zh' ? '一站式企业出行解决方案，涵盖团建破冰、越野车队、篝火晚会与定制餐饮。出具正规对公方案与正式商业报价单。' : language === 'id' ? 'Solusi gathering korporasi terpadu memadukan outbound teambuilding, konvoi Jeep 4x4, gala dinner, dokumentasi profesional, dan invoice korporat resmi.' : 'End-to-end corporate retreat and teambuilding solutions combining outdoor outbound games, 4x4 Jeep convoys, gala dinners, professional documentation, and formal corporate quotations.')}
+                          {currentEffectiveService === 'airport' && (language === 'zh' ? '准时覆盖泗水朱安达 (SUB)、日惹 (YIA)、雅加达 (CGK) 与巴厘岛 (DPS)。司机实时监控航班动态并举牌在到达厅迎接。' : language === 'id' ? 'Layanan tepat waktu untuk Bandara Juanda (SUB), Yogyakarta (YIA), Jakarta (CGK), dan Bali (DPS) dengan live flight tracking.' : 'Stress-free transfers connecting Juanda International Airport Surabaya (SUB), Yogyakarta (YIA), CGK, and Bali (DPS). Drivers monitor live flight status and provide personalized terminal arrival meet & greet.')}
+                          {currentEffectiveService === 'taxi' && (language === 'zh' ? '一口价全包，无出租车计价表溢价，畅享门到门专属私密行程。' : language === 'id' ? 'Transportasi privat andal dengan tarif pasti. Nikmati kenyamanan antar jemput door-to-door tanpa lonjakan harga argo.' : 'Reliable private transfers with fixed transparent pricing. Enjoy door-to-door comfort for business or leisure with zero hidden toll, parking, or surge fees.')}
+                          {currentEffectiveService === 'car-rental' && (language === 'zh' ? '根据您的个性化日程自由畅游东爪哇，准新车况，安心出行。' : language === 'id' ? 'Jelajahi Jawa Timur sesuai rencana perjalanan bebas Anda dengan armada bersih (Avanza, Innova, Hiace) dan driver berpengalaman.' : 'Explore East Java on your own customized itinerary with our immaculate fleet (Avanza, Innova Reborn, Zenix, Hiace) and experienced local drivers.')}
+                        </p>
+
+                        {/* High quality bullets checklist */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
+                          {(currentEffectiveService === 'tours'
+                            ? (language === 'zh'
+                              ? ['已含全部景区门票与森林许可证', '已含布罗莫 4x4 专属越野吉普', '持证双语老牌地接向导', '支持泗水、玛琅、外南梦灵活接送']
+                              : language === 'id'
+                              ? ['Semua tiket & izin konservasi termasuk', 'Jeep 4x4 Bromo privat termasuk', 'Pemandu lokal bersertifikat', 'Penjemputan fleksibel Surabaya/Malang/Banyuwangi']
+                              : ['All entrance tickets & permits included', 'Private 4x4 Bromo Jeep included', 'Certified English-speaking guide', 'Flexible pickup in Surabaya, Malang, or Banyuwangi'])
+                            : currentEffectiveService === 'share-tour'
+                            ? (language === 'zh'
+                              ? ['超值按位计价，经济透明', '固定批次保发排班', '含 4x4 吉普、司机与向导', '即时生成电子凭证']
+                              : language === 'id'
+                              ? ['Harga per-kursi terjangkau & transparan', 'Jadwal batch keberangkatan pasti', 'Termasuk Jeep 4x4, driver & guide', 'Konfirmasi digital voucher instan']
+                              : ['Budget-friendly per-seat pricing', 'Guaranteed batch departure schedules', 'Includes Jeep 4x4, driver & guide', 'Instant digital voucher confirmation'])
+                            : currentEffectiveService === 'gathering'
+                            ? (language === 'zh'
+                              ? ['专业拓展培训导师与定制趣味团建', '专属 4x4 吉普车队与冷气旅游大巴', '高规格晚宴、音响与篝火晚会', '出具正规对公方案与正式商业报价单 (Quotation)']
+                              : language === 'id'
+                              ? ['Fasilitator outbound berlisensi & fun games', 'Konvoi 4x4 Jeep Hardtop & bus pariwisata AC', 'Gala dinner BBQ, sound system, & api unggun', 'Penerbitan proposal penawaran resmi (Quotation)']
+                              : ['Certified outbound teambuilding facilitators', 'Convoys of 4x4 Jeeps & executive tourist bus', 'Private BBQ gala dinner & live entertainment', 'Formal quotation proposals & legal tax invoicing'])
+                            : currentEffectiveService === 'airport'
+                            ? (language === 'zh'
+                              ? ['航班时刻实时智能跟踪', '接机大厅持专属姓名牌迎接', '已含高速过路费与机场停车费', '免费协助搬运行李直达目的地']
+                              : language === 'id'
+                              ? ['Pelacakan status penerbangan live', 'Meet & greet dengan papan nama di terminal', 'Sudah termasuk tol & parkir bandara', 'Bantuan bagasi & rute langsung']
+                              : ['Real-time flight status tracking', 'Paging nameboard meet & greet at terminal', 'Tolls & airport parking fees included', 'Luggage assistance & direct routing'])
+                            : currentEffectiveService === 'taxi'
+                            ? (language === 'zh'
+                              ? ['一口价透明锁定，绝无高峰加价', '门到门尊贵私密乘车体验', '专业无烟老牌司机', '免费瓶装矿泉水与车载充电']
+                              : language === 'id'
+                              ? ['Tarif flat transparan tanpa lonjakan', 'Layanan privat door-to-door', 'Driver profesional non-smoking', 'Air mineral gratis & port charger']
+                              : ['Fixed transparent rates without surge', 'Door-to-door executive private service', 'Professional non-smoking drivers', 'Complimentary bottled water & phone charging'])
+                            : (language === 'zh'
+                              ? ['已全包司机服务费与全程燃油', '完全自主规划每日路线与停留点', '提供5座至15座多元车型', '全车每日深度消毒，空调强劲']
+                              : language === 'id'
+                              ? ['BBM & uang makan driver sudah termasuk', 'Bebas kustomisasi rute harian', 'Pilihan armada 5 hingga 15 kursi', 'Kendaraan bersih dengan AC dingin']
+                              : ['Fuel & driver allowance fully included', 'Customizable daily routing & stops', 'Clean fleet option for 5 to 15 passengers', 'Sanitized vehicles with cold air conditioning'])
+                          ).map((feat, idx) => (
+                            <div key={idx} className="flex items-center gap-2.5 text-neutral-200">
+                              <Check className="h-4 w-4 text-[#FFEC8C] shrink-0" />
+                              <span className="text-xs sm:text-sm font-medium leading-tight">{feat}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="pt-6 border-t border-emerald-950/80 flex flex-col sm:flex-row items-center gap-4">
+                        <button
+                          onClick={() => {
+                            if (currentEffectiveService === 'tours') {
+                              setPage('tours');
+                            } else if (currentEffectiveService === 'share-tour') {
+                              setPage('share-tour');
+                            } else if (currentEffectiveService === 'gathering') {
+                              setPage('event-gathering');
+                            } else {
+                              setPage(currentEffectiveService as any);
+                            }
+                          }}
+                          className="w-full sm:w-auto bg-[#315B4F] hover:bg-[#FFEC8C] text-[#FFEC8C] hover:text-neutral-950 font-bold px-7 py-3.5 rounded-xl text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-md shadow-[#315B4F]/20 cursor-pointer border border-[#FFEC8C]/30"
+                        >
+                          <span>
+                            {currentEffectiveService === 'tours' && t('home.heroCtaTour')}
+                            {currentEffectiveService === 'share-tour' && t('home.heroCtaShare')}
+                            {currentEffectiveService === 'gathering' && (language === 'zh' ? '索取团建方案与报价 (Quotation)' : language === 'id' ? 'Minta Penawaran / Quotation' : 'Request Quotation Proposal')}
+                            {currentEffectiveService === 'airport' && (language === 'zh' ? '预订机场接送专车' : language === 'id' ? 'Pesan Transfer Bandara' : 'Book Airport Transfer')}
+                            {currentEffectiveService === 'taxi' && (language === 'zh' ? '预订跨城出租车' : language === 'id' ? 'Pesan Taksi Antarkota' : 'Book Executive Taxi')}
+                            {currentEffectiveService === 'car-rental' && (language === 'zh' ? '预订包车自驾' : language === 'id' ? 'Pesan Sewa Mobil' : 'Book Car Rental')}
+                          </span>
+                          <ArrowRight className="h-4 w-4" />
+                        </button>
+                        <span className="text-xs text-neutral-400 font-medium">
+                          ★ {language === 'zh' ? '官方保证：透明一口价，无隐形消费' : language === 'id' ? 'Jaminan Layanan Terbaik & Harga Transparan' : 'Guaranteed Best Service & Fixed Pricing'}
                         </span>
-                        <ArrowRight className="h-4 w-4" />
-                      </button>
-                      <span className="text-xs text-neutral-600 font-medium">
-                        ★ {language === 'zh' ? '官方保证：透明一口价，无隐形消费' : language === 'id' ? 'Jaminan Layanan Terbaik & Harga Transparan' : 'Guaranteed Best Service & Fixed Pricing'}
-                      </span>
+                      </div>
                     </div>
-                  </div>
-                </motion.div>
-              </AnimatePresence>
-            );
-          })()}
+                  </motion.div>
+                </AnimatePresence>
+              );
+            })()}
+          </div>
 
         </div>
       </section>
